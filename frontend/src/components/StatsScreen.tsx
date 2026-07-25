@@ -88,7 +88,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats }) => {
             </div>
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center justify-between gap-6">
-                <span className="flex items-center gap-1.5 text-gray-300"><span class="w-2.5 h-2.5 rounded-full bg-accentViolet"></span> Активно</span>
+                <span className="flex items-center gap-1.5 text-gray-300"><span className="w-2.5 h-2.5 rounded-full bg-accentViolet"></span> Активно</span>
                 <span className="font-bold">100%</span>
               </div>
             </div>
