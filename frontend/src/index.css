@@ -83,6 +83,19 @@ body.light .text-gray-500 {
   color: #94A3B8 !important;
 }
 
+/* Ensure text and icons on active filled accent elements remain crisp white in Light Mode */
+body.light .bg-accentViolet,
+body.light .bg-accentViolet *,
+body.light button.bg-accentViolet,
+body.light button.bg-accentViolet *,
+body.light .bg-accentTeal.text-white,
+body.light .bg-accentAmber.text-white,
+body.light .bg-accentBlue.text-white,
+body.light .bg-accentPink.text-white,
+body.light .bg-accentGreen.text-white {
+  color: #FFFFFF !important;
+}
+
 body.light nav {
   background-color: rgba(255, 255, 255, 0.92) !important;
   border-color: #E2E8F0 !important;
