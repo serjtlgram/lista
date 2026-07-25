@@ -1,0 +1,58 @@
+-- Enable UUID extension if available
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT PRIMARY KEY, -- Telegram User ID
+    username VARCHAR(255) DEFAULT '',
+    first_name VARCHAR(255) NOT NULL DEFAULT '',
+    last_name VARCHAR(255) DEFAULT '',
+    photo_url TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Items table (Movies, TV Shows, Books, Audiobooks, Podcasts, Games)
+CREATE TABLE IF NOT EXISTS items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL, -- 'movie', 'show', 'book', 'audiobook', 'podcast', 'game'
+    status VARCHAR(50) NOT NULL DEFAULT 'planned', -- 'watching', 'completed', 'planned', 'paused'
+    rating INT DEFAULT 0, -- 0 to 10
+    genre VARCHAR(255) DEFAULT '',
+    duration VARCHAR(100) DEFAULT '',
+    release_year VARCHAR(50) DEFAULT '',
+    poster_url TEXT DEFAULT '',
+    note TEXT DEFAULT '',
+    raw_input TEXT DEFAULT '', -- Raw user description for future AI context parsing
+    ai_parsed BOOLEAN DEFAULT FALSE,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_items_user_cat ON items(user_id, category);
+CREATE INDEX IF NOT EXISTS idx_items_user_status ON items(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_items_user_created ON items(user_id, created_at DESC);
+
+-- Trigger function to update updated_at timestamp automatically
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = CURRENT_TIMESTAMP;
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_users_timestamp ON users;
+CREATE TRIGGER set_users_timestamp
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+DROP TRIGGER IF EXISTS set_items_timestamp ON items;
+CREATE TRIGGER set_items_timestamp
+BEFORE UPDATE ON items
+FOR EACH ROW EXECUTE FUNCTION update_timestamp();
