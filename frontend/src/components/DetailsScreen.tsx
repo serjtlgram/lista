@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { Item } from '../types';
-import { Translations } from '../services/i18n';
+import { Translations, getTranslatedStatus } from '../services/i18n';
 import bannerDefault from '../assets/banner_default.png';
 
 interface DetailsScreenProps {
@@ -44,7 +44,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   }, [item]);
 
   const currentRating = item.rating || 10;
-  const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
+  const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
 
   const isDummyOrEmpty = !item.poster_url || item.poster_url.includes('unsplash.com');
   const posterSrc = isDummyOrEmpty ? bannerDefault : item.poster_url;
@@ -58,15 +58,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       case 'podcast': case 'подкасты': return t.categories.podcast_single;
       case 'game': case 'игры': return t.categories.game_single;
       default: return cat;
-    }
-  };
-
-  const getStatusLabel = (st: string) => {
-    switch (st?.toLowerCase()) {
-      case 'completed': case 'просмотрено': return t.modal.status_completed;
-      case 'watching': case 'смотрю': return t.modal.status_watching;
-      case 'planned': case 'в планах': case 'отложено': return t.modal.status_planned;
-      default: return st;
     }
   };
 
@@ -146,28 +137,33 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               className="status-pill-banner px-3.5 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/30 text-white text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-xl hover:border-accentViolet"
               style={{ color: '#FFFFFF' }}
             >
-              <span className="font-bold text-white" style={{ color: '#FFFFFF' }}>{getStatusLabel(item.status)}</span>
+              <span className="font-bold text-white" style={{ color: '#FFFFFF' }}>
+                {getTranslatedStatus(item.status, t)}
+              </span>
               <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
               <ChevronDown className="w-3.5 h-3.5 text-white/80" />
             </button>
 
-            {/* Dropdown Options */}
+            {/* Dropdown Options with full Dark & Light mode contrast */}
             {isStatusDropdownOpen && (
-              <div className="absolute right-0 bottom-full mb-2 w-44 bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
-                {statusOptions.map((opt) => (
-                  <button
-                    key={opt.val}
-                    onClick={() => handleSelectStatus(opt.val)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
-                      item.status === opt.val
-                        ? 'bg-accentViolet text-white'
-                        : 'text-gray-300 hover:bg-bgDark hover:text-white'
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {item.status === opt.val && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
+              <div className="dropdown-menu-container absolute right-0 bottom-full mb-2 w-44 bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
+                {statusOptions.map((opt) => {
+                  const isSelected = item.status === opt.val || getTranslatedStatus(item.status, t) === opt.label;
+                  return (
+                    <button
+                      key={opt.val}
+                      onClick={() => handleSelectStatus(opt.val)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                        isSelected
+                          ? 'dropdown-option-active bg-accentViolet text-white'
+                          : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
