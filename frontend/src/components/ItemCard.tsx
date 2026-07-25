@@ -18,6 +18,18 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   const starsCount = Math.min(5, Math.max(1, Math.round((item.rating || 10) / 2)));
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
 
+  const formatCategory = (cat: string) => {
+    switch (cat?.toLowerCase()) {
+      case 'movie': case 'фильмы': return 'Фильм';
+      case 'show': case 'shows': case 'series': case 'сериалы': return 'Сериал';
+      case 'book': case 'книги': return 'Книга';
+      case 'audiobook': case 'аудиокниги': return 'Аудиокнига';
+      case 'podcast': case 'подкасты': return 'Подкаст';
+      case 'game': case 'игры': return 'Игра';
+      default: return cat;
+    }
+  };
+
   return (
     <div
       onClick={() => onSelect(item)}
@@ -32,7 +44,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         <div>
           <h3 className="text-sm font-bold text-white line-clamp-1">{item.title}</h3>
           <p className="text-[11px] text-gray-400">
-            {item.category} • {item.duration || item.release_year || '2024'}
+            {formatCategory(item.category)} • {item.duration || item.release_year || '2024'}
           </p>
           <div className="flex items-center gap-0.5 mt-1 text-amber-400">
             {[1, 2, 3, 4, 5].map((s) => (

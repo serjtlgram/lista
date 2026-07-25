@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -101,6 +102,7 @@ func AuthMiddleware(botToken string, isDevMode bool) func(http.Handler) http.Han
 			if initData != "" {
 				tgUser, err = ValidateInitData(initData, botToken)
 				if err != nil {
+					log.Printf("[AUTH] initData validation failed: %v", err)
 					http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnauthorized)
 					return
 				}
@@ -120,6 +122,7 @@ func AuthMiddleware(botToken string, isDevMode bool) func(http.Handler) http.Han
 					Username:  "anna_test",
 				}
 			} else {
+				log.Printf("[AUTH] missing auth header, path=%s", r.URL.Path)
 				http.Error(w, `{"error":"missing X-Telegram-Init-Data header"}`, http.StatusUnauthorized)
 				return
 			}

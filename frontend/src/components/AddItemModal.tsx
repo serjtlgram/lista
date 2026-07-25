@@ -29,24 +29,28 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    onSave({
-      title,
-      category,
-      status,
-      rating,
-      genre,
-      duration,
-      release_year: releaseYear,
-      poster_url: posterUrl,
-      note,
-      raw_input: rawInput,
-    });
-
-    onClose();
+    try {
+      await onSave({
+        title,
+        category,
+        status,
+        rating,
+        genre,
+        duration,
+        release_year: releaseYear,
+        poster_url: posterUrl,
+        note,
+        raw_input: rawInput,
+      });
+      onClose();
+    } catch (err) {
+      console.error('Failed to save item:', err);
+      alert('Не удалось сохранить запись. Проверьте подключение к серверу.');
+    }
   };
 
   const categories = [

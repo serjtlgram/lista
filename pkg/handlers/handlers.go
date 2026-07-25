@@ -63,8 +63,8 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		GROUP BY category;
 	`
 	rows, err := h.DB.Pool.Query(ctx, catQuery, user.ID)
+	// Start with zeroes for all known Russian categories
 	categoriesMap := map[string]int{
-		"movie": 0, "show": 0, "book": 0, "audiobook": 0, "podcast": 0, "game": 0,
 		"Фильмы": 0, "Сериалы": 0, "Книги": 0, "Аудиокниги": 0, "Подкасты": 0, "Игры": 0,
 	}
 
@@ -74,7 +74,9 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 			var cat string
 			var count int
 			if err := rows.Scan(&cat, &count); err == nil {
-				categoriesMap[cat] = count
+				// Normalize to Russian canonical key
+				ruKey := mapCategoryToRu(cat)
+				categoriesMap[ruKey] += count
 			}
 		}
 	}
@@ -361,27 +363,64 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	var total, completed int
+	var total, completed, monthlyAdded int
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1", user.ID).Scan(&total)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'completed'", user.ID).Scan(&completed)
+	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)", user.ID).Scan(&monthlyAdded)
+
+	catQuery := `SELECT category, COUNT(*) FROM items WHERE user_id = $1 GROUP BY category`
+	rows, err := h.DB.Pool.Query(ctx, catQuery, user.ID)
+	catCounts := make(map[string]int)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var cat string
+			var count int
+			if err := rows.Scan(&cat, &count); err == nil {
+				ruCat := mapCategoryToRu(cat)
+				catCounts[ruCat] += count
+			}
+		}
+	}
+
+	catPct := make(map[string]int)
+	if total > 0 {
+		for cat, count := range catCounts {
+			catPct[cat] = (count * 100) / total
+		}
+	}
 
 	resp := models.StatsResponse{
-		TotalItems:       total,
-		CompletedItems:   completed,
-		TotalHours:       0,
-		MonthlyAdded:     0,
-		GrowthPercentage: 0,
-		CategoryPercentage: map[string]int{
-			"movie": 0,
-			"show":  0,
-			"book":  0,
-			"other": 0,
-		},
-		WeeklyActivity: []int{0, 0, 0, 0, 0, 0, 0},
+		TotalItems:         total,
+		CompletedItems:     completed,
+		TotalHours:         completed * 2, // estimated
+		MonthlyAdded:       monthlyAdded,
+		GrowthPercentage:   0,
+		CategoryPercentage: catPct,
+		WeeklyActivity:     []int{0, 0, 0, 0, 0, 0, 0},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func mapCategoryToRu(cat string) string {
+	switch strings.ToLower(cat) {
+	case "movie", "movies", "фильмы":
+		return "Фильмы"
+	case "show", "shows", "series", "сериалы":
+		return "Сериалы"
+	case "book", "books", "книги":
+		return "Книги"
+	case "audiobook", "audiobooks", "аудиокниги":
+		return "Аудиокниги"
+	case "podcast", "podcasts", "подкасты":
+		return "Подкасты"
+	case "game", "games", "игры":
+		return "Игры"
+	default:
+		return cat
+	}
 }
 
 func mapCategoryToEn(cat string) string {

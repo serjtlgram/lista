@@ -125,15 +125,17 @@ export function App() {
   // Filter items for current category screen
   const categoryItems = items.filter((i) => {
     if (!selectedCategory || selectedCategory === 'Все') return true;
-    return (
-      i.category.toLowerCase() === selectedCategory.toLowerCase() ||
-      (selectedCategory === 'Фильмы' && i.category === 'movie') ||
-      (selectedCategory === 'Сериалы' && i.category === 'show') ||
-      (selectedCategory === 'Книги' && i.category === 'book') ||
-      (selectedCategory === 'Аудиокниги' && i.category === 'audiobook') ||
-      (selectedCategory === 'Подкасты' && i.category === 'podcast') ||
-      (selectedCategory === 'Игры' && i.category === 'game')
-    );
+    const cat = (i.category || '').toLowerCase();
+    const sel = selectedCategory.toLowerCase();
+
+    if (cat === sel) return true;
+    if ((sel === 'фильмы' || sel === 'фильм') && (cat === 'movie' || cat === 'movies' || cat === 'фильмы')) return true;
+    if ((sel === 'сериалы' || sel === 'сериал') && (cat === 'show' || cat === 'shows' || cat === 'series' || cat === 'сериалы')) return true;
+    if ((sel === 'книги' || sel === 'книга') && (cat === 'book' || cat === 'books' || cat === 'книги')) return true;
+    if ((sel === 'аудиокниги' || sel === 'аудиокнига') && (cat === 'audiobook' || cat === 'audiobooks' || cat === 'аудиокниги')) return true;
+    if ((sel === 'подкасты' || sel === 'подкаст') && (cat === 'podcast' || cat === 'podcasts' || cat === 'подкасты')) return true;
+    if ((sel === 'игры' || sel === 'игра') && (cat === 'game' || cat === 'games' || cat === 'игры')) return true;
+    return false;
   });
 
   return (

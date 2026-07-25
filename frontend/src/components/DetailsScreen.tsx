@@ -30,6 +30,18 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const ratingStars = Math.min(5, Math.max(1, Math.round((item.rating || 10) / 2)));
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
 
+  const formatCategory = (cat: string) => {
+    switch (cat?.toLowerCase()) {
+      case 'movie': case 'фильмы': return 'Фильм';
+      case 'show': case 'shows': case 'series': case 'сериалы': return 'Сериал';
+      case 'book': case 'книги': return 'Книга';
+      case 'audiobook': case 'аудиокниги': return 'Аудиокнига';
+      case 'podcast': case 'подкасты': return 'Подкаст';
+      case 'game': case 'игры': return 'Игра';
+      default: return cat;
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header Nav */}
@@ -53,7 +65,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <div>
             <h1 className="text-xl font-bold text-white drop-shadow">{item.title}</h1>
             <p className="text-xs text-gray-300 drop-shadow">
-              {item.category} • {item.release_year || '2024'}
+              {formatCategory(item.category)} • {item.release_year || '2024'}
             </p>
           </div>
           <div className="px-3 py-1.5 rounded-xl bg-teal-500/20 border border-teal-500/40 text-accentTeal text-xs font-semibold flex items-center gap-1.5">
