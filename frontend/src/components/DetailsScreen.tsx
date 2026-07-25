@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   MoreVertical,
@@ -6,11 +6,12 @@ import {
   Check,
   Calendar,
   Pencil,
-  Bookmark,
   Edit3,
   Share2,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Save,
+  X
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
@@ -20,23 +21,30 @@ interface DetailsScreenProps {
   onBack: () => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
-  onUpdateStatus?: (item: Item, newStatus: string) => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   t: Translations;
 }
 
-const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80';
+const DEFAULT_BANNER_IMAGE = '/banner_default.png';
 
 export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   item,
   onBack,
   onEdit,
   onDelete,
-  onUpdateStatus,
+  onUpdateItem,
   t,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [noteText, setNoteText] = useState(item.note || '');
 
-  const ratingStars = Math.min(5, Math.max(1, Math.round((item.rating || 10) / 2)));
+  useEffect(() => {
+    setNoteText(item.note || '');
+    setIsEditingNote(false);
+  }, [item]);
+
+  const currentRating = item.rating || 10;
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
 
   const formatCategorySingle = (cat: string) => {
@@ -68,8 +76,32 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleSelectStatus = (newStatusVal: string) => {
     setIsStatusDropdownOpen(false);
-    if (onUpdateStatus) {
-      onUpdateStatus(item, newStatusVal);
+    if (onUpdateItem) {
+      onUpdateItem(item.id, { status: newStatusVal });
+    }
+  };
+
+  const handleSelectRating = (newRating: number) => {
+    if (onUpdateItem) {
+      onUpdateItem(item.id, { rating: newRating });
+    }
+  };
+
+  const handleSaveNote = () => {
+    setIsEditingNote(false);
+    if (onUpdateItem) {
+      onUpdateItem(item.id, { note: noteText });
+    }
+  };
+
+  const handleShareTelegram = () => {
+    const text = `📌 TrackList: ${item.title} (${formatCategorySingle(item.category)})\n⭐ ${t.details.my_rating}: ${currentRating}/10`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent('https://manytgbot.github.io')}&text=${encodeURIComponent(text)}`;
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(shareUrl);
+    } else {
+      window.open(shareUrl, '_blank');
     }
   };
 
@@ -103,19 +135,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </p>
           </div>
 
-          {/* Interactive Dropdown Status Pill */}
+          {/* High Contrast Dropdown Status Pill over Banner */}
           <div className="relative">
             <button
               onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-md ${
-                isCompleted
-                  ? 'bg-accentTeal/20 border-accentTeal/50 text-accentTeal'
-                  : 'bg-accentViolet/20 border-accentViolet/50 text-accentViolet'
-              }`}
+              className="px-3.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-lg hover:border-accentViolet"
             >
-              <span>{getStatusLabel(item.status)}</span>
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-              <ChevronDown className="w-3 h-3 opacity-70" />
+              <span className="text-white font-bold">{getStatusLabel(item.status)}</span>
+              <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
+              <ChevronDown className="w-3.5 h-3.5 text-white/80" />
             </button>
 
             {/* Dropdown Options */}
@@ -141,20 +169,32 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
-      {/* Rating Block */}
-      <div className="glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm">
-        <div>
-          <div className="text-xs text-gray-400 font-medium">{t.details.my_rating}</div>
-          <div className="flex items-center gap-1 mt-1 text-amber-400">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                className={`w-5 h-5 ${s <= ratingStars ? 'fill-amber-400 text-amber-400' : 'text-gray-600'}`}
-              />
-            ))}
-          </div>
+      {/* 10-Star Interactive Rating Block */}
+      <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
+          <div className="text-xl font-extrabold text-accentTeal">{currentRating}/10</div>
         </div>
-        <div className="text-xl font-extrabold text-accentTeal">{item.rating || 10}/10</div>
+
+        {/* 10 Interactive Stars */}
+        <div className="flex items-center justify-between pt-1">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
+            <button
+              key={starNum}
+              onClick={() => handleSelectRating(starNum)}
+              className="p-0.5 hover:scale-125 transition active:scale-95"
+              title={`${starNum}/10`}
+            >
+              <Star
+                className={`w-5 h-5 ${
+                  starNum <= currentRating
+                    ? 'fill-amber-400 text-amber-400'
+                    : 'text-gray-600 hover:text-amber-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Meta Info Card */}
@@ -176,40 +216,82 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
-      {/* Notes Section */}
+      {/* Inline Notes Section */}
       <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-400 font-semibold">{t.details.notes}</span>
-          <Pencil onClick={() => onEdit(item)} className="w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-white" />
+          {!isEditingNote && (
+            <button
+              onClick={() => setIsEditingNote(true)}
+              className="p-1 text-gray-400 hover:text-accentViolet transition"
+              title={t.details.edit}
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <p className="text-xs text-gray-300 leading-relaxed italic">
-          "{item.note || '-'}"
-        </p>
+
+        {isEditingNote ? (
+          <div className="space-y-2 pt-1">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              rows={3}
+              placeholder={t.modal.placeholder_note}
+              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setNoteText(item.note || '');
+                  setIsEditingNote(false);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium flex items-center gap-1 hover:bg-bgDark"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>{t.modal.cancel}</span>
+              </button>
+              <button
+                onClick={handleSaveNote}
+                className="px-3 py-1.5 rounded-xl bg-accentViolet text-white text-xs font-semibold flex items-center gap-1 shadow-md hover:bg-opacity-90"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{t.modal.save}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p
+            onClick={() => setIsEditingNote(true)}
+            className="text-xs text-gray-300 leading-relaxed italic cursor-pointer hover:text-white transition"
+          >
+            "{item.note || '-'}"
+          </p>
+        )}
       </div>
 
-      {/* Detail Action Grid */}
-      <div className="grid grid-cols-4 gap-2 pt-1">
-        <button className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95">
-          <Bookmark className="w-4 h-4 mb-1" />
-          <span className="text-[10px] font-medium">{t.details.add_to_list}</span>
-        </button>
+      {/* 3-Column Detail Action Grid */}
+      <div className="grid grid-cols-3 gap-2.5 pt-1">
         <button
           onClick={() => onEdit(item)}
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95"
+          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
         >
-          <Edit3 className="w-4 h-4 mb-1" />
-          <span className="text-[10px] font-medium">{t.details.edit}</span>
+          <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
+          <span className="text-[11px] font-semibold">{t.details.edit}</span>
         </button>
-        <button className="flex flex-col items-center justify-center p-3 rounded-xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95">
-          <Share2 className="w-4 h-4 mb-1" />
-          <span className="text-[10px] font-medium">{t.details.share}</span>
+        <button
+          onClick={handleShareTelegram}
+          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+        >
+          <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
+          <span className="text-[11px] font-semibold">{t.details.share}</span>
         </button>
         <button
           onClick={() => onDelete(item.id)}
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95"
+          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
         >
           <Trash2 className="w-4 h-4 mb-1" />
-          <span className="text-[10px] font-medium">{t.details.delete}</span>
+          <span className="text-[11px] font-semibold">{t.details.delete}</span>
         </button>
       </div>
     </div>

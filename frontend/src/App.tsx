@@ -50,7 +50,6 @@ export function App() {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.CloudStorage) {
       try {
-        // Sync active categories
         tg.CloudStorage.getItem('lista_active_categories', (err: any, val: string) => {
           if (!err && val) {
             try {
@@ -63,7 +62,6 @@ export function App() {
           }
         });
 
-        // Sync language
         tg.CloudStorage.getItem('lista_language', (err: any, val: string) => {
           if (!err && val && ['ru', 'uk', 'en', 'es'].includes(val)) {
             setLanguage(val as Language);
@@ -71,7 +69,6 @@ export function App() {
           }
         });
 
-        // Sync theme
         tg.CloudStorage.getItem('lista_theme', (err: any, val: string) => {
           if (!err && (val === 'light' || val === 'dark')) {
             setTheme(val as 'light' | 'dark');
@@ -215,10 +212,10 @@ export function App() {
     loadData();
   };
 
-  const handleUpdateItemStatus = async (item: Item, newStatus: string) => {
+  const handleUpdateItem = async (id: string, updates: Partial<Item>) => {
     triggerHaptic();
-    await api.updateItem(item.id, { status: newStatus });
-    setSelectedItem((prev) => (prev ? { ...prev, status: newStatus } : null));
+    await api.updateItem(id, updates);
+    setSelectedItem((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev));
     loadData();
   };
 
@@ -351,7 +348,7 @@ export function App() {
                 setIsModalOpen(true);
               }}
               onDelete={handleDeleteItem}
-              onUpdateStatus={handleUpdateItemStatus}
+              onUpdateItem={handleUpdateItem}
               t={t}
             />
           </section>
