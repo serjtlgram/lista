@@ -96,6 +96,35 @@ export function App() {
     if (profData) setProfile(profData);
     if (itemsData) setItems(itemsData);
     if (statsData) setStats(statsData);
+
+    // Auto-include categories that have items in activeCategories
+    if (profData?.categories) {
+      const nonZeroCats: string[] = [];
+      profData.categories.forEach((c) => {
+        if (c.count > 0) {
+          // Normalize category title
+          const cat = c.category;
+          if (['movie', 'movies', 'фильмы', 'фильм'].includes(cat.toLowerCase())) nonZeroCats.push('Фильмы');
+          else if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cat.toLowerCase())) nonZeroCats.push('Сериалы');
+          else if (['book', 'books', 'книги', 'книга'].includes(cat.toLowerCase())) nonZeroCats.push('Книги');
+          else if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cat.toLowerCase())) nonZeroCats.push('Аудиокниги');
+          else if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(cat.toLowerCase())) nonZeroCats.push('Подкасты');
+          else if (['game', 'games', 'игры', 'игра'].includes(cat.toLowerCase())) nonZeroCats.push('Игры');
+          else nonZeroCats.push(cat);
+        }
+      });
+
+      if (nonZeroCats.length > 0) {
+        setActiveCategories((prev) => {
+          const merged = Array.from(new Set([...prev, ...nonZeroCats]));
+          if (merged.length !== prev.length) {
+            setStoredActiveCategories(merged);
+            return merged;
+          }
+          return prev;
+        });
+      }
+    }
   };
 
   const triggerHaptic = () => {
@@ -156,6 +185,17 @@ export function App() {
     } else {
       await api.createItem(itemData);
     }
+
+    // Auto-add saved item category to active home screen categories
+    if (itemData.category) {
+      const cat = itemData.category;
+      if (!activeCategories.includes(cat)) {
+        const updated = [...activeCategories, cat];
+        setActiveCategories(updated);
+        setStoredActiveCategories(updated);
+      }
+    }
+
     loadData();
   };
 
@@ -327,6 +367,7 @@ export function App() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveItem}
         editingItem={editingItem}
+        t={t}
       />
     </div>
   );

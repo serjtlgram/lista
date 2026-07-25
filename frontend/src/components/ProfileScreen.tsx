@@ -36,11 +36,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const photoUrl = profile?.user?.photo_url;
 
+  // Language grid order: 1. Ukrainian, 2. English, 3. Spanish, 4. Russian
   const languages: { code: Language; name: string; flag: string }[] = [
-    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
     { code: 'uk', name: 'Українська', flag: '🇺🇦' },
     { code: 'en', name: 'English', flag: '🇬🇧' },
     { code: 'es', name: 'Español', flag: '🇪🇸' },
+    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
   ];
 
   return (

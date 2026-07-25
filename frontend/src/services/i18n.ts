@@ -14,6 +14,12 @@ export interface Translations {
     audiobooks: string;
     podcasts: string;
     games: string;
+    movie_single: string;
+    show_single: string;
+    book_single: string;
+    audiobook_single: string;
+    podcast_single: string;
+    game_single: string;
   };
   profile: {
     title: string;
@@ -44,7 +50,21 @@ export interface Translations {
     cancel: string;
     add_item: string;
     edit_item: string;
+    title_label: string;
     title_placeholder: string;
+    category_label: string;
+    status_label: string;
+    rating_label: string;
+    status_watching: string;
+    status_completed: string;
+    status_planned: string;
+    advanced_show: string;
+    advanced_hide: string;
+    placeholder_genre: string;
+    placeholder_duration: string;
+    placeholder_year: string;
+    placeholder_poster: string;
+    placeholder_note: string;
   };
   category_modal: {
     title: string;
@@ -69,6 +89,12 @@ export const translations: Record<Language, Translations> = {
       audiobooks: 'Аудиокниги',
       podcasts: 'Подкасты',
       games: 'Игры',
+      movie_single: 'Фильм',
+      show_single: 'Сериал',
+      book_single: 'Книга',
+      audiobook_single: 'Аудиокнига',
+      podcast_single: 'Подкаст',
+      game_single: 'Игра',
     },
     profile: {
       title: 'Профиль',
@@ -97,9 +123,23 @@ export const translations: Record<Language, Translations> = {
     modal: {
       save: 'Сохранить',
       cancel: 'Отмена',
-      add_item: 'Добавить',
-      edit_item: 'Редактировать',
-      title_placeholder: 'Название...',
+      add_item: 'Добавить запись',
+      edit_item: 'Редактировать запись',
+      title_label: 'Название',
+      title_placeholder: 'Название (например, Дюна 2)',
+      category_label: 'Категория',
+      status_label: 'Статус',
+      rating_label: 'Оценка',
+      status_watching: 'Смотрю/Читаю',
+      status_completed: 'Завершено',
+      status_planned: 'В планах',
+      advanced_show: '+ Добавить жанр, год, постер и заметки',
+      advanced_hide: 'Скрыть дополнительные поля',
+      placeholder_genre: 'Жанр (например, Фантастика, Драма)',
+      placeholder_duration: 'Длительность (2ч 30м / 1 season)',
+      placeholder_year: 'Год вып. (2024)',
+      placeholder_poster: 'Ссылка на обложку (Poster Image URL)',
+      placeholder_note: 'Заметка или впечатления...',
     },
     category_modal: {
       title: 'Настройка категорий',
@@ -122,11 +162,17 @@ export const translations: Record<Language, Translations> = {
       audiobooks: 'Аудіокниги',
       podcasts: 'Подкасти',
       games: 'Ігри',
+      movie_single: 'Фільм',
+      show_single: 'Серіал',
+      book_single: 'Книга',
+      audiobook_single: 'Аудіокнига',
+      podcast_single: 'Подкаст',
+      game_single: 'Гра',
     },
     profile: {
       title: 'Профіль',
       language: 'Мова інтерфейсу',
-      theme: 'Тема оформления',
+      theme: 'Тема оформлення',
       theme_dark: 'Темна',
       theme_light: 'Світла',
       categories_config: 'Категорії на головній',
@@ -150,9 +196,23 @@ export const translations: Record<Language, Translations> = {
     modal: {
       save: 'Зберегти',
       cancel: 'Скасувати',
-      add_item: 'Додати',
-      edit_item: 'Редагувати',
-      title_placeholder: 'Назва...',
+      add_item: 'Додати запис',
+      edit_item: 'Редагувати запис',
+      title_label: 'Назва',
+      title_placeholder: 'Назва (наприклад, Дюна 2)',
+      category_label: 'Категорія',
+      status_label: 'Статус',
+      rating_label: 'Оцінка',
+      status_watching: 'Дивлюсь/Читаю',
+      status_completed: 'Завершено',
+      status_planned: 'У планах',
+      advanced_show: '+ Додати жанр, рік, постер та нотатки',
+      advanced_hide: 'Сховати додаткові поля',
+      placeholder_genre: 'Жанр (наприклад, Фантастика, Драма)',
+      placeholder_duration: 'Тривалість (2г 30хв / 1 сезон)',
+      placeholder_year: 'Рік вип. (2024)',
+      placeholder_poster: 'Посилання на обкладинку (Poster URL)',
+      placeholder_note: 'Нотатка або враження...',
     },
     category_modal: {
       title: 'Налаштування категорій',
@@ -175,6 +235,12 @@ export const translations: Record<Language, Translations> = {
       audiobooks: 'Audiobooks',
       podcasts: 'Podcasts',
       games: 'Games',
+      movie_single: 'Movie',
+      show_single: 'TV Series',
+      book_single: 'Book',
+      audiobook_single: 'Audiobook',
+      podcast_single: 'Podcast',
+      game_single: 'Game',
     },
     profile: {
       title: 'Profile',
@@ -203,9 +269,23 @@ export const translations: Record<Language, Translations> = {
     modal: {
       save: 'Save',
       cancel: 'Cancel',
-      add_item: 'Add Item',
-      edit_item: 'Edit Item',
-      title_placeholder: 'Title...',
+      add_item: 'Add Record',
+      edit_item: 'Edit Record',
+      title_label: 'Title',
+      title_placeholder: 'Title (e.g. Dune 2)',
+      category_label: 'Category',
+      status_label: 'Status',
+      rating_label: 'Rating',
+      status_watching: 'Watching/Reading',
+      status_completed: 'Completed',
+      status_planned: 'Planned',
+      advanced_show: '+ Add genre, year, poster and notes',
+      advanced_hide: 'Hide additional fields',
+      placeholder_genre: 'Genre (e.g. Sci-Fi, Drama)',
+      placeholder_duration: 'Duration (2h 30m / 1 season)',
+      placeholder_year: 'Release year (2024)',
+      placeholder_poster: 'Poster image URL',
+      placeholder_note: 'Note or impressions...',
     },
     category_modal: {
       title: 'Customize Categories',
@@ -228,6 +308,12 @@ export const translations: Record<Language, Translations> = {
       audiobooks: 'Audiolibros',
       podcasts: 'Pódcasts',
       games: 'Juegos',
+      movie_single: 'Película',
+      show_single: 'Serie',
+      book_single: 'Libro',
+      audiobook_single: 'Audiolibro',
+      podcast_single: 'Pódcast',
+      game_single: 'Juego',
     },
     profile: {
       title: 'Perfil',
@@ -256,9 +342,23 @@ export const translations: Record<Language, Translations> = {
     modal: {
       save: 'Guardar',
       cancel: 'Cancelar',
-      add_item: 'Añadir',
-      edit_item: 'Editar',
-      title_placeholder: 'Título...',
+      add_item: 'Añadir Registro',
+      edit_item: 'Editar Registro',
+      title_label: 'Título',
+      title_placeholder: 'Título (ej. Duna 2)',
+      category_label: 'Categoría',
+      status_label: 'Estado',
+      rating_label: 'Puntuación',
+      status_watching: 'Viendo/Leyendo',
+      status_completed: 'Completado',
+      status_planned: 'En planes',
+      advanced_show: '+ Añadir género, año, póster y notas',
+      advanced_hide: 'Ocultar campos adicionales',
+      placeholder_genre: 'Género (ej. Ciencia ficción, Drama)',
+      placeholder_duration: 'Duración (2h 30m / 1 temporada)',
+      placeholder_year: 'Año de lanzamiento (2024)',
+      placeholder_poster: 'URL de la imagen del póster',
+      placeholder_note: 'Nota o impresiones...',
     },
     category_modal: {
       title: 'Personalizar Categorías',
