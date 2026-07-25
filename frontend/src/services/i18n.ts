@@ -13,16 +13,21 @@ export const translations: Record<Language, Translations> = {
   es,
 };
 
-export const getTranslatedStatus = (st: string, t: Translations): string => {
+export const getTranslatedStatus = (st: string, cat: string, t: Translations): string => {
   const s = (st || '').toLowerCase().trim();
-  if (['completed', 'просмотрено', 'завершено', 'посмотрено', 'завершено'].includes(s)) {
+  const c = (cat || '').toLowerCase().trim();
+
+  if (['completed', 'просмотрено', 'завершено', 'посмотрено'].includes(s)) {
     return t.modal.status_completed;
-  }
-  if (['watching', 'смотрю', 'читаю', 'смотрю/читаю', 'дивлясь', 'дивлюсь/читаю'].includes(s)) {
-    return t.modal.status_watching;
   }
   if (['planned', 'отложено', 'в планах', 'у планах'].includes(s)) {
     return t.modal.status_planned;
+  }
+  if (['watching', 'смотрю', 'читаю', 'смотрю/читаю', 'дивлясь', 'дивлюсь/читаю', 'слушаю', 'слухаю', 'играю', 'граю', 'viendo'].includes(s)) {
+    if (['book', 'books', 'книги', 'книга'].includes(c)) return t.modal.status_watching_book;
+    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'podcast', 'podcasts', 'подкасты', 'подкасти'].includes(c)) return t.modal.status_watching_audio;
+    if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(c)) return t.modal.status_watching_game;
+    return t.modal.status_watching_movie; // Default for movies & series
   }
   return st;
 };

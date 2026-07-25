@@ -56,6 +56,10 @@ export interface Translations {
     status_label: string;
     rating_label: string;
     status_watching: string;
+    status_watching_movie: string;
+    status_watching_book: string;
+    status_watching_audio: string;
+    status_watching_game: string;
     status_completed: string;
     status_planned: string;
     advanced_show: string;

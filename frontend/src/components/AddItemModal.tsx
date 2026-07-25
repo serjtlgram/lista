@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, Check } from 'lucide-react';
 import { Item } from '../types';
-import { Translations } from '../services/i18n';
+import { Translations, getTranslatedStatus } from '../services/i18n';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -150,7 +150,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isSeries = category === 'Сериалы' || category === 'show' || category === 'series';
+  const isSeries =
+    category === 'Сериалы' ||
+    category === 'show' ||
+    category === 'shows' ||
+    category === 'series' ||
+    category === 'Серіал';
+
+  const isCategorySelected = (cVal: string) => {
+    const cur = (category || '').toLowerCase().trim();
+    const target = (cVal || '').toLowerCase().trim();
+    if (cur === target) return true;
+    if (['movie', 'movies', 'фильмы', 'фильм', 'фільм', 'фільми'].includes(cur) && ['movie', 'movies', 'фильмы', 'фильм', 'фільм', 'фільми'].includes(target)) return true;
+    if (['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(cur) && ['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(target)) return true;
+    if (['book', 'books', 'книги', 'книга'].includes(cur) && ['book', 'books', 'книги', 'книга'].includes(target)) return true;
+    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'аудиокнига', 'аудіокнига'].includes(cur) && ['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'аудиокнига', 'аудіокнига'].includes(target)) return true;
+    if (['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(cur) && ['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(target)) return true;
+    if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(cur) && ['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(target)) return true;
+    return false;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +223,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   ];
 
   const statuses = [
-    { label: t.modal.status_watching, val: 'watching' },
+    { label: getTranslatedStatus('watching', category, t), val: 'watching' },
     { label: t.modal.status_completed, val: 'completed' },
     { label: t.modal.status_planned, val: 'planned' },
   ];
@@ -230,20 +248,23 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               {t.modal.category_label}
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setCategory(c.value)}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold transition ${
-                    category === c.value
-                      ? 'border-accentViolet bg-accentViolet/15 text-accentViolet shadow-sm'
-                      : 'border-cardBorder bg-bgDark text-gray-300 hover:border-gray-600'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
+              {categories.map((c) => {
+                const selected = isCategorySelected(c.value);
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setCategory(c.value)}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold transition ${
+                      selected
+                        ? 'border-accentViolet bg-accentViolet/15 text-accentViolet shadow-sm font-bold'
+                        : 'border-cardBorder bg-bgDark text-gray-300 hover:border-gray-600'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -262,7 +283,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             />
           </div>
 
-          {/* 3. Status Selector */}
+          {/* 3. Status Selector with Category-Aware Labels */}
           <div>
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
               {t.modal.status_label}
@@ -311,7 +332,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {showAdvanced && (
             <div className="space-y-3 pt-2 border-t border-cardBorder">
-              {/* Custom React Dropdown for Genre (Identical behavior on PC & Mobile) */}
+              {/* Custom React Dropdown for Genre */}
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">{t.details.genre}</label>
                 <div className="relative">

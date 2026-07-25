@@ -64,7 +64,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   };
 
   const statusOptions = [
-    { val: 'watching', label: t.modal.status_watching },
+    { val: 'watching', label: getTranslatedStatus('watching', item.category, t) },
     { val: 'completed', label: t.modal.status_completed },
     { val: 'planned', label: t.modal.status_planned },
   ];
@@ -197,7 +197,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
                 className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-95 shadow-md hover:border-accentViolet"
               >
-                <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, t)}</span>
+                <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
                 <div className="flex items-center gap-1 shrink-0">
                   <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
                   <ChevronDown className="w-3.5 h-3.5 text-white/80" />
@@ -208,7 +208,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               {isStatusDropdownOpen && (
                 <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
                   {statusOptions.map((opt) => {
-                    const isSelected = item.status === opt.val || getTranslatedStatus(item.status, t) === opt.label;
+                    const isSelected = item.status === opt.val || getTranslatedStatus(item.status, item.category, t) === opt.label;
                     return (
                       <button
                         key={opt.val}
@@ -338,7 +338,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </button>
       </div>
 
-      {/* Clean Fullscreen Poster Lightbox Modal (No heavy black box around image) */}
+      {/* Clean Fullscreen Poster Lightbox Modal */}
       {isFullscreenPoster && (
         <div
           onClick={() => setIsFullscreenPoster(false)}
