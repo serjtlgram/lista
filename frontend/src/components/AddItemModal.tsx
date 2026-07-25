@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 
@@ -10,6 +10,21 @@ interface AddItemModalProps {
   editingItem?: Item | null;
   t: Translations;
 }
+
+export const GENRE_OPTIONS = [
+  '❤️ Мелодрама/Драма',
+  '😂 Комедия',
+  '🔫 Боевик/Война',
+  '🔍 Детектив',
+  '😱 Ужасы',
+  '🚀 Фантастика',
+  '🧙 Фэнтези',
+  '🕵️ Триллер',
+  '🗺️ Приключения',
+  '👨‍👩‍👧 Семейный',
+  '📚 Документальный',
+  '🎤 Ток-шоу/Музыка',
+];
 
 const compressPosterImage = (url: string): Promise<string> => {
   if (!url || !url.startsWith('http') || url.startsWith('data:image')) {
@@ -24,7 +39,6 @@ const compressPosterImage = (url: string): Promise<string> => {
       }
     };
 
-    // 1-second timeout safety fallback
     const timer = setTimeout(() => {
       safeResolve(url);
     }, 1000);
@@ -85,7 +99,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [category, setCategory] = useState(editingItem?.category || 'Фильмы');
   const [status, setStatus] = useState(editingItem?.status || 'completed');
   const [rating, setRating] = useState(editingItem?.rating || 10);
-  const [genre, setGenre] = useState(editingItem?.genre || '');
+  const [genre, setGenre] = useState(editingItem?.genre || GENRE_OPTIONS[0]);
 
   const [episodesCount, setEpisodesCount] = useState('');
   const [durationMin, setDurationMin] = useState('');
@@ -102,7 +116,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setCategory(editingItem.category || 'Фильмы');
       setStatus(editingItem.status || 'completed');
       setRating(editingItem.rating || 10);
-      setGenre(editingItem.genre || '');
+      setGenre(editingItem.genre || GENRE_OPTIONS[0]);
       setReleaseYear(editingItem.release_year || '');
       setPosterUrl(editingItem.poster_url || '');
       setNote(editingItem.note || '');
@@ -123,7 +137,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setCategory('Фильмы');
       setStatus('completed');
       setRating(10);
-      setGenre('');
+      setGenre(GENRE_OPTIONS[0]);
       setDurationMin('');
       setEpisodesCount('');
       setReleaseYear('');
@@ -296,15 +310,23 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {showAdvanced && (
             <div className="space-y-3 pt-2 border-t border-cardBorder">
+              {/* Dropdown Genre Picker */}
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">{t.details.genre}</label>
-                <input
-                  type="text"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  placeholder={t.modal.placeholder_genre}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-                />
+                <div className="relative">
+                  <select
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet appearance-none pr-8 cursor-pointer"
+                  >
+                    {GENRE_OPTIONS.map((g) => (
+                      <option key={g} value={g} className="bg-cardDark text-white py-1">
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* Episodes & Duration Inputs */}

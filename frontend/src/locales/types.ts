@@ -83,6 +83,7 @@ export interface Translations {
     watch_date: string;
     genre: string;
     duration: string;
+    episodes: string;
     notes: string;
     add_to_list: string;
     edit: string;

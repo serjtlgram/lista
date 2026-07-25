@@ -13,7 +13,8 @@ import {
   Save,
   X,
   Clock,
-  Tag
+  Tag,
+  Tv
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -99,6 +100,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   };
 
+  // Separate episodes count and duration in minutes for display
+  let episodesDisplay = '';
+  let durationDisplay = item.duration || '-';
+
+  if (item.duration && item.duration.includes('•')) {
+    const parts = item.duration.split('•');
+    episodesDisplay = parts[0]?.trim() || '';
+    durationDisplay = parts[1]?.trim() || '-';
+  } else if (item.duration && item.duration.includes('сер.')) {
+    episodesDisplay = item.duration.trim();
+    durationDisplay = '-';
+  }
+
   return (
     <div className="space-y-4 animate-slide-up pb-6">
       {/* Header Nav */}
@@ -128,7 +142,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             />
           </div>
 
-          {/* Right: Meta Details (Year, Watch date, Genre, Duration, Status) */}
+          {/* Right: Meta Details (Year, Watch date, Genre, Episodes, Duration, Status) */}
           <div className="flex-1 space-y-2 text-xs pt-0.5">
             <div>
               <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
@@ -156,12 +170,24 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 <span className="font-semibold text-white text-right leading-tight">{item.genre || '-'}</span>
               </div>
 
+              {/* Separated Episodes Row */}
+              {episodesDisplay && (
+                <div className="flex items-center justify-between text-gray-300 gap-1">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Tv className="w-3.5 h-3.5 text-accentPink" />
+                    {t.details.episodes}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight">{episodesDisplay}</span>
+                </div>
+              )}
+
+              {/* Separated Duration Row */}
               <div className="flex items-center justify-between text-gray-300 gap-1">
                 <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
                   {t.details.duration}
                 </span>
-                <span className="font-semibold text-white text-right leading-tight">{item.duration || '-'}</span>
+                <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
               </div>
             </div>
 
@@ -312,21 +338,21 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </button>
       </div>
 
-      {/* Fullscreen Poster Lightbox Modal */}
+      {/* Clean Fullscreen Poster Lightbox Modal (No heavy black box around image) */}
       {isFullscreenPoster && (
         <div
           onClick={() => setIsFullscreenPoster(false)}
-          className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in cursor-pointer"
+          className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-2 cursor-pointer animate-fade-in"
         >
           <button
             onClick={() => setIsFullscreenPoster(false)}
-            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40 z-50 transition active:scale-90"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40 z-50 transition active:scale-90 shadow-lg"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
           <img
             src={posterSrc}
-            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
             alt={item.title}
           />
         </div>
