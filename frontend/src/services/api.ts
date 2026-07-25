@@ -1,7 +1,7 @@
 import { Item, UserProfile, StatsData } from '../types';
 
-// API Base URL - empty string defaults to relative path, fallback to window location or backend port during dev
-const API_BASE = import.meta.env.VITE_API_URL || 'http://129.151.217.58:8080';
+// API Base URL for Oracle Server "Andrey"
+const API_BASE = import.meta.env.VITE_API_URL || 'http://129.151.217.58';
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
