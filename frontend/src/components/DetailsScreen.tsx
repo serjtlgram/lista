@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
+import bannerDefault from '../assets/banner_default.png';
 
 interface DetailsScreenProps {
   item: Item;
@@ -24,8 +25,6 @@ interface DetailsScreenProps {
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   t: Translations;
 }
-
-const DEFAULT_BANNER_IMAGE = '/banner_default.png';
 
 export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   item,
@@ -46,6 +45,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const currentRating = item.rating || 10;
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
+
+  const isDummyOrEmpty = !item.poster_url || item.poster_url.includes('unsplash.com');
+  const posterSrc = isDummyOrEmpty ? bannerDefault : item.poster_url;
 
   const formatCategorySingle = (cat: string) => {
     switch (cat?.toLowerCase()) {
@@ -118,19 +120,21 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {/* Main Poster Banner */}
       <div className="relative w-full h-56 rounded-3xl overflow-hidden glass-card shadow-xl">
         <img
-          src={item.poster_url || DEFAULT_BANNER_IMAGE}
+          src={posterSrc}
           className="w-full h-full object-cover object-center"
           alt={item.title}
           onError={(e) => {
-            (e.target as HTMLImageElement).src = DEFAULT_BANNER_IMAGE;
+            (e.target as HTMLImageElement).src = bannerDefault;
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-bgDark/95 via-bgDark/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent"></div>
 
         <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between z-10">
-          <div>
-            <h1 className="text-xl font-bold text-white drop-shadow-md line-clamp-1">{item.title}</h1>
-            <p className="text-xs text-gray-300 drop-shadow mt-0.5">
+          <div className="banner-text-content">
+            <h1 className="text-xl font-bold text-white drop-shadow-md line-clamp-1" style={{ color: '#FFFFFF' }}>
+              {item.title}
+            </h1>
+            <p className="text-xs text-gray-200 drop-shadow mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
               {formatCategorySingle(item.category)} • {item.release_year || '2024'}
             </p>
           </div>
@@ -139,9 +143,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <div className="relative">
             <button
               onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className="px-3.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-lg hover:border-accentViolet"
+              className="status-pill-banner px-3.5 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/30 text-white text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-xl hover:border-accentViolet"
+              style={{ color: '#FFFFFF' }}
             >
-              <span className="text-white font-bold">{getStatusLabel(item.status)}</span>
+              <span className="font-bold text-white" style={{ color: '#FFFFFF' }}>{getStatusLabel(item.status)}</span>
               <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
               <ChevronDown className="w-3.5 h-3.5 text-white/80" />
             </button>

@@ -96,6 +96,17 @@ body.light .bg-accentGreen.text-white {
   color: #FFFFFF !important;
 }
 
+/* Banner area overlay text & status button MUST stay bright white in Light Mode */
+body.light .banner-text-content,
+body.light .banner-text-content *,
+body.light .banner-text-content h1,
+body.light .banner-text-content p,
+body.light .status-pill-banner,
+body.light .status-pill-banner *,
+body.light .status-pill-banner span {
+  color: #FFFFFF !important;
+}
+
 body.light nav {
   background-color: rgba(255, 255, 255, 0.92) !important;
   border-color: #E2E8F0 !important;
