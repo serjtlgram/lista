@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Check } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 
@@ -109,6 +109,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (editingItem) {
@@ -310,22 +311,42 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {showAdvanced && (
             <div className="space-y-3 pt-2 border-t border-cardBorder">
-              {/* Dropdown Genre Picker */}
+              {/* Custom React Dropdown for Genre (Identical behavior on PC & Mobile) */}
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">{t.details.genre}</label>
                 <div className="relative">
-                  <select
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet appearance-none pr-8 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => setIsGenreDropdownOpen(!isGenreDropdownOpen)}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white flex items-center justify-between transition focus:outline-none focus:border-accentViolet hover:border-gray-500 shadow-sm"
                   >
-                    {GENRE_OPTIONS.map((g) => (
-                      <option key={g} value={g} className="bg-cardDark text-white py-1">
-                        {g}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <span className="font-semibold text-white truncate">{genre}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isGenreDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Options Popup */}
+                  {isGenreDropdownOpen && (
+                    <div className="dropdown-menu-container absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto hide-scrollbar bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-50 animate-slide-up">
+                      {GENRE_OPTIONS.map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            setGenre(g);
+                            setIsGenreDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                            genre === g
+                              ? 'dropdown-option-active bg-accentViolet text-white'
+                              : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
+                          }`}
+                        >
+                          <span>{g}</span>
+                          {genre === g && <Check className="w-3.5 h-3.5 text-white" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
