@@ -389,10 +389,10 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	catPct := make(map[string]int)
+	catPct := make(map[string]float64)
 	if total > 0 {
 		for cat, count := range catCounts {
-			catPct[cat] = (count * 100) / total
+			catPct[cat] = float64(count*100) / float64(total)
 		}
 	}
 
