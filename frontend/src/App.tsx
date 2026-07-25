@@ -207,7 +207,7 @@ export function App() {
 
   const handleToggleStatus = async (item: Item) => {
     triggerHaptic();
-    const newStatus = item.status === 'completed' || item.status === 'Просмотрено' ? 'planned' : 'completed';
+    const newStatus = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' ? 'planned' : 'completed';
     await api.updateItem(item.id, { status: newStatus });
     loadData();
   };
@@ -376,22 +376,24 @@ export function App() {
         {/* SCREEN 5: STATS */}
         {activeTab === 'stats' && (
           <section>
-            <StatsScreen stats={stats} />
+            <StatsScreen stats={stats} t={t} />
           </section>
         )}
       </main>
 
-      {/* Floating Action Button (+) */}
-      <button
-        onClick={() => {
-          triggerHaptic();
-          setEditingItem(null);
-          setIsModalOpen(true);
-        }}
-        className="fixed bottom-16 right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-90 transition z-40"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {/* Floating Action Button (+) ONLY in Category / Search screen */}
+      {activeTab === 'search' && (
+        <button
+          onClick={() => {
+            triggerHaptic();
+            setEditingItem(null);
+            setIsModalOpen(true);
+          }}
+          className="fixed bottom-16 right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-90 transition z-40"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Bottom Navbar */}
       <Navbar activeTab={activeTab === 'details' ? 'search' : activeTab} onTabChange={handleTabChange} t={t} />

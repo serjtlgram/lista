@@ -11,6 +11,46 @@ interface AddItemModalProps {
   t: Translations;
 }
 
+const compressPosterImage = (url: string): Promise<string> => {
+  if (!url || !url.startsWith('http')) return Promise.resolve(url);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const maxW = 600;
+        const maxH = 900;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          if (w / h > maxW / maxH) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+          } else {
+            w = Math.round((w * maxH) / h);
+            h = maxH;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(compressed);
+        } else {
+          resolve(url);
+        }
+      } catch (e) {
+        resolve(url);
+      }
+    };
+    img.onerror = () => resolve(url);
+    img.src = url;
+  });
+};
+
 export const AddItemModal: React.FC<AddItemModalProps> = ({
   isOpen,
   onClose,
@@ -23,11 +63,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [status, setStatus] = useState(editingItem?.status || 'completed');
   const [rating, setRating] = useState(editingItem?.rating || 10);
   const [genre, setGenre] = useState(editingItem?.genre || '');
-  const [duration, setDuration] = useState(editingItem?.duration || '');
+
+  const [episodesCount, setEpisodesCount] = useState('');
+  const [durationMin, setDurationMin] = useState('');
+
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (editingItem) {
@@ -36,17 +80,27 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setStatus(editingItem.status || 'completed');
       setRating(editingItem.rating || 10);
       setGenre(editingItem.genre || '');
-      setDuration(editingItem.duration || '');
       setReleaseYear(editingItem.release_year || '');
       setPosterUrl(editingItem.poster_url || '');
       setNote(editingItem.note || '');
+
+      const durStr = editingItem.duration || '';
+      if (durStr.includes('•') || durStr.includes('сер.')) {
+        const parts = durStr.split('•');
+        setEpisodesCount(parts[0]?.replace(/\D/g, '') || '');
+        setDurationMin(parts[1]?.replace(/\D/g, '') || '');
+      } else {
+        setDurationMin(durStr.replace(/\D/g, ''));
+        setEpisodesCount('');
+      }
     } else {
       setTitle('');
       setCategory('Фильмы');
       setStatus('completed');
       setRating(10);
       setGenre('');
-      setDuration('');
+      setDurationMin('');
+      setEpisodesCount('');
       setReleaseYear('');
       setPosterUrl('');
       setNote('');
@@ -55,9 +109,27 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isSeries = category === 'Сериалы' || category === 'show' || category === 'series';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    setIsCompressing(true);
+    let finalPoster = posterUrl;
+    if (posterUrl && posterUrl.startsWith('http')) {
+      finalPoster = await compressPosterImage(posterUrl);
+    }
+
+    let finalDuration = '';
+    if (isSeries) {
+      const epStr = episodesCount ? `${episodesCount} ${t.modal.episodes_unit}` : '';
+      const minStr = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
+      if (epStr && minStr) finalDuration = `${epStr} • ${minStr}`;
+      else finalDuration = epStr || minStr;
+    } else {
+      finalDuration = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
+    }
 
     try {
       await onSave({
@@ -66,14 +138,16 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         status,
         rating,
         genre,
-        duration,
+        duration: finalDuration,
         release_year: releaseYear,
-        poster_url: posterUrl,
+        poster_url: finalPoster,
         note,
       });
+      setIsCompressing(false);
       onClose();
     } catch (err) {
       console.error('Failed to save item:', err);
+      setIsCompressing(false);
     }
   };
 
@@ -106,7 +180,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 1. FIRST: Category Selector */}
+          {/* 1. Category Selector */}
           <div>
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
               {t.modal.category_label}
@@ -129,7 +203,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             </div>
           </div>
 
-          {/* 2. SECOND: Main Title Input */}
+          {/* 2. Main Title Input */}
           <div>
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
               {t.modal.title_label}
@@ -202,22 +276,62 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  placeholder={t.modal.placeholder_duration}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-                />
-                <input
-                  type="text"
-                  value={releaseYear}
-                  onChange={(e) => setReleaseYear(e.target.value)}
-                  placeholder={t.modal.placeholder_year}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-                />
-              </div>
+
+              {/* Episodes & Duration Inputs */}
+              {isSeries ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.episodes_label}</label>
+                    <input
+                      type="number"
+                      value={episodesCount}
+                      onChange={(e) => setEpisodesCount(e.target.value)}
+                      placeholder={t.modal.episodes_placeholder}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.duration_min_label}</label>
+                    <input
+                      type="number"
+                      value={durationMin}
+                      onChange={(e) => setDurationMin(e.target.value)}
+                      placeholder={t.modal.duration_min_placeholder}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    value={durationMin}
+                    onChange={(e) => setDurationMin(e.target.value)}
+                    placeholder={t.modal.duration_min_placeholder}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  />
+                  <input
+                    type="text"
+                    value={releaseYear}
+                    onChange={(e) => setReleaseYear(e.target.value)}
+                    placeholder={t.modal.placeholder_year}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+              )}
+
+              {isSeries && (
+                <div>
+                  <input
+                    type="text"
+                    value={releaseYear}
+                    onChange={(e) => setReleaseYear(e.target.value)}
+                    placeholder={t.modal.placeholder_year}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+              )}
+
               <div>
                 <input
                   type="url"
@@ -242,9 +356,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 mt-2 hover:bg-opacity-90 active:scale-98 transition"
+            disabled={isCompressing}
+            className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 mt-2 hover:bg-opacity-90 active:scale-98 transition disabled:opacity-50"
           >
-            {t.modal.save}
+            {isCompressing ? '...' : t.modal.save}
           </button>
         </form>
       </div>

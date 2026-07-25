@@ -11,7 +11,10 @@ import {
   Trash2,
   ChevronDown,
   Save,
-  X
+  X,
+  Clock,
+  Film,
+  Tag
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -37,6 +40,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(item.note || '');
+  const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
 
   useEffect(() => {
     setNoteText(item.note || '');
@@ -44,8 +48,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   }, [item]);
 
   const currentRating = item.rating || 10;
-  const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
-
   const isDummyOrEmpty = !item.poster_url || item.poster_url.includes('unsplash.com');
   const posterSrc = isDummyOrEmpty ? bannerDefault : item.poster_url;
 
@@ -105,67 +107,99 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <button onClick={onBack} className="p-2 text-gray-300 hover:text-white">
           <ChevronLeft className="w-6 h-6" />
         </button>
+        <h1 className="text-base font-bold text-white line-clamp-1 max-w-[200px] text-center">
+          {item.title}
+        </h1>
         <MoreVertical className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white" />
       </div>
 
-      {/* Main Poster Banner */}
-      <div className="relative w-full h-56 rounded-3xl overflow-hidden glass-card shadow-xl">
-        <img
-          src={posterSrc}
-          className="w-full h-full object-cover object-center"
-          alt={item.title}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = bannerDefault;
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent"></div>
-
-        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between z-10">
-          <div className="banner-text-content">
-            <h1 className="text-xl font-bold text-white drop-shadow-md line-clamp-1" style={{ color: '#FFFFFF' }}>
-              {item.title}
-            </h1>
-            <p className="text-xs text-gray-200 drop-shadow mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-              {formatCategorySingle(item.category)} • {item.release_year || '2024'}
-            </p>
+      {/* Main Poster & Details Card (2:3 Aspect Ratio Layout) */}
+      <div className="glass-card p-4 rounded-3xl space-y-3 shadow-xl">
+        <div className="flex gap-4 items-start">
+          {/* Left: Vertical Poster Image (2:3 Aspect Ratio) */}
+          <div className="relative shrink-0 w-32 aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border border-cardBorder group cursor-pointer">
+            <img
+              src={posterSrc}
+              onClick={() => setIsFullscreenPoster(true)}
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+              alt={item.title}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = bannerDefault;
+              }}
+            />
           </div>
 
-          {/* High Contrast Dropdown Status Pill over Banner */}
-          <div className="relative">
-            <button
-              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className="status-pill-banner px-3.5 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/30 text-white text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-xl hover:border-accentViolet"
-              style={{ color: '#FFFFFF' }}
-            >
-              <span className="font-bold text-white" style={{ color: '#FFFFFF' }}>
-                {getTranslatedStatus(item.status, t)}
-              </span>
-              <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
-              <ChevronDown className="w-3.5 h-3.5 text-white/80" />
-            </button>
+          {/* Right: Meta Details (Year, Watch date, Genre, Duration, Status) */}
+          <div className="flex-1 space-y-2.5 text-xs pt-1">
+            <div>
+              <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">{t.categories.movie_single}</span>
+              <span className="text-sm font-bold text-white">{formatCategorySingle(item.category)} • {item.release_year || '2024'}</span>
+            </div>
 
-            {/* Dropdown Options with full Dark & Light mode contrast */}
-            {isStatusDropdownOpen && (
-              <div className="dropdown-menu-container absolute right-0 bottom-full mb-2 w-44 bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
-                {statusOptions.map((opt) => {
-                  const isSelected = item.status === opt.val || getTranslatedStatus(item.status, t) === opt.label;
-                  return (
-                    <button
-                      key={opt.val}
-                      onClick={() => handleSelectStatus(opt.val)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
-                        isSelected
-                          ? 'dropdown-option-active bg-accentViolet text-white'
-                          : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  );
-                })}
+            <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
+              <div className="flex items-center justify-between text-gray-300">
+                <span className="text-gray-400 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-accentViolet" />
+                  {t.details.watch_date}
+                </span>
+                <span className="font-semibold text-white">
+                  {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : (item.release_year || '2024')}
+                </span>
               </div>
-            )}
+
+              <div className="flex items-center justify-between text-gray-300">
+                <span className="text-gray-400 flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 text-accentTeal" />
+                  {t.details.genre}
+                </span>
+                <span className="font-semibold text-white truncate max-w-[100px] text-right">{item.genre || '-'}</span>
+              </div>
+
+              <div className="flex items-center justify-between text-gray-300">
+                <span className="text-gray-400 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  {t.details.duration}
+                </span>
+                <span className="font-semibold text-white truncate max-w-[100px] text-right">{item.duration || '-'}</span>
+              </div>
+            </div>
+
+            {/* Interactive Status Pill Button */}
+            <div className="relative pt-2">
+              <button
+                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-95 shadow-md hover:border-accentViolet"
+              >
+                <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, t)}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
+                  <ChevronDown className="w-3.5 h-3.5 text-white/80" />
+                </div>
+              </button>
+
+              {/* Dropdown Options */}
+              {isStatusDropdownOpen && (
+                <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
+                  {statusOptions.map((opt) => {
+                    const isSelected = item.status === opt.val || getTranslatedStatus(item.status, t) === opt.label;
+                    return (
+                      <button
+                        key={opt.val}
+                        onClick={() => handleSelectStatus(opt.val)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                          isSelected
+                            ? 'dropdown-option-active bg-accentViolet text-white'
+                            : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -195,25 +229,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               />
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* Meta Info Card */}
-      <div className="glass-card p-4 rounded-3xl space-y-3 text-xs shadow-sm">
-        <div className="flex justify-between items-center pb-2 border-b border-cardBorder">
-          <span className="text-gray-400">{t.details.watch_date}</span>
-          <span className="font-semibold text-white flex items-center gap-1">
-            {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : '2024'}
-            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-          </span>
-        </div>
-        <div className="flex justify-between items-center pb-2 border-b border-cardBorder">
-          <span className="text-gray-400">{t.details.genre}</span>
-          <span className="font-semibold text-white">{item.genre || '-'}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-gray-400">{t.details.duration}</span>
-          <span className="font-semibold text-white">{item.duration || '-'}</span>
         </div>
       </div>
 
@@ -295,6 +310,26 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <span className="text-[11px] font-semibold">{t.details.delete}</span>
         </button>
       </div>
+
+      {/* Fullscreen Poster Lightbox Modal */}
+      {isFullscreenPoster && (
+        <div
+          onClick={() => setIsFullscreenPoster(false)}
+          className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in cursor-pointer"
+        >
+          <button
+            onClick={() => setIsFullscreenPoster(false)}
+            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40 z-50 transition active:scale-90"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={posterSrc}
+            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            alt={item.title}
+          />
+        </div>
+      )}
     </div>
   );
 };

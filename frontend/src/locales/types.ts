@@ -65,6 +65,12 @@ export interface Translations {
     placeholder_year: string;
     placeholder_poster: string;
     placeholder_note: string;
+    episodes_label: string;
+    episodes_placeholder: string;
+    duration_min_label: string;
+    duration_min_placeholder: string;
+    episodes_unit: string;
+    minutes_unit: string;
   };
   category_modal: {
     title: string;
@@ -86,5 +92,19 @@ export interface Translations {
     elements_count: string;
     by_date: string;
     no_items_found: string;
+  };
+  stats: {
+    title: string;
+    tab_week: string;
+    tab_month: string;
+    tab_year: string;
+    tab_all: string;
+    card_added: string;
+    card_spent: string;
+    card_completed: string;
+    activity_title: string;
+    categories_title: string;
+    active_legend: string;
+    hours_unit: string;
   };
 }

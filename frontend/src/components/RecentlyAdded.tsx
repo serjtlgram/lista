@@ -1,7 +1,7 @@
 import React from 'react';
 import { Item } from '../types';
 import { ItemCard } from './ItemCard';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Plus } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
 interface RecentlyAddedProps {
@@ -35,6 +35,19 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
           {items.slice(0, 5).map((item) => (
             <ItemCard key={item.id} item={item} onSelect={onSelectItem} />
           ))}
+
+          {/* Centered plus in circle button below the last card on Home screen */}
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={onAddItemClick}
+              className="p-1.5 text-accentViolet hover:text-accentViolet/80 transition active:scale-90"
+              title={t.modal.add_item}
+            >
+              <div className="w-8 h-8 rounded-full border-2 border-accentViolet flex items-center justify-center bg-accentViolet/10 shadow-sm">
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+              </div>
+            </button>
+          </div>
         </div>
       ) : (
         <div
