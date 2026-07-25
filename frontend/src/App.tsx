@@ -45,6 +45,45 @@ export function App() {
 
   const t = translations[language] || translations.ru;
 
+  // CloudStorage sync on init across all devices
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.CloudStorage) {
+      try {
+        // Sync active categories
+        tg.CloudStorage.getItem('lista_active_categories', (err: any, val: string) => {
+          if (!err && val) {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed) && parsed.length >= 2) {
+                setActiveCategories(parsed);
+                localStorage.setItem('lista_active_categories', val);
+              }
+            } catch (e) {}
+          }
+        });
+
+        // Sync language
+        tg.CloudStorage.getItem('lista_language', (err: any, val: string) => {
+          if (!err && val && ['ru', 'uk', 'en', 'es'].includes(val)) {
+            setLanguage(val as Language);
+            localStorage.setItem('lista_language', val);
+          }
+        });
+
+        // Sync theme
+        tg.CloudStorage.getItem('lista_theme', (err: any, val: string) => {
+          if (!err && (val === 'light' || val === 'dark')) {
+            setTheme(val as 'light' | 'dark');
+            localStorage.setItem('lista_theme', val);
+          }
+        });
+      } catch (e) {
+        console.warn('CloudStorage sync error:', e);
+      }
+    }
+  }, []);
+
   // Handle theme changes
   useEffect(() => {
     if (theme === 'light') {
@@ -102,7 +141,6 @@ export function App() {
       const nonZeroCats: string[] = [];
       profData.categories.forEach((c) => {
         if (c.count > 0) {
-          // Normalize category title
           const cat = c.category;
           if (['movie', 'movies', 'фильмы', 'фильм'].includes(cat.toLowerCase())) nonZeroCats.push('Фильмы');
           else if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cat.toLowerCase())) nonZeroCats.push('Сериалы');
@@ -177,6 +215,13 @@ export function App() {
     loadData();
   };
 
+  const handleUpdateItemStatus = async (item: Item, newStatus: string) => {
+    triggerHaptic();
+    await api.updateItem(item.id, { status: newStatus });
+    setSelectedItem((prev) => (prev ? { ...prev, status: newStatus } : null));
+    loadData();
+  };
+
   const handleSaveItem = async (itemData: Partial<Item>) => {
     triggerHaptic();
     if (editingItem) {
@@ -186,7 +231,6 @@ export function App() {
       await api.createItem(itemData);
     }
 
-    // Auto-add saved item category to active home screen categories
     if (itemData.category) {
       const cat = itemData.category;
       if (!activeCategories.includes(cat)) {
@@ -291,6 +335,7 @@ export function App() {
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              t={t}
             />
           </section>
         )}
@@ -306,6 +351,8 @@ export function App() {
                 setIsModalOpen(true);
               }}
               onDelete={handleDeleteItem}
+              onUpdateStatus={handleUpdateItemStatus}
+              t={t}
             />
           </section>
         )}

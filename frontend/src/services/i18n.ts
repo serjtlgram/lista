@@ -72,6 +72,21 @@ export interface Translations {
     min_warning: string;
     save: string;
   };
+  details: {
+    my_rating: string;
+    watch_date: string;
+    genre: string;
+    duration: string;
+    notes: string;
+    add_to_list: string;
+    edit: string;
+    share: string;
+    delete: string;
+    search_placeholder: string;
+    elements_count: string;
+    by_date: string;
+    no_items_found: string;
+  };
 }
 
 export const translations: Record<Language, Translations> = {
@@ -147,6 +162,21 @@ export const translations: Record<Language, Translations> = {
       min_warning: 'Должно быть выбрано минимум 2 категории!',
       save: 'Сохранить',
     },
+    details: {
+      my_rating: 'Моя оценка',
+      watch_date: 'Дата просмотра',
+      genre: 'Жанр',
+      duration: 'Длительность',
+      notes: 'Заметки',
+      add_to_list: 'В список',
+      edit: 'Изменить',
+      share: 'Поделиться',
+      delete: 'Удалить',
+      search_placeholder: 'Поиск по названию или жанру...',
+      elements_count: 'элементов',
+      by_date: 'По дате',
+      no_items_found: 'Ничего не найдено в этой категории',
+    },
   },
   uk: {
     greeting: 'Привіт',
@@ -219,6 +249,21 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'Оберіть категорії для відображення на головному екрані (мінімум 2)',
       min_warning: 'Має бути обрано щонайменше 2 категорії!',
       save: 'Зберегти',
+    },
+    details: {
+      my_rating: 'Моя оцінка',
+      watch_date: 'Дата перегляду',
+      genre: 'Жанр',
+      duration: 'Тривалість',
+      notes: 'Нотатки',
+      add_to_list: 'До списку',
+      edit: 'Змінити',
+      share: 'Поділитися',
+      delete: 'Видалити',
+      search_placeholder: 'Пошук за назвою або жанром...',
+      elements_count: 'елементів',
+      by_date: 'За датою',
+      no_items_found: 'Нічого не знайдено в цій категорії',
     },
   },
   en: {
@@ -293,6 +338,21 @@ export const translations: Record<Language, Translations> = {
       min_warning: 'At least 2 categories must be selected!',
       save: 'Save',
     },
+    details: {
+      my_rating: 'My Rating',
+      watch_date: 'Watch Date',
+      genre: 'Genre',
+      duration: 'Duration',
+      notes: 'Notes',
+      add_to_list: 'Add to list',
+      edit: 'Edit',
+      share: 'Share',
+      delete: 'Delete',
+      search_placeholder: 'Search by title or genre...',
+      elements_count: 'items',
+      by_date: 'By date',
+      no_items_found: 'Nothing found in this category',
+    },
   },
   es: {
     greeting: 'Hola',
@@ -366,6 +426,21 @@ export const translations: Record<Language, Translations> = {
       min_warning: '¡Debe seleccionar al menos 2 categorías!',
       save: 'Guardar',
     },
+    details: {
+      my_rating: 'Mi Puntuación',
+      watch_date: 'Fecha de visualización',
+      genre: 'Género',
+      duration: 'Duración',
+      notes: 'Notas',
+      add_to_list: 'A la lista',
+      edit: 'Editar',
+      share: 'Compartir',
+      delete: 'Eliminar',
+      search_placeholder: 'Buscar por título o género...',
+      elements_count: 'elementos',
+      by_date: 'Por fecha',
+      no_items_found: 'No se encontró nada en esta categoría',
+    },
   },
 };
 
@@ -379,6 +454,16 @@ export const getStoredLanguage = (): Language => {
 
 export const setStoredLanguage = (lang: Language): void => {
   localStorage.setItem('lista_language', lang);
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.CloudStorage) {
+      tg.CloudStorage.setItem('lista_language', lang, (err: any) => {
+        if (err) console.warn('CloudStorage setLanguage error:', err);
+      });
+    }
+  } catch (e) {
+    console.warn('CloudStorage setLanguage exception:', e);
+  }
 };
 
 export const getStoredTheme = (): 'dark' | 'light' => {
@@ -391,6 +476,16 @@ export const getStoredTheme = (): 'dark' | 'light' => {
 
 export const setStoredTheme = (theme: 'dark' | 'light'): void => {
   localStorage.setItem('lista_theme', theme);
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.CloudStorage) {
+      tg.CloudStorage.setItem('lista_theme', theme, (err: any) => {
+        if (err) console.warn('CloudStorage setTheme error:', err);
+      });
+    }
+  } catch (e) {
+    console.warn('CloudStorage setTheme exception:', e);
+  }
 };
 
 export const DEFAULT_ACTIVE_CATEGORIES = ['Фильмы', 'Сериалы'];
@@ -412,4 +507,14 @@ export const getStoredActiveCategories = (): string[] => {
 
 export const setStoredActiveCategories = (cats: string[]): void => {
   localStorage.setItem('lista_active_categories', JSON.stringify(cats));
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.CloudStorage) {
+      tg.CloudStorage.setItem('lista_active_categories', JSON.stringify(cats), (err: any) => {
+        if (err) console.warn('CloudStorage setActiveCategories error:', err);
+      });
+    }
+  } catch (e) {
+    console.warn('CloudStorage setActiveCategories exception:', e);
+  }
 };
