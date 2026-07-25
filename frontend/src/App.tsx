@@ -16,7 +16,7 @@ import { Item, UserProfile, StatsData } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile'>('home');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Сериалы');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Фильмы');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -58,7 +58,6 @@ export function App() {
     if (statsData) setStats(statsData);
   };
 
-  // Helper for Telegram Haptic Feedback
   const triggerHaptic = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.HapticFeedback) {
@@ -88,9 +87,7 @@ export function App() {
     triggerHaptic();
     const newStatus = item.status === 'completed' || item.status === 'Просмотрено' ? 'planned' : 'completed';
     await api.updateItem(item.id, { status: newStatus });
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } : i))
-    );
+    loadData();
   };
 
   const handleSaveItem = async (itemData: Partial<Item>) => {
@@ -115,7 +112,7 @@ export function App() {
   const userName =
     (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.first_name ||
     profile?.user?.first_name ||
-    'Анна';
+    'Друг';
 
   // Extract category counts map
   const catCountsMap: Record<string, number> = {};
@@ -152,14 +149,19 @@ export function App() {
             <Header userName={userName} onBellClick={triggerHaptic} />
             <CategoryGrid counts={catCountsMap} onSelectCategory={handleOpenCategory} />
             <ActivityCard
-              monthlyCount={profile?.monthly_count || 9}
-              monthlyHours={profile?.monthly_hours || 18}
-              currentStreak={profile?.current_streak || 5}
+              monthlyCount={profile?.monthly_count || 0}
+              monthlyHours={profile?.monthly_hours || 0}
+              currentStreak={profile?.current_streak || 0}
             />
             <RecentlyAdded
               items={items}
               onSeeAll={() => handleTabChange('search')}
               onSelectItem={handleSelectItem}
+              onAddItemClick={() => {
+                triggerHaptic();
+                setEditingItem(null);
+                setIsModalOpen(true);
+              }}
             />
           </section>
         )}
@@ -169,7 +171,7 @@ export function App() {
           <section>
             <CategoryScreen
               title={selectedCategory}
-              items={categoryItems.length > 0 ? categoryItems : items}
+              items={categoryItems}
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
@@ -180,30 +182,27 @@ export function App() {
         {/* SCREEN 3: ITEM DETAILS / PROFILE */}
         {activeTab === 'profile' && (
           <section>
-            <DetailsScreen
-              item={
-                selectedItem ||
-                items[0] || {
-                  id: '1',
-                  title: 'Дюна: Часть вторая',
-                  category: 'Фильмы',
-                  status: 'completed',
-                  rating: 10,
-                  genre: 'Фантастика, Приключения',
-                  duration: '2ч 46м',
-                  release_year: '2024',
-                  poster_url:
-                    'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
-                  note: 'Потрясающая визуальная часть и музыка. Особенно впечатлили сцены на Арракисе.',
-                }
-              }
-              onBack={() => handleTabChange('home')}
-              onEdit={(item) => {
-                setEditingItem(item);
-                setIsModalOpen(true);
-              }}
-              onDelete={handleDeleteItem}
-            />
+            {selectedItem ? (
+              <DetailsScreen
+                item={selectedItem}
+                onBack={() => handleTabChange('home')}
+                onEdit={(item) => {
+                  setEditingItem(item);
+                  setIsModalOpen(true);
+                }}
+                onDelete={handleDeleteItem}
+              />
+            ) : (
+              <div className="text-center py-20 space-y-3 glass-card rounded-2xl">
+                <p className="text-sm font-semibold text-gray-300">Выберите элемент из списка</p>
+                <button
+                  onClick={() => handleTabChange('search')}
+                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold"
+                >
+                  Перейти к поиску
+                </button>
+              </div>
+            )}
           </section>
         )}
 
