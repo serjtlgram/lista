@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
   MoreVertical,
@@ -338,24 +339,25 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </button>
       </div>
 
-      {/* Clean Fullscreen Poster Lightbox Modal */}
-      {isFullscreenPoster && (
+      {/* Clean Fullscreen Poster Lightbox Modal using React Portal */}
+      {isFullscreenPoster && createPortal(
         <div
           onClick={() => setIsFullscreenPoster(false)}
-          className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-2 cursor-pointer animate-fade-in"
+          className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center cursor-pointer animate-fade-in"
         >
           <button
             onClick={() => setIsFullscreenPoster(false)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40 z-50 transition active:scale-90 shadow-lg"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-90 shadow-xl"
           >
-            <X className="w-5 h-5" />
+            <X className="w-7 h-7" />
           </button>
           <img
             src={posterSrc}
-            className="max-w-[95vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            className="max-w-[100vw] max-h-[100vh] w-full h-full object-contain"
             alt={item.title}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
