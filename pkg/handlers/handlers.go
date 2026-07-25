@@ -85,19 +85,20 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Total & completed count
-	var total, completed, watching int
+	var total, completed, watching, monthlyCount int
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1", user.ID).Scan(&total)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'completed'", user.ID).Scan(&completed)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'watching'", user.ID).Scan(&watching)
+	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)", user.ID).Scan(&monthlyCount)
 
 	resp := models.UserProfileResponse{
 		User:           *user,
 		TotalItems:     total,
 		CompletedCount: completed,
 		WatchingCount:  watching,
-		CurrentStreak:  5,
-		MonthlyCount:   9,
-		MonthlyHours:   18,
+		CurrentStreak:  0,
+		MonthlyCount:   monthlyCount,
+		MonthlyHours:   0,
 		Categories:     catList,
 	}
 
@@ -127,7 +128,6 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 
 	if category != "" && category != "all" && category != "Все" {
 		query += fmt.Sprintf(" AND (category = $%d OR category = $%d)", argID, argID+1)
-		// Handle both ru and en category names
 		args = append(args, category, mapCategoryToEn(category))
 		argID += 2
 	}
@@ -261,7 +261,6 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dynamic update query
 	query := "UPDATE items SET updated_at = CURRENT_TIMESTAMP"
 	args := []interface{}{itemID, user.ID}
 	argIdx := 3
@@ -369,16 +368,16 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	resp := models.StatsResponse{
 		TotalItems:       total,
 		CompletedItems:   completed,
-		TotalHours:       48,
-		MonthlyAdded:     18,
-		GrowthPercentage: 12.5,
+		TotalHours:       0,
+		MonthlyAdded:     0,
+		GrowthPercentage: 0,
 		CategoryPercentage: map[string]int{
-			"movie": 35,
-			"show":  30,
-			"book":  20,
-			"other": 15,
+			"movie": 0,
+			"show":  0,
+			"book":  0,
+			"other": 0,
 		},
-		WeeklyActivity: []int{40, 65, 30, 85, 100, 50, 75},
+		WeeklyActivity: []int{0, 0, 0, 0, 0, 0, 0},
 	}
 
 	w.Header().Set("Content-Type", "application/json")

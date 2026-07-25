@@ -8,12 +8,12 @@ interface CategoryGridProps {
 
 export const CategoryGrid: React.FC<CategoryGridProps> = ({ counts, onSelectCategory }) => {
   const categories = [
-    { title: 'Фильмы', key: 'movie', icon: Film, count: counts['Фильмы'] || counts['movie'] || 128, bg: 'bg-accentViolet/15', text: 'text-accentViolet' },
-    { title: 'Сериалы', key: 'show', icon: Tv, count: counts['Сериалы'] || counts['show'] || 64, bg: 'bg-accentTeal/15', text: 'text-accentTeal' },
-    { title: 'Книги', key: 'book', icon: BookOpen, count: counts['Книги'] || counts['book'] || 87, bg: 'bg-accentAmber/15', text: 'text-accentAmber' },
-    { title: 'Аудиокниги', key: 'audiobook', icon: Headphones, count: counts['Аудиокниги'] || counts['audiobook'] || 23, bg: 'bg-accentBlue/15', text: 'text-accentBlue' },
-    { title: 'Подкасты', key: 'podcast', icon: Mic, count: counts['Подкасты'] || counts['podcast'] || 12, bg: 'bg-accentPink/15', text: 'text-accentPink' },
-    { title: 'Игры', key: 'game', icon: Gamepad2, count: counts['Игры'] || counts['game'] || 15, bg: 'bg-accentGreen/15', text: 'text-accentGreen' },
+    { title: 'Фильмы', key: 'movie', icon: Film, count: counts['Фильмы'] ?? counts['movie'] ?? 0, bg: 'bg-accentViolet/15', text: 'text-accentViolet' },
+    { title: 'Сериалы', key: 'show', icon: Tv, count: counts['Сериалы'] ?? counts['show'] ?? 0, bg: 'bg-accentTeal/15', text: 'text-accentTeal' },
+    { title: 'Книги', key: 'book', icon: BookOpen, count: counts['Книги'] ?? counts['book'] ?? 0, bg: 'bg-accentAmber/15', text: 'text-accentAmber' },
+    { title: 'Аудиокниги', key: 'audiobook', icon: Headphones, count: counts['Аудиокниги'] ?? counts['audiobook'] ?? 0, bg: 'bg-accentBlue/15', text: 'text-accentBlue' },
+    { title: 'Подкасты', key: 'podcast', icon: Mic, count: counts['Подкасты'] ?? counts['podcast'] ?? 0, bg: 'bg-accentPink/15', text: 'text-accentPink' },
+    { title: 'Игры', key: 'game', icon: Gamepad2, count: counts['Игры'] ?? counts['game'] ?? 0, bg: 'bg-accentGreen/15', text: 'text-accentGreen' },
   ];
 
   return (
