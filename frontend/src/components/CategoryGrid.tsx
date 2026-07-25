@@ -1,5 +1,5 @@
 import React from 'react';
-import { Film, Tv, BookOpen, Headphones, Mic, Gamepad2, Plus } from 'lucide-react';
+import { Film, Tv, BookOpen, Headphones, Mic, Gamepad2, PlusCircle } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
 interface CategoryGridProps {
@@ -58,40 +58,41 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {visibleCategories.map((cat) => {
-        const IconComponent = cat.icon;
-        const count = getCount(cat.key);
-        const title = getTranslatedTitle(cat.key);
+    <div className="space-y-1.5">
+      {/* Categories Grid */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {visibleCategories.map((cat) => {
+          const IconComponent = cat.icon;
+          const count = getCount(cat.key);
+          const title = getTranslatedTitle(cat.key);
 
-        return (
-          <div
-            key={cat.key}
-            onClick={() => onSelectCategory(cat.key)}
-            className="glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition"
-          >
-            <div className={`w-10 h-10 rounded-xl ${cat.bg} flex items-center justify-center ${cat.text}`}>
-              <IconComponent className="w-5 h-5" />
+          return (
+            <div
+              key={cat.key}
+              onClick={() => onSelectCategory(cat.key)}
+              className="glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition"
+            >
+              <div className={`w-10 h-10 rounded-xl ${cat.bg} flex items-center justify-center ${cat.text}`}>
+                <IconComponent className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-gray-300">{title}</div>
+                <div className="text-base font-bold text-white">{count}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-gray-300">{title}</div>
-              <div className="text-base font-bold text-white">{count}</div>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
-      {/* Plus Card inside grid to customize categories */}
-      <div
-        onClick={onOpenCategoryConfig}
-        className="glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition border-dashed hover:border-accentViolet/50"
-      >
-        <div className="w-10 h-10 rounded-xl bg-accentViolet/15 flex items-center justify-center text-accentViolet shrink-0">
-          <Plus className="w-5 h-5" />
-        </div>
-        <div className="text-xs font-semibold text-gray-400 leading-tight">
-          {t.profile.categories_manage}
-        </div>
+      {/* Discrete Plus Circle Button under the grid */}
+      <div className="flex justify-center pt-0.5">
+        <button
+          onClick={onOpenCategoryConfig}
+          className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-90 transition opacity-80 hover:opacity-100"
+          title={t.profile.categories_manage}
+        >
+          <PlusCircle className="w-6 h-6 stroke-[2]" />
+        </button>
       </div>
     </div>
   );
