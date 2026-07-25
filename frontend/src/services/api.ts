@@ -1,6 +1,6 @@
 import { Item, UserProfile, StatsData } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://129.151.217.58';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://129.151.217.58.nip.io';
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
