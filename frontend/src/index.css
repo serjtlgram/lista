@@ -10,6 +10,12 @@
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  body.light {
+    background-color: #F8FAFC;
+    color: #0F172A;
   }
 }
 
@@ -24,13 +30,70 @@
 .glass-card {
   background: linear-gradient(180deg, rgba(22, 25, 34, 0.9) 0%, rgba(16, 18, 25, 0.95) 100%);
   border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.light .glass-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 16px -2px rgba(148, 163, 184, 0.12);
 }
 
 .nav-item.active {
-  color: #8C7CFF;
+  color: #6C5CE7;
 }
 .nav-item.active svg {
-  stroke: #8C7CFF;
+  stroke: #6C5CE7;
+}
+
+/* Light Mode Overrides */
+body.light .bg-cardDark {
+  background-color: #FFFFFF !important;
+}
+
+body.light .bg-bgDark {
+  background-color: #F1F5F9 !important;
+}
+
+body.light .border-cardBorder {
+  border-color: #E2E8F0 !important;
+}
+
+body.light .text-white {
+  color: #0F172A !important;
+}
+
+body.light .text-gray-100 {
+  color: #0F172A !important;
+}
+
+body.light .text-gray-200 {
+  color: #1E293B !important;
+}
+
+body.light .text-gray-300 {
+  color: #334155 !important;
+}
+
+body.light .text-gray-400 {
+  color: #64748B !important;
+}
+
+body.light .text-gray-500 {
+  color: #94A3B8 !important;
+}
+
+body.light nav {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: #E2E8F0 !important;
+}
+
+body.light input,
+body.light select,
+body.light textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
 }
 
 @keyframes slideUp {

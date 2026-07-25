@@ -8,23 +8,62 @@ import { RecentlyAdded } from './components/RecentlyAdded';
 import { CategoryScreen } from './components/CategoryScreen';
 import { DetailsScreen } from './components/DetailsScreen';
 import { StatsScreen } from './components/StatsScreen';
+import { ProfileScreen } from './components/ProfileScreen';
+import { CategorySelectModal } from './components/CategorySelectModal';
 import { AddItemModal } from './components/AddItemModal';
 import { Navbar } from './components/Navbar';
 
 import { api } from './services/api';
 import { Item, UserProfile, StatsData } from './types';
+import {
+  Language,
+  translations,
+  getStoredLanguage,
+  setStoredLanguage,
+  getStoredTheme,
+  setStoredTheme,
+  getStoredActiveCategories,
+  setStoredActiveCategories,
+} from './services/i18n';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile' | 'details'>('home');
   const [selectedCategory, setSelectedCategory] = useState<string>('Фильмы');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  
+
+  const [language, setLanguage] = useState<Language>(getStoredLanguage());
+  const [theme, setTheme] = useState<'dark' | 'light'>(getStoredTheme());
+  const [activeCategories, setActiveCategories] = useState<string[]>(getStoredActiveCategories());
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  const t = translations[language] || translations.ru;
+
+  // Handle theme changes
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light');
+    } else {
+      document.body.classList.remove('light');
+    }
+
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      try {
+        const bg = theme === 'light' ? '#F8FAFC' : '#0B0D14';
+        tg.setHeaderColor(bg);
+        tg.setBackgroundColor(bg);
+      } catch (e) {
+        console.warn('Telegram SDK theme update warning:', e);
+      }
+    }
+  }, [theme]);
 
   // Telegram SDK Init
   useEffect(() => {
@@ -33,8 +72,9 @@ export function App() {
       try {
         tg.ready();
         tg.expand();
-        tg.setHeaderColor('#0B0D14');
-        tg.setBackgroundColor('#0B0D14');
+        const bg = theme === 'light' ? '#F8FAFC' : '#0B0D14';
+        tg.setHeaderColor(bg);
+        tg.setBackgroundColor(bg);
       } catch (e) {
         console.warn('Telegram SDK init warning:', e);
       }
@@ -71,6 +111,24 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleLanguageChange = (newLang: Language) => {
+    triggerHaptic();
+    setLanguage(newLang);
+    setStoredLanguage(newLang);
+  };
+
+  const handleThemeChange = (newTheme: 'dark' | 'light') => {
+    triggerHaptic();
+    setTheme(newTheme);
+    setStoredTheme(newTheme);
+  };
+
+  const handleSaveActiveCategories = (newCategories: string[]) => {
+    triggerHaptic();
+    setActiveCategories(newCategories);
+    setStoredActiveCategories(newCategories);
+  };
+
   const handleOpenCategory = (catTitle: string) => {
     triggerHaptic();
     setSelectedCategory(catTitle);
@@ -80,7 +138,7 @@ export function App() {
   const handleSelectItem = (item: Item) => {
     triggerHaptic();
     setSelectedItem(item);
-    setActiveTab('profile'); // Screen 3 Details
+    setActiveTab('details');
   };
 
   const handleToggleStatus = async (item: Item) => {
@@ -140,7 +198,7 @@ export function App() {
 
   return (
     <div className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden">
-      {/* Top Telegram Safe Area Header */}
+      {/* Top Safe Area Header */}
       <div className="h-2 w-full"></div>
 
       {/* Main App Content */}
@@ -148,12 +206,27 @@ export function App() {
         {/* SCREEN 1: HOME */}
         {activeTab === 'home' && (
           <section className="space-y-5">
-            <Header userName={userName} onBellClick={triggerHaptic} />
-            <CategoryGrid counts={catCountsMap} onSelectCategory={handleOpenCategory} />
+            <Header
+              userName={userName}
+              photoUrl={profile?.user?.photo_url}
+              onAvatarClick={() => handleTabChange('profile')}
+              t={t}
+            />
+            <CategoryGrid
+              counts={catCountsMap}
+              activeCategories={activeCategories}
+              onSelectCategory={handleOpenCategory}
+              onOpenCategoryConfig={() => {
+                triggerHaptic();
+                setIsCategoryModalOpen(true);
+              }}
+              t={t}
+            />
             <ActivityCard
               monthlyCount={profile?.monthly_count || 0}
               monthlyHours={profile?.monthly_hours || 0}
               currentStreak={profile?.current_streak || 0}
+              t={t}
             />
             <RecentlyAdded
               items={items}
@@ -164,6 +237,7 @@ export function App() {
                 setEditingItem(null);
                 setIsModalOpen(true);
               }}
+              t={t}
             />
           </section>
         )}
@@ -181,34 +255,41 @@ export function App() {
           </section>
         )}
 
-        {/* SCREEN 3: ITEM DETAILS / PROFILE */}
-        {activeTab === 'profile' && (
+        {/* SCREEN 3: ITEM DETAILS */}
+        {activeTab === 'details' && selectedItem && (
           <section>
-            {selectedItem ? (
-              <DetailsScreen
-                item={selectedItem}
-                onBack={() => handleTabChange('home')}
-                onEdit={(item) => {
-                  setEditingItem(item);
-                  setIsModalOpen(true);
-                }}
-                onDelete={handleDeleteItem}
-              />
-            ) : (
-              <div className="text-center py-20 space-y-3 glass-card rounded-2xl">
-                <p className="text-sm font-semibold text-gray-300">Выберите элемент из списка</p>
-                <button
-                  onClick={() => handleTabChange('search')}
-                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold"
-                >
-                  Перейти к поиску
-                </button>
-              </div>
-            )}
+            <DetailsScreen
+              item={selectedItem}
+              onBack={() => handleTabChange('home')}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setIsModalOpen(true);
+              }}
+              onDelete={handleDeleteItem}
+            />
           </section>
         )}
 
-        {/* SCREEN 4: STATS */}
+        {/* SCREEN 4: PROFILE */}
+        {activeTab === 'profile' && (
+          <section>
+            <ProfileScreen
+              profile={profile}
+              currentLanguage={language}
+              onLanguageChange={handleLanguageChange}
+              currentTheme={theme}
+              onThemeChange={handleThemeChange}
+              activeCategories={activeCategories}
+              onOpenCategoryConfig={() => {
+                triggerHaptic();
+                setIsCategoryModalOpen(true);
+              }}
+              t={t}
+            />
+          </section>
+        )}
+
+        {/* SCREEN 5: STATS */}
         {activeTab === 'stats' && (
           <section>
             <StatsScreen stats={stats} />
@@ -229,7 +310,16 @@ export function App() {
       </button>
 
       {/* Bottom Navbar */}
-      <Navbar activeTab={activeTab} onTabChange={handleTabChange} />
+      <Navbar activeTab={activeTab === 'details' ? 'search' : activeTab} onTabChange={handleTabChange} t={t} />
+
+      {/* Category Select Modal */}
+      <CategorySelectModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        activeCategories={activeCategories}
+        onSave={handleSaveActiveCategories}
+        t={t}
+      />
 
       {/* Add / Edit Item Modal Bottom Sheet */}
       <AddItemModal
