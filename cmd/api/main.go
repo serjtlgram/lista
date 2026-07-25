@@ -65,6 +65,7 @@ func main() {
 		r.Put("/api/items/{id}", h.UpdateItem)
 		r.Delete("/api/items/{id}", h.DeleteItem)
 		r.Get("/api/stats", h.GetStats)
+		r.Get("/api/catalog/search", h.SearchCatalog)
 	})
 
 	server := &http.Server{

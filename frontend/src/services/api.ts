@@ -103,5 +103,20 @@ export const api = {
         weekly_activity: [0, 0, 0, 0, 0, 0, 0]
       };
     }
-  }
+  },
+
+  async searchCatalog(query: string, category?: string): Promise<any[]> {
+    try {
+      if (!query || query.length < 2) return [];
+      const params = new URLSearchParams({ q: query });
+      if (category) params.append('category', category);
+
+      const res = await fetch(`${API_BASE}/api/catalog/search?${params.toString()}`, { headers: getHeaders() });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (e) {
+      console.warn('API searchCatalog error:', e);
+      return [];
+    }
+  },
 };

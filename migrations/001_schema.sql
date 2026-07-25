@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS items (
     duration VARCHAR(100) DEFAULT '',
     release_year VARCHAR(50) DEFAULT '',
     poster_url TEXT DEFAULT '',
+    description TEXT DEFAULT '',
     note TEXT DEFAULT '',
     raw_input TEXT DEFAULT '', -- Raw user description for future AI context parsing
     ai_parsed BOOLEAN DEFAULT FALSE,
@@ -33,10 +34,14 @@ CREATE TABLE IF NOT EXISTS items (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Ensure description column exists for existing deployments
+ALTER TABLE items ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_items_user_cat ON items(user_id, category);
 CREATE INDEX IF NOT EXISTS idx_items_user_status ON items(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_items_user_created ON items(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_items_title_lower ON items(LOWER(title));
 
 -- Trigger function to update updated_at timestamp automatically
 CREATE OR REPLACE FUNCTION update_timestamp()

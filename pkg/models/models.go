@@ -25,6 +25,7 @@ type Item struct {
 	Duration    string     `json:"duration"`
 	ReleaseYear string     `json:"release_year"`
 	PosterURL   string     `json:"poster_url"`
+	Description string     `json:"description"`
 	Note        string     `json:"note"`
 	RawInput    string     `json:"raw_input"`   // For future AI context parsing
 	AIParsed    bool       `json:"ai_parsed"`
@@ -43,6 +44,7 @@ type CreateItemRequest struct {
 	Duration    string `json:"duration"`
 	ReleaseYear string `json:"release_year"`
 	PosterURL   string `json:"poster_url"`
+	Description string `json:"description"`
 	Note        string `json:"note"`
 	RawInput    string `json:"raw_input"`
 }
@@ -56,8 +58,19 @@ type UpdateItemRequest struct {
 	Duration    *string `json:"duration,omitempty"`
 	ReleaseYear *string `json:"release_year,omitempty"`
 	PosterURL   *string `json:"poster_url,omitempty"`
+	Description *string `json:"description,omitempty"`
 	Note        *string `json:"note,omitempty"`
 	RawInput    *string `json:"raw_input,omitempty"`
+}
+
+type CatalogSearchResult struct {
+	Title       string `json:"title"`
+	Category    string `json:"category"`
+	Genre       string `json:"genre"`
+	Duration    string `json:"duration"`
+	ReleaseYear string `json:"release_year"`
+	PosterURL   string `json:"poster_url"`
+	Description string `json:"description"`
 }
 
 type CategoryCount struct {
@@ -77,11 +90,11 @@ type UserProfileResponse struct {
 }
 
 type StatsResponse struct {
-	TotalItems         int            `json:"total_items"`
-	CompletedItems     int            `json:"completed_items"`
-	TotalHours         int            `json:"total_hours"`
-	MonthlyAdded       int            `json:"monthly_added"`
-	GrowthPercentage   float64        `json:"growth_percentage"`
-	CategoryPercentage map[string]int `json:"category_percentage"`
-	WeeklyActivity     []int          `json:"weekly_activity"`
+	TotalItems        int                `json:"total_items"`
+	CompletedItems    int                `json:"completed_items"`
+	TotalHours        int                `json:"total_hours"`
+	MonthlyAdded      int                `json:"monthly_added"`
+	GrowthPercentage  float64            `json:"growth_percentage"`
+	CategoryPercentage map[string]float64 `json:"category_percentage"`
+	WeeklyActivity    []int              `json:"weekly_activity"`
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Check } from 'lucide-react';
-import { Item } from '../types';
+import { X, ChevronDown, Check, Sparkles } from 'lucide-react';
+import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
+import { api } from '../services/api';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -106,10 +107,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
+  const [description, setDescription] = useState(editingItem?.description || '');
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
+
+  const [catalogSuggestions, setCatalogSuggestions] = useState<CatalogItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     if (editingItem) {
@@ -120,6 +125,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setGenre(editingItem.genre || GENRE_OPTIONS[0]);
       setReleaseYear(editingItem.release_year || '');
       setPosterUrl(editingItem.poster_url || '');
+      setDescription(editingItem.description || '');
       setNote(editingItem.note || '');
 
       const durStr = editingItem.duration || '';
@@ -143,6 +149,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setEpisodesCount('');
       setReleaseYear('');
       setPosterUrl('');
+      setDescription('');
       setNote('');
       setShowAdvanced(true);
     }
@@ -168,6 +175,32 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(cur) && ['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(target)) return true;
     if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(cur) && ['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(target)) return true;
     return false;
+  };
+
+  const handleTitleChange = async (val: string) => {
+    setTitle(val);
+    if (val.trim().length >= 2) {
+      try {
+        const results = await api.searchCatalog(val, category);
+        setCatalogSuggestions(results || []);
+        setShowSuggestions(results && results.length > 0);
+      } catch (e) {
+        setCatalogSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } else {
+      setCatalogSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (sug: CatalogItem) => {
+    setTitle(sug.title);
+    if (sug.genre) setGenre(sug.genre);
+    if (sug.release_year) setReleaseYear(sug.release_year);
+    if (sug.poster_url) setPosterUrl(sug.poster_url);
+    if (sug.description) setDescription(sug.description);
+    setShowSuggestions(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,6 +233,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       duration: finalDuration.trim(),
       release_year: releaseYear.trim(),
       poster_url: finalPoster,
+      description: description.trim(),
       note: note.trim(),
     };
 
@@ -268,8 +302,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             </div>
           </div>
 
-          {/* 2. Main Title Input */}
-          <div>
+          {/* 2. Main Title Input + Autocomplete Suggestions */}
+          <div className="relative">
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
               {t.modal.title_label}
             </label>
@@ -277,13 +311,63 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               type="text"
               required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder={t.modal.title_placeholder}
               className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
             />
+
+            {/* Catalog Autocomplete Suggestions Popup */}
+            {showSuggestions && catalogSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-cardDark border border-cardBorder rounded-2xl p-2 shadow-2xl z-50 animate-slide-up max-h-52 overflow-y-auto">
+                <div className="text-[10px] text-accentTeal font-semibold px-2 py-1 border-b border-cardBorder/60 mb-1 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-accentTeal" />
+                  {t.modal.catalog_autofill_hint}
+                </div>
+                {catalogSuggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectSuggestion(sug)}
+                    className="p-2 hover:bg-bgDark rounded-xl cursor-pointer flex items-center justify-between transition group"
+                  >
+                    <div className="flex items-center gap-2">
+                      {sug.poster_url ? (
+                        <img src={sug.poster_url} className="w-7 h-10 object-cover rounded shadow" alt="" />
+                      ) : (
+                        <div className="w-7 h-10 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 font-bold">
+                          {sug.category?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover:text-accentViolet transition">{sug.title}</div>
+                        <div className="text-[10px] text-gray-400">
+                          {sug.release_year ? `${sug.release_year} г.` : ''} {sug.genre ? `• ${sug.genre}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-accentViolet/20 text-accentViolet font-semibold px-2 py-0.5 rounded-full shrink-0">
+                      Автозаполнить
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* 3. Status Selector with Category-Aware Labels */}
+          {/* 3. Description Input */}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
+              {t.modal.description_label}
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder={t.modal.placeholder_description}
+              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+            />
+          </div>
+
+          {/* 4. Status Selector */}
           <div>
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
               {t.modal.status_label}
@@ -306,7 +390,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             </div>
           </div>
 
-          {/* 4. Rating */}
+          {/* 5. Rating */}
           <div>
             <label className="text-[11px] font-semibold text-gray-400 mb-1.5 flex justify-between">
               <span>{t.modal.rating_label}: {rating}/10</span>
@@ -321,7 +405,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             />
           </div>
 
-          {/* 5. Additional details fields */}
+          {/* 6. Additional details fields */}
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}

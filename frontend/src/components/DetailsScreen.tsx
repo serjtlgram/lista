@@ -232,6 +232,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
+      {/* Description Block */}
+      {item.description && (
+        <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
+          <div className="text-xs text-gray-400 font-semibold">{t.details.description}</div>
+          <p className="text-xs text-white leading-relaxed font-normal">
+            {item.description}
+          </p>
+        </div>
+      )}
+
       {/* 10-Star Interactive Rating Block */}
       <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
         <div className="flex items-center justify-between">

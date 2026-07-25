@@ -69,12 +69,15 @@ export interface Translations {
     placeholder_year: string;
     placeholder_poster: string;
     placeholder_note: string;
+    placeholder_description: string;
+    description_label: string;
     episodes_label: string;
     episodes_placeholder: string;
     duration_min_label: string;
     duration_min_placeholder: string;
     episodes_unit: string;
     minutes_unit: string;
+    catalog_autofill_hint: string;
   };
   category_modal: {
     title: string;
@@ -88,6 +91,7 @@ export interface Translations {
     genre: string;
     duration: string;
     episodes: string;
+    description: string;
     notes: string;
     add_to_list: string;
     edit: string;

@@ -12,6 +12,7 @@ export interface Item {
   duration?: string;
   release_year?: string;
   poster_url?: string;
+  description?: string;
   note?: string;
   raw_input?: string;
   ai_parsed?: boolean;
@@ -19,6 +20,16 @@ export interface Item {
   completed_at?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CatalogItem {
+  title: string;
+  category: string;
+  genre?: string;
+  duration?: string;
+  release_year?: string;
+  poster_url?: string;
+  description?: string;
 }
 
 export interface UserProfile {

@@ -121,7 +121,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -160,7 +160,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		var item models.Item
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
-			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Note,
+			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
 			&item.RawInput, &item.AIParsed, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
@@ -207,8 +207,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, note, raw_input, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -223,6 +223,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Duration = req.Duration
 	createdItem.ReleaseYear = req.ReleaseYear
 	createdItem.PosterURL = req.PosterURL
+	createdItem.Description = req.Description
 	createdItem.Note = req.Note
 	createdItem.RawInput = req.RawInput
 	createdItem.CompletedAt = completedAt
@@ -230,7 +231,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Note, req.RawInput, completedAt,
+		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -305,6 +306,11 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.PosterURL != nil {
 		query += fmt.Sprintf(", poster_url = $%d", argIdx)
 		args = append(args, *req.PosterURL)
+		argIdx++
+	}
+	if req.Description != nil {
+		query += fmt.Sprintf(", description = $%d", argIdx)
+		args = append(args, *req.Description)
 		argIdx++
 	}
 	if req.Note != nil {
@@ -456,3 +462,49 @@ func mapStatusToEn(st string) string {
 		return st
 	}
 }
+
+// GET /api/catalog/search?q=Title
+func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(q) < 2 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]models.CatalogSearchResult{})
+		return
+	}
+
+	category := r.URL.Query().Get("category")
+
+	query := `
+		SELECT DISTINCT ON (LOWER(title)) title, category, genre, duration, release_year, poster_url, description
+		FROM items
+		WHERE LOWER(title) LIKE $1
+	`
+	args := []interface{}{"%" + strings.ToLower(q) + "%"}
+
+	if category != "" && category != "all" && category != "Все" {
+		query += " AND (category = $2 OR category = $3)"
+		args = append(args, category, mapCategoryToEn(category))
+	}
+
+	query += " ORDER BY LOWER(title), created_at DESC LIMIT 10;"
+
+	rows, err := h.DB.Pool.Query(r.Context(), query, args...)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]models.CatalogSearchResult{})
+		return
+	}
+	defer rows.Close()
+
+	results := []models.CatalogSearchResult{}
+	for rows.Next() {
+		var res models.CatalogSearchResult
+		if err := rows.Scan(&res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description); err == nil {
+			results = append(results, res)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
+}
+
