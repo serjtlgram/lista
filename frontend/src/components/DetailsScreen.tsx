@@ -13,7 +13,6 @@ import {
   Save,
   X,
   Clock,
-  Film,
   Tag
 } from 'lucide-react';
 import { Item } from '../types';
@@ -107,7 +106,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <button onClick={onBack} className="p-2 text-gray-300 hover:text-white">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <h1 className="text-base font-bold text-white line-clamp-1 max-w-[200px] text-center">
+        <h1 className="text-base font-bold text-white line-clamp-1 max-w-[220px] text-center">
           {item.title}
         </h1>
         <MoreVertical className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white" />
@@ -130,42 +129,44 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           </div>
 
           {/* Right: Meta Details (Year, Watch date, Genre, Duration, Status) */}
-          <div className="flex-1 space-y-2.5 text-xs pt-1">
+          <div className="flex-1 space-y-2 text-xs pt-0.5">
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">{t.categories.movie_single}</span>
-              <span className="text-sm font-bold text-white">{formatCategorySingle(item.category)} • {item.release_year || '2024'}</span>
+              <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
+                {formatCategorySingle(item.category)}
+              </span>
+              <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year} г.` : '2024 г.'}</span>
             </div>
 
             <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="text-gray-400 flex items-center gap-1">
+              <div className="flex items-center justify-between text-gray-300 gap-1">
+                <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Calendar className="w-3.5 h-3.5 text-accentViolet" />
                   {t.details.watch_date}
                 </span>
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-white text-right">
                   {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : (item.release_year || '2024')}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="text-gray-400 flex items-center gap-1">
+              <div className="flex items-center justify-between text-gray-300 gap-1">
+                <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Tag className="w-3.5 h-3.5 text-accentTeal" />
                   {t.details.genre}
                 </span>
-                <span className="font-semibold text-white truncate max-w-[100px] text-right">{item.genre || '-'}</span>
+                <span className="font-semibold text-white text-right leading-tight">{item.genre || '-'}</span>
               </div>
 
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="text-gray-400 flex items-center gap-1">
+              <div className="flex items-center justify-between text-gray-300 gap-1">
+                <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
                   {t.details.duration}
                 </span>
-                <span className="font-semibold text-white truncate max-w-[100px] text-right">{item.duration || '-'}</span>
+                <span className="font-semibold text-white text-right leading-tight">{item.duration || '-'}</span>
               </div>
             </div>
 
             {/* Interactive Status Pill Button */}
-            <div className="relative pt-2">
+            <div className="relative pt-1.5">
               <button
                 onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
                 className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-95 shadow-md hover:border-accentViolet"

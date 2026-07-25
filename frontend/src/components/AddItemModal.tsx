@@ -12,42 +12,65 @@ interface AddItemModalProps {
 }
 
 const compressPosterImage = (url: string): Promise<string> => {
-  if (!url || !url.startsWith('http')) return Promise.resolve(url);
+  if (!url || !url.startsWith('http') || url.startsWith('data:image')) {
+    return Promise.resolve(url);
+  }
   return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const maxW = 600;
-        const maxH = 900;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxW || h > maxH) {
-          if (w / h > maxW / maxH) {
-            h = Math.round((h * maxW) / w);
-            w = maxW;
-          } else {
-            w = Math.round((w * maxH) / h);
-            h = maxH;
-          }
-        }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-          const compressed = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(compressed);
-        } else {
-          resolve(url);
-        }
-      } catch (e) {
-        resolve(url);
+    let finished = false;
+    const safeResolve = (resUrl: string) => {
+      if (!finished) {
+        finished = true;
+        resolve(resUrl);
       }
     };
-    img.onerror = () => resolve(url);
-    img.src = url;
+
+    // 1-second timeout safety fallback
+    const timer = setTimeout(() => {
+      safeResolve(url);
+    }, 1000);
+
+    try {
+      const img = new Image();
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const canvas = document.createElement('canvas');
+          const maxW = 600;
+          const maxH = 900;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxW || h > maxH) {
+            if (w / h > maxW / maxH) {
+              h = Math.round((h * maxW) / w);
+              w = maxW;
+            } else {
+              w = Math.round((w * maxH) / h);
+              h = maxH;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.8);
+            safeResolve(compressed);
+          } else {
+            safeResolve(url);
+          }
+        } catch (e) {
+          safeResolve(url);
+        }
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        safeResolve(url);
+      };
+      img.src = url;
+    } catch (e) {
+      clearTimeout(timer);
+      safeResolve(url);
+    }
   });
 };
 
@@ -70,7 +93,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
   const [note, setNote] = useState(editingItem?.note || '');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
@@ -93,6 +116,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setDurationMin(durStr.replace(/\D/g, ''));
         setEpisodesCount('');
       }
+
+      setShowAdvanced(true);
     } else {
       setTitle('');
       setCategory('Фильмы');
@@ -104,6 +129,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setReleaseYear('');
       setPosterUrl('');
       setNote('');
+      setShowAdvanced(true);
     }
   }, [editingItem, isOpen]);
 
@@ -116,9 +142,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (!title.trim()) return;
 
     setIsCompressing(true);
-    let finalPoster = posterUrl;
-    if (posterUrl && posterUrl.startsWith('http')) {
-      finalPoster = await compressPosterImage(posterUrl);
+
+    let finalPoster = posterUrl.trim();
+    if (finalPoster && finalPoster.startsWith('http')) {
+      finalPoster = await compressPosterImage(finalPoster);
     }
 
     let finalDuration = '';
@@ -131,23 +158,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       finalDuration = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
     }
 
+    const payload: Partial<Item> = {
+      title: title.trim(),
+      category,
+      status,
+      rating,
+      genre: genre.trim(),
+      duration: finalDuration.trim(),
+      release_year: releaseYear.trim(),
+      poster_url: finalPoster,
+      note: note.trim(),
+    };
+
     try {
-      await onSave({
-        title,
-        category,
-        status,
-        rating,
-        genre,
-        duration: finalDuration,
-        release_year: releaseYear,
-        poster_url: finalPoster,
-        note,
-      });
-      setIsCompressing(false);
-      onClose();
+      await onSave(payload);
     } catch (err) {
       console.error('Failed to save item:', err);
+    } finally {
       setIsCompressing(false);
+      onClose();
     }
   };
 
@@ -174,7 +203,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           <h3 className="text-base font-bold text-white">
             {editingItem ? t.modal.edit_item : t.modal.add_item}
           </h3>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-white transition">
+          <button onClick={onClose} type="button" className="p-1 rounded-full text-gray-400 hover:text-white transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -256,7 +285,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             />
           </div>
 
-          {/* 5. Toggle additional details */}
+          {/* 5. Additional details fields */}
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -268,6 +297,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           {showAdvanced && (
             <div className="space-y-3 pt-2 border-t border-cardBorder">
               <div>
+                <label className="text-[10px] text-gray-400 block mb-1">{t.details.genre}</label>
                 <input
                   type="text"
                   value={genre}
@@ -303,25 +333,32 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    value={durationMin}
-                    onChange={(e) => setDurationMin(e.target.value)}
-                    placeholder={t.modal.duration_min_placeholder}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-                  />
-                  <input
-                    type="text"
-                    value={releaseYear}
-                    onChange={(e) => setReleaseYear(e.target.value)}
-                    placeholder={t.modal.placeholder_year}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-                  />
+                  <div>
+                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.duration_min_label}</label>
+                    <input
+                      type="number"
+                      value={durationMin}
+                      onChange={(e) => setDurationMin(e.target.value)}
+                      placeholder={t.modal.duration_min_placeholder}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 block mb-1">Год</label>
+                    <input
+                      type="text"
+                      value={releaseYear}
+                      onChange={(e) => setReleaseYear(e.target.value)}
+                      placeholder={t.modal.placeholder_year}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
                 </div>
               )}
 
               {isSeries && (
                 <div>
+                  <label className="text-[10px] text-gray-400 block mb-1">Год</label>
                   <input
                     type="text"
                     value={releaseYear}
@@ -333,6 +370,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               )}
 
               <div>
+                <label className="text-[10px] text-gray-400 block mb-1">Постер (URL)</label>
                 <input
                   type="url"
                   value={posterUrl}
@@ -341,7 +379,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
                 />
               </div>
+
               <div>
+                <label className="text-[10px] text-gray-400 block mb-1">{t.details.notes}</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -359,7 +399,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             disabled={isCompressing}
             className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 mt-2 hover:bg-opacity-90 active:scale-98 transition disabled:opacity-50"
           >
-            {isCompressing ? '...' : t.modal.save}
+            {isCompressing ? 'Сохранение...' : t.modal.save}
           </button>
         </form>
       </div>
