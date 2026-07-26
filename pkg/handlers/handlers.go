@@ -58,10 +58,10 @@ func (h *Handler) InitBotCommandsAndMenu() {
 			},
 		},
 	}
-	if respBytes, err := h.sendBotAPIRequestWithErr("setChatMenuButton", menuPayload); err != nil {
-		log.Printf("[BotMenuInit] Error setting chat menu button: %v, resp: %s", err, string(respBytes))
+	if err := h.sendBotAPIRequestWithErr("setChatMenuButton", menuPayload); err != nil {
+		log.Printf("[BotMenuInit] Error setting chat menu button: %v", err)
 	} else {
-		log.Printf("[BotMenuInit] Chat menu button set successfully: %s", string(respBytes))
+		log.Printf("[BotMenuInit] Chat menu button set successfully to https://serjtlgram.github.io/lista/")
 	}
 
 	// 2. Set default /start command
