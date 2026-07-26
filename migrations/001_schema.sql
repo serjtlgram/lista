@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(255) NOT NULL DEFAULT '',
     last_name VARCHAR(255) DEFAULT '',
     photo_url TEXT DEFAULT '',
+    welcomed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,8 +35,9 @@ CREATE TABLE IF NOT EXISTS items (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ensure description column exists for existing deployments
+-- Ensure description & welcomed columns exist for existing deployments
 ALTER TABLE items ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed BOOLEAN DEFAULT FALSE;
 
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_items_user_cat ON items(user_id, category);

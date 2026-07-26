@@ -38,6 +38,10 @@ func Connect(connString string) (*DB, error) {
 	}
 
 	log.Println("Successfully connected to PostgreSQL (MaxConns=15)")
+
+	// Auto-migrate schema additions if needed
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed BOOLEAN DEFAULT FALSE;`)
+
 	return &DB{Pool: pool}, nil
 }
 

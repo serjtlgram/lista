@@ -28,7 +28,7 @@ func main() {
 		defer database.Close()
 	}
 
-	h := handlers.NewHandler(database)
+	h := handlers.NewHandler(database, cfg.BotToken)
 
 	r := chi.NewRouter()
 
@@ -54,6 +54,7 @@ func main() {
 		w.Write([]byte(`{"status":"ok","service":"tracklist-api"}`))
 	})
 	r.Get("/api/public/items/{id}", h.GetPublicItem)
+	r.Post("/api/telegram/webhook", h.HandleTelegramWebhook)
 
 	// Protected API Routes (Requires HMAC Telegram Auth)
 	isDev := cfg.Environment == "development"

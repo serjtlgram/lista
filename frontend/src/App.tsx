@@ -160,15 +160,28 @@ export function App() {
         const isUUID = /^[0-9a-f-]{32,36}$/i.test(itemId);
         if (!isUUID) return false;
 
-        const publicItem = await api.getPublicItem(itemId);
+        const [publicItem, userItems] = await Promise.all([
+          api.getPublicItem(itemId),
+          api.getItems().catch(() => []),
+        ]);
         if (!publicItem) return false;
 
-        setSelectedItem({
-          ...publicItem,
-          status: 'planned',
-          rating: 0,
-          isSharedPreview: true,
-        } as any);
+        const norm = (s?: string) => (s || '').trim().toLowerCase();
+        const existingItem = (userItems || []).find(
+          (ui) => norm(ui.title) === norm(publicItem.title)
+        );
+
+        if (existingItem) {
+          // Already in user's list! Open user's own item details card directly
+          setSelectedItem(existingItem);
+        } else {
+          setSelectedItem({
+            ...publicItem,
+            status: 'planned',
+            rating: 0,
+            isSharedPreview: true,
+          } as any);
+        }
         setActiveTab('details');
         window.scrollTo(0, 0);
         return true;
@@ -298,6 +311,16 @@ export function App() {
 
   const handleAddSharedItem = async (sharedItem: Item) => {
     triggerHaptic();
+    const norm = (s?: string) => (s || '').trim().toLowerCase();
+    const existing = items.find((i) => norm(i.title) === norm(sharedItem.title));
+
+    if (existing) {
+      setSelectedItem(existing);
+      setActiveTab('details');
+      window.scrollTo(0, 0);
+      return;
+    }
+
     const payload: Partial<Item> = {
       title: sharedItem.title,
       category: sharedItem.category,
@@ -310,8 +333,13 @@ export function App() {
       description: sharedItem.description,
       note: sharedItem.note,
     };
-    await api.createItem(payload);
-    setActiveTab('home');
+    const createdItem = await api.createItem(payload);
+    if (createdItem) {
+      setSelectedItem(createdItem as Item);
+      setActiveTab('details');
+    } else {
+      setActiveTab('home');
+    }
     window.scrollTo(0, 0);
     loadData();
   };

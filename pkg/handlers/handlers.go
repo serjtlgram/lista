@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -16,15 +18,22 @@ import (
 )
 
 type Handler struct {
-	DB *db.DB
+	DB       *db.DB
+	BotToken string
 }
 
-func NewHandler(database *db.DB) *Handler {
-	return &Handler{DB: database}
+func NewHandler(database *db.DB, botToken string) *Handler {
+	return &Handler{
+		DB:       database,
+		BotToken: botToken,
+	}
 }
 
-// UpsertUser ensures user exists in database
+// UpsertUser ensures user exists in database and triggers welcome message if first visit
 func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
+	if h.DB == nil || h.DB.Pool == nil {
+		return nil
+	}
 	ctx := r.Context()
 	query := `
 		INSERT INTO users (id, username, first_name, last_name, photo_url, updated_at)
@@ -37,7 +46,83 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 			updated_at = CURRENT_TIMESTAMP;
 	`
 	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Check and mark welcomed atomically
+	// If welcomed was false, this UPDATE changes 1 row to true, giving us execution right to send the message ONCE
+	res, err := h.DB.Pool.Exec(ctx, "UPDATE users SET welcomed = true WHERE id = $1 AND welcomed = false", u.ID)
+	if err == nil && res.RowsAffected() == 1 {
+		go h.sendWelcomeMessage(u.ID)
+	}
+
+	return nil
+}
+
+func (h *Handler) sendWelcomeMessage(userID int64) {
+	if h.BotToken == "" {
+		log.Printf("[WelcomeBot] BotToken is empty, skipping welcome message for user %d", userID)
+		return
+	}
+
+	msgText := `✨ <b>Добро пожаловать в LISTA!</b> 🎬📚🎮
+
+LISTA — твое персональное мини-приложение для сохранения впечатлений от фильмов, сериалов, книг, аудиокниг, подкастов и игр.
+
+<b>Что умеет LISTA:</b>
+📌 <b>Сохраняй</b> всё, что посмотрел, прочитал или прошёл
+⭐ <b>Ставь оценки</b> и добавляй личные заметки
+⏱ <b>Отслеживай прогресс</b> и время, потраченное на контент
+🔗 <b>Делись</b> элементами и своими списками с друзьями
+
+Попробуй — это удобно и прикольно! 👇
+https://t.me/manytgbot`
+
+	payload := map[string]interface{}{
+		"chat_id":                  userID,
+		"text":                     msgText,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview": false,
+		"reply_markup": map[string]interface{}{
+			"inline_keyboard": [][]map[string]interface{}{
+				{
+					{
+						"text": "🚀 Открыть LISTA",
+						"url":  "https://t.me/manytgbot",
+					},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("[WelcomeBot] Error encoding JSON payload: %v", err)
+		return
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", h.BotToken)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		log.Printf("[WelcomeBot] Error creating http request: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("[WelcomeBot] Error sending welcome message to Telegram user %d: %v", userID, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		log.Printf("[WelcomeBot] Welcome message sent successfully to user %d", userID)
+	} else {
+		log.Printf("[WelcomeBot] Telegram API returned status %s for user %d", resp.Status, userID)
+	}
 }
 
 // GET /api/user/profile
@@ -191,12 +276,37 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(req.Title) == "" {
+	titleTrimmed := strings.TrimSpace(req.Title)
+	if titleTrimmed == "" {
 		http.Error(w, `{"error":"title is required"}`, http.StatusBadRequest)
 		return
 	}
 
 	cat := mapCategoryToEn(req.Category)
+
+	// Check if user already has an item with the same title to prevent duplicates
+	if h.DB != nil && h.DB.Pool != nil {
+		checkQuery := `
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+			FROM items
+			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
+			LIMIT 1;
+		`
+		var existingItem models.Item
+		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
+			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
+			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+		)
+		if err == nil {
+			// Item already exists for this user, return existing item without creating duplicate
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(existingItem)
+			return
+		}
+	}
+
 	status := mapStatusToEn(req.Status)
 	itemUUID := uuid.New().String()
 
@@ -535,5 +645,36 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(item)
+}
+
+// POST /api/telegram/webhook
+func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
+	var update models.TelegramUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if update.Message != nil && update.Message.From != nil && strings.HasPrefix(update.Message.Text, "/start") {
+		userID := update.Message.From.ID
+		if h.DB != nil && h.DB.Pool != nil {
+			query := `
+				INSERT INTO users (id, username, first_name, last_name, welcomed, updated_at)
+				VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+				ON CONFLICT (id) DO UPDATE SET
+					username = EXCLUDED.username,
+					first_name = EXCLUDED.first_name,
+					last_name = EXCLUDED.last_name,
+					welcomed = true,
+					updated_at = CURRENT_TIMESTAMP;
+			`
+			_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName)
+		}
+
+		// Always send welcome message when user explicitly presses /start command
+		go h.sendWelcomeMessage(userID)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 

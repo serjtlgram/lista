@@ -10,6 +10,7 @@ type User struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	PhotoURL  string    `json:"photo_url"`
+	Welcomed  bool      `json:"welcomed"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -97,4 +98,21 @@ type StatsResponse struct {
 	GrowthPercentage  float64            `json:"growth_percentage"`
 	CategoryPercentage map[string]float64 `json:"category_percentage"`
 	WeeklyActivity    []int              `json:"weekly_activity"`
+}
+
+type TelegramUpdate struct {
+	UpdateID int `json:"update_id"`
+	Message  *struct {
+		MessageID int `json:"message_id"`
+		From      *struct {
+			ID        int64  `json:"id"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+			Username  string `json:"username"`
+		} `json:"from"`
+		Chat *struct {
+			ID int64 `json:"id"`
+		} `json:"chat"`
+		Text string `json:"text"`
+	} `json:"message"`
 }
