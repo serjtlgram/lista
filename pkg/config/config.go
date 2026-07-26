@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	BotToken    string
-	Environment string
+	Port          string
+	DatabaseURL   string
+	BotToken      string
+	Environment   string
+	YoutubeAPIKey string
 }
 
 func LoadConfig() *Config {
@@ -33,10 +34,13 @@ func LoadConfig() *Config {
 		env = "production"
 	}
 
+	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
+
 	return &Config{
-		Port:        port,
-		DatabaseURL: dbURL,
-		BotToken:    botToken,
-		Environment: env,
+		Port:          port,
+		DatabaseURL:   dbURL,
+		BotToken:      botToken,
+		Environment:   env,
+		YoutubeAPIKey: youtubeKey,
 	}
 }

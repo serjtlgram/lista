@@ -28,7 +28,7 @@ func main() {
 		defer database.Close()
 	}
 
-	h := handlers.NewHandler(database, cfg.BotToken)
+	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey)
 
 	r := chi.NewRouter()
 
@@ -68,6 +68,7 @@ func main() {
 		r.Delete("/api/items/{id}", h.DeleteItem)
 		r.Get("/api/stats", h.GetStats)
 		r.Get("/api/catalog/search", h.SearchCatalog)
+		r.Get("/api/youtube/search", h.SearchYouTube)
 	})
 
 	server := &http.Server{

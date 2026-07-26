@@ -16,6 +16,7 @@ export interface Item {
   note?: string;
   raw_input?: string;
   ai_parsed?: boolean;
+  youtube_url?: string;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
@@ -30,6 +31,7 @@ export interface CatalogItem {
   release_year?: string;
   poster_url?: string;
   description?: string;
+  youtube_url?: string;
 }
 
 export interface UserProfile {

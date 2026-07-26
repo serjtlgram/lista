@@ -41,6 +41,7 @@ func Connect(connString string) (*DB, error) {
 
 	// Auto-migrate schema additions if needed
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS youtube_url TEXT DEFAULT '';`)
 
 	return &DB{Pool: pool}, nil
 }

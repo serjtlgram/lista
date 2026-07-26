@@ -94,6 +94,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
+  const [youtubeUrl, setYoutubeUrl] = useState(editingItem?.youtube_url || '');
   const [description, setDescription] = useState(editingItem?.description || '');
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(true);
@@ -112,6 +113,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setGenre(getTranslatedGenreFull(editingItem.genre, t));
       setReleaseYear(editingItem.release_year || '');
       setPosterUrl(editingItem.poster_url || '');
+      setYoutubeUrl(editingItem.youtube_url || '');
       setDescription(editingItem.description || '');
       setNote(editingItem.note || '');
 
@@ -136,6 +138,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setEpisodesCount('');
       setReleaseYear('');
       setPosterUrl('');
+      setYoutubeUrl('');
       setDescription('');
       setNote('');
       setShowAdvanced(true);
@@ -186,6 +189,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (sug.genre) setGenre(sug.genre);
     if (sug.release_year) setReleaseYear(sug.release_year);
     if (sug.poster_url) setPosterUrl(sug.poster_url);
+    if (sug.youtube_url) setYoutubeUrl(sug.youtube_url);
     if (sug.description) setDescription(sug.description);
     setShowSuggestions(false);
   };
@@ -223,6 +227,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       duration: finalDuration.trim(),
       release_year: releaseYear.trim(),
       poster_url: finalPoster,
+      youtube_url: youtubeUrl.trim(),
       description: description.trim(),
       note: note.trim(),
     };
@@ -516,6 +521,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   value={posterUrl}
                   onChange={(e) => setPosterUrl(e.target.value)}
                   placeholder={t.modal.placeholder_poster}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-gray-400 block mb-1">{t.modal.youtube_url_label}</label>
+                <input
+                  type="text"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  placeholder={t.modal.placeholder_youtube_url}
                   className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
                 />
               </div>

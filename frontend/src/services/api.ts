@@ -120,6 +120,22 @@ export const api = {
     }
   },
 
+  async searchYouTube(title: string, category?: string): Promise<string> {
+    try {
+      if (!title) return '';
+      const params = new URLSearchParams({ q: title });
+      if (category) params.append('category', category);
+
+      const res = await fetch(`${API_BASE}/api/youtube/search?${params.toString()}`, { headers: getHeaders() });
+      if (!res.ok) return '';
+      const data = await res.json();
+      return data.youtube_url || '';
+    } catch (e) {
+      console.warn('API searchYouTube error:', e);
+      return '';
+    }
+  },
+
   async getPublicItem(id: string): Promise<Item | null> {
     try {
       const res = await fetch(`${API_BASE}/api/public/items/${id}`);

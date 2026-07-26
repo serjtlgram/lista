@@ -31,6 +31,7 @@ type Item struct {
 	Note        string     `json:"note"`
 	RawInput    string     `json:"raw_input"`   // For future AI context parsing
 	AIParsed    bool       `json:"ai_parsed"`
+	YoutubeURL  string     `json:"youtube_url,omitempty"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -49,6 +50,7 @@ type CreateItemRequest struct {
 	Description string `json:"description"`
 	Note        string `json:"note"`
 	RawInput    string `json:"raw_input"`
+	YoutubeURL  string `json:"youtube_url,omitempty"`
 }
 
 type UpdateItemRequest struct {
@@ -63,6 +65,7 @@ type UpdateItemRequest struct {
 	Description *string `json:"description,omitempty"`
 	Note        *string `json:"note,omitempty"`
 	RawInput    *string `json:"raw_input,omitempty"`
+	YoutubeURL  *string `json:"youtube_url,omitempty"`
 }
 
 type CatalogSearchResult struct {
@@ -73,6 +76,7 @@ type CatalogSearchResult struct {
 	ReleaseYear string `json:"release_year"`
 	PosterURL   string `json:"poster_url"`
 	Description string `json:"description"`
+	YoutubeURL  string `json:"youtube_url,omitempty"`
 }
 
 type CategoryCount struct {

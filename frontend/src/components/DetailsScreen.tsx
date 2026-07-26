@@ -16,12 +16,35 @@ import {
   Clock,
   Tag,
   Tv,
-  PlusCircle
+  PlusCircle,
+  Youtube,
+  ExternalLink
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { getItemPoster } from '../services/posters';
 import { getTranslatedGenreShort } from '../services/genres';
+import { api } from '../services/api';
+
+const getYouTubeEmbedUrl = (url?: string): string | null => {
+  if (!url) return null;
+  try {
+    if (url.includes('youtube.com/embed/')) return url;
+    if (url.includes('playlist?list=')) {
+      const listId = url.split('playlist?list=')[1]?.split('&')[0];
+      return listId ? `https://www.youtube.com/embed/videoseries?list=${listId}` : null;
+    }
+    let videoId = '';
+    if (url.includes('watch?v=')) {
+      videoId = url.split('watch?v=')[1]?.split('&')[0] || '';
+    } else if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+    }
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  } catch {
+    return null;
+  }
+};
 
 interface DetailsScreenProps {
   item: Item;
@@ -49,10 +72,36 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [noteText, setNoteText] = useState(item.note || '');
   const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [item]);
+
+  // Automatic YouTube search fallback on details view if item is movie/show and youtube_url is missing
+  useEffect(() => {
+    const catLower = (item.category || '').toLowerCase();
+    const isMovieOrShow =
+      catLower.includes('movie') ||
+      catLower.includes('show') ||
+      catLower.includes('series') ||
+      catLower.includes('фильм') ||
+      catLower.includes('сериал');
+
+    if (isMovieOrShow && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
+      setIsSearchingYoutube(true);
+      api
+        .searchYouTube(item.title, item.category)
+        .then((ytUrl) => {
+          if (ytUrl) {
+            onUpdateItem(item.id, { youtube_url: ytUrl });
+          }
+        })
+        .finally(() => {
+          setIsSearchingYoutube(false);
+        });
+    }
+  }, [item.id, item.title, item.category, item.youtube_url]);
 
   useEffect(() => {
     setNoteText(item.note || '');
@@ -304,6 +353,53 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <p className="text-[14px] text-white leading-relaxed font-normal">
             {item.description}
           </p>
+        </div>
+      )}
+
+      {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
+      {item.youtube_url && item.youtube_url.trim() && (
+        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center">
+                <Youtube className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-white tracking-wide">
+                {t.details.watch_on_youtube}
+              </span>
+            </div>
+            <a
+              href={item.youtube_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-semibold text-accentTeal hover:underline flex items-center gap-1"
+            >
+              <span>{t.details.open_in_youtube}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          {getYouTubeEmbedUrl(item.youtube_url) ? (
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black">
+              <iframe
+                src={getYouTubeEmbedUrl(item.youtube_url)!}
+                title={item.title}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <a
+              href={item.youtube_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-600/20 transition"
+            >
+              <Youtube className="w-4 h-4" />
+              <span>{t.details.open_in_youtube}</span>
+            </a>
+          )}
         </div>
       )}
 

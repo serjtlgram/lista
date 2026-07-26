@@ -29,14 +29,16 @@ CREATE TABLE IF NOT EXISTS items (
     note TEXT DEFAULT '',
     raw_input TEXT DEFAULT '', -- Raw user description for future AI context parsing
     ai_parsed BOOLEAN DEFAULT FALSE,
+    youtube_url TEXT DEFAULT '',
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ensure description & welcomed columns exist for existing deployments
+-- Ensure description, youtube_url & welcomed columns exist for existing deployments
 ALTER TABLE items ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE items ADD COLUMN IF NOT EXISTS youtube_url TEXT DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed BOOLEAN DEFAULT FALSE;
 
 -- Indexes for efficient queries

@@ -68,9 +68,11 @@ export interface Translations {
     placeholder_duration: string;
     placeholder_year: string;
     placeholder_poster: string;
+    placeholder_youtube_url: string;
     placeholder_note: string;
     placeholder_description: string;
     description_label: string;
+    youtube_url_label: string;
     episodes_label: string;
     episodes_placeholder: string;
     duration_min_label: string;
@@ -122,6 +124,8 @@ export interface Translations {
     elements_count: string;
     by_date: string;
     no_items_found: string;
+    watch_on_youtube: string;
+    open_in_youtube: string;
   };
   stats: {
     title: string;

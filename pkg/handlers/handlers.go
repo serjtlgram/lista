@@ -15,17 +15,20 @@ import (
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/db"
 	"lista-backend/pkg/models"
+	"lista-backend/pkg/youtube"
 )
 
 type Handler struct {
-	DB       *db.DB
-	BotToken string
+	DB            *db.DB
+	BotToken      string
+	YoutubeAPIKey string
 }
 
-func NewHandler(database *db.DB, botToken string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string) *Handler {
 	h := &Handler{
-		DB:       database,
-		BotToken: botToken,
+		DB:            database,
+		BotToken:      botToken,
+		YoutubeAPIKey: youtubeAPIKey,
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
@@ -340,7 +343,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -380,7 +383,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			items = append(items, item)
@@ -421,7 +424,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	// Check if user already has an item with the same title to prevent duplicates
 	if h.DB != nil && h.DB.Pool != nil {
 		checkQuery := `
-			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
 			LIMIT 1;
@@ -430,7 +433,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
-			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
 		)
 		if err == nil {
 			// Item already exists for this user, return existing item without creating duplicate
@@ -450,9 +453,16 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		completedAt = &now
 	}
 
+	ytURL := strings.TrimSpace(req.YoutubeURL)
+	if ytURL == "" && (cat == "movie" || cat == "show") {
+		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat); err == nil && foundURL != "" {
+			ytURL = foundURL
+		}
+	}
+
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -470,12 +480,13 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Description = req.Description
 	createdItem.Note = req.Note
 	createdItem.RawInput = req.RawInput
+	createdItem.YoutubeURL = ytURL
 	createdItem.CompletedAt = completedAt
 
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, completedAt,
+		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -565,6 +576,11 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.RawInput != nil {
 		query += fmt.Sprintf(", raw_input = $%d", argIdx)
 		args = append(args, *req.RawInput)
+		argIdx++
+	}
+	if req.YoutubeURL != nil {
+		query += fmt.Sprintf(", youtube_url = $%d", argIdx)
+		args = append(args, *req.YoutubeURL)
 		argIdx++
 	}
 
@@ -761,7 +777,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
 		FROM items WHERE id = $1 LIMIT 1;
 	`
 
@@ -769,7 +785,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-		&item.RawInput, &item.AIParsed, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -779,6 +795,26 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(item)
+}
+
+// GET /api/youtube/search?q=...&category=...
+func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	cat := strings.TrimSpace(r.URL.Query().Get("category"))
+	if q == "" {
+		http.Error(w, `{"error":"q parameter is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	ytURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, q, cat)
+	if err != nil {
+		log.Printf("YouTube search error: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"youtube_url": ytURL,
+	})
 }
 
 // POST /api/telegram/webhook
