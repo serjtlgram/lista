@@ -18,8 +18,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   onToggleStatus,
   t,
 }) => {
-  const starsCount = Math.min(5, Math.max(1, Math.round((item.rating || 10) / 2)));
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
+  const isPlanned = item.status === 'planned' || item.status === 'в планах' || item.status === 'у планах' || item.status === 'отложено';
 
   const posterSrc = getItemPoster(item);
 
@@ -101,13 +101,17 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           <p className="text-[11px] text-gray-400">
             {formatSubtitle()}
           </p>
-          <div className="flex items-center gap-0.5 mt-1 text-amber-400">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                className={`w-3 h-3 ${s <= starsCount ? 'fill-amber-400 text-amber-400' : 'text-gray-600'}`}
-              />
-            ))}
+          <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-amber-400">
+            {!isPlanned ? (
+              <>
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span>{item.rating || 10}/10</span>
+              </>
+            ) : (
+              <span className="text-[11px] text-gray-500 font-normal">
+                {t ? t.modal.status_planned : 'В планах'}
+              </span>
+            )}
           </div>
         </div>
       </div>

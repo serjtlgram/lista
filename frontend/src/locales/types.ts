@@ -114,6 +114,10 @@ export interface Translations {
     edit: string;
     share: string;
     delete: string;
+    note_placeholder_empty: string;
+    rating_planned_warning: string;
+    share_app_tagline: string;
+    added_to_my_list: string;
     search_placeholder: string;
     elements_count: string;
     by_date: string;

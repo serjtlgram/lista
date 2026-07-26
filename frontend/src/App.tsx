@@ -126,7 +126,7 @@ export function App() {
     }
   }, [theme]);
 
-  // Telegram SDK Init
+  // Telegram SDK Init & Deep Link Detection
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
@@ -139,6 +139,46 @@ export function App() {
       } catch (e) {
         console.warn('Telegram SDK init warning:', e);
       }
+    }
+
+    try {
+      const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('item') || new URLSearchParams(window.location.search).get('startapp');
+      if (startParam) {
+        const cleanParam = startParam.replace('item_', '').replace('share_', '');
+        try {
+          const jsonStr = decodeURIComponent(atob(cleanParam));
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && parsed.title) {
+            const sharedItem: Item = {
+              id: 'shared_' + Date.now(),
+              user_id: 0,
+              title: parsed.title,
+              category: parsed.category || 'Фильмы',
+              status: 'planned',
+              rating: 0,
+              genre: parsed.genre || '',
+              duration: parsed.duration || '',
+              release_year: parsed.release_year || '',
+              poster_url: parsed.poster_url || '',
+              description: parsed.description || '',
+              note: parsed.note || '',
+              raw_input: '',
+              ai_parsed: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              isSharedPreview: true,
+            } as any;
+
+            setSelectedItem(sharedItem);
+            setActiveTab('details');
+            window.scrollTo(0, 0);
+          }
+        } catch (err) {
+          console.warn('Could not parse shared item payload:', err);
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading start_param:', e);
     }
   }, []);
 
@@ -235,6 +275,7 @@ export function App() {
     triggerHaptic();
     setSelectedItem(item);
     setActiveTab('details');
+    window.scrollTo(0, 0);
   };
 
   const handleToggleStatus = async (item: Item) => {
@@ -248,6 +289,26 @@ export function App() {
     triggerHaptic();
     await api.updateItem(id, updates);
     setSelectedItem((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev));
+    loadData();
+  };
+
+  const handleAddSharedItem = async (sharedItem: Item) => {
+    triggerHaptic();
+    const payload: Partial<Item> = {
+      title: sharedItem.title,
+      category: sharedItem.category,
+      status: 'planned',
+      rating: 10,
+      genre: sharedItem.genre,
+      duration: sharedItem.duration,
+      release_year: sharedItem.release_year,
+      poster_url: sharedItem.poster_url,
+      description: sharedItem.description,
+      note: sharedItem.note,
+    };
+    await api.createItem(payload);
+    setActiveTab('home');
+    window.scrollTo(0, 0);
     loadData();
   };
 
@@ -386,13 +447,15 @@ export function App() {
           <section>
             <DetailsScreen
               item={selectedItem}
-              onBack={() => handleTabChange('home')}
+              onBack={() => setActiveTab('home')}
               onEdit={(item) => {
                 setEditingItem(item);
                 setIsModalOpen(true);
               }}
               onDelete={handleDeleteItem}
               onUpdateItem={handleUpdateItem}
+              onAddSharedItem={handleAddSharedItem}
+              isSharedPreview={(selectedItem as any).isSharedPreview}
               t={t}
             />
           </section>

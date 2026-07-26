@@ -15,7 +15,8 @@ import {
   X,
   Clock,
   Tag,
-  Tv
+  Tv,
+  PlusCircle
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -28,6 +29,8 @@ interface DetailsScreenProps {
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
+  onAddSharedItem?: (item: Item) => void;
+  isSharedPreview?: boolean;
   t: Translations;
 }
 
@@ -37,29 +40,49 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   onEdit,
   onDelete,
   onUpdateItem,
+  onAddSharedItem,
+  isSharedPreview = false,
   t,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(item.note || '');
   const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [item]);
 
   useEffect(() => {
     setNoteText(item.note || '');
     setIsEditingNote(false);
   }, [item]);
 
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   const currentRating = item.rating || 10;
   const posterSrc = getItemPoster(item);
 
+  const isPlanned =
+    item.status === 'planned' ||
+    item.status === 'в планах' ||
+    item.status === 'у планах' ||
+    item.status === 'отложено';
+
   const formatCategorySingle = (cat: string) => {
     switch (cat?.toLowerCase()) {
-      case 'movie': case 'фильмы': return t.categories.movie_single;
-      case 'show': case 'shows': case 'series': case 'сериалы': return t.categories.show_single;
-      case 'book': case 'книги': return t.categories.book_single;
-      case 'audiobook': case 'аудиокниги': return t.categories.audiobook_single;
-      case 'podcast': case 'подкасты': return t.categories.podcast_single;
-      case 'game': case 'игры': return t.categories.game_single;
+      case 'movie': case 'фильмы': case 'фильм': return t.categories.movie_single;
+      case 'show': case 'shows': case 'series': case 'сериалы': case 'сериал': return t.categories.show_single;
+      case 'book': case 'книги': case 'книга': return t.categories.book_single;
+      case 'audiobook': case 'аудиокниги': case 'аудіокниги': case 'аудиокнига': return t.categories.audiobook_single;
+      case 'podcast': case 'подкасты': case 'подкасти': case 'подкаст': return t.categories.podcast_single;
+      case 'game': case 'игры': case 'ігри': case 'игра': case 'гра': return t.categories.game_single;
       default: return cat;
     }
   };
@@ -83,14 +106,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     return '26.7.26';
   };
 
-  const formatShortGenre = (genreStr?: string | null): string => {
-    if (!genreStr || !genreStr.trim()) return '-';
-    let cleaned = genreStr.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
-    let main = cleaned.split('/')[0].trim();
-    main = main.split(',')[0].trim();
-    return main || '-';
-  };
-
   const statusOptions = [
     { val: 'watching', label: getTranslatedStatus('watching', item.category, t) },
     { val: 'completed', label: t.modal.status_completed },
@@ -105,6 +120,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   };
 
   const handleSelectRating = (newRating: number) => {
+    if (isPlanned) {
+      setToastMessage(t.details.rating_planned_warning);
+      return;
+    }
     if (onUpdateItem) {
       onUpdateItem(item.id, { rating: newRating });
     }
@@ -118,13 +137,39 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   };
 
   const handleShareTelegram = () => {
-    const text = `📌 TrackList: ${item.title} (${formatCategorySingle(item.category)})\n⭐ ${t.details.my_rating}: ${currentRating}/10`;
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent('https://manytgbot.github.io')}&text=${encodeURIComponent(text)}`;
+    const catLabel = formatCategorySingle(item.category);
+    const itemDataObj = {
+      title: item.title,
+      category: item.category,
+      genre: item.genre,
+      duration: item.duration,
+      release_year: item.release_year,
+      poster_url: item.poster_url,
+      description: item.description,
+      note: item.note,
+    };
+
+    let payload = '';
+    try {
+      payload = btoa(encodeURIComponent(JSON.stringify(itemDataObj)));
+    } catch (e) {
+      payload = item.id;
+    }
+
+    const shareUrl = `https://t.me/manytgbot/lista?startapp=item_${payload}`;
+    
+    let messageText = `${t.details.share_app_tagline}\n📌 ${item.title} (${catLabel})`;
+    if (!isPlanned) {
+      messageText += `\n⭐️ ${t.details.my_rating}: ${currentRating}/10`;
+    }
+
+    const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(messageText)}`;
+
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {
-      tg.openTelegramLink(shareUrl);
+      tg.openTelegramLink(fullTelegramShare);
     } else {
-      window.open(shareUrl, '_blank');
+      window.open(fullTelegramShare, '_blank');
     }
   };
 
@@ -282,7 +327,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
-          <div className="text-xl font-extrabold text-accentTeal">{currentRating}/10</div>
+          <div className={`text-xl font-extrabold ${isPlanned ? 'text-gray-500' : 'text-accentTeal'}`}>
+            {isPlanned ? '- / 10' : `${currentRating}/10`}
+          </div>
         </div>
 
         {/* 10 Interactive Stars */}
@@ -296,7 +343,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             >
               <Star
                 className={`w-5 h-5 ${
-                  starNum <= currentRating
+                  !isPlanned && starNum <= currentRating
                     ? 'fill-amber-400 text-amber-400'
                     : 'text-gray-600 hover:text-amber-300'
                 }`}
@@ -353,37 +400,60 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         ) : (
           <p
             onClick={() => setIsEditingNote(true)}
-            className="text-xs text-gray-300 leading-relaxed italic cursor-pointer hover:text-white transition"
+            className="text-xs text-gray-300 leading-relaxed cursor-pointer hover:text-white transition"
           >
-            "{item.note || '-'}"
+            {item.note && item.note.trim() ? (
+              <span className="italic">"{item.note}"</span>
+            ) : (
+              <span className="text-gray-500 font-normal italic">{t.details.note_placeholder_empty}</span>
+            )}
           </p>
         )}
       </div>
 
-      {/* 3-Column Detail Action Grid */}
-      <div className="grid grid-cols-3 gap-2.5 pt-1">
-        <button
-          onClick={() => onEdit(item)}
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
-        >
-          <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
-          <span className="text-[11px] font-semibold">{t.details.edit}</span>
-        </button>
-        <button
-          onClick={handleShareTelegram}
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
-        >
-          <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
-          <span className="text-[11px] font-semibold">{t.details.share}</span>
-        </button>
-        <button
-          onClick={() => onDelete(item.id)}
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
-        >
-          <Trash2 className="w-4 h-4 mb-1" />
-          <span className="text-[11px] font-semibold">{t.details.delete}</span>
-        </button>
-      </div>
+      {/* Action Buttons: Single Add to List button if shared preview, else 3-Column Action Grid */}
+      {isSharedPreview ? (
+        <div className="pt-2">
+          <button
+            onClick={() => onAddSharedItem && onAddSharedItem(item)}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-xl hover:opacity-90 active:scale-98 transition flex items-center justify-center gap-2"
+          >
+            <PlusCircle className="w-5 h-5" />
+            <span>{t.details.add_to_list}</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2.5 pt-1">
+          <button
+            onClick={() => onEdit(item)}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+          >
+            <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
+            <span className="text-[11px] font-semibold">{t.details.edit}</span>
+          </button>
+          <button
+            onClick={handleShareTelegram}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+          >
+            <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
+            <span className="text-[11px] font-semibold">{t.details.share}</span>
+          </button>
+          <button
+            onClick={() => onDelete(item.id)}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
+          >
+            <Trash2 className="w-4 h-4 mb-1" />
+            <span className="text-[11px] font-semibold">{t.details.delete}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Toast Notification Popup */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-accentViolet/95 backdrop-blur-md text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-2xl animate-fade-in text-center max-w-[85vw] border border-white/20">
+          {toastMessage}
+        </div>
+      )}
 
       {/* Clean Fullscreen Poster Lightbox Modal using React Portal */}
       {isFullscreenPoster && createPortal(
