@@ -58,7 +58,11 @@ func (h *Handler) InitBotCommandsAndMenu() {
 			},
 		},
 	}
-	h.sendBotAPIRequest("setChatMenuButton", menuPayload)
+	if respBytes, err := h.sendBotAPIRequestWithErr("setChatMenuButton", menuPayload); err != nil {
+		log.Printf("[BotMenuInit] Error setting chat menu button: %v, resp: %s", err, string(respBytes))
+	} else {
+		log.Printf("[BotMenuInit] Chat menu button set successfully: %s", string(respBytes))
+	}
 
 	// 2. Set default /start command
 	commandsPayload := map[string]interface{}{
