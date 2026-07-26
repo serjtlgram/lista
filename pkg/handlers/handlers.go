@@ -831,6 +831,8 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"youtube_url": ytURL,
 	})
+}
+
 // POST /api/telegram/webhook
 func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 	var update models.TelegramUpdate
