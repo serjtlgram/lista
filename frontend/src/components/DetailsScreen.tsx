@@ -138,7 +138,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleShareTelegram = () => {
     const catLabel = formatCategorySingle(item.category);
-    const shareUrl = `https://t.me/manytgbot/lista?startapp=${item.id}`;
+    const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
     
     let messageText = `${t.details.share_app_tagline}\n📌 ${item.title} (${catLabel})`;
     if (!isPlanned) {

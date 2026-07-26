@@ -143,7 +143,12 @@ export function App() {
 
     const handleDeepLink = async () => {
       try {
-        const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('item') || new URLSearchParams(window.location.search).get('startapp');
+        const urlParams = new URLSearchParams(window.location.search);
+        const startParam =
+          tg?.initDataUnsafe?.start_param ||
+          urlParams.get('item') ||
+          urlParams.get('startapp') ||
+          urlParams.get('tgWebAppStartParam');
         if (startParam) {
           const cleanParam = startParam.replace('item_', '').replace('share_', '').trim();
           if (!cleanParam) return;
