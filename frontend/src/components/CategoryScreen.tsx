@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Search as SearchIcon, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Search as SearchIcon, ChevronDown } from 'lucide-react';
 import { Item } from '../types';
 import { ItemCard } from './ItemCard';
 import { Translations } from '../services/i18n';
@@ -7,6 +7,8 @@ import { Translations } from '../services/i18n';
 interface CategoryScreenProps {
   title: string;
   items: Item[];
+  activeCategories?: string[];
+  onSelectCategory?: (category: string) => void;
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onToggleStatus: (item: Item) => void;
@@ -16,6 +18,8 @@ interface CategoryScreenProps {
 export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   title,
   items,
+  activeCategories = [],
+  onSelectCategory,
   onBack,
   onSelectItem,
   onToggleStatus,
@@ -24,6 +28,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   const filters = [
     { key: 'all', label: t.recently_added.see_all },
@@ -57,8 +62,14 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     return true;
   });
 
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+  });
+
   return (
-    <div className="space-y-4 animate-slide-up">
+    <div className="space-y-3.5 animate-slide-up">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="p-2 text-gray-300 hover:text-white">
@@ -70,7 +81,6 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
             onClick={() => setShowSearchInput(!showSearchInput)}
             className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white"
           />
-          <SlidersHorizontal className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white" />
         </div>
       </div>
 
@@ -84,8 +94,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         />
       )}
 
-      {/* Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+      {/* Row 1: Status Filter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
         {filters.map((filter) => (
           <button
             key={filter.key}
@@ -101,17 +111,54 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         ))}
       </div>
 
-      {/* Subheader count & sort */}
-      <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
-        <span>{filteredItems.length} {t.details.elements_count}</span>
-        <button className="flex items-center gap-1 hover:text-white">
-          {t.details.by_date} <ChevronDown className="w-3.5 h-3.5" />
+      {/* Row 2: Active User Categories Chips (Scrollable Horizontally) */}
+      {activeCategories.length > 0 && onSelectCategory && (
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
+          <button
+            onClick={() => onSelectCategory('Все')}
+            className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+              title === 'Все'
+                ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+            }`}
+          >
+            {t.recently_added.see_all}
+          </button>
+          {activeCategories.map((catKey) => {
+            const isSelected = title === catKey;
+            return (
+              <button
+                key={catKey}
+                onClick={() => onSelectCategory(catKey)}
+                className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  isSelected
+                    ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                }`}
+              >
+                {getTranslatedCategoryTitle(catKey)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Subheader count & working sort button */}
+      <div className="flex items-center justify-between text-xs text-gray-400 pt-0.5">
+        <span>{sortedItems.length} {t.details.elements_count}</span>
+        <button
+          onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+          className="flex items-center gap-1 text-gray-300 hover:text-white font-medium transition active:scale-95"
+          title="Сортировать по дате"
+        >
+          <span>{t.details.by_date}</span>
+          <ChevronDown className={`w-3.5 h-3.5 text-accentViolet transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
         </button>
       </div>
 
       {/* Items List */}
       <div className="space-y-2.5">
-        {filteredItems.map((item) => (
+        {sortedItems.map((item) => (
           <ItemCard
             key={item.id}
             item={item}
@@ -121,7 +168,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           />
         ))}
 
-        {filteredItems.length === 0 && (
+        {sortedItems.length === 0 && (
           <div className="text-center py-10 text-xs text-gray-500">
             {t.details.no_items_found}
           </div>

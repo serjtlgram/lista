@@ -43,6 +43,31 @@ export function App() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return !!(window as any).Telegram?.WebApp?.isFullscreen;
+  });
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
+
+    const checkFullscreen = () => {
+      setIsFullscreen(!!tg.isFullscreen);
+    };
+
+    checkFullscreen();
+
+    if (tg.onEvent) {
+      tg.onEvent('fullscreenChanged', checkFullscreen);
+    }
+    const interval = setInterval(checkFullscreen, 800);
+
+    return () => {
+      if (tg.offEvent) tg.offEvent('fullscreenChanged', checkFullscreen);
+      clearInterval(interval);
+    };
+  }, []);
+
   const t = translations[language] || translations.ru;
 
   // CloudStorage sync on init across all devices
@@ -278,7 +303,12 @@ export function App() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden">
+    <div
+      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden transition-all duration-200"
+      style={{
+        paddingTop: isFullscreen ? 'max(48px, env(safe-area-inset-top, 48px))' : undefined,
+      }}
+    >
       {/* Top Safe Area Header */}
       <div className="h-2 w-full"></div>
 
@@ -333,6 +363,8 @@ export function App() {
             <CategoryScreen
               title={selectedCategory}
               items={categoryItems}
+              activeCategories={activeCategories}
+              onSelectCategory={(cat) => setSelectedCategory(cat)}
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
@@ -385,8 +417,8 @@ export function App() {
         )}
       </main>
 
-      {/* Floating Action Button (+) ONLY in Category / Search screen */}
-      {activeTab === 'search' && (
+      {/* Floating Action Button (+) on Home & Search screens */}
+      {(activeTab === 'home' || activeTab === 'search') && (
         <button
           onClick={() => {
             triggerHaptic();
