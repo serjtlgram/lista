@@ -892,12 +892,18 @@ var topGenres = []struct {
 	Label string
 	Val   string
 }{
-	{"🎭 Драма", "Драма"},
+	{"❤️ Драма", "Драма"},
 	{"😂 Комедия", "Комедия"},
+	{"🔫 Боевик", "Боевик"},
+	{"🔍 Детектив", "Детектив"},
+	{"😱 Ужасы", "Ужасы"},
 	{"🚀 Фантастика", "Фантастика"},
-	{"🔪 Триллер", "Триллер"},
-	{"⚔️ Боевик", "Боевик"},
-	{"🪄 Фэнтези", "Фэнтези"},
+	{"🧙 Фэнтези", "Фэнтези"},
+	{"🕵️ Триллер", "Триллер"},
+	{"🗺️ Приключения", "Приключения"},
+	{"👨‍👩‍👧 Семейный", "Семейный"},
+	{"📚 Документ.", "Документальный"},
+	{"🎤 Музыка", "Музыка"},
 }
 
 func (h *Handler) handleCallbackQuery(cb *struct {
@@ -1061,6 +1067,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 
 	var genreRow1 []map[string]interface{}
 	var genreRow2 []map[string]interface{}
+	var genreRow3 []map[string]interface{}
+	var genreRow4 []map[string]interface{}
 
 	for i, g := range topGenres {
 		btnText := g.Label
@@ -1073,8 +1081,12 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 		}
 		if i < 3 {
 			genreRow1 = append(genreRow1, btn)
-		} else {
+		} else if i < 6 {
 			genreRow2 = append(genreRow2, btn)
+		} else if i < 9 {
+			genreRow3 = append(genreRow3, btn)
+		} else {
+			genreRow4 = append(genreRow4, btn)
 		}
 	}
 
@@ -1086,6 +1098,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 			},
 			genreRow1,
 			genreRow2,
+			genreRow3,
+			genreRow4,
 			{
 				{"text": "🎬 Открыть в TrackList", "url": appURL},
 			},

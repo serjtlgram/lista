@@ -28,19 +28,7 @@ var (
 	videoRendererRegex    = regexp.MustCompile(`"videoRenderer":\{"videoId":"([a-zA-Z0-9_-]{11})".*?"title":\{"runs":\[\{"text":"([^"]+)"`)
 	playlistRendererRegex = regexp.MustCompile(`"playlistRenderer":\{"playlistId":"([a-zA-Z0-9_-]{18,34})".*?"title":\{"simpleText":"([^"]+)"`)
 	fallbackVideoIDRegex  = regexp.MustCompile(`"videoId":"([a-zA-Z0-9_-]{11})"`)
-	fallbackPlaylistRegex = regexp.MustCompile(`"playlistId":"([a-zA-Z0-9_-]{18,34})"`)
 )
-
-func isPromoTitle(title string) bool {
-	t := strings.ToLower(title)
-	promoKeywords := []string{"трейлер", "тизер", "анонс", "клип", "промо", "отрывок", "обзор", "trailer", "teaser"}
-	for _, kw := range promoKeywords {
-		if strings.Contains(t, kw) {
-			return true
-		}
-	}
-	return false
-}
 
 func isVideoEmbeddable(client *http.Client, targetURL string) bool {
 	if targetURL == "" {
@@ -60,54 +48,31 @@ func isVideoEmbeddable(client *http.Client, targetURL string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// SearchYouTube searches YouTube for a video or playlist matching title and category.
-// Prioritizes full series / playlists / episode 1 over trailers, and verifies video is embeddable.
+// SearchYouTube searches YouTube specifically for the official trailer of a movie/series
 func SearchYouTube(apiKey, title, category string) (string, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
 		return "", nil
 	}
 
-	catLower := strings.ToLower(category)
-	isSeries := false
-	if strings.Contains(catLower, "show") || strings.Contains(catLower, "series") || strings.Contains(catLower, "сериал") {
-		isSeries = true
-	}
-
-	var searchQueries []string
-	if isSeries {
-		searchQueries = []string{
-			title + " все серии подряд",
-			title + " все серии",
-			title + " 1 серия",
-			title + " плейлист",
-			title + " трейлер",
-		}
-	} else {
-		searchQueries = []string{
-			title + " фильм",
-			title + " смотреть полностью",
-			title,
-			title + " трейлер",
-		}
+	searchQueries := []string{
+		title + " официальный трейлер",
+		title + " трейлер",
+		title + " official trailer",
 	}
 
 	client := &http.Client{Timeout: 6 * time.Second}
 
 	for _, query := range searchQueries {
-		isTrailerQuery := strings.Contains(strings.ToLower(query), "трейлер")
-
 		// 1. Try official YouTube Data API v3 if API key is configured
 		if apiKey != "" {
-			resultURL, err := searchViaOfficialAPI(client, apiKey, query, isTrailerQuery)
-			if err == nil && resultURL != "" {
+			if resultURL, err := searchViaOfficialAPI(client, apiKey, query); err == nil && resultURL != "" {
 				return resultURL, nil
 			}
 		}
 
 		// 2. Fallback: Search YouTube via public web search parser
-		resultURL, err := searchViaWebParser(client, query, isTrailerQuery)
-		if err == nil && resultURL != "" {
+		if resultURL, err := searchViaWebParser(client, query); err == nil && resultURL != "" {
 			return resultURL, nil
 		}
 	}
@@ -115,9 +80,9 @@ func SearchYouTube(apiKey, title, category string) (string, error) {
 	return "", nil
 }
 
-func searchViaOfficialAPI(client *http.Client, apiKey, query string, allowPromo bool) (string, error) {
+func searchViaOfficialAPI(client *http.Client, apiKey, query string) (string, error) {
 	apiURL := fmt.Sprintf(
-		"https://www.googleapis.com/youtube/v3/search?part=snippet&q=%s&type=video,playlist&maxResults=5&key=%s",
+		"https://www.googleapis.com/youtube/v3/search?part=snippet&q=%s&type=video&maxResults=5&key=%s",
 		url.QueryEscape(query),
 		apiKey,
 	)
@@ -143,25 +108,18 @@ func searchViaOfficialAPI(client *http.Client, apiKey, query string, allowPromo 
 	}
 
 	for _, item := range data.Items {
-		videoTitle := item.Snippet.Title
-		if !allowPromo && isPromoTitle(videoTitle) {
-			continue
-		}
-		var candidateURL string
-		if item.ID.PlaylistID != "" {
-			candidateURL = "https://www.youtube.com/playlist?list=" + item.ID.PlaylistID
-		} else if item.ID.VideoID != "" {
-			candidateURL = "https://www.youtube.com/watch?v=" + item.ID.VideoID
-		}
-		if candidateURL != "" && isVideoEmbeddable(client, candidateURL) {
-			return candidateURL, nil
+		if item.ID.VideoID != "" {
+			candidateURL := "https://www.youtube.com/watch?v=" + item.ID.VideoID
+			if isVideoEmbeddable(client, candidateURL) {
+				return candidateURL, nil
+			}
 		}
 	}
 
 	return "", nil
 }
 
-func searchViaWebParser(client *http.Client, query string, allowPromo bool) (string, error) {
+func searchViaWebParser(client *http.Client, query string) (string, error) {
 	searchURL := fmt.Sprintf("https://www.youtube.com/results?search_query=%s", url.QueryEscape(query))
 	req, err := http.NewRequest("GET", searchURL, nil)
 	if err != nil {
@@ -186,45 +144,16 @@ func searchViaWebParser(client *http.Client, query string, allowPromo bool) (str
 	}
 	bodyStr := string(bodyBytes)
 
-	// Check playlistRenderer matches first
-	if playlistMatches := playlistRendererRegex.FindAllStringSubmatch(bodyStr, -1); len(playlistMatches) > 0 {
-		for _, match := range playlistMatches {
-			if len(match) > 2 {
-				pID := match[1]
-				pTitle := match[2]
-				if !allowPromo && isPromoTitle(pTitle) {
-					continue
-				}
-				candidateURL := "https://www.youtube.com/playlist?list=" + pID
-				if isVideoEmbeddable(client, candidateURL) {
-					return candidateURL, nil
-				}
-			}
-		}
-	}
-
-	// Check videoRenderer matches with title inspection
+	// Check videoRenderer matches
 	if videoMatches := videoRendererRegex.FindAllStringSubmatch(bodyStr, -1); len(videoMatches) > 0 {
 		for _, match := range videoMatches {
-			if len(match) > 2 {
+			if len(match) > 1 {
 				vID := match[1]
-				vTitle := match[2]
-				if !allowPromo && isPromoTitle(vTitle) {
-					continue
-				}
 				candidateURL := "https://www.youtube.com/watch?v=" + vID
 				if isVideoEmbeddable(client, candidateURL) {
 					return candidateURL, nil
 				}
 			}
-		}
-	}
-
-	// Fallback playlist
-	if matches := fallbackPlaylistRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
-		candidateURL := "https://www.youtube.com/playlist?list=" + matches[1]
-		if isVideoEmbeddable(client, candidateURL) {
-			return candidateURL, nil
 		}
 	}
 

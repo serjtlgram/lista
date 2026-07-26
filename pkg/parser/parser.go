@@ -361,6 +361,44 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		}
 	}
 
+	// 4. Fallback HTML Microdata Scraper for Director & Cast (Kinobase, Kinopoisk, Lordfilm, etc.)
+	if media.Director == "" {
+		directorSectionRegex := regexp.MustCompile(`(?i)(?:itemprop=["']director["']|<div[^>]*class=["'][^"']*key[^"']*["'][^>]*>\s*Режисс[ёе]р\s*</div>)[^>]*>(.*?)(?:</div>\s*</div>|</td>|</tr|itemprop=["']actor|$)`)
+		if m := directorSectionRegex.FindStringSubmatch(html); len(m) > 1 {
+			nameTagRegex := regexp.MustCompile(`(?i)<[^>]+itemprop=["']name["'][^>]*>([^<]+)</`)
+			names := nameTagRegex.FindAllStringSubmatch(m[1], -1)
+			var directorList []string
+			for _, n := range names {
+				if len(n) > 1 && strings.TrimSpace(n[1]) != "" {
+					directorList = append(directorList, strings.TrimSpace(n[1]))
+				}
+			}
+			if len(directorList) > 0 {
+				media.Director = strings.Join(directorList, ", ")
+			}
+		}
+	}
+
+	if media.Cast == "" {
+		actorSectionRegex := regexp.MustCompile(`(?i)(?:itemprop=["']actor["']|<div[^>]*class=["'][^"']*key[^"']*["'][^>]*>\s*Акте?ры\s*</div>)[^>]*>(.*?)(?:</div>\s*</div>|</td>|</tr|itemprop=["']description|$)`)
+		if m := actorSectionRegex.FindStringSubmatch(html); len(m) > 1 {
+			nameTagRegex := regexp.MustCompile(`(?i)<[^>]+itemprop=["']name["'][^>]*>([^<]+)</`)
+			names := nameTagRegex.FindAllStringSubmatch(m[1], -1)
+			var castList []string
+			for _, n := range names {
+				if len(castList) >= 4 {
+					break
+				}
+				if len(n) > 1 && strings.TrimSpace(n[1]) != "" {
+					castList = append(castList, strings.TrimSpace(n[1]))
+				}
+			}
+			if len(castList) > 0 {
+				media.Cast = strings.Join(castList, ", ")
+			}
+		}
+	}
+
 	// Extract year from title if not set
 	if media.ReleaseYear == "" && media.Title != "" {
 		if yMatch := yearRegex.FindStringSubmatch(media.Title); len(yMatch) > 1 {
