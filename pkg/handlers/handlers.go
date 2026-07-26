@@ -508,3 +508,32 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+// GET /api/public/items/{id}
+func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "id")
+	if itemID == "" {
+		http.Error(w, `{"error":"item id required"}`, http.StatusBadRequest)
+		return
+	}
+
+	query := `
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, started_at, completed_at, created_at, updated_at
+		FROM items WHERE id = $1 LIMIT 1;
+	`
+
+	var item models.Item
+	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
+		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
+		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
+		&item.RawInput, &item.AIParsed, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+	)
+
+	if err != nil {
+		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+

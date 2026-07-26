@@ -141,45 +141,66 @@ export function App() {
       }
     }
 
-    try {
-      const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('item') || new URLSearchParams(window.location.search).get('startapp');
-      if (startParam) {
-        const cleanParam = startParam.replace('item_', '').replace('share_', '');
-        try {
-          const jsonStr = decodeURIComponent(atob(cleanParam));
-          const parsed = JSON.parse(jsonStr);
-          if (parsed && parsed.title) {
-            const sharedItem: Item = {
-              id: 'shared_' + Date.now(),
-              user_id: 0,
-              title: parsed.title,
-              category: parsed.category || 'Фильмы',
+    const handleDeepLink = async () => {
+      try {
+        const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('item') || new URLSearchParams(window.location.search).get('startapp');
+        if (startParam) {
+          const cleanParam = startParam.replace('item_', '').replace('share_', '').trim();
+          if (!cleanParam) return;
+
+          // Try fetching item by ID from backend public endpoint first
+          const publicItem = await api.getPublicItem(cleanParam);
+          if (publicItem) {
+            setSelectedItem({
+              ...publicItem,
               status: 'planned',
               rating: 0,
-              genre: parsed.genre || '',
-              duration: parsed.duration || '',
-              release_year: parsed.release_year || '',
-              poster_url: parsed.poster_url || '',
-              description: parsed.description || '',
-              note: parsed.note || '',
-              raw_input: '',
-              ai_parsed: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
               isSharedPreview: true,
-            } as any;
-
-            setSelectedItem(sharedItem);
+            } as any);
             setActiveTab('details');
             window.scrollTo(0, 0);
+            return;
           }
-        } catch (err) {
-          console.warn('Could not parse shared item payload:', err);
+
+          // Fallback to base64 client-side payload
+          try {
+            const jsonStr = decodeURIComponent(atob(cleanParam));
+            const parsed = JSON.parse(jsonStr);
+            if (parsed && parsed.title) {
+              const sharedItem: Item = {
+                id: 'shared_' + Date.now(),
+                user_id: 0,
+                title: parsed.title,
+                category: parsed.category || 'Фильмы',
+                status: 'planned',
+                rating: 0,
+                genre: parsed.genre || '',
+                duration: parsed.duration || '',
+                release_year: parsed.release_year || '',
+                poster_url: parsed.poster_url || '',
+                description: parsed.description || '',
+                note: parsed.note || '',
+                raw_input: '',
+                ai_parsed: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                isSharedPreview: true,
+              } as any;
+
+              setSelectedItem(sharedItem);
+              setActiveTab('details');
+              window.scrollTo(0, 0);
+            }
+          } catch (err) {
+            console.warn('Could not parse shared item payload:', err);
+          }
         }
+      } catch (e) {
+        console.warn('Error reading start_param:', e);
       }
-    } catch (e) {
-      console.warn('Error reading start_param:', e);
-    }
+    };
+
+    handleDeepLink();
   }, []);
 
   // Fetch API data on load

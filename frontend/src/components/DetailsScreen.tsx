@@ -138,25 +138,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleShareTelegram = () => {
     const catLabel = formatCategorySingle(item.category);
-    const itemDataObj = {
-      title: item.title,
-      category: item.category,
-      genre: item.genre,
-      duration: item.duration,
-      release_year: item.release_year,
-      poster_url: item.poster_url,
-      description: item.description,
-      note: item.note,
-    };
-
-    let payload = '';
-    try {
-      payload = btoa(encodeURIComponent(JSON.stringify(itemDataObj)));
-    } catch (e) {
-      payload = item.id;
-    }
-
-    const shareUrl = `https://t.me/manytgbot/lista?startapp=item_${payload}`;
+    const shareUrl = `https://t.me/manytgbot/lista?startapp=${item.id}`;
     
     let messageText = `${t.details.share_app_tagline}\n📌 ${item.title} (${catLabel})`;
     if (!isPlanned) {
@@ -337,15 +319,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
             <button
               key={starNum}
-              onClick={() => handleSelectRating(starNum)}
-              className="p-0.5 hover:scale-125 transition active:scale-95"
+              type="button"
+              onClick={(e) => {
+                (e.currentTarget as HTMLElement).blur();
+                handleSelectRating(starNum);
+              }}
+              className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-95"
               title={`${starNum}/10`}
             >
               <Star
-                className={`w-5 h-5 ${
+                className={`w-5 h-5 transition-colors ${
                   !isPlanned && starNum <= currentRating
                     ? 'fill-amber-400 text-amber-400'
-                    : 'text-gray-600 hover:text-amber-300'
+                    : 'text-gray-600'
                 }`}
               />
             </button>

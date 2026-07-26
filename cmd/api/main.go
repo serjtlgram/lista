@@ -48,11 +48,12 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// Public Health check endpoint
+	// Public Health check & shared item endpoints
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok","service":"tracklist-api"}`))
 	})
+	r.Get("/api/public/items/{id}", h.GetPublicItem)
 
 	// Protected API Routes (Requires HMAC Telegram Auth)
 	isDev := cfg.Environment == "development"
