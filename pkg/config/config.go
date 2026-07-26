@@ -27,9 +27,6 @@ func LoadConfig() *Config {
 	}
 
 	botToken := os.Getenv("BOT_TOKEN")
-	if botToken == "" {
-		botToken = "1286708116:AAEZiyOoCajfE1dROju79VU0VQJEb5B0lCU"
-	}
 
 	env := os.Getenv("ENV")
 	if env == "" {
