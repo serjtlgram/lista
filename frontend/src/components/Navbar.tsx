@@ -30,7 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t }) => 
             }`}
           >
             <Icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{tab.label}</span>
+            <span className="text-[11.5px] font-medium">{tab.label}</span>
           </button>
         );
       })}

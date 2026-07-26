@@ -8,6 +8,7 @@ interface RecentlyAddedProps {
   items: Item[];
   onSeeAll: () => void;
   onSelectItem: (item: Item) => void;
+  onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
   onAddItemClick?: () => void;
   t: Translations;
 }
@@ -16,6 +17,7 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
   items,
   onSeeAll,
   onSelectItem,
+  onToggleStatus,
   onAddItemClick,
   t,
 }) => {
@@ -33,19 +35,17 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
       {items.length > 0 ? (
         <div className="space-y-2.5">
           {items.slice(0, 5).map((item) => (
-            <ItemCard key={item.id} item={item} onSelect={onSelectItem} />
+            <ItemCard key={item.id} item={item} onSelect={onSelectItem} onToggleStatus={onToggleStatus} />
           ))}
 
           {/* Centered plus in circle button below the last card on Home screen */}
           <div className="flex justify-center pt-2">
             <button
               onClick={onAddItemClick}
-              className="p-1.5 text-accentViolet hover:text-accentViolet/80 transition active:scale-90"
+              className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-90 transition opacity-80 hover:opacity-100"
               title={t.modal.add_item}
             >
-              <div className="w-8 h-8 rounded-full border-2 border-accentViolet flex items-center justify-center bg-accentViolet/10 shadow-sm">
-                <Plus className="w-5 h-5 stroke-[2.5]" />
-              </div>
+              <PlusCircle className="w-6 h-6 stroke-[2]" />
             </button>
           </div>
         </div>

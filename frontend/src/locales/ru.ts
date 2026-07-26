@@ -41,7 +41,7 @@ export const ru: Translations = {
     hours_suffix: 'ч',
   },
   recently_added: {
-    title: 'Недавно добавленные',
+    title: 'Недавние',
     see_all: 'Все',
     empty: 'Пока ничего не добавлено',
   },

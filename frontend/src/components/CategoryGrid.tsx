@@ -58,7 +58,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 -mb-3">
       {/* Categories Grid */}
       <div className="grid grid-cols-2 gap-2.5">
         {visibleCategories.map((cat) => {

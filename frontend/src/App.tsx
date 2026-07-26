@@ -311,8 +311,12 @@ export function App() {
             />
             <RecentlyAdded
               items={items}
-              onSeeAll={() => handleTabChange('search')}
+              onSeeAll={() => {
+                setSelectedCategory('Все');
+                handleTabChange('search');
+              }}
               onSelectItem={handleSelectItem}
+              onToggleStatus={handleToggleStatus}
               onAddItemClick={() => {
                 triggerHaptic();
                 setEditingItem(null);
