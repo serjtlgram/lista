@@ -127,7 +127,8 @@ type TelegramUpdate struct {
 		Chat *struct {
 			ID int64 `json:"id"`
 		} `json:"chat"`
-		Text string `json:"text"`
+		Text    string `json:"text"`
+		Caption string `json:"caption"`
 	} `json:"message"`
 	CallbackQuery *struct {
 		ID   string `json:"id"`
