@@ -631,38 +631,13 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
       {/* Clean Fullscreen Video Player Modal for Mobile WebViews */}
       {isFullscreenVideo && item.youtube_url && getYouTubeEmbedUrl(item.youtube_url) && createPortal(
-        <div className="fixed inset-0 bg-black z-[999999] flex flex-col items-center justify-center animate-fade-in p-2 select-none">
-          {/* Top-Left Explicit Exit Fullscreen Button */}
-          <button
-            type="button"
-            onClick={() => setIsFullscreenVideo(false)}
-            className="absolute left-4 z-[999999] px-4 py-2.5 rounded-full bg-black/80 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/25 shadow-2xl active:scale-95 transition hover:bg-black"
-            style={{
-              top: 'max(14px, env(safe-area-inset-top, 14px))',
-            }}
-          >
-            <X className="w-4 h-4 text-red-400 stroke-[3]" />
-            <span>Выйти из полноэкранного режима</span>
-          </button>
-
-          {/* Top-Right Close Button */}
-          <button
-            type="button"
-            onClick={() => setIsFullscreenVideo(false)}
-            className="absolute right-4 z-[999999] w-10 h-10 rounded-full bg-black/80 text-white flex items-center justify-center backdrop-blur-md border border-white/25 shadow-2xl active:scale-95 transition hover:bg-black"
-            style={{
-              top: 'max(14px, env(safe-area-inset-top, 14px))',
-            }}
-          >
-            <X className="w-5 h-5 stroke-[2.5]" />
-          </button>
-
+        <div className="fixed inset-0 bg-black z-[999999] flex flex-col items-center justify-center animate-fade-in p-0 select-none">
           {/* Video Iframe Container */}
-          <div className="w-full h-full max-w-5xl aspect-video flex items-center justify-center my-auto pt-12 sm:pt-14">
+          <div className="w-full h-full aspect-video flex items-center justify-center my-auto">
             <iframe
               src={getYouTubeEmbedUrl(item.youtube_url, true)!}
               title={item.title}
-              className="w-full h-full rounded-2xl border-0 shadow-2xl"
+              className="w-full h-full border-0 shadow-2xl"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
               allowFullScreen
             />
