@@ -128,125 +128,62 @@ export function App() {
 
   // Telegram SDK Init & Deep Link Detection
   useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
+    const tgApp = (window as any).Telegram?.WebApp;
+    if (tgApp) {
       try {
-        tg.ready();
-        tg.expand();
+        tgApp.ready();
+        tgApp.expand();
         const bg = theme === 'light' ? '#F8FAFC' : '#0B0D14';
-        tg.setHeaderColor(bg);
-        tg.setBackgroundColor(bg);
+        tgApp.setHeaderColor(bg);
+        tgApp.setBackgroundColor(bg);
       } catch (e) {
         console.warn('Telegram SDK init warning:', e);
       }
     }
 
-    const handleDeepLink = async () => {
+    // Deep link: read Telegram startapp param (UUID of item, max 36 chars)
+    const attemptDeepLink = async (): Promise<boolean> => {
       try {
+        const tgWA = (window as any).Telegram?.WebApp;
         const urlParams = new URLSearchParams(window.location.search);
-        const tg = (window as any).Telegram?.WebApp;
-        const startParam =
-          tg?.initDataUnsafe?.start_param ||
+        const startParam: string | null =
+          tgWA?.initDataUnsafe?.start_param ||
           urlParams.get('item') ||
           urlParams.get('startapp') ||
-          urlParams.get('tgWebAppStartParam');
+          urlParams.get('tgWebAppStartParam') ||
+          null;
 
-        if (!startParam) return;
-        const cleanParam = startParam.trim();
-        if (!cleanParam) return;
+        if (!startParam || !startParam.trim()) return false;
+        const itemId = startParam.trim();
 
-        // 1. Check compact pipe-separated payload (starts with 'p_')
-        if (cleanParam.startsWith('p_')) {
-          try {
-            const b64 = cleanParam.slice(2);
-            const decoded = decodeURIComponent(atob(b64));
-            const parts = decoded.split('|');
-            if (parts.length >= 1 && parts[0]) {
-              const sharedItem: Item = {
-                id: 'shared_' + Date.now(),
-                user_id: 0,
-                title: parts[0],
-                category: parts[1] || 'Фильмы',
-                genre: parts[2] || '',
-                duration: parts[3] || '',
-                release_year: parts[4] || '2024',
-                poster_url: parts[5] || '',
-                description: parts[6] || '',
-                status: 'planned',
-                rating: 0,
-                note: '',
-                raw_input: '',
-                ai_parsed: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                isSharedPreview: true,
-              } as any;
+        // UUID format check: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        const isUUID = /^[0-9a-f-]{32,36}$/i.test(itemId);
+        if (!isUUID) return false;
 
-              setSelectedItem(sharedItem);
-              setActiveTab('details');
-              window.scrollTo(0, 0);
-              return;
-            }
-          } catch (e) {
-            console.warn('Error decoding compact payload:', e);
-          }
-        }
+        const publicItem = await api.getPublicItem(itemId);
+        if (!publicItem) return false;
 
-        // 2. Try fetching item by ID from backend public endpoint
-        const publicItem = await api.getPublicItem(cleanParam.replace('item_', '').replace('share_', ''));
-        if (publicItem) {
-          setSelectedItem({
-            ...publicItem,
-            status: 'planned',
-            rating: 0,
-            isSharedPreview: true,
-          } as any);
-          setActiveTab('details');
-          window.scrollTo(0, 0);
-          return;
-        }
-
-        // 3. Fallback to base64 JSON payload
-        try {
-          const rawB64 = cleanParam.replace('item_', '').replace('share_', '');
-          const jsonStr = decodeURIComponent(atob(rawB64));
-          const parsed = JSON.parse(jsonStr);
-          if (parsed && parsed.title) {
-            const sharedItem: Item = {
-              id: 'shared_' + Date.now(),
-              user_id: 0,
-              title: parsed.title,
-              category: parsed.category || 'Фильмы',
-              status: 'planned',
-              rating: 0,
-              genre: parsed.genre || '',
-              duration: parsed.duration || '',
-              release_year: parsed.release_year || '',
-              poster_url: parsed.poster_url || '',
-              description: parsed.description || '',
-              note: parsed.note || '',
-              raw_input: '',
-              ai_parsed: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              isSharedPreview: true,
-            } as any;
-
-            setSelectedItem(sharedItem);
-            setActiveTab('details');
-            window.scrollTo(0, 0);
-          }
-        } catch (err) {
-          console.warn('Could not parse fallback shared item payload:', err);
-        }
+        setSelectedItem({
+          ...publicItem,
+          status: 'planned',
+          rating: 0,
+          isSharedPreview: true,
+        } as any);
+        setActiveTab('details');
+        window.scrollTo(0, 0);
+        return true;
       } catch (e) {
-        console.warn('Error reading start_param:', e);
+        console.warn('Deep link error:', e);
+        return false;
       }
     };
 
-    handleDeepLink();
-    setTimeout(handleDeepLink, 300);
-    setTimeout(handleDeepLink, 800);
+    // Try immediately, then retry after SDK is ready
+    attemptDeepLink().then((found) => {
+      if (!found) {
+        setTimeout(() => attemptDeepLink(), 600);
+      }
+    });
   }, []);
 
   // Fetch API data on load

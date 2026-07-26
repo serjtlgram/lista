@@ -139,25 +139,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const handleShareTelegram = () => {
     const catLabel = formatCategorySingle(item.category);
     
-    // Create compact pipe-separated string payload
-    const rawPayload = [
-      item.title || '',
-      item.category || '',
-      item.genre || '',
-      item.duration || '',
-      item.release_year || '',
-      item.poster_url || '',
-      item.description || '',
-    ].join('|');
-
-    let compactParam = '';
-    try {
-      compactParam = 'p_' + btoa(encodeURIComponent(rawPayload));
-    } catch (e) {
-      compactParam = item.id;
-    }
-
-    const shareUrl = `https://t.me/manytgbot?startapp=${compactParam}`;
+    // Only send the item UUID (36 chars max, well within Telegram's 64-char startapp limit)
+    const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
     
     let messageText = `${t.details.share_app_tagline}\n📌 ${item.title} (${catLabel})`;
     if (!isPlanned) {
