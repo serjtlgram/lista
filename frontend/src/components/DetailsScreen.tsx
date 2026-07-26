@@ -91,6 +91,26 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     window.scrollTo(0, 0);
   }, [item]);
 
+  // Handle Telegram WebApp native BackButton when fullscreen video is active
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.BackButton) {
+      const handleBack = () => {
+        setIsFullscreenVideo(false);
+      };
+      if (isFullscreenVideo) {
+        tg.BackButton.onClick(handleBack);
+        tg.BackButton.show();
+      } else {
+        tg.BackButton.hide();
+        tg.BackButton.offClick(handleBack);
+      }
+      return () => {
+        tg.BackButton.offClick(handleBack);
+      };
+    }
+  }, [isFullscreenVideo]);
+
   // Automatic YouTube search fallback on details view if item is movie/show and youtube_url is missing
   useEffect(() => {
     const catLower = (item.category || '').toLowerCase();
@@ -407,21 +427,33 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
           {getYouTubeEmbedUrl(item.youtube_url) ? (
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
-              <iframe
-                src={getYouTubeEmbedUrl(item.youtube_url)!}
-                title={item.title}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowFullScreen
-              />
-              <button
-                type="button"
-                onClick={() => setIsFullscreenVideo(true)}
-                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-95 z-10"
-                title="На весь экран"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
+              {!isFullscreenVideo ? (
+                <>
+                  <iframe
+                    src={getYouTubeEmbedUrl(item.youtube_url)!}
+                    title={item.title}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                    allowFullScreen
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreenVideo(true)}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-95 z-10"
+                    title="На весь экран"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <div
+                  onClick={() => setIsFullscreenVideo(false)}
+                  className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-gray-400 text-xs font-semibold gap-2 cursor-pointer p-4 text-center select-none"
+                >
+                  <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
+                  <span>Воспроизведение на весь экран...</span>
+                </div>
+              )}
             </div>
           ) : (
             <a
@@ -599,17 +631,34 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
       {/* Clean Fullscreen Video Player Modal for Mobile WebViews */}
       {isFullscreenVideo && item.youtube_url && getYouTubeEmbedUrl(item.youtube_url) && createPortal(
-        <div className="fixed inset-0 bg-black z-[99999] flex flex-col items-center justify-center animate-fade-in p-2">
+        <div className="fixed inset-0 bg-black z-[999999] flex flex-col items-center justify-center animate-fade-in p-2 select-none">
+          {/* Top-Left Explicit Exit Fullscreen Button */}
           <button
+            type="button"
             onClick={() => setIsFullscreenVideo(false)}
-            className="absolute right-5 w-11 h-11 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition active:scale-90 shadow-2xl z-50"
+            className="absolute left-4 z-[999999] px-4 py-2.5 rounded-full bg-black/80 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/25 shadow-2xl active:scale-95 transition hover:bg-black"
             style={{
-              top: 'max(16px, env(safe-area-inset-top, 16px))',
+              top: 'max(14px, env(safe-area-inset-top, 14px))',
             }}
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4 text-red-400 stroke-[3]" />
+            <span>Выйти из полноэкранного режима</span>
           </button>
-          <div className="w-full h-full max-w-5xl aspect-video flex items-center justify-center my-auto">
+
+          {/* Top-Right Close Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreenVideo(false)}
+            className="absolute right-4 z-[999999] w-10 h-10 rounded-full bg-black/80 text-white flex items-center justify-center backdrop-blur-md border border-white/25 shadow-2xl active:scale-95 transition hover:bg-black"
+            style={{
+              top: 'max(14px, env(safe-area-inset-top, 14px))',
+            }}
+          >
+            <X className="w-5 h-5 stroke-[2.5]" />
+          </button>
+
+          {/* Video Iframe Container */}
+          <div className="w-full h-full max-w-5xl aspect-video flex items-center justify-center my-auto pt-12 sm:pt-14">
             <iframe
               src={getYouTubeEmbedUrl(item.youtube_url, true)!}
               title={item.title}
