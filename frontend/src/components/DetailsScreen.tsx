@@ -18,7 +18,8 @@ import {
   Tv,
   PlusCircle,
   Youtube,
-  ExternalLink
+  ExternalLink,
+  Maximize2
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -71,6 +72,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(item.note || '');
   const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
+  const [isFullscreenVideo, setIsFullscreenVideo] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
 
@@ -368,26 +370,47 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 {t.details.watch_on_youtube}
               </span>
             </div>
-            <a
-              href={item.youtube_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-semibold text-accentTeal hover:underline flex items-center gap-1"
-            >
-              <span>{t.details.open_in_youtube}</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <div className="flex items-center gap-3">
+              {getYouTubeEmbedUrl(item.youtube_url) && (
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreenVideo(true)}
+                  className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
+                  title="На весь экран"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Экран</span>
+                </button>
+              )}
+              <a
+                href={item.youtube_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-accentTeal hover:underline flex items-center gap-1"
+              >
+                <span>{t.details.open_in_youtube}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
           </div>
 
           {getYouTubeEmbedUrl(item.youtube_url) ? (
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black">
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
               <iframe
                 src={getYouTubeEmbedUrl(item.youtube_url)!}
                 title={item.title}
                 className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
               />
+              <button
+                type="button"
+                onClick={() => setIsFullscreenVideo(true)}
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-95 z-10"
+                title="На весь экран"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
             </div>
           ) : (
             <a
@@ -559,6 +582,31 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             className="max-w-[100vw] max-h-[100vh] w-full h-full object-contain"
             alt={item.title}
           />
+        </div>,
+        document.body
+      )}
+
+      {/* Clean Fullscreen Video Player Modal for Mobile WebViews */}
+      {isFullscreenVideo && item.youtube_url && getYouTubeEmbedUrl(item.youtube_url) && createPortal(
+        <div className="fixed inset-0 bg-black z-[99999] flex flex-col items-center justify-center animate-fade-in p-2">
+          <button
+            onClick={() => setIsFullscreenVideo(false)}
+            className="absolute right-5 w-11 h-11 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition active:scale-90 shadow-2xl z-50"
+            style={{
+              top: 'max(16px, env(safe-area-inset-top, 16px))',
+            }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="w-full h-full max-w-5xl aspect-video flex items-center justify-center my-auto">
+            <iframe
+              src={getYouTubeEmbedUrl(item.youtube_url)! + (item.youtube_url.includes('?') ? '&autoplay=1' : '?autoplay=1')}
+              title={item.title}
+              className="w-full h-full rounded-2xl border-0 shadow-2xl"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+            />
+          </div>
         </div>,
         document.body
       )}
