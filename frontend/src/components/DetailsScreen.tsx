@@ -173,9 +173,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   };
 
-  const formatShortDate = (dateVal?: string | null, releaseYr?: string | null): string => {
-    if (dateVal) {
-      const d = new Date(dateVal);
+  const formatShortDate = (dateVal?: string | null, createdAtVal?: string | null): string => {
+    const targetDateStr = dateVal || createdAtVal;
+    if (targetDateStr) {
+      const d = new Date(targetDateStr);
       if (!isNaN(d.getTime())) {
         const day = d.getDate();
         const month = d.getMonth() + 1;
@@ -183,13 +184,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         return `${day}.${month}.${year}`;
       }
     }
-    if (releaseYr) {
-      const clean = releaseYr.replace(/\D/g, '');
-      if (clean.length >= 2) {
-        return clean.slice(-2);
-      }
-    }
-    return '26.7.26';
+    const now = new Date();
+    return `${now.getDate()}.${now.getMonth() + 1}.${String(now.getFullYear()).slice(-2)}`;
   };
 
   const statusOptions = [
@@ -308,7 +304,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   {t.details.short_watch_date}
                 </span>
                 <span className="font-semibold text-white text-right font-mono text-[11px]">
-                  {formatShortDate(item.completed_at, item.release_year)}
+                  {formatShortDate(item.completed_at, item.created_at)}
                 </span>
               </div>
 
@@ -339,7 +335,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     {t.details.episodes}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight">
-                    {episodesDisplay ? `${episodesDisplay} ${t.modal.episodes_unit || 'сер.'}` : '-'}
+                    {episodesDisplay || '-'}
                   </span>
                 </div>
               )}

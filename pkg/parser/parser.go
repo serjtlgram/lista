@@ -46,7 +46,7 @@ var (
 	scriptLDJson    = regexp.MustCompile(`(?s)<script\s+type=["']application/ld\+json["']\s*>(.*?)</script>`)
 	isoDurationRegex = regexp.MustCompile(`(?i)PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?`)
 	minDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|minutes|min)\b`)
-	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\s*(\d+)?\s*(?:мин|минут|m)?\b`)
+	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\.?\s*(\d+)?\s*(?:мин|минут|m)?`)
 	timeColonRegex   = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
 )
 
@@ -219,8 +219,8 @@ func parseDurationString(raw string) string {
 		return ""
 	}
 
-	// 1. ISO 8601 Duration (e.g. PT169M, PT2H49M)
-	if matches := isoDurationRegex.FindStringSubmatch(raw); len(matches) > 0 {
+	// 1. ISO 8601 Duration (e.g. PT169M, PT2H49M, PT1H)
+	if matches := isoDurationRegex.FindStringSubmatch(raw); len(matches) > 0 && (matches[1] != "" || matches[2] != "") {
 		var totalMin int
 		if matches[1] != "" {
 			h, _ := strconv.Atoi(matches[1])
@@ -235,7 +235,7 @@ func parseDurationString(raw string) string {
 		}
 	}
 
-	// 2. Russian Hours + Min (e.g. 2 ч 49 мин, 2h 49m)
+	// 2. Russian & English Hours + Min (e.g. 1 час, 1 ч, 1ч, 1h, 2 ч 49 мин, 1 час 30 минут)
 	if matches := hrsDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
 		h, _ := strconv.Atoi(matches[1])
 		m := 0
@@ -248,7 +248,7 @@ func parseDurationString(raw string) string {
 		}
 	}
 
-	// 3. Minutes match (e.g. 169 мин)
+	// 3. Minutes match (e.g. 169 мин, 60 мин)
 	if matches := minDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
 		if m, err := strconv.Atoi(matches[1]); err == nil && m > 0 {
 			return fmt.Sprintf("%d мин", m)
@@ -263,6 +263,11 @@ func parseDurationString(raw string) string {
 		if totalMin > 0 {
 			return fmt.Sprintf("%d мин", totalMin)
 		}
+	}
+
+	// 5. Bare number fallback (e.g. "60" -> "60 мин")
+	if m, err := strconv.Atoi(raw); err == nil && m > 0 {
+		return fmt.Sprintf("%d мин", m)
 	}
 
 	return raw
