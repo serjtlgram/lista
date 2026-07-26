@@ -524,7 +524,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">Постер (URL)</label>
                 <input
-                  type="url"
+                  type="text"
                   value={posterUrl}
                   onChange={(e) => setPosterUrl(e.target.value)}
                   placeholder={t.modal.placeholder_poster}

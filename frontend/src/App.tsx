@@ -155,7 +155,14 @@ export function App() {
     ]);
 
     if (profData) setProfile(profData);
-    if (itemsData) setItems(itemsData);
+    if (itemsData) {
+      setItems(itemsData);
+      setSelectedItem((prev) => {
+        if (!prev) return null;
+        const fresh = itemsData.find((i) => i.id === prev.id);
+        return fresh || prev;
+      });
+    }
     if (statsData) setStats(statsData);
 
     // Auto-include categories that have items in activeCategories
@@ -248,6 +255,7 @@ export function App() {
     triggerHaptic();
     if (editingItem) {
       await api.updateItem(editingItem.id, itemData);
+      setSelectedItem((prev) => (prev && prev.id === editingItem.id ? { ...prev, ...itemData } : prev));
       setEditingItem(null);
     } else {
       await api.createItem(itemData);
