@@ -1,8 +1,14 @@
 package parser
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/gif"
+	"image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"net/url"
@@ -28,14 +34,20 @@ type ExtractedMedia struct {
 	SourceURL   string `json:"source_url"`
 }
 
+const defaultTMDbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
+
 var (
-	urlRegex     = regexp.MustCompile(`https?://[^\s<">]+`)
-	imdbIDRegex  = regexp.MustCompile(`(tt\d{6,10})`)
-	tmdbIDRegex  = regexp.MustCompile(`themoviedb\.org/(movie|tv)/(\d+)`)
-	yearRegex    = regexp.MustCompile(`\b(19\d\d|20\d\d)\b`)
-	ogTagRegex   = regexp.MustCompile(`(?i)<meta\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']\s+content=["']([^"']*)["']`)
-	ogTagRegex2  = regexp.MustCompile(`(?i)<meta\s+content=["']([^"']*)["']\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']`)
-	scriptLDJson = regexp.MustCompile(`(?s)<script\s+type=["']application/ld\+json["']\s*>(.*?)</script>`)
+	urlRegex        = regexp.MustCompile(`https?://[^\s<">]+`)
+	imdbIDRegex     = regexp.MustCompile(`(tt\d{6,10})`)
+	tmdbIDRegex     = regexp.MustCompile(`themoviedb\.org/(movie|tv)/(\d+)`)
+	yearRegex       = regexp.MustCompile(`\b(19\d\d|20\d\d)\b`)
+	ogTagRegex      = regexp.MustCompile(`(?i)<meta\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']\s+content=["']([^"']*)["']`)
+	ogTagRegex2     = regexp.MustCompile(`(?i)<meta\s+content=["']([^"']*)["']\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']`)
+	scriptLDJson    = regexp.MustCompile(`(?s)<script\s+type=["']application/ld\+json["']\s*>(.*?)</script>`)
+	isoDurationRegex = regexp.MustCompile(`(?i)PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?`)
+	minDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|minutes|min)\b`)
+	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\s*(\d+)?\s*(?:мин|минут|m)?\b`)
+	timeColonRegex   = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
 )
 
 // ExtractFirstURL extracts the first HTTP/HTTPS URL from a text message
@@ -54,6 +66,10 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 		return nil, fmt.Errorf("empty URL")
 	}
 
+	if strings.TrimSpace(tmdbKey) == "" {
+		tmdbKey = defaultTMDbKey
+	}
+
 	media := &ExtractedMedia{
 		Category:  "movie",
 		SourceURL: rawURL,
@@ -64,11 +80,10 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	// 1. Check if IMDb ID is in URL
 	if matches := imdbIDRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		imdbID := matches[1]
-		if tmdbKey != "" {
-			if tmdbMedia, err := fetchTMDbByExternalID(client, tmdbKey, imdbID); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
-				enrichYouTubeTrailer(youtubeKey, tmdbMedia)
-				return tmdbMedia, nil
-			}
+		if tmdbMedia, err := fetchTMDbByExternalID(client, tmdbKey, imdbID); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+			enrichYouTubeTrailer(youtubeKey, tmdbMedia)
+			tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
+			return tmdbMedia, nil
 		}
 	}
 
@@ -76,23 +91,33 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	if matches := tmdbIDRegex.FindStringSubmatch(rawURL); len(matches) > 2 {
 		mediaType := matches[1] // "movie" or "tv"
 		tmdbID := matches[2]
-		if tmdbKey != "" {
-			if tmdbMedia, err := fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
-				enrichYouTubeTrailer(youtubeKey, tmdbMedia)
-				return tmdbMedia, nil
-			}
+		if tmdbMedia, err := fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+			enrichYouTubeTrailer(youtubeKey, tmdbMedia)
+			tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
+			return tmdbMedia, nil
 		}
 	}
 
-	// 3. OpenGraph & JSON-LD Web Scraper (Kinopoisk, Netflix, Apple TV, Wikipedia, etc.)
+	// 3. OpenGraph & JSON-LD Web Scraper (Kinopoisk, Netflix, Apple TV, Wikipedia, pirate sites, etc.)
 	scrapedMedia, err := scrapeWebPage(client, rawURL)
 	if err == nil && scrapedMedia != nil && scrapedMedia.Title != "" {
 		media = scrapedMedia
 	}
 
-	// 4. TMDb Search Fallback: If we have a Title, query TMDb to get official poster, duration, director, cast
-	if media.Title != "" && tmdbKey != "" {
-		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear); err == nil && enriched != nil {
+	// Clean up title for searching
+	cleanedTitle := cleanTitle(media.Title)
+	if cleanedTitle != "" {
+		media.Title = cleanedTitle
+	}
+
+	// Detect Category from URL, Title, and HTML body
+	if isSeriesKeywords(rawURL) || isSeriesKeywords(media.Title) || isSeriesKeywords(media.Description) {
+		media.Category = "show"
+	}
+
+	// 4. TMDb Search Fallback: Query TMDb search API with clean title & year
+	if media.Title != "" {
+		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear); err == nil && enriched != nil && enriched.Title != "" {
 			if enriched.PosterURL != "" {
 				media.PosterURL = enriched.PosterURL
 			}
@@ -123,9 +148,6 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 		}
 	}
 
-	// Clean up title
-	media.Title = cleanTitle(media.Title)
-
 	if media.Title == "" {
 		return nil, fmt.Errorf("could not extract media metadata from URL")
 	}
@@ -133,16 +155,40 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	// 5. YouTube trailer enrichment
 	enrichYouTubeTrailer(youtubeKey, media)
 
+	// 6. Optimize and compress poster image to <= 50KB Data URL
+	media.PosterURL = OptimizePosterURL(client, media.PosterURL)
+
 	return media, nil
+}
+
+func isSeriesKeywords(str string) bool {
+	s := strings.ToLower(str)
+	keywords := []string{
+		"сериал", "сезоны", "серия", "серии", "сезон", "tv_show", "tvseries", "tvepisode",
+		"series", "season", "episodes", "anime", "аниме", "дорама", "dorama",
+	}
+	for _, kw := range keywords {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func cleanTitle(t string) string {
 	t = strings.TrimSpace(t)
-	// Remove common site suffix patterns
+	if t == "" {
+		return ""
+	}
+
+	// Remove common site suffix & garbage patterns
 	suffixes := []string{
 		"— Кинопоиск", "- Кинопоиск", "| Кинопоиск",
 		"— Netflix", "- Netflix", "| Netflix",
 		"— Википедия", "- Википедия", "| Википедия",
+		"— HDrezka", "- HDrezka", "| HDrezka",
+		"— Kinogo", "- Kinogo", "| Kinogo",
+		"— Lordfilm", "- Lordfilm", "| Lordfilm",
 		" (фильм)", " (сериал)", " (TV series)", " (Movie)",
 	}
 	for _, s := range suffixes {
@@ -150,7 +196,74 @@ func cleanTitle(t string) string {
 			t = t[:idx]
 		}
 	}
+
+	// Remove Russian noise phrases for streaming sites
+	noiseRegex := regexp.MustCompile(`(?i)(?:смотреть\s+онлайн|смотреть\s+бесплатно|бесплатно\s+в|в\s+хорошем\s+качестве|в\s+hd|hd\s+1080p?|hd\s+720p?|4k|все\s+серии\s+подряд|все\s+серии|все\s+сезоны|\d+(?:-\d+)?\s*(?:сезон|сезоны|серия|серии)|фильм|сериал|смотреть|онлайн|бесплатно)`)
+	t = noiseRegex.ReplaceAllString(t, "")
+
+	// Remove year in parentheses e.g. (2014)
+	t = regexp.MustCompile(`\(\s*19\d\d|20\d\d\s*\)`).ReplaceAllString(t, "")
+
+	// Clean duplicate spaces and trailing punctuation
+	t = regexp.MustCompile(`\s+`).ReplaceAllString(t, " ")
+	t = strings.Trim(t, " -—|/\\:;,.")
+
 	return strings.TrimSpace(t)
+}
+
+func parseDurationString(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	// 1. ISO 8601 Duration (e.g. PT169M, PT2H49M)
+	if matches := isoDurationRegex.FindStringSubmatch(raw); len(matches) > 0 {
+		var totalMin int
+		if matches[1] != "" {
+			h, _ := strconv.Atoi(matches[1])
+			totalMin += h * 60
+		}
+		if matches[2] != "" {
+			m, _ := strconv.Atoi(matches[2])
+			totalMin += m
+		}
+		if totalMin > 0 {
+			return fmt.Sprintf("%d мин", totalMin)
+		}
+	}
+
+	// 2. Russian Hours + Min (e.g. 2 ч 49 мин, 2h 49m)
+	if matches := hrsDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
+		h, _ := strconv.Atoi(matches[1])
+		m := 0
+		if len(matches) > 2 && matches[2] != "" {
+			m, _ = strconv.Atoi(matches[2])
+		}
+		totalMin := h*60 + m
+		if totalMin > 0 {
+			return fmt.Sprintf("%d мин", totalMin)
+		}
+	}
+
+	// 3. Minutes match (e.g. 169 мин)
+	if matches := minDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
+		if m, err := strconv.Atoi(matches[1]); err == nil && m > 0 {
+			return fmt.Sprintf("%d мин", m)
+		}
+	}
+
+	// 4. Time format (e.g. 02:49:00 or 1:49)
+	if matches := timeColonRegex.FindStringSubmatch(raw); len(matches) > 2 {
+		h, _ := strconv.Atoi(matches[1])
+		m, _ := strconv.Atoi(matches[2])
+		totalMin := h*60 + m
+		if totalMin > 0 {
+			return fmt.Sprintf("%d мин", totalMin)
+		}
+	}
+
+	return raw
 }
 
 func enrichYouTubeTrailer(youtubeKey string, media *ExtractedMedia) {
@@ -181,7 +294,7 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		return nil, fmt.Errorf("HTTP status %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024)) // 2MB max
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 3*1024*1024)) // 3MB max
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +322,7 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		media.Title = title
 	}
 	if image, ok := ogMap["image"]; ok {
-		media.PosterURL = image
+		media.PosterURL = resolveURL(pageURL, image)
 	}
 	if desc, ok := ogMap["description"]; ok {
 		media.Description = desc
@@ -226,8 +339,23 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		if len(m) > 1 {
 			var ldData map[string]interface{}
 			if err := json.Unmarshal([]byte(m[1]), &ldData); err == nil {
-				parseJSONLD(ldData, media)
+				parseJSONLD(ldData, media, pageURL)
 			}
+		}
+	}
+
+	// 3. Fallback HTML Scrapers for image, duration, genre if still empty
+	if media.PosterURL == "" {
+		imgRegex := regexp.MustCompile(`(?i)<img[^>]+(?:class|id)=["'][^"']*(?:poster|cover|thumb)[^"']*["'][^>]+src=["']([^"']+)["']`)
+		if m := imgRegex.FindStringSubmatch(html); len(m) > 1 {
+			media.PosterURL = resolveURL(pageURL, m[1])
+		}
+	}
+
+	if media.Duration == "" {
+		durAttrRegex := regexp.MustCompile(`(?i)(?:itemprop=["']duration["']|class=["'][^"']*duration[^"']*["'])[^>]*>(.*?)</`)
+		if m := durAttrRegex.FindStringSubmatch(html); len(m) > 1 {
+			media.Duration = parseDurationString(m[1])
 		}
 	}
 
@@ -241,7 +369,28 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 	return media, nil
 }
 
-func parseJSONLD(data map[string]interface{}, media *ExtractedMedia) {
+func resolveURL(baseURLStr string, targetURLStr string) string {
+	targetURLStr = strings.TrimSpace(targetURLStr)
+	if targetURLStr == "" {
+		return ""
+	}
+	if strings.HasPrefix(targetURLStr, "http://") || strings.HasPrefix(targetURLStr, "https://") || strings.HasPrefix(targetURLStr, "data:image/") {
+		return targetURLStr
+	}
+
+	base, err := url.Parse(baseURLStr)
+	if err != nil {
+		return targetURLStr
+	}
+	ref, err := url.Parse(targetURLStr)
+	if err != nil {
+		return targetURLStr
+	}
+
+	return base.ResolveReference(ref).String()
+}
+
+func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL string) {
 	tp, _ := data["@type"].(string)
 	if tp == "Movie" || tp == "TVSeries" || tp == "TVEpisode" {
 		if tp == "TVSeries" || tp == "TVEpisode" {
@@ -251,7 +400,7 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia) {
 			media.Title = name
 		}
 		if image, ok := data["image"].(string); ok && image != "" {
-			media.PosterURL = image
+			media.PosterURL = resolveURL(baseURL, image)
 		}
 		if desc, ok := data["description"].(string); ok && desc != "" {
 			media.Description = desc
@@ -259,6 +408,25 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia) {
 		if date, ok := data["datePublished"].(string); ok && date != "" {
 			if len(date) >= 4 {
 				media.ReleaseYear = date[:4]
+			}
+		}
+		if dur, ok := data["duration"].(string); ok && dur != "" {
+			media.Duration = parseDurationString(dur)
+		}
+		if genreObj, ok := data["genre"]; ok {
+			switch g := genreObj.(type) {
+			case string:
+				media.Genre = g
+			case []interface{}:
+				var genres []string
+				for _, item := range g {
+					if str, ok := item.(string); ok {
+						genres = append(genres, str)
+					}
+				}
+				if len(genres) > 0 {
+					media.Genre = strings.Join(genres, ", ")
+				}
 			}
 		}
 
@@ -501,4 +669,78 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 	}
 
 	return nil, fmt.Errorf("no TMDb match found")
+}
+
+// OptimizePosterURL downloads, resizes, and encodes poster to JPEG <= 50KB Data URL
+func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
+	rawPosterURL = strings.TrimSpace(rawPosterURL)
+	if rawPosterURL == "" {
+		return ""
+	}
+	if strings.HasPrefix(rawPosterURL, "data:image/") {
+		return rawPosterURL
+	}
+
+	req, err := http.NewRequest("GET", rawPosterURL, nil)
+	if err != nil {
+		return rawPosterURL
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return rawPosterURL
+	}
+	defer resp.Body.Close()
+
+	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024)) // 8MB max
+	if err != nil || len(imgData) == 0 {
+		return rawPosterURL
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(imgData))
+	if err != nil {
+		return rawPosterURL
+	}
+
+	bounds := img.Bounds()
+	srcW := bounds.Dx()
+	srcH := bounds.Dy()
+	if srcW == 0 || srcH == 0 {
+		return rawPosterURL
+	}
+
+	// Target max width 350px (preserves 2:3 aspect ratio)
+	targetW := 350
+	if srcW < targetW {
+		targetW = srcW
+	}
+	targetH := (srcH * targetW) / srcW
+
+	dst := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+	for y := 0; y < targetH; y++ {
+		for x := 0; x < targetW; x++ {
+			srcX := bounds.Min.X + (x*srcW)/targetW
+			srcY := bounds.Min.Y + (y*srcH)/targetH
+			dst.Set(x, y, img.At(srcX, srcY))
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 75}); err != nil {
+		return rawPosterURL
+	}
+
+	compressedBytes := buf.Bytes()
+	if len(compressedBytes) <= 51200 { // 50KB limit
+		return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(compressedBytes)
+	}
+
+	// Try quality 60 if 75 was over 50KB
+	buf.Reset()
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 60}); err == nil {
+		return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+	}
+
+	return rawPosterURL
 }

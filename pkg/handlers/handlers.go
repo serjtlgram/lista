@@ -833,10 +833,8 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/telegram/webhook
-func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
-	var update models.TelegramUpdate
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+	if update.CallbackQuery != nil && update.CallbackQuery.From.ID != 0 {
+		h.handleCallbackQuery(update.CallbackQuery)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -869,6 +867,100 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) handleCallbackQuery(cb *struct {
+	ID   string `json:"id"`
+	From struct {
+		ID           int64  `json:"id"`
+		FirstName    string `json:"first_name"`
+		Username     string `json:"username"`
+		LanguageCode string `json:"language_code"`
+	} `json:"from"`
+	Message *struct {
+		MessageID int `json:"message_id"`
+		Chat      *struct {
+			ID int64 `json:"id"`
+		} `json:"chat"`
+		Text    string `json:"text"`
+		Caption string `json:"caption"`
+	} `json:"message"`
+	Data string `json:"data"`
+}) {
+	if cb == nil || cb.Data == "" || cb.Message == nil || cb.Message.Chat == nil {
+		return
+	}
+
+	userID := cb.From.ID
+	chatID := cb.Message.Chat.ID
+	messageID := cb.Message.MessageID
+
+	if strings.HasPrefix(cb.Data, "set_cat:") {
+		parts := strings.Split(cb.Data, ":")
+		if len(parts) >= 3 {
+			newCat := parts[1] // "movie" or "show"
+			itemID := parts[2]
+
+			if h.DB != nil && h.DB.Pool != nil {
+				_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET category = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newCat, itemID, userID)
+			}
+
+			catRu := mapCategoryToRu(newCat)
+			alertText := fmt.Sprintf("Категория изменена на: %s", catRu)
+			h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
+				"callback_query_id": cb.ID,
+				"text":              alertText,
+			})
+
+			// Update message caption or text
+			oldText := cb.Message.Caption
+			if oldText == "" {
+				oldText = cb.Message.Text
+			}
+
+			if oldText != "" {
+				// Replace category line
+				lines := strings.Split(oldText, "\n")
+				for i, line := range lines {
+					if strings.Contains(line, "Категория:") {
+						lines[i] = fmt.Sprintf("📌 <b>Категория:</b> %s", catRu)
+					}
+				}
+				updatedText := strings.Join(lines, "\n")
+
+				appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
+				replyMarkup := map[string]interface{}{
+					"inline_keyboard": [][]map[string]interface{}{
+						{
+							{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[newCat == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", itemID)},
+							{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[newCat == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", itemID)},
+						},
+						{
+							{"text": "🎬 Открыть в TrackList", "url": appURL},
+						},
+					},
+				}
+
+				if cb.Message.Caption != "" {
+					h.sendBotAPIRequest("editMessageCaption", map[string]interface{}{
+						"chat_id":      chatID,
+						"message_id":   messageID,
+						"caption":      updatedText,
+						"parse_mode":   "HTML",
+						"reply_markup": replyMarkup,
+					})
+				} else {
+					h.sendBotAPIRequest("editMessageText", map[string]interface{}{
+						"chat_id":      chatID,
+						"message_id":   messageID,
+						"text":         updatedText,
+						"parse_mode":   "HTML",
+						"reply_markup": replyMarkup,
+					})
+				}
+			}
+		}
+	}
 }
 
 func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
@@ -955,6 +1047,10 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", finalItemID)
 	replyMarkup := map[string]interface{}{
 		"inline_keyboard": [][]map[string]interface{}{
+			{
+				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", finalItemID)},
+				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", finalItemID)},
+			},
 			{
 				{
 					"text": "🎬 Открыть в TrackList",
