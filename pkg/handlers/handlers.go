@@ -54,19 +54,74 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 	// If welcomed was false, this UPDATE changes 1 row to true, giving us execution right to send the message ONCE
 	res, err := h.DB.Pool.Exec(ctx, "UPDATE users SET welcomed = true WHERE id = $1 AND welcomed = false", u.ID)
 	if err == nil && res.RowsAffected() == 1 {
-		go h.sendWelcomeMessage(u.ID)
+		go h.sendWelcomeMessage(u.ID, u.LanguageCode)
 	}
 
 	return nil
 }
 
-func (h *Handler) sendWelcomeMessage(userID int64) {
-	if h.BotToken == "" {
-		log.Printf("[WelcomeBot] BotToken is empty, skipping welcome message for user %d", userID)
-		return
+type WelcomeTexts struct {
+	Text   string
+	Button string
+}
+
+func getWelcomeContent(langCode string) WelcomeTexts {
+	lang := strings.ToLower(strings.TrimSpace(langCode))
+	appLink := "https://t.me/manytgbot?startapp=true"
+
+	if strings.HasPrefix(lang, "uk") {
+		return WelcomeTexts{
+			Text: fmt.Sprintf(`✨ <b>Ласкаво просимо до LISTA!</b> 🎬📚🎮
+
+LISTA — твій персональний міні-додаток для збереження вражень від фільмів, серіалів, книг, аудіокниг, подкастів та ігор.
+
+<b>Що вміє LISTA:</b>
+📌 <b>Зберігай</b> усе, що подивився, прочитав або пройшов
+⭐ <b>Став оцінки</b> та додавай особисті нотатки
+⏱ <b>Відстежуй прогрес</b> і час, витрачений на контент
+🔗 <b>Ділись</b> елементами та своїми списками з друзями
+
+Спробуй — це зручно та цікаво! 👇
+%s`, appLink),
+			Button: "🚀 Відкрити LISTA",
+		}
+	} else if strings.HasPrefix(lang, "es") {
+		return WelcomeTexts{
+			Text: fmt.Sprintf(`✨ <b>¡Bienvenido a LISTA!</b> 🎬📚🎮
+
+LISTA es tu mini-aplicación personal para guardar impresiones de películas, series, libros, audiolibros, podcasts y juegos.
+
+<b>¿Qué puedes hacer con LISTA?</b>
+📌 <b>Guarda</b> todo lo que has visto, leído o jugado
+⭐ <b>Califica</b> y añade tus notas personales
+⏱ <b>Sigue tu progreso</b> y el tiempo dedicado al contenido
+🔗 <b>Comparte</b> elementos y tus listas con amigos
+
+¡Pruébalo, es genial y fácil de usar! 👇
+%s`, appLink),
+			Button: "🚀 Abrir LISTA",
+		}
+	} else if strings.HasPrefix(lang, "en") {
+		return WelcomeTexts{
+			Text: fmt.Sprintf(`✨ <b>Welcome to LISTA!</b> 🎬📚🎮
+
+LISTA is your personal mini-app for tracking movies, TV shows, books, audiobooks, podcasts, and games.
+
+<b>What you can do with LISTA:</b>
+📌 <b>Save</b> everything you've watched, read, or played
+⭐ <b>Rate</b> and add your personal notes
+⏱ <b>Track progress</b> and time spent on content
+🔗 <b>Share</b> items and your lists with friends
+
+Give it a try — it's fast and easy! 👇
+%s`, appLink),
+			Button: "🚀 Open LISTA",
+		}
 	}
 
-	msgText := `✨ <b>Добро пожаловать в LISTA!</b> 🎬📚🎮
+	// Default to Russian if lang is ru or unknown
+	return WelcomeTexts{
+		Text: fmt.Sprintf(`✨ <b>Добро пожаловать в LISTA!</b> 🎬📚🎮
 
 LISTA — твое персональное мини-приложение для сохранения впечатлений от фильмов, сериалов, книг, аудиокниг, подкастов и игр.
 
@@ -77,19 +132,31 @@ LISTA — твое персональное мини-приложение для
 🔗 <b>Делись</b> элементами и своими списками с друзьями
 
 Попробуй — это удобно и прикольно! 👇
-https://t.me/manytgbot`
+%s`, appLink),
+		Button: "🚀 Открыть LISTA",
+	}
+}
+
+func (h *Handler) sendWelcomeMessage(userID int64, langCode string) {
+	if h.BotToken == "" {
+		log.Printf("[WelcomeBot] BotToken is empty, skipping welcome message for user %d", userID)
+		return
+	}
+
+	content := getWelcomeContent(langCode)
+	appURL := "https://t.me/manytgbot?startapp=true"
 
 	payload := map[string]interface{}{
 		"chat_id":                  userID,
-		"text":                     msgText,
+		"text":                     content.Text,
 		"parse_mode":               "HTML",
 		"disable_web_page_preview": false,
 		"reply_markup": map[string]interface{}{
 			"inline_keyboard": [][]map[string]interface{}{
 				{
 					{
-						"text": "🚀 Открыть LISTA",
-						"url":  "https://t.me/manytgbot",
+						"text": content.Button,
+						"url":  appURL,
 					},
 				},
 			},
@@ -119,7 +186,7 @@ https://t.me/manytgbot`
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("[WelcomeBot] Welcome message sent successfully to user %d", userID)
+		log.Printf("[WelcomeBot] Welcome message sent successfully to user %d (lang: %s)", userID, langCode)
 	} else {
 		log.Printf("[WelcomeBot] Telegram API returned status %s for user %d", resp.Status, userID)
 	}
@@ -672,7 +739,8 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Always send welcome message when user explicitly presses /start command
-		go h.sendWelcomeMessage(userID)
+		langCode := update.Message.From.LanguageCode
+		go h.sendWelcomeMessage(userID, langCode)
 	}
 
 	w.WriteHeader(http.StatusOK)

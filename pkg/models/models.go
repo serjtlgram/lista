@@ -5,14 +5,15 @@ import (
 )
 
 type User struct {
-	ID        int64     `json:"id"`
-	Username  string    `json:"username"`
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	PhotoURL  string    `json:"photo_url"`
-	Welcomed  bool      `json:"welcomed"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int64     `json:"id"`
+	Username     string    `json:"username"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	PhotoURL     string    `json:"photo_url"`
+	LanguageCode string    `json:"language_code"`
+	Welcomed     bool      `json:"welcomed"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Item struct {
@@ -105,10 +106,11 @@ type TelegramUpdate struct {
 	Message  *struct {
 		MessageID int `json:"message_id"`
 		From      *struct {
-			ID        int64  `json:"id"`
-			FirstName string `json:"first_name"`
-			LastName  string `json:"last_name"`
-			Username  string `json:"username"`
+			ID           int64  `json:"id"`
+			FirstName    string `json:"first_name"`
+			LastName     string `json:"last_name"`
+			Username     string `json:"username"`
+			LanguageCode string `json:"language_code"`
 		} `json:"from"`
 		Chat *struct {
 			ID int64 `json:"id"`
