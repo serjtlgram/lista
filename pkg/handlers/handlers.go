@@ -853,7 +853,12 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
-		msgText := update.Message.Text
+		msgText := strings.TrimSpace(update.Message.Text)
+		if msgText == "" {
+			msgText = strings.TrimSpace(update.Message.Caption)
+		}
+
+		log.Printf("[TelegramWebhook] Incoming message from %d: %q", userID, msgText)
 
 		if strings.HasPrefix(msgText, "/start") {
 			if h.DB != nil && h.DB.Pool != nil {
@@ -874,6 +879,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 			langCode := update.Message.From.LanguageCode
 			go h.sendWelcomeMessage(userID, langCode)
 		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
+			log.Printf("[TelegramWebhook] Extracted URL from user %d: %s", userID, extractedURL)
 			go h.processIncomingMediaURL(userID, update.Message.From, extractedURL)
 		}
 	}
@@ -1086,6 +1092,12 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	Username     string `json:"username"`
 	LanguageCode string `json:"language_code"`
 }, rawURL string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[PanicRecovery] processIncomingMediaURL panic: %v", r)
+		}
+	}()
+
 	if h.DB != nil && h.DB.Pool != nil && from != nil {
 		userQuery := `
 			INSERT INTO users (id, username, first_name, last_name, updated_at)
