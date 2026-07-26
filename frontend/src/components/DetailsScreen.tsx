@@ -27,21 +27,32 @@ import { getItemPoster } from '../services/posters';
 import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 
-const getYouTubeEmbedUrl = (url?: string): string | null => {
+const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
   try {
-    if (url.includes('youtube.com/embed/')) return url;
-    if (url.includes('playlist?list=')) {
+    let baseEmbed = '';
+    if (url.includes('youtube.com/embed/')) {
+      baseEmbed = url;
+    } else if (url.includes('playlist?list=')) {
       const listId = url.split('playlist?list=')[1]?.split('&')[0];
-      return listId ? `https://www.youtube.com/embed/videoseries?list=${listId}` : null;
+      baseEmbed = listId ? `https://www.youtube.com/embed/videoseries?list=${listId}` : '';
+    } else {
+      let videoId = '';
+      if (url.includes('watch?v=')) {
+        videoId = url.split('watch?v=')[1]?.split('&')[0] || '';
+      } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+      }
+      baseEmbed = videoId ? `https://www.youtube.com/embed/${videoId}` : '';
     }
-    let videoId = '';
-    if (url.includes('watch?v=')) {
-      videoId = url.split('watch?v=')[1]?.split('&')[0] || '';
-    } else if (url.includes('youtu.be/')) {
-      videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+    if (!baseEmbed) return null;
+
+    const sep = baseEmbed.includes('?') ? '&' : '?';
+    let result = `${baseEmbed}${sep}rel=0&enablejsapi=1`;
+    if (autoplay) {
+      result += '&autoplay=1';
     }
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    return result;
   } catch {
     return null;
   }
@@ -600,7 +611,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           </button>
           <div className="w-full h-full max-w-5xl aspect-video flex items-center justify-center my-auto">
             <iframe
-              src={getYouTubeEmbedUrl(item.youtube_url)! + (item.youtube_url.includes('?') ? '&autoplay=1' : '?autoplay=1')}
+              src={getYouTubeEmbedUrl(item.youtube_url, true)!}
               title={item.title}
               className="w-full h-full rounded-2xl border-0 shadow-2xl"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

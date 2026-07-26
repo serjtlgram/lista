@@ -42,8 +42,26 @@ func isPromoTitle(title string) bool {
 	return false
 }
 
+func isVideoEmbeddable(client *http.Client, targetURL string) bool {
+	if targetURL == "" {
+		return false
+	}
+	oembedURL := fmt.Sprintf("https://www.youtube.com/oembed?url=%s&format=json", url.QueryEscape(targetURL))
+	req, err := http.NewRequest("GET", oembedURL, nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 // SearchYouTube searches YouTube for a video or playlist matching title and category.
-// Prioritizes full series / playlists / episode 1 over trailers.
+// Prioritizes full series / playlists / episode 1 over trailers, and verifies video is embeddable.
 func SearchYouTube(apiKey, title, category string) (string, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -74,7 +92,7 @@ func SearchYouTube(apiKey, title, category string) (string, error) {
 		}
 	}
 
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := &http.Client{Timeout: 6 * time.Second}
 
 	for _, query := range searchQueries {
 		isTrailerQuery := strings.Contains(strings.ToLower(query), "трейлер")
@@ -129,11 +147,14 @@ func searchViaOfficialAPI(client *http.Client, apiKey, query string, allowPromo 
 		if !allowPromo && isPromoTitle(videoTitle) {
 			continue
 		}
+		var candidateURL string
 		if item.ID.PlaylistID != "" {
-			return "https://www.youtube.com/playlist?list=" + item.ID.PlaylistID, nil
+			candidateURL = "https://www.youtube.com/playlist?list=" + item.ID.PlaylistID
+		} else if item.ID.VideoID != "" {
+			candidateURL = "https://www.youtube.com/watch?v=" + item.ID.VideoID
 		}
-		if item.ID.VideoID != "" {
-			return "https://www.youtube.com/watch?v=" + item.ID.VideoID, nil
+		if candidateURL != "" && isVideoEmbeddable(client, candidateURL) {
+			return candidateURL, nil
 		}
 	}
 
@@ -174,7 +195,10 @@ func searchViaWebParser(client *http.Client, query string, allowPromo bool) (str
 				if !allowPromo && isPromoTitle(pTitle) {
 					continue
 				}
-				return "https://www.youtube.com/playlist?list=" + pID, nil
+				candidateURL := "https://www.youtube.com/playlist?list=" + pID
+				if isVideoEmbeddable(client, candidateURL) {
+					return candidateURL, nil
+				}
 			}
 		}
 	}
@@ -188,19 +212,28 @@ func searchViaWebParser(client *http.Client, query string, allowPromo bool) (str
 				if !allowPromo && isPromoTitle(vTitle) {
 					continue
 				}
-				return "https://www.youtube.com/watch?v=" + vID, nil
+				candidateURL := "https://www.youtube.com/watch?v=" + vID
+				if isVideoEmbeddable(client, candidateURL) {
+					return candidateURL, nil
+				}
 			}
 		}
 	}
 
 	// Fallback playlist
 	if matches := fallbackPlaylistRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
-		return "https://www.youtube.com/playlist?list=" + matches[1], nil
+		candidateURL := "https://www.youtube.com/playlist?list=" + matches[1]
+		if isVideoEmbeddable(client, candidateURL) {
+			return candidateURL, nil
+		}
 	}
 
 	// Fallback raw videoId
 	if matches := fallbackVideoIDRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
-		return "https://www.youtube.com/watch?v=" + matches[1], nil
+		candidateURL := "https://www.youtube.com/watch?v=" + matches[1]
+		if isVideoEmbeddable(client, candidateURL) {
+			return candidateURL, nil
+		}
 	}
 
 	return "", nil
