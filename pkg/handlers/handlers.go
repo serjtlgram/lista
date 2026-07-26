@@ -11,6 +11,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -887,6 +888,18 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+var topGenres = []struct {
+	Label string
+	Val   string
+}{
+	{"🎭 Драма", "Драма"},
+	{"😂 Комедия", "Комедия"},
+	{"🚀 Фантастика", "Фантастика"},
+	{"🔪 Триллер", "Триллер"},
+	{"⚔️ Боевик", "Боевик"},
+	{"🪄 Фэнтези", "Фэнтези"},
+}
+
 func (h *Handler) handleCallbackQuery(cb *struct {
 	ID   string `json:"id"`
 	From struct {
@@ -913,11 +926,15 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 	chatID := cb.Message.Chat.ID
 	messageID := cb.Message.MessageID
 
-	if strings.HasPrefix(cb.Data, "set_cat:") {
+	if strings.HasPrefix(cb.Data, "c:") {
 		parts := strings.Split(cb.Data, ":")
 		if len(parts) >= 3 {
-			newCat := parts[1] // "movie" or "show"
+			catCode := parts[1] // "m" or "s"
 			itemID := parts[2]
+			newCat := "movie"
+			if catCode == "s" {
+				newCat = "show"
+			}
 
 			if h.DB != nil && h.DB.Pool != nil {
 				_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET category = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newCat, itemID, userID)
@@ -931,22 +948,25 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 
 			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 		}
-	} else if strings.HasPrefix(cb.Data, "set_genre:") {
+	} else if strings.HasPrefix(cb.Data, "g:") {
 		parts := strings.Split(cb.Data, ":")
 		if len(parts) >= 3 {
-			newGenre := parts[1]
+			gIdx, err := strconv.Atoi(parts[1])
 			itemID := parts[2]
 
-			if h.DB != nil && h.DB.Pool != nil {
-				_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET genre = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newGenre, itemID, userID)
+			if err == nil && gIdx >= 0 && gIdx < len(topGenres) {
+				newGenre := topGenres[gIdx].Val
+				if h.DB != nil && h.DB.Pool != nil {
+					_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET genre = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newGenre, itemID, userID)
+				}
+
+				h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
+					"callback_query_id": cb.ID,
+					"text":              fmt.Sprintf("Жанр изменён на: %s", newGenre),
+				})
+
+				h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 			}
-
-			h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
-				"callback_query_id": cb.ID,
-				"text":              fmt.Sprintf("Жанр изменён на: %s", newGenre),
-			})
-
-			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 		}
 	}
 }
@@ -1039,18 +1059,6 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) map[string]interface{} {
 	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
 
-	topGenres := []struct {
-		Label string
-		Val   string
-	}{
-		{"🎭 Драма", "Драма"},
-		{"😂 Комедия", "Комедия"},
-		{"🚀 Фантастика", "Фантастика"},
-		{"🔪 Триллер", "Триллер"},
-		{"⚔️ Боевик", "Боевик"},
-		{"🪄 Фэнтези", "Фэнтези"},
-	}
-
 	var genreRow1 []map[string]interface{}
 	var genreRow2 []map[string]interface{}
 
@@ -1061,7 +1069,7 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 		}
 		btn := map[string]interface{}{
 			"text":          btnText,
-			"callback_data": fmt.Sprintf("set_genre:%s:%s", g.Val, itemID),
+			"callback_data": fmt.Sprintf("g:%d:%s", i, itemID),
 		}
 		if i < 3 {
 			genreRow1 = append(genreRow1, btn)
@@ -1073,8 +1081,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 	return map[string]interface{}{
 		"inline_keyboard": [][]map[string]interface{}{
 			{
-				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", itemID)},
-				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", itemID)},
+				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
+				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
 			},
 			genreRow1,
 			genreRow2,
