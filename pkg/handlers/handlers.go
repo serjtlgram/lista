@@ -3,9 +3,13 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -983,11 +987,17 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 
 func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string) string {
 	catRu := mapCategoryToRu(category)
-	text := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", title)
+	cleanTitle := html.EscapeString(title)
+	cleanGenre := html.EscapeString(genre)
+	cleanDirector := html.EscapeString(director)
+	cleanCast := html.EscapeString(cast)
+	cleanDesc := html.EscapeString(description)
+
+	text := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", cleanTitle)
 	text += fmt.Sprintf("📌 <b>Категория:</b> %s\n", catRu)
 
-	if genre != "" {
-		text += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", genre)
+	if cleanGenre != "" {
+		text += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", cleanGenre)
 	} else {
 		text += "🏷 <b>Жанр:</b> Не указан\n"
 	}
@@ -1003,14 +1013,14 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 		text += fmt.Sprintf("🗓 <b>Инфо:</b> %s\n", strings.Join(infoParts, " • "))
 	}
 
-	if director != "" {
-		text += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", director)
+	if cleanDirector != "" {
+		text += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", cleanDirector)
 	}
-	if cast != "" {
-		text += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", cast)
+	if cleanCast != "" {
+		text += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", cleanCast)
 	}
-	if description != "" {
-		desc := description
+	if cleanDesc != "" {
+		desc := cleanDesc
 		runes := []rune(desc)
 		if len(runes) > 180 {
 			desc = string(runes[:177]) + "..."
@@ -1135,6 +1145,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description)
 	replyMarkup := buildTelegramReplyMarkup(catEn, media.Genre, finalItemID)
 
+	// 1. If poster is HTTP URL, send via sendPhoto
 	if media.PosterURL != "" && strings.HasPrefix(media.PosterURL, "http") {
 		photoPayload := map[string]interface{}{
 			"chat_id":      userID,
@@ -1145,9 +1156,21 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		}
 		if err := h.sendBotAPIRequestWithErr("sendPhoto", photoPayload); err == nil {
 			return
+		} else {
+			log.Printf("[BotLinkParser] sendPhoto HTTP URL failed: %v", err)
 		}
 	}
 
+	// 2. If poster is Base64 Data URL, upload photo as multipart
+	if media.PosterURL != "" && strings.HasPrefix(media.PosterURL, "data:image/") {
+		if err := h.sendBotPhotoBase64(userID, captionText, replyMarkup, media.PosterURL); err == nil {
+			return
+		} else {
+			log.Printf("[BotLinkParser] sendBotPhotoBase64 failed: %v", err)
+		}
+	}
+
+	// 3. Fallback: Send text message
 	msgPayload := map[string]interface{}{
 		"chat_id":                  userID,
 		"text":                     captionText,
@@ -1156,6 +1179,57 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		"reply_markup":             replyMarkup,
 	}
 	h.sendBotAPIRequest("sendMessage", msgPayload)
+}
+
+func (h *Handler) sendBotPhotoBase64(userID int64, caption string, replyMarkup interface{}, dataURL string) error {
+	idx := strings.Index(dataURL, ",")
+	if idx == -1 {
+		return fmt.Errorf("invalid data url")
+	}
+	base64Data := dataURL[idx+1:]
+	imgBytes, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil || len(imgBytes) == 0 {
+		return err
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	_ = writer.WriteField("chat_id", fmt.Sprintf("%d", userID))
+	_ = writer.WriteField("caption", caption)
+	_ = writer.WriteField("parse_mode", "HTML")
+
+	if replyMarkup != nil {
+		markupBytes, _ := json.Marshal(replyMarkup)
+		_ = writer.WriteField("reply_markup", string(markupBytes))
+	}
+
+	part, err := writer.CreateFormFile("photo", "poster.jpg")
+	if err != nil {
+		return err
+	}
+	_, _ = part.Write(imgBytes)
+	writer.Close()
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendPhoto", h.BotToken)
+	req, err := http.NewRequest("POST", url, &body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sendPhoto base64 error %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }
 
 func (h *Handler) sendBotMessage(userID int64, text string) {
@@ -1187,7 +1261,9 @@ func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("telegram API status %s", resp.Status)
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("[TelegramAPI] %s error %d: %s", method, resp.StatusCode, string(respBody))
+		return fmt.Errorf("telegram API status %d: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
 }
