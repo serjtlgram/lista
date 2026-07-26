@@ -38,16 +38,32 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   ];
 
   const getTranslatedCategoryTitle = (catTitle: string): string => {
-    switch (catTitle) {
-      case 'Фильмы': return t.categories.movies;
-      case 'Сериалы': return t.categories.shows;
-      case 'Книги': return t.categories.books;
-      case 'Аудиокниги': return t.categories.audiobooks;
-      case 'Подкасты': return t.categories.podcasts;
-      case 'Игры': return t.categories.games;
-      default: return catTitle;
-    }
+    const lc = (catTitle || '').toLowerCase().trim();
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return t.categories.movies;
+    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return t.categories.shows;
+    if (['book', 'books', 'книги', 'книга'].includes(lc)) return t.categories.books;
+    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(lc)) return t.categories.audiobooks;
+    if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(lc)) return t.categories.podcasts;
+    if (['game', 'games', 'игры', 'игра'].includes(lc)) return t.categories.games;
+    return catTitle;
   };
+
+  // Map activeCategories strictly to canonical known categories only
+  const canonicalCategories = ['Фильмы', 'Сериалы', 'Книги', 'Аудиокниги', 'Подкасты', 'Игры'];
+
+  const mappedCategories: string[] = [];
+  activeCategories.forEach((c) => {
+    const lc = (c || '').toLowerCase().trim();
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) mappedCategories.push('Фильмы');
+    else if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) mappedCategories.push('Сериалы');
+    else if (['book', 'books', 'книги', 'книга'].includes(lc)) mappedCategories.push('Книги');
+    else if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(lc)) mappedCategories.push('Аудиокниги');
+    else if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(lc)) mappedCategories.push('Подкасты');
+    else if (['game', 'games', 'игры', 'игра'].includes(lc)) mappedCategories.push('Игры');
+  });
+
+  const normalizedActiveCategories = Array.from(new Set(mappedCategories));
+  const displayCategories: string[] = normalizedActiveCategories.length > 0 ? normalizedActiveCategories : canonicalCategories;
 
   const filteredItems = items.filter((item) => {
     if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю') return false;
@@ -111,8 +127,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         ))}
       </div>
 
-      {/* Row 2: Active User Categories Chips (Scrollable Horizontally) */}
-      {activeCategories.length > 0 && onSelectCategory && (
+      {/* Row 2: Strict App Categories Chips Only (Scrollable Horizontally) */}
+      {onSelectCategory && (
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
           <button
             onClick={() => onSelectCategory('Все')}
@@ -124,8 +140,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           >
             {t.recently_added.see_all}
           </button>
-          {activeCategories.map((catKey) => {
-            const isSelected = title === catKey;
+          {displayCategories.map((catKey) => {
+            const isSelected = title.toLowerCase() === catKey.toLowerCase();
             return (
               <button
                 key={catKey}

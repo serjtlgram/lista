@@ -306,7 +306,7 @@ export function App() {
     <div
       className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden transition-all duration-200"
       style={{
-        paddingTop: isFullscreen ? 'max(48px, env(safe-area-inset-top, 48px))' : undefined,
+        paddingTop: isFullscreen ? 'max(68px, env(safe-area-inset-top, 68px))' : undefined,
       }}
     >
       {/* Top Safe Area Header */}

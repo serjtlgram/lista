@@ -63,6 +63,32 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   };
 
+  const formatShortDate = (dateVal?: string | null, releaseYr?: string | null): string => {
+    if (dateVal) {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDate();
+        const month = d.getMonth() + 1;
+        const year = String(d.getFullYear()).slice(-2);
+        return `${day}.${month}.${year}`;
+      }
+    }
+    if (releaseYr) {
+      const clean = releaseYr.replace(/\D/g, '');
+      if (clean.length >= 2) {
+        return clean.slice(-2);
+      }
+    }
+    return '26.7.26';
+  };
+
+  const formatShortGenre = (genreStr?: string | null): string => {
+    if (!genreStr || !genreStr.trim()) return '-';
+    let main = genreStr.split('/')[0].trim();
+    main = main.split(',')[0].trim();
+    return main;
+  };
+
   const statusOptions = [
     { val: 'watching', label: getTranslatedStatus('watching', item.category, t) },
     { val: 'completed', label: t.modal.status_completed },
@@ -155,10 +181,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               <div className="flex items-center justify-between text-gray-300 gap-1">
                 <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Calendar className="w-3.5 h-3.5 text-accentViolet" />
-                  {t.details.watch_date}
+                  Просмотр
                 </span>
-                <span className="font-semibold text-white text-right">
-                  {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : (item.release_year || '2024')}
+                <span className="font-semibold text-white text-right font-mono text-[11px]">
+                  {formatShortDate(item.completed_at, item.release_year)}
                 </span>
               </div>
 
@@ -167,7 +193,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   <Tag className="w-3.5 h-3.5 text-accentTeal" />
                   {t.details.genre}
                 </span>
-                <span className="font-semibold text-white text-right leading-tight">{item.genre || '-'}</span>
+                <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]">
+                  {formatShortGenre(item.genre)}
+                </span>
               </div>
 
               {/* Separated Episodes Row */}
@@ -356,7 +384,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         >
           <button
             onClick={() => setIsFullscreenPoster(false)}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-90 shadow-xl"
+            className="absolute right-6 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-90 shadow-xl"
+            style={{
+              top: 'max(68px, env(safe-area-inset-top, 68px))',
+            }}
           >
             <X className="w-7 h-7" />
           </button>
