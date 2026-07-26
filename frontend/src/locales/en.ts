@@ -126,6 +126,8 @@ export const en: Translations = {
     no_items_found: 'Nothing found in this category',
     director: 'Director',
     cast: 'Cast',
+    show_more: 'More...',
+    show_less: 'Less',
     watch_on_youtube: 'Watch on YouTube',
     open_in_youtube: 'Open in YouTube',
   },

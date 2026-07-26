@@ -89,6 +89,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isFullscreenVideo, setIsFullscreenVideo] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -341,31 +342,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
               </div>
 
-              {/* Director Row */}
-              {item.director && (
-                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Video className="w-3.5 h-3.5 text-accentViolet" />
-                    {t.details.director}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[170px]" title={item.director}>
-                    {item.director}
-                  </span>
-                </div>
-              )}
-
-              {/* Cast Row (1-4 max actors) */}
-              {item.cast && (
-                <div className="flex items-start justify-between text-gray-300 gap-1 pt-0.5">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0 pt-0.5">
-                    <Users className="w-3.5 h-3.5 text-accentTeal" />
-                    {t.details.cast}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight line-clamp-2 max-w-[170px]" title={item.cast}>
-                    {item.cast}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Interactive Status Pill Button */}
@@ -408,13 +384,50 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
+      {/* Dedicated Director & Cast Full-Width Block */}
+      {(item.director || item.cast) && (
+        <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+          {item.director && (
+            <div className="flex items-start gap-2.5">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                <Video className="w-4 h-4 text-accentViolet" />
+                {t.details.director}:
+              </span>
+              <span className="text-xs text-white font-medium leading-relaxed">
+                {item.director}
+              </span>
+            </div>
+          )}
+          {item.director && item.cast && <div className="border-t border-cardBorder/40 my-1" />}
+          {item.cast && (
+            <div className="flex items-start gap-2.5">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                <Users className="w-4 h-4 text-accentTeal" />
+                {t.details.cast}:
+              </span>
+              <span className="text-xs text-white font-medium leading-relaxed">
+                {item.cast}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Description Block */}
       {item.description && (
         <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
           <div className="text-xs text-gray-400 font-semibold">{t.details.description}</div>
-          <p className="text-[14px] text-white leading-relaxed font-normal">
+          <p className={`text-[14px] text-white leading-relaxed font-normal ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
             {item.description}
           </p>
+          {item.description.length > 150 && (
+            <button
+              onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+              className="mt-1 text-xs font-bold text-accentTeal hover:underline flex items-center gap-1 focus:outline-none transition active:scale-95"
+            >
+              {isDescriptionExpanded ? (t.details.show_less || 'Скрыть') : (t.details.show_more || 'Ещё...')}
+            </button>
+          )}
         </div>
       )}
 

@@ -126,6 +126,8 @@ export const ru: Translations = {
     no_items_found: 'Ничего не найдено в этой категории',
     director: 'Режиссёр',
     cast: 'Актёры',
+    show_more: 'Ещё...',
+    show_less: 'Скрыть',
     watch_on_youtube: 'Смотреть на YouTube',
     open_in_youtube: 'Открыть в YouTube',
   },

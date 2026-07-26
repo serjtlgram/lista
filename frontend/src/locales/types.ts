@@ -126,6 +126,8 @@ export interface Translations {
     no_items_found: string;
     director: string;
     cast: string;
+    show_more: string;
+    show_less: string;
     watch_on_youtube: string;
     open_in_youtube: string;
   };

@@ -386,7 +386,7 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 			names := nameTagRegex.FindAllStringSubmatch(m[1], -1)
 			var castList []string
 			for _, n := range names {
-				if len(castList) >= 4 {
+				if len(castList) >= 6 {
 					break
 				}
 				if len(n) > 1 && strings.TrimSpace(n[1]) != "" {
@@ -474,9 +474,9 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 		if directorObj, ok := data["director"]; ok {
 			media.Director = extractPersonNames(directorObj, 1)
 		}
-		// Actors (limit 4)
+		// Actors (limit 6)
 		if actorObj, ok := data["actor"]; ok {
-			media.Cast = extractPersonNames(actorObj, 4)
+			media.Cast = extractPersonNames(actorObj, 6)
 		}
 	}
 }
@@ -649,10 +649,10 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 		}
 	}
 
-	// Cast (1-4 max)
+	// Cast (1-6 max)
 	var castNames []string
 	for i, c := range data.Credits.Cast {
-		if i >= 4 {
+		if i >= 6 {
 			break
 		}
 		castNames = append(castNames, c.Name)

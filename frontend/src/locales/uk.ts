@@ -126,6 +126,8 @@ export const uk: Translations = {
     no_items_found: 'Нічого не знайдено в цій категорії',
     director: 'Режисер',
     cast: 'Актори',
+    show_more: 'Ще...',
+    show_less: 'Приховати',
     watch_on_youtube: 'Дивитися на YouTube',
     open_in_youtube: 'Відкрити в YouTube',
   },

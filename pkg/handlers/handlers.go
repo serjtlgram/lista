@@ -1054,8 +1054,8 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	if cleanDesc != "" {
 		desc := cleanDesc
 		runes := []rune(desc)
-		if len(runes) > 180 {
-			desc = string(runes[:177]) + "..."
+		if len(runes) > 450 {
+			desc = string(runes[:447]) + "..."
 		}
 		text += fmt.Sprintf("\n📖 %s", desc)
 	}

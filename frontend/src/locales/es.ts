@@ -126,6 +126,8 @@ export const es: Translations = {
     no_items_found: 'No se encontró nada en esta categoría',
     director: 'Director',
     cast: 'Reparto',
+    show_more: 'Más...',
+    show_less: 'Menos',
     watch_on_youtube: 'Ver en YouTube',
     open_in_youtube: 'Abrir en YouTube',
   },
