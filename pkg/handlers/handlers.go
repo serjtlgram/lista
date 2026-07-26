@@ -23,10 +23,77 @@ type Handler struct {
 }
 
 func NewHandler(database *db.DB, botToken string) *Handler {
-	return &Handler{
+	h := &Handler{
 		DB:       database,
 		BotToken: botToken,
 	}
+	go h.InitBotCommandsAndMenu()
+	return h
+}
+
+func (h *Handler) InitBotCommandsAndMenu() {
+	if h.BotToken == "" {
+		return
+	}
+
+	// 1. Set Chat Menu Button text to LISTA
+	menuPayload := map[string]interface{}{
+		"menu_button": map[string]interface{}{
+			"type": "web_app",
+			"text": "LISTA",
+			"web_app": map[string]interface{}{
+				"url": "https://vsnk.site",
+			},
+		},
+	}
+	h.sendBotAPIRequest("setChatMenuButton", menuPayload)
+
+	// 2. Set default /start command
+	commandsPayload := map[string]interface{}{
+		"commands": []map[string]string{
+			{"command": "start", "description": "🚀 Открыть LISTA / Перезапустить"},
+		},
+	}
+	h.sendBotAPIRequest("setMyCommands", commandsPayload)
+
+	// 3. Set Ukrainian /start command
+	ukPayload := map[string]interface{}{
+		"language_code": "uk",
+		"commands": []map[string]string{
+			{"command": "start", "description": "🚀 Відкрити LISTA / Перезапустити"},
+		},
+	}
+	h.sendBotAPIRequest("setMyCommands", ukPayload)
+
+	// 4. Set Spanish /start command
+	esPayload := map[string]interface{}{
+		"language_code": "es",
+		"commands": []map[string]string{
+			{"command": "start", "description": "🚀 Abrir LISTA / Reiniciar"},
+		},
+	}
+	h.sendBotAPIRequest("setMyCommands", esPayload)
+}
+
+func (h *Handler) sendBotAPIRequest(method string, payload interface{}) {
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", h.BotToken, method)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
 }
 
 // UpsertUser ensures user exists in database and triggers welcome message if first visit
