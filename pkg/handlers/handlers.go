@@ -42,7 +42,7 @@ func (h *Handler) InitBotCommandsAndMenu() {
 			"type": "web_app",
 			"text": "LISTA",
 			"web_app": map[string]interface{}{
-				"url": "https://vsnk.site",
+				"url": "https://serjtlgram.github.io/lista/",
 			},
 		},
 	}
