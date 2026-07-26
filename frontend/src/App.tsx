@@ -144,47 +144,37 @@ export function App() {
     const handleDeepLink = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
+        const tg = (window as any).Telegram?.WebApp;
         const startParam =
           tg?.initDataUnsafe?.start_param ||
           urlParams.get('item') ||
           urlParams.get('startapp') ||
           urlParams.get('tgWebAppStartParam');
-        if (startParam) {
-          const cleanParam = startParam.replace('item_', '').replace('share_', '').trim();
-          if (!cleanParam) return;
 
-          // Try fetching item by ID from backend public endpoint first
-          const publicItem = await api.getPublicItem(cleanParam);
-          if (publicItem) {
-            setSelectedItem({
-              ...publicItem,
-              status: 'planned',
-              rating: 0,
-              isSharedPreview: true,
-            } as any);
-            setActiveTab('details');
-            window.scrollTo(0, 0);
-            return;
-          }
+        if (!startParam) return;
+        const cleanParam = startParam.trim();
+        if (!cleanParam) return;
 
-          // Fallback to base64 client-side payload
+        // 1. Check compact pipe-separated payload (starts with 'p_')
+        if (cleanParam.startsWith('p_')) {
           try {
-            const jsonStr = decodeURIComponent(atob(cleanParam));
-            const parsed = JSON.parse(jsonStr);
-            if (parsed && parsed.title) {
+            const b64 = cleanParam.slice(2);
+            const decoded = decodeURIComponent(atob(b64));
+            const parts = decoded.split('|');
+            if (parts.length >= 1 && parts[0]) {
               const sharedItem: Item = {
                 id: 'shared_' + Date.now(),
                 user_id: 0,
-                title: parsed.title,
-                category: parsed.category || 'Фильмы',
+                title: parts[0],
+                category: parts[1] || 'Фильмы',
+                genre: parts[2] || '',
+                duration: parts[3] || '',
+                release_year: parts[4] || '2024',
+                poster_url: parts[5] || '',
+                description: parts[6] || '',
                 status: 'planned',
                 rating: 0,
-                genre: parsed.genre || '',
-                duration: parsed.duration || '',
-                release_year: parsed.release_year || '',
-                poster_url: parsed.poster_url || '',
-                description: parsed.description || '',
-                note: parsed.note || '',
+                note: '',
                 raw_input: '',
                 ai_parsed: false,
                 created_at: new Date().toISOString(),
@@ -195,10 +185,59 @@ export function App() {
               setSelectedItem(sharedItem);
               setActiveTab('details');
               window.scrollTo(0, 0);
+              return;
             }
-          } catch (err) {
-            console.warn('Could not parse shared item payload:', err);
+          } catch (e) {
+            console.warn('Error decoding compact payload:', e);
           }
+        }
+
+        // 2. Try fetching item by ID from backend public endpoint
+        const publicItem = await api.getPublicItem(cleanParam.replace('item_', '').replace('share_', ''));
+        if (publicItem) {
+          setSelectedItem({
+            ...publicItem,
+            status: 'planned',
+            rating: 0,
+            isSharedPreview: true,
+          } as any);
+          setActiveTab('details');
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        // 3. Fallback to base64 JSON payload
+        try {
+          const rawB64 = cleanParam.replace('item_', '').replace('share_', '');
+          const jsonStr = decodeURIComponent(atob(rawB64));
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && parsed.title) {
+            const sharedItem: Item = {
+              id: 'shared_' + Date.now(),
+              user_id: 0,
+              title: parsed.title,
+              category: parsed.category || 'Фильмы',
+              status: 'planned',
+              rating: 0,
+              genre: parsed.genre || '',
+              duration: parsed.duration || '',
+              release_year: parsed.release_year || '',
+              poster_url: parsed.poster_url || '',
+              description: parsed.description || '',
+              note: parsed.note || '',
+              raw_input: '',
+              ai_parsed: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              isSharedPreview: true,
+            } as any;
+
+            setSelectedItem(sharedItem);
+            setActiveTab('details');
+            window.scrollTo(0, 0);
+          }
+        } catch (err) {
+          console.warn('Could not parse fallback shared item payload:', err);
         }
       } catch (e) {
         console.warn('Error reading start_param:', e);
@@ -206,6 +245,8 @@ export function App() {
     };
 
     handleDeepLink();
+    setTimeout(handleDeepLink, 300);
+    setTimeout(handleDeepLink, 800);
   }, []);
 
   // Fetch API data on load
