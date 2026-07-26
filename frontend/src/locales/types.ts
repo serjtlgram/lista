@@ -124,6 +124,8 @@ export interface Translations {
     elements_count: string;
     by_date: string;
     no_items_found: string;
+    director: string;
+    cast: string;
     watch_on_youtube: string;
     open_in_youtube: string;
   };

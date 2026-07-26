@@ -17,6 +17,8 @@ export interface Item {
   raw_input?: string;
   ai_parsed?: boolean;
   youtube_url?: string;
+  director?: string;
+  cast?: string;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
@@ -32,6 +34,8 @@ export interface CatalogItem {
   poster_url?: string;
   description?: string;
   youtube_url?: string;
+  director?: string;
+  cast?: string;
 }
 
 export interface UserProfile {

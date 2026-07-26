@@ -154,7 +154,7 @@ export function App() {
           null;
 
         if (!startParam || !startParam.trim()) return false;
-        const itemId = startParam.trim();
+        const itemId = startParam.trim().replace(/^item_/, '');
 
         // UUID format check: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
         const isUUID = /^[0-9a-f-]{32,36}$/i.test(itemId);

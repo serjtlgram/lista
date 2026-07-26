@@ -124,6 +124,8 @@ export const ru: Translations = {
     elements_count: 'элементов',
     by_date: 'По дате',
     no_items_found: 'Ничего не найдено в этой категории',
+    director: 'Режиссёр',
+    cast: 'Актёры',
     watch_on_youtube: 'Смотреть на YouTube',
     open_in_youtube: 'Открыть в YouTube',
   },

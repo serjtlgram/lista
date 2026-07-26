@@ -28,7 +28,7 @@ func main() {
 		defer database.Close()
 	}
 
-	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey)
+	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey)
 
 	r := chi.NewRouter()
 

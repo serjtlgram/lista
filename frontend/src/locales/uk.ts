@@ -124,6 +124,8 @@ export const uk: Translations = {
     elements_count: 'елементів',
     by_date: 'За датою',
     no_items_found: 'Нічого не знайдено в цій категорії',
+    director: 'Режисер',
+    cast: 'Актори',
     watch_on_youtube: 'Дивитися на YouTube',
     open_in_youtube: 'Відкрити в YouTube',
   },

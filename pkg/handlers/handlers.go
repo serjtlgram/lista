@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/db"
 	"lista-backend/pkg/models"
+	"lista-backend/pkg/parser"
 	"lista-backend/pkg/youtube"
 )
 
@@ -22,13 +24,15 @@ type Handler struct {
 	DB            *db.DB
 	BotToken      string
 	YoutubeAPIKey string
+	TMDBAPIKey    string
 }
 
-func NewHandler(database *db.DB, botToken string, youtubeAPIKey string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string) *Handler {
 	h := &Handler{
 		DB:            database,
 		BotToken:      botToken,
 		YoutubeAPIKey: youtubeAPIKey,
+		TMDBAPIKey:    tmdbAPIKey,
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
@@ -343,7 +347,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -383,7 +387,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			items = append(items, item)
@@ -424,7 +428,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	// Check if user already has an item with the same title to prevent duplicates
 	if h.DB != nil && h.DB.Pool != nil {
 		checkQuery := `
-			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
 			LIMIT 1;
@@ -433,7 +437,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
-			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
 		)
 		if err == nil {
 			// Item already exists for this user, return existing item without creating duplicate
@@ -461,8 +465,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -481,12 +485,14 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Note = req.Note
 	createdItem.RawInput = req.RawInput
 	createdItem.YoutubeURL = ytURL
+	createdItem.Director = req.Director
+	createdItem.Cast = req.Cast
 	createdItem.CompletedAt = completedAt
 
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, completedAt,
+		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, req.Director, req.Cast, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -581,6 +587,16 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.YoutubeURL != nil {
 		query += fmt.Sprintf(", youtube_url = $%d", argIdx)
 		args = append(args, *req.YoutubeURL)
+		argIdx++
+	}
+	if req.Director != nil {
+		query += fmt.Sprintf(", director = $%d", argIdx)
+		args = append(args, *req.Director)
+		argIdx++
+	}
+	if req.Cast != nil {
+		query += fmt.Sprintf(", cast_members = $%d", argIdx)
+		args = append(args, *req.Cast)
 		argIdx++
 	}
 
@@ -735,7 +751,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title)) title, category, genre, duration, release_year, poster_url, description
+		SELECT DISTINCT ON (LOWER(title)) title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
 		FROM items
 		WHERE LOWER(title) LIKE $1
 	`
@@ -759,7 +775,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	results := []models.CatalogSearchResult{}
 	for rows.Next() {
 		var res models.CatalogSearchResult
-		if err := rows.Scan(&res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description); err == nil {
+		if err := rows.Scan(&res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
 			results = append(results, res)
 		}
 	}
@@ -777,7 +793,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
 		FROM items WHERE id = $1 LIMIT 1;
 	`
 
@@ -785,7 +801,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -825,27 +841,183 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if update.Message != nil && update.Message.From != nil && strings.HasPrefix(update.Message.Text, "/start") {
+	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
-		if h.DB != nil && h.DB.Pool != nil {
-			query := `
-				INSERT INTO users (id, username, first_name, last_name, welcomed, updated_at)
-				VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
-				ON CONFLICT (id) DO UPDATE SET
-					username = EXCLUDED.username,
-					first_name = EXCLUDED.first_name,
-					last_name = EXCLUDED.last_name,
-					welcomed = true,
-					updated_at = CURRENT_TIMESTAMP;
-			`
-			_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName)
-		}
+		msgText := update.Message.Text
 
-		// Always send welcome message when user explicitly presses /start command
-		langCode := update.Message.From.LanguageCode
-		go h.sendWelcomeMessage(userID, langCode)
+		if strings.HasPrefix(msgText, "/start") {
+			if h.DB != nil && h.DB.Pool != nil {
+				query := `
+					INSERT INTO users (id, username, first_name, last_name, welcomed, updated_at)
+					VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+					ON CONFLICT (id) DO UPDATE SET
+						username = EXCLUDED.username,
+						first_name = EXCLUDED.first_name,
+						last_name = EXCLUDED.last_name,
+						welcomed = true,
+						updated_at = CURRENT_TIMESTAMP;
+				`
+				_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName)
+			}
+
+			// Always send welcome message when user explicitly presses /start command
+			langCode := update.Message.From.LanguageCode
+			go h.sendWelcomeMessage(userID, langCode)
+		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
+			go h.processIncomingMediaURL(userID, update.Message.From, extractedURL)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
+	ID           int64  `json:"id"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Username     string `json:"username"`
+	LanguageCode string `json:"language_code"`
+}, rawURL string) {
+	if h.DB != nil && h.DB.Pool != nil && from != nil {
+		userQuery := `
+			INSERT INTO users (id, username, first_name, last_name, updated_at)
+			VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+			ON CONFLICT (id) DO UPDATE SET
+				username = EXCLUDED.username,
+				first_name = EXCLUDED.first_name,
+				last_name = EXCLUDED.last_name,
+				updated_at = CURRENT_TIMESTAMP;
+		`
+		_, _ = h.DB.Pool.Exec(context.Background(), userQuery, from.ID, from.Username, from.FirstName, from.LastName)
+	}
+
+	media, err := parser.ParseMediaURL(rawURL, h.TMDBAPIKey, h.YoutubeAPIKey)
+	if err != nil || media == nil || strings.TrimSpace(media.Title) == "" {
+		log.Printf("[BotLinkParser] Failed to parse URL %s: %v", rawURL, err)
+		h.sendBotMessage(userID, "❌ Не удалось извлечь информацию о фильме/сериале по этой ссылке. Попробуйте другую ссылку.")
+		return
+	}
+
+	titleTrimmed := strings.TrimSpace(media.Title)
+	catEn := mapCategoryToEn(media.Category)
+	itemUUID := uuid.New().String()
+
+	ctx := context.Background()
+	var finalItemID string = itemUUID
+	if h.DB != nil && h.DB.Pool != nil {
+		var existingID string
+		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) LIMIT 1", userID, titleTrimmed).Scan(&existingID)
+		if checkErr == nil && existingID != "" {
+			finalItemID = existingID
+		} else {
+			insertQuery := `
+				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members)
+				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12)
+				RETURNING id;
+			`
+			_ = h.DB.Pool.QueryRow(ctx, insertQuery,
+				itemUUID, userID, titleTrimmed, catEn, media.Genre, media.Duration, media.ReleaseYear,
+				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast,
+			).Scan(&finalItemID)
+		}
+	}
+
+	catRu := mapCategoryToRu(catEn)
+	captionText := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", titleTrimmed)
+	if media.ReleaseYear != "" || media.Duration != "" || catRu != "" {
+		captionText += fmt.Sprintf("📌 <b>Категория:</b> %s", catRu)
+		if media.ReleaseYear != "" {
+			captionText += fmt.Sprintf(" (%s)", media.ReleaseYear)
+		}
+		if media.Duration != "" {
+			captionText += fmt.Sprintf(" • ⏱ %s", media.Duration)
+		}
+		captionText += "\n"
+	}
+	if media.Genre != "" {
+		captionText += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", media.Genre)
+	}
+	if media.Director != "" {
+		captionText += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", media.Director)
+	}
+	if media.Cast != "" {
+		captionText += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", media.Cast)
+	}
+	if media.Description != "" {
+		desc := media.Description
+		runes := []rune(desc)
+		if len(runes) > 200 {
+			desc = string(runes[:197]) + "..."
+		}
+		captionText += fmt.Sprintf("\n📖 %s\n", desc)
+	}
+
+	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", finalItemID)
+	replyMarkup := map[string]interface{}{
+		"inline_keyboard": [][]map[string]interface{}{
+			{
+				{
+					"text": "🎬 Открыть в TrackList",
+					"url":  appURL,
+				},
+			},
+		},
+	}
+
+	if media.PosterURL != "" && strings.HasPrefix(media.PosterURL, "http") {
+		photoPayload := map[string]interface{}{
+			"chat_id":      userID,
+			"photo":        media.PosterURL,
+			"caption":      captionText,
+			"parse_mode":   "HTML",
+			"reply_markup": replyMarkup,
+		}
+		if err := h.sendBotAPIRequestWithErr("sendPhoto", photoPayload); err == nil {
+			return
+		}
+	}
+
+	msgPayload := map[string]interface{}{
+		"chat_id":                  userID,
+		"text":                     captionText,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview": false,
+		"reply_markup":             replyMarkup,
+	}
+	h.sendBotAPIRequest("sendMessage", msgPayload)
+}
+
+func (h *Handler) sendBotMessage(userID int64, text string) {
+	payload := map[string]interface{}{
+		"chat_id": userID,
+		"text":    text,
+	}
+	h.sendBotAPIRequest("sendMessage", payload)
+}
+
+func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) error {
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", h.BotToken, method)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("telegram API status %s", resp.Status)
+	}
+	return nil
 }
 

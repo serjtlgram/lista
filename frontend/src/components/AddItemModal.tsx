@@ -96,6 +96,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
   const [youtubeUrl, setYoutubeUrl] = useState(editingItem?.youtube_url || '');
   const [description, setDescription] = useState(editingItem?.description || '');
+  const [director, setDirector] = useState(editingItem?.director || '');
+  const [cast, setCast] = useState(editingItem?.cast || '');
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -115,6 +117,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setPosterUrl(editingItem.poster_url || '');
       setYoutubeUrl(editingItem.youtube_url || '');
       setDescription(editingItem.description || '');
+      setDirector(editingItem.director || '');
+      setCast(editingItem.cast || '');
       setNote(editingItem.note || '');
 
       const durStr = editingItem.duration || '';
@@ -140,6 +144,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setPosterUrl('');
       setYoutubeUrl('');
       setDescription('');
+      setDirector('');
+      setCast('');
       setNote('');
       setShowAdvanced(true);
     }
@@ -191,6 +197,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (sug.poster_url) setPosterUrl(sug.poster_url);
     if (sug.youtube_url) setYoutubeUrl(sug.youtube_url);
     if (sug.description) setDescription(sug.description);
+    if (sug.director) setDirector(sug.director);
+    if (sug.cast) setCast(sug.cast);
     setShowSuggestions(false);
   };
 
@@ -229,6 +237,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       poster_url: finalPoster,
       youtube_url: youtubeUrl.trim(),
       description: description.trim(),
+      director: director.trim(),
+      cast: cast.trim(),
       note: note.trim(),
     };
 
@@ -523,6 +533,29 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   placeholder={t.modal.placeholder_poster}
                   className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-400 block mb-1">{t.details.director}</label>
+                  <input
+                    type="text"
+                    value={director}
+                    onChange={(e) => setDirector(e.target.value)}
+                    placeholder="Кристофер Нолан"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 block mb-1">{t.details.cast}</label>
+                  <input
+                    type="text"
+                    value={cast}
+                    onChange={(e) => setCast(e.target.value)}
+                    placeholder="Мэттью Макконахи, Энн Хэтэуэй"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
               </div>
 
               <div>

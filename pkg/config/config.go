@@ -12,6 +12,7 @@ type Config struct {
 	BotToken      string
 	Environment   string
 	YoutubeAPIKey string
+	TMDBAPIKey    string
 }
 
 func LoadConfig() *Config {
@@ -35,6 +36,7 @@ func LoadConfig() *Config {
 	}
 
 	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
+	tmdbKey := os.Getenv("TMDB_API_KEY")
 
 	return &Config{
 		Port:          port,
@@ -42,5 +44,6 @@ func LoadConfig() *Config {
 		BotToken:      botToken,
 		Environment:   env,
 		YoutubeAPIKey: youtubeKey,
+		TMDBAPIKey:    tmdbKey,
 	}
 }

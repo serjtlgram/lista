@@ -19,7 +19,10 @@ import {
   PlusCircle,
   Youtube,
   ExternalLink,
-  Maximize2
+  Maximize2,
+  User,
+  Users,
+  Video
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -337,6 +340,32 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
                 <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
               </div>
+
+              {/* Director Row */}
+              {item.director && (
+                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Video className="w-3.5 h-3.5 text-accentViolet" />
+                    {t.details.director}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]" title={item.director}>
+                    {item.director}
+                  </span>
+                </div>
+              )}
+
+              {/* Cast Row (1-4 max actors) */}
+              {item.cast && (
+                <div className="flex items-start justify-between text-gray-300 gap-1 pt-0.5">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0 pt-0.5">
+                    <Users className="w-3.5 h-3.5 text-accentTeal" />
+                    {t.details.cast}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight line-clamp-2 max-w-[130px]" title={item.cast}>
+                    {item.cast}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Interactive Status Pill Button */}

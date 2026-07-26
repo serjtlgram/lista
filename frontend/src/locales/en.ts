@@ -124,6 +124,8 @@ export const en: Translations = {
     elements_count: 'items',
     by_date: 'By date',
     no_items_found: 'Nothing found in this category',
+    director: 'Director',
+    cast: 'Cast',
     watch_on_youtube: 'Watch on YouTube',
     open_in_youtube: 'Open in YouTube',
   },
