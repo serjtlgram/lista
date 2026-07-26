@@ -914,60 +914,158 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 			}
 
 			catRu := mapCategoryToRu(newCat)
-			alertText := fmt.Sprintf("Категория изменена на: %s", catRu)
 			h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
 				"callback_query_id": cb.ID,
-				"text":              alertText,
+				"text":              fmt.Sprintf("Категория изменена на: %s", catRu),
 			})
 
-			// Update message caption or text
-			oldText := cb.Message.Caption
-			if oldText == "" {
-				oldText = cb.Message.Text
-			}
-
-			if oldText != "" {
-				// Replace category line
-				lines := strings.Split(oldText, "\n")
-				for i, line := range lines {
-					if strings.Contains(line, "Категория:") {
-						lines[i] = fmt.Sprintf("📌 <b>Категория:</b> %s", catRu)
-					}
-				}
-				updatedText := strings.Join(lines, "\n")
-
-				appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
-				replyMarkup := map[string]interface{}{
-					"inline_keyboard": [][]map[string]interface{}{
-						{
-							{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[newCat == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", itemID)},
-							{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[newCat == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", itemID)},
-						},
-						{
-							{"text": "🎬 Открыть в TrackList", "url": appURL},
-						},
-					},
-				}
-
-				if cb.Message.Caption != "" {
-					h.sendBotAPIRequest("editMessageCaption", map[string]interface{}{
-						"chat_id":      chatID,
-						"message_id":   messageID,
-						"caption":      updatedText,
-						"parse_mode":   "HTML",
-						"reply_markup": replyMarkup,
-					})
-				} else {
-					h.sendBotAPIRequest("editMessageText", map[string]interface{}{
-						"chat_id":      chatID,
-						"message_id":   messageID,
-						"text":         updatedText,
-						"parse_mode":   "HTML",
-						"reply_markup": replyMarkup,
-					})
-				}
-			}
+			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 		}
+	} else if strings.HasPrefix(cb.Data, "set_genre:") {
+		parts := strings.Split(cb.Data, ":")
+		if len(parts) >= 3 {
+			newGenre := parts[1]
+			itemID := parts[2]
+
+			if h.DB != nil && h.DB.Pool != nil {
+				_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET genre = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newGenre, itemID, userID)
+			}
+
+			h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
+				"callback_query_id": cb.ID,
+				"text":              fmt.Sprintf("Жанр изменён на: %s", newGenre),
+			})
+
+			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
+		}
+	}
+}
+
+func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID string, userID int64) {
+	if h.DB == nil || h.DB.Pool == nil {
+		return
+	}
+
+	var item models.Item
+	query := `
+		SELECT id, title, category, genre, duration, release_year, poster_url, description, director, cast_members
+		FROM items WHERE id = $1 AND user_id = $2 LIMIT 1;
+	`
+	err := h.DB.Pool.QueryRow(context.Background(), query, itemID, userID).Scan(
+		&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Director, &item.Cast,
+	)
+	if err != nil {
+		return
+	}
+
+	updatedText := buildTelegramCardText(item.Title, item.Category, item.ReleaseYear, item.Duration, item.Genre, item.Director, item.Cast, item.Description)
+	replyMarkup := buildTelegramReplyMarkup(item.Category, item.Genre, item.ID)
+
+	// Try updating caption first, if fails update message text
+	editCapPayload := map[string]interface{}{
+		"chat_id":      chatID,
+		"message_id":   messageID,
+		"caption":      updatedText,
+		"parse_mode":   "HTML",
+		"reply_markup": replyMarkup,
+	}
+	if err := h.sendBotAPIRequestWithErr("editMessageCaption", editCapPayload); err != nil {
+		editTextPayload := map[string]interface{}{
+			"chat_id":      chatID,
+			"message_id":   messageID,
+			"text":         updatedText,
+			"parse_mode":   "HTML",
+			"reply_markup": replyMarkup,
+		}
+		h.sendBotAPIRequest("editMessageText", editTextPayload)
+	}
+}
+
+func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string) string {
+	catRu := mapCategoryToRu(category)
+	text := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", title)
+	text += fmt.Sprintf("📌 <b>Категория:</b> %s\n", catRu)
+
+	if genre != "" {
+		text += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", genre)
+	} else {
+		text += "🏷 <b>Жанр:</b> Не указан\n"
+	}
+
+	infoParts := []string{}
+	if releaseYear != "" {
+		infoParts = append(infoParts, releaseYear)
+	}
+	if duration != "" {
+		infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
+	}
+	if len(infoParts) > 0 {
+		text += fmt.Sprintf("🗓 <b>Инфо:</b> %s\n", strings.Join(infoParts, " • "))
+	}
+
+	if director != "" {
+		text += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", director)
+	}
+	if cast != "" {
+		text += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", cast)
+	}
+	if description != "" {
+		desc := description
+		runes := []rune(desc)
+		if len(runes) > 180 {
+			desc = string(runes[:177]) + "..."
+		}
+		text += fmt.Sprintf("\n📖 %s", desc)
+	}
+	return text
+}
+
+func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) map[string]interface{} {
+	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
+
+	topGenres := []struct {
+		Label string
+		Val   string
+	}{
+		{"🎭 Драма", "Драма"},
+		{"😂 Комедия", "Комедия"},
+		{"🚀 Фантастика", "Фантастика"},
+		{"🔪 Триллер", "Триллер"},
+		{"⚔️ Боевик", "Боевик"},
+		{"🪄 Фэнтези", "Фэнтези"},
+	}
+
+	var genreRow1 []map[string]interface{}
+	var genreRow2 []map[string]interface{}
+
+	for i, g := range topGenres {
+		btnText := g.Label
+		if strings.Contains(strings.ToLower(currentGenre), strings.ToLower(g.Val)) {
+			btnText = "✓ " + g.Label
+		}
+		btn := map[string]interface{}{
+			"text":          btnText,
+			"callback_data": fmt.Sprintf("set_genre:%s:%s", g.Val, itemID),
+		}
+		if i < 3 {
+			genreRow1 = append(genreRow1, btn)
+		} else {
+			genreRow2 = append(genreRow2, btn)
+		}
+	}
+
+	return map[string]interface{}{
+		"inline_keyboard": [][]map[string]interface{}{
+			{
+				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", itemID)},
+				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", itemID)},
+			},
+			genreRow1,
+			genreRow2,
+			{
+				{"text": "🎬 Открыть в TrackList", "url": appURL},
+			},
+		},
 	}
 }
 
@@ -1009,6 +1107,18 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) LIMIT 1", userID, titleTrimmed).Scan(&existingID)
 		if checkErr == nil && existingID != "" {
 			finalItemID = existingID
+			// Update missing fields if new data has director/cast/poster/duration
+			_, _ = h.DB.Pool.Exec(ctx, `
+				UPDATE items SET
+					poster_url = CASE WHEN poster_url = '' OR poster_url IS NULL THEN $1 ELSE poster_url END,
+					duration = CASE WHEN duration = '' OR duration IS NULL THEN $2 ELSE duration END,
+					genre = CASE WHEN genre = '' OR genre IS NULL THEN $3 ELSE genre END,
+					director = CASE WHEN director = '' OR director IS NULL THEN $4 ELSE director END,
+					cast_members = CASE WHEN cast_members = '' OR cast_members IS NULL THEN $5 ELSE cast_members END,
+					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $6 ELSE youtube_url END,
+					updated_at = CURRENT_TIMESTAMP
+				WHERE id = $7 AND user_id = $8;
+			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.YoutubeURL, finalItemID, userID)
 		} else {
 			insertQuery := `
 				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members)
@@ -1022,51 +1132,8 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		}
 	}
 
-	catRu := mapCategoryToRu(catEn)
-	captionText := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", titleTrimmed)
-	if media.ReleaseYear != "" || media.Duration != "" || catRu != "" {
-		captionText += fmt.Sprintf("📌 <b>Категория:</b> %s", catRu)
-		if media.ReleaseYear != "" {
-			captionText += fmt.Sprintf(" (%s)", media.ReleaseYear)
-		}
-		if media.Duration != "" {
-			captionText += fmt.Sprintf(" • ⏱ %s", media.Duration)
-		}
-		captionText += "\n"
-	}
-	if media.Genre != "" {
-		captionText += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", media.Genre)
-	}
-	if media.Director != "" {
-		captionText += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", media.Director)
-	}
-	if media.Cast != "" {
-		captionText += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", media.Cast)
-	}
-	if media.Description != "" {
-		desc := media.Description
-		runes := []rune(desc)
-		if len(runes) > 200 {
-			desc = string(runes[:197]) + "..."
-		}
-		captionText += fmt.Sprintf("\n📖 %s\n", desc)
-	}
-
-	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", finalItemID)
-	replyMarkup := map[string]interface{}{
-		"inline_keyboard": [][]map[string]interface{}{
-			{
-				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("set_cat:movie:%s", finalItemID)},
-				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("set_cat:show:%s", finalItemID)},
-			},
-			{
-				{
-					"text": "🎬 Открыть в TrackList",
-					"url":  appURL,
-				},
-			},
-		},
-	}
+	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description)
+	replyMarkup := buildTelegramReplyMarkup(catEn, media.Genre, finalItemID)
 
 	if media.PosterURL != "" && strings.HasPrefix(media.PosterURL, "http") {
 		photoPayload := map[string]interface{}{

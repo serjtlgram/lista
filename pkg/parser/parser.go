@@ -189,6 +189,7 @@ func cleanTitle(t string) string {
 		"— HDrezka", "- HDrezka", "| HDrezka",
 		"— Kinogo", "- Kinogo", "| Kinogo",
 		"— Lordfilm", "- Lordfilm", "| Lordfilm",
+		"— Кинобейс", "- Кинобейс", "| Кинобейс",
 		" (фильм)", " (сериал)", " (TV series)", " (Movie)",
 	}
 	for _, s := range suffixes {
@@ -197,16 +198,17 @@ func cleanTitle(t string) string {
 		}
 	}
 
+	// Remove year in parentheses e.g. (2026) or (1994)
+	t = regexp.MustCompile(`\(\s*(?:19|20)\d\d\s*\)`).ReplaceAllString(t, "")
+
 	// Remove Russian noise phrases for streaming sites
 	noiseRegex := regexp.MustCompile(`(?i)(?:смотреть\s+онлайн|смотреть\s+бесплатно|бесплатно\s+в|в\s+хорошем\s+качестве|в\s+hd|hd\s+1080p?|hd\s+720p?|4k|все\s+серии\s+подряд|все\s+серии|все\s+сезоны|\d+(?:-\d+)?\s*(?:сезон|сезоны|серия|серии)|фильм|сериал|смотреть|онлайн|бесплатно)`)
 	t = noiseRegex.ReplaceAllString(t, "")
 
-	// Remove year in parentheses e.g. (2014)
-	t = regexp.MustCompile(`\(\s*19\d\d|20\d\d\s*\)`).ReplaceAllString(t, "")
-
-	// Clean duplicate spaces and trailing punctuation
+	// Remove any trailing or empty parentheses
+	t = regexp.MustCompile(`\(\s*\)`).ReplaceAllString(t, "")
 	t = regexp.MustCompile(`\s+`).ReplaceAllString(t, " ")
-	t = strings.Trim(t, " -—|/\\:;,.")
+	t = strings.Trim(t, " ()[]-—|/\\:;,.")
 
 	return strings.TrimSpace(t)
 }

@@ -348,7 +348,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     <Video className="w-3.5 h-3.5 text-accentViolet" />
                     {t.details.director}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]" title={item.director}>
+                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[170px]" title={item.director}>
                     {item.director}
                   </span>
                 </div>
@@ -361,7 +361,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     <Users className="w-3.5 h-3.5 text-accentTeal" />
                     {t.details.cast}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight line-clamp-2 max-w-[130px]" title={item.cast}>
+                  <span className="font-semibold text-white text-right leading-tight line-clamp-2 max-w-[170px]" title={item.cast}>
                     {item.cast}
                   </span>
                 </div>
