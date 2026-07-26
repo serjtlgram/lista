@@ -549,7 +549,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           <button
             type="submit"
             disabled={isCompressing}
-            className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 mt-2 hover:bg-opacity-90 active:scale-98 transition disabled:opacity-50"
+            className="w-full py-3.5 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 mt-4 mb-6 hover:bg-opacity-90 active:scale-98 transition disabled:opacity-50"
           >
             {isCompressing ? 'Сохранение...' : t.modal.save}
           </button>

@@ -84,9 +84,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const formatShortGenre = (genreStr?: string | null): string => {
     if (!genreStr || !genreStr.trim()) return '-';
-    let main = genreStr.split('/')[0].trim();
+    let cleaned = genreStr.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
+    let main = cleaned.split('/')[0].trim();
     main = main.split(',')[0].trim();
-    return main;
+    return main || '-';
   };
 
   const statusOptions = [
@@ -128,15 +129,22 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   // Separate episodes count and duration in minutes for display
   let episodesDisplay = '';
-  let durationDisplay = item.duration || '-';
+  let durationDisplay = '-';
 
-  if (item.duration && item.duration.includes('•')) {
-    const parts = item.duration.split('•');
-    episodesDisplay = parts[0]?.trim() || '';
-    durationDisplay = parts[1]?.trim() || '-';
-  } else if (item.duration && item.duration.includes('сер.')) {
-    episodesDisplay = item.duration.trim();
-    durationDisplay = '-';
+  if (item.duration) {
+    const raw = item.duration;
+    if (raw.includes('•')) {
+      const parts = raw.split('•');
+      episodesDisplay = parts[0]?.replace(/\D/g, '') || '';
+      const durNum = parts[1]?.replace(/\D/g, '') || '';
+      durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : '-';
+    } else if (raw.includes('сер.') || raw.includes('ep.')) {
+      episodesDisplay = raw.replace(/\D/g, '');
+      durationDisplay = '-';
+    } else {
+      const durNum = raw.replace(/\D/g, '');
+      durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+    }
   }
 
   return (
@@ -174,14 +182,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
                 {formatCategorySingle(item.category)}
               </span>
-              <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year} г.` : '2024 г.'}</span>
+              <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
             </div>
 
             <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
               <div className="flex items-center justify-between text-gray-300 gap-1">
                 <span className="text-gray-400 flex items-center gap-1 shrink-0">
                   <Calendar className="w-3.5 h-3.5 text-accentViolet" />
-                  Просмотр
+                  {t.details.short_watch_date}
                 </span>
                 <span className="font-semibold text-white text-right font-mono text-[11px]">
                   {formatShortDate(item.completed_at, item.release_year)}

@@ -88,9 +88,11 @@ export const en: Translations = {
   details: {
     my_rating: 'My Rating',
     watch_date: 'Watch Date',
+    short_watch_date: 'Watched',
     genre: 'Genre',
     duration: 'Duration',
     episodes: 'Episodes',
+    minutes_short: 'm',
     description: 'Description',
     notes: 'Notes',
     add_to_list: 'Add to list',

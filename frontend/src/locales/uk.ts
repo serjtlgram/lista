@@ -88,9 +88,11 @@ export const uk: Translations = {
   details: {
     my_rating: 'Моя оцінка',
     watch_date: 'Дата перегляду',
+    short_watch_date: 'Перегляд',
     genre: 'Жанр',
     duration: 'Тривалість',
     episodes: 'Серій',
+    minutes_short: 'хв',
     description: 'Опис',
     notes: 'Нотатки',
     add_to_list: 'До списку',

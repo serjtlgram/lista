@@ -88,9 +88,11 @@ export interface Translations {
   details: {
     my_rating: string;
     watch_date: string;
+    short_watch_date: string;
     genre: string;
     duration: string;
     episodes: string;
+    minutes_short: string;
     description: string;
     notes: string;
     add_to_list: string;

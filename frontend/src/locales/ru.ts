@@ -88,9 +88,11 @@ export const ru: Translations = {
   details: {
     my_rating: 'Моя оценка',
     watch_date: 'Дата просмотра',
+    short_watch_date: 'Просмотр',
     genre: 'Жанр',
     duration: 'Длительность',
     episodes: 'Серий',
+    minutes_short: 'м',
     description: 'Описание',
     notes: 'Заметки',
     add_to_list: 'В список',
