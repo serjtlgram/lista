@@ -903,7 +903,20 @@ var topGenres = []struct {
 	{"🗺️ Приключения", "Приключения"},
 	{"👨‍👩‍👧 Семейный", "Семейный"},
 	{"📚 Документ.", "Документальный"},
-	{"🎤 Музыка", "Музыка"},
+	{"🎙️ Ток-шоу", "Ток-шоу"},
+}
+
+func mapStatusToRu(status string) string {
+	switch strings.ToLower(status) {
+	case "planned", "в планах", "у планах":
+		return "📋 В планах"
+	case "watching", "смотрю", "дивлюсь":
+		return "👁 Смотрю"
+	case "completed", "просмотрено", "завершено":
+		return "✅ Завершено"
+	default:
+		return "📋 В планах"
+	}
 }
 
 func (h *Handler) handleCallbackQuery(cb *struct {
@@ -954,6 +967,30 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 
 			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 		}
+	} else if strings.HasPrefix(cb.Data, "s:") {
+		parts := strings.Split(cb.Data, ":")
+		if len(parts) >= 3 {
+			statusCode := parts[1] // "p", "w", "c"
+			itemID := parts[2]
+			newStatus := "planned"
+			if statusCode == "w" {
+				newStatus = "watching"
+			} else if statusCode == "c" {
+				newStatus = "completed"
+			}
+
+			if h.DB != nil && h.DB.Pool != nil {
+				_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newStatus, itemID, userID)
+			}
+
+			statusRu := mapStatusToRu(newStatus)
+			h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
+				"callback_query_id": cb.ID,
+				"text":              fmt.Sprintf("Статус изменён на: %s", statusRu),
+			})
+
+			h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
+		}
 	} else if strings.HasPrefix(cb.Data, "g:") {
 		parts := strings.Split(cb.Data, ":")
 		if len(parts) >= 3 {
@@ -974,6 +1011,25 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 				h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
 			}
 		}
+	} else if strings.HasPrefix(cb.Data, "r:") {
+		parts := strings.Split(cb.Data, ":")
+		if len(parts) >= 3 {
+			newRating, err := strconv.Atoi(parts[1])
+			itemID := parts[2]
+
+			if err == nil && newRating >= 1 && newRating <= 10 {
+				if h.DB != nil && h.DB.Pool != nil {
+					_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET rating = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newRating, itemID, userID)
+				}
+
+				h.sendBotAPIRequest("answerCallbackQuery", map[string]interface{}{
+					"callback_query_id": cb.ID,
+					"text":              fmt.Sprintf("Оценка выставлена: %d/10 ⭐", newRating),
+				})
+
+				h.refreshTelegramMessageCard(chatID, messageID, itemID, userID)
+			}
+		}
 	}
 }
 
@@ -984,18 +1040,18 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 
 	var item models.Item
 	query := `
-		SELECT id, title, category, genre, duration, release_year, poster_url, description, director, cast_members
+		SELECT id, title, category, genre, status, rating, duration, release_year, poster_url, description, director, cast_members
 		FROM items WHERE id = $1 AND user_id = $2 LIMIT 1;
 	`
 	err := h.DB.Pool.QueryRow(context.Background(), query, itemID, userID).Scan(
-		&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Director, &item.Cast,
+		&item.ID, &item.Title, &item.Category, &item.Genre, &item.Status, &item.Rating, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Director, &item.Cast,
 	)
 	if err != nil {
 		return
 	}
 
-	updatedText := buildTelegramCardText(item.Title, item.Category, item.ReleaseYear, item.Duration, item.Genre, item.Director, item.Cast, item.Description)
-	replyMarkup := buildTelegramReplyMarkup(item.Category, item.Genre, item.ID)
+	updatedText := buildTelegramCardText(item.Title, item.Category, item.ReleaseYear, item.Duration, item.Genre, item.Director, item.Cast, item.Description, item.Status, item.Rating)
+	replyMarkup := buildTelegramReplyMarkup(item.Category, item.Genre, item.Status, item.Rating, item.ID)
 
 	// Try updating caption first, if fails update message text
 	editCapPayload := map[string]interface{}{
@@ -1017,16 +1073,24 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 	}
 }
 
-func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string) string {
+func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string, status string, rating int) string {
 	catRu := mapCategoryToRu(category)
 	cleanTitle := html.EscapeString(title)
 	cleanGenre := html.EscapeString(genre)
 	cleanDirector := html.EscapeString(director)
 	cleanCast := html.EscapeString(cast)
 	cleanDesc := html.EscapeString(description)
+	statusRu := mapStatusToRu(status)
 
 	text := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", cleanTitle)
 	text += fmt.Sprintf("📌 <b>Категория:</b> %s\n", catRu)
+	text += fmt.Sprintf("🚩 <b>Статус:</b> %s\n", statusRu)
+
+	// Show rating ONLY if status is NOT planned
+	isPlanned := status == "" || status == "planned" || status == "в планах" || status == "у планах"
+	if !isPlanned && rating > 0 {
+		text += fmt.Sprintf("⭐ <b>Оценка:</b> %d/10\n", rating)
+	}
 
 	if cleanGenre != "" {
 		text += fmt.Sprintf("🏷 <b>Жанр:</b> %s\n", cleanGenre)
@@ -1062,14 +1126,28 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	return text
 }
 
-func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) map[string]interface{} {
+func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus string, currentRating int, itemID string) map[string]interface{} {
 	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
 
-	var genreRow1 []map[string]interface{}
-	var genreRow2 []map[string]interface{}
-	var genreRow3 []map[string]interface{}
-	var genreRow4 []map[string]interface{}
+	// Row 1: Category
+	catRow := []map[string]interface{}{
+		{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
+		{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
+	}
 
+	// Row 2: Status
+	isPlanned := currentStatus == "" || currentStatus == "planned" || currentStatus == "в планах" || currentStatus == "у планах"
+	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "дивлюсь"
+	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено"
+
+	statusRow := []map[string]interface{}{
+		{"text": map[bool]string{true: "✓ 📋 В планах", false: "📋 В планах"}[isPlanned], "callback_data": fmt.Sprintf("s:p:%s", itemID)},
+		{"text": map[bool]string{true: "✓ 👁 Смотрю", false: "👁 Смотрю"}[isWatching], "callback_data": fmt.Sprintf("s:w:%s", itemID)},
+		{"text": map[bool]string{true: "✓ ✅ Завершено", false: "✅ Завершено"}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
+	}
+
+	// Rows 3-6: 12 Genres
+	var genreRow1, genreRow2, genreRow3, genreRow4 []map[string]interface{}
 	for i, g := range topGenres {
 		btnText := g.Label
 		if strings.Contains(strings.ToLower(currentGenre), strings.ToLower(g.Val)) {
@@ -1090,16 +1168,34 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, itemID string) 
 		}
 	}
 
+	// Rows 7-8: Ratings 1-10
+	var ratingRow1, ratingRow2 []map[string]interface{}
+	for r := 1; r <= 10; r++ {
+		btnText := fmt.Sprintf("%d", r)
+		if currentRating == r {
+			btnText = fmt.Sprintf("✓ %d", r)
+		}
+		btn := map[string]interface{}{
+			"text":          btnText,
+			"callback_data": fmt.Sprintf("r:%d:%s", r, itemID),
+		}
+		if r <= 5 {
+			ratingRow1 = append(ratingRow1, btn)
+		} else {
+			ratingRow2 = append(ratingRow2, btn)
+		}
+	}
+
 	return map[string]interface{}{
 		"inline_keyboard": [][]map[string]interface{}{
-			{
-				{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
-				{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
-			},
+			catRow,
+			statusRow,
 			genreRow1,
 			genreRow2,
 			genreRow3,
 			genreRow4,
+			ratingRow1,
+			ratingRow2,
 			{
 				{"text": "🎬 Открыть в TrackList", "url": appURL},
 			},
@@ -1176,8 +1272,8 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		}
 	}
 
-	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description)
-	replyMarkup := buildTelegramReplyMarkup(catEn, media.Genre, finalItemID)
+	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description, "planned", 0)
+	replyMarkup := buildTelegramReplyMarkup(catEn, media.Genre, "planned", 0, finalItemID)
 
 	// 1. If poster is HTTP URL, send via sendPhoto
 	if media.PosterURL != "" && strings.HasPrefix(media.PosterURL, "http") {

@@ -244,18 +244,18 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   };
 
   // Separate episodes count and duration in minutes for display
-  let episodesDisplay = '';
+  let episodesDisplay = item.episodes ? String(item.episodes) : '';
   let durationDisplay = '-';
 
   if (item.duration) {
     const raw = item.duration;
     if (raw.includes('•')) {
       const parts = raw.split('•');
-      episodesDisplay = parts[0]?.replace(/\D/g, '') || '';
+      if (!episodesDisplay) episodesDisplay = parts[0]?.replace(/\D/g, '') || '';
       const durNum = parts[1]?.replace(/\D/g, '') || '';
       durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : '-';
     } else if (raw.includes('сер.') || raw.includes('ep.')) {
-      episodesDisplay = raw.replace(/\D/g, '');
+      if (!episodesDisplay) episodesDisplay = raw.replace(/\D/g, '');
       durationDisplay = '-';
     } else {
       const durNum = raw.replace(/\D/g, '');
@@ -322,17 +322,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
               </div>
 
-              {/* Separated Episodes Row */}
-              {episodesDisplay && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Tv className="w-3.5 h-3.5 text-accentPink" />
-                    {t.details.episodes}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight">{episodesDisplay}</span>
-                </div>
-              )}
-
               {/* Separated Duration Row */}
               <div className="flex items-center justify-between text-gray-300 gap-1">
                 <span className="text-gray-400 flex items-center gap-1 shrink-0">
@@ -342,6 +331,18 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
               </div>
 
+              {/* Separated Episodes Row (Always shown for series category or if episodesDisplay set) */}
+              {(item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
+                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Tv className="w-3.5 h-3.5 text-accentPink" />
+                    {t.details.episodes}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight">
+                    {episodesDisplay ? `${episodesDisplay} ${t.modal.episodes_unit || 'сер.'}` : '-'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Interactive Status Pill Button */}
@@ -398,7 +399,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </span>
             </div>
           )}
-          {item.director && item.cast && <div className="border-t border-cardBorder/40 my-1" />}
           {item.cast && (
             <div className="flex items-start gap-2.5">
               <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">

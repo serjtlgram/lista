@@ -17,6 +17,7 @@ export interface Item {
   raw_input?: string;
   ai_parsed?: boolean;
   youtube_url?: string;
+  episodes?: number;
   director?: string;
   cast?: string;
   started_at?: string;
