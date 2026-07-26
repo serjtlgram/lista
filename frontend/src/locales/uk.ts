@@ -77,6 +77,7 @@ export const uk: Translations = {
     duration_min_placeholder: 'Наприклад: 45 хв',
     episodes_unit: 'сер.',
     minutes_unit: 'хв',
+    year_label: 'Рік',
     catalog_autofill_hint: 'Знайдено в спільній базі (натисніть для автозаповнення):',
   },
   category_modal: {
@@ -84,6 +85,20 @@ export const uk: Translations = {
     subtitle: 'Оберіть категорії для відображення на головному екрані (мінімум 2)',
     min_warning: 'Має бути обрано щонайменше 2 категорії!',
     save: 'Зберегти',
+  },
+  genres: {
+    romance_drama: '❤️ Мелодрама/Драма',
+    comedy: '😂 Комедія',
+    action_war: '🔫 Бойовик/Війна',
+    detective: '🔍 Детектив',
+    horror: '😱 Жахи',
+    sci_fi: '🚀 Фантастика',
+    fantasy: '🧙 Фентезі',
+    thriller: '🕵️ Трилер',
+    adventure: '🗺️ Пригоди',
+    family: '👨‍👩‍👧 Сімейний',
+    documentary: '📚 Документальний',
+    talk_music: '🎤 Ток-шоу/Музика',
   },
   details: {
     my_rating: 'Моя оцінка',

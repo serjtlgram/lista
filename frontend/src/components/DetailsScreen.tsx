@@ -20,6 +20,7 @@ import {
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { getItemPoster } from '../services/posters';
+import { getTranslatedGenreShort } from '../services/genres';
 
 interface DetailsScreenProps {
   item: Item;
@@ -202,7 +203,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   {t.details.genre}
                 </span>
                 <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]">
-                  {formatShortGenre(item.genre)}
+                  {getTranslatedGenreShort(item.genre, t)}
                 </span>
               </div>
 

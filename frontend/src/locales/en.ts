@@ -77,6 +77,7 @@ export const en: Translations = {
     duration_min_placeholder: 'e.g. 45 mins',
     episodes_unit: 'ep.',
     minutes_unit: 'min',
+    year_label: 'Year',
     catalog_autofill_hint: 'Found in shared catalog (tap to auto-fill):',
   },
   category_modal: {
@@ -84,6 +85,20 @@ export const en: Translations = {
     subtitle: 'Select categories to display on the home screen (minimum 2)',
     min_warning: 'At least 2 categories must be selected!',
     save: 'Save',
+  },
+  genres: {
+    romance_drama: '❤️ Romance/Drama',
+    comedy: '😂 Comedy',
+    action_war: '🔫 Action/War',
+    detective: '🔍 Detective',
+    horror: '😱 Horror',
+    sci_fi: '🚀 Sci-Fi',
+    fantasy: '🧙 Fantasy',
+    thriller: '🕵️ Thriller',
+    adventure: '🗺️ Adventure',
+    family: '👨‍👩‍👧 Family',
+    documentary: '📚 Documentary',
+    talk_music: '🎤 Talk Show/Music',
   },
   details: {
     my_rating: 'My Rating',

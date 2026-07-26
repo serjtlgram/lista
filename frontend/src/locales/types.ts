@@ -77,6 +77,7 @@ export interface Translations {
     duration_min_placeholder: string;
     episodes_unit: string;
     minutes_unit: string;
+    year_label: string;
     catalog_autofill_hint: string;
   };
   category_modal: {
@@ -84,6 +85,20 @@ export interface Translations {
     subtitle: string;
     min_warning: string;
     save: string;
+  };
+  genres: {
+    romance_drama: string;
+    comedy: string;
+    action_war: string;
+    detective: string;
+    horror: string;
+    sci_fi: string;
+    fantasy: string;
+    thriller: string;
+    adventure: string;
+    family: string;
+    documentary: string;
+    talk_music: string;
   };
   details: {
     my_rating: string;

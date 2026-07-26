@@ -77,6 +77,7 @@ export const ru: Translations = {
     duration_min_placeholder: 'Например: 45 мин',
     episodes_unit: 'сер.',
     minutes_unit: 'мин',
+    year_label: 'Год',
     catalog_autofill_hint: 'Найдено в общей базе (нажмите для автозаполнения):',
   },
   category_modal: {
@@ -84,6 +85,20 @@ export const ru: Translations = {
     subtitle: 'Выберите категории для отображения на главном экране (минимум 2)',
     min_warning: 'Должно быть выбрано минимум 2 категории!',
     save: 'Сохранить',
+  },
+  genres: {
+    romance_drama: '❤️ Мелодрама/Драма',
+    comedy: '😂 Комедия',
+    action_war: '🔫 Боевик/Война',
+    detective: '🔍 Детектив',
+    horror: '😱 Ужасы',
+    sci_fi: '🚀 Фантастика',
+    fantasy: '🧙 Фэнтези',
+    thriller: '🕵️ Триллер',
+    adventure: '🗺️ Приключения',
+    family: '👨‍👩‍👧 Семейный',
+    documentary: '📚 Документальный',
+    talk_music: '🎤 Ток-шоу/Музыка',
   },
   details: {
     my_rating: 'Моя оценка',

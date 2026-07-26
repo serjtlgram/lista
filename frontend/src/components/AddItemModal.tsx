@@ -4,6 +4,7 @@ import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
 import { getNextPlaceholderPoster } from '../services/posters';
+import { GENRE_KEYS, getTranslatedGenreFull } from '../services/genres';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -12,21 +13,6 @@ interface AddItemModalProps {
   editingItem?: Item | null;
   t: Translations;
 }
-
-export const GENRE_OPTIONS = [
-  '❤️ Мелодрама/Драма',
-  '😂 Комедия',
-  '🔫 Боевик/Война',
-  '🔍 Детектив',
-  '😱 Ужасы',
-  '🚀 Фантастика',
-  '🧙 Фэнтези',
-  '🕵️ Триллер',
-  '🗺️ Приключения',
-  '👨‍👩‍👧 Семейный',
-  '📚 Документальный',
-  '🎤 Ток-шоу/Музыка',
-];
 
 const compressPosterImage = (url: string): Promise<string> => {
   if (!url || !url.startsWith('http') || url.startsWith('data:image')) {
@@ -101,7 +87,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [category, setCategory] = useState(editingItem?.category || 'Фильмы');
   const [status, setStatus] = useState(editingItem?.status || 'completed');
   const [rating, setRating] = useState(editingItem?.rating || 10);
-  const [genre, setGenre] = useState(editingItem?.genre || GENRE_OPTIONS[0]);
+  const [genre, setGenre] = useState(editingItem?.genre || '');
 
   const [episodesCount, setEpisodesCount] = useState('');
   const [durationMin, setDurationMin] = useState('');
@@ -123,7 +109,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setCategory(editingItem.category || 'Фильмы');
       setStatus(editingItem.status || 'completed');
       setRating(editingItem.rating || 10);
-      setGenre(editingItem.genre || GENRE_OPTIONS[0]);
+      setGenre(getTranslatedGenreFull(editingItem.genre, t));
       setReleaseYear(editingItem.release_year || '');
       setPosterUrl(editingItem.poster_url || '');
       setDescription(editingItem.description || '');
@@ -145,7 +131,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setCategory('Фильмы');
       setStatus('completed');
       setRating(10);
-      setGenre(GENRE_OPTIONS[0]);
+      setGenre(getTranslatedGenreFull('romance_drama', t));
       setDurationMin('');
       setEpisodesCount('');
       setReleaseYear('');
@@ -154,7 +140,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setNote('');
       setShowAdvanced(true);
     }
-  }, [editingItem, isOpen]);
+  }, [editingItem, isOpen, t]);
 
   if (!isOpen) return null;
 
@@ -266,9 +252,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     { label: t.modal.status_planned, val: 'planned' },
   ];
 
+  const genreOptions = GENRE_KEYS.map((k) => t.genres[k]);
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end">
-      <div className="w-full bg-cardDark rounded-t-3xl p-5 space-y-4 border-t border-cardBorder max-w-md mx-auto animate-slide-up max-h-[90vh] overflow-y-auto hide-scrollbar shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center p-3 pb-8 sm:pb-12">
+      <div className="w-full bg-cardDark rounded-3xl p-5 pb-8 space-y-4 border border-cardBorder max-w-md mx-auto animate-slide-up max-h-[85vh] overflow-y-auto hide-scrollbar shadow-2xl mb-4 sm:mb-6">
         {/* Header */}
         <div className="flex items-center justify-between pb-1 border-b border-cardBorder">
           <h3 className="text-base font-bold text-white">
@@ -436,7 +424,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   {/* Dropdown Options Popup */}
                   {isGenreDropdownOpen && (
                     <div className="dropdown-menu-container absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto hide-scrollbar bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-50 animate-slide-up">
-                      {GENRE_OPTIONS.map((g) => (
+                      {genreOptions.map((g) => (
                         <button
                           key={g}
                           type="button"
@@ -496,7 +484,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">Год</label>
+                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.year_label}</label>
                     <input
                       type="text"
                       value={releaseYear}

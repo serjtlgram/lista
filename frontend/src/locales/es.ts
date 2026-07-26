@@ -77,6 +77,7 @@ export const es: Translations = {
     duration_min_placeholder: 'ej. 45 mins',
     episodes_unit: 'ep.',
     minutes_unit: 'min',
+    year_label: 'Año',
     catalog_autofill_hint: 'Encontrado en catálogo compartido (toca para autocompletar):',
   },
   category_modal: {
@@ -84,6 +85,20 @@ export const es: Translations = {
     subtitle: 'Seleccione las categorías para la pantalla principal (mínimo 2)',
     min_warning: '¡Debe seleccionar al menos 2 categorías!',
     save: 'Guardar',
+  },
+  genres: {
+    romance_drama: '❤️ Romance/Drama',
+    comedy: '😂 Comedia',
+    action_war: '🔫 Acción/Guerra',
+    detective: '🔍 Detective',
+    horror: '😱 Terror',
+    sci_fi: '🚀 Ciencia Ficción',
+    fantasy: '🧙 Fantasía',
+    thriller: '🕵️ Thriller',
+    adventure: '🗺️ Aventura',
+    family: '👨‍👩‍👧 Familiar',
+    documentary: '📚 Documental',
+    talk_music: '🎤 Talk Show/Música',
   },
   details: {
     my_rating: 'Mi Puntuación',
