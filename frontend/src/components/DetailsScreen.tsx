@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
-import bannerDefault from '../assets/banner_default.png';
+import { getItemPoster } from '../services/posters';
 
 interface DetailsScreenProps {
   item: Item;
@@ -49,8 +49,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   }, [item]);
 
   const currentRating = item.rating || 10;
-  const isDummyOrEmpty = !item.poster_url || item.poster_url.includes('unsplash.com');
-  const posterSrc = isDummyOrEmpty ? bannerDefault : item.poster_url;
+  const posterSrc = getItemPoster(item);
 
   const formatCategorySingle = (cat: string) => {
     switch (cat?.toLowerCase()) {
@@ -138,7 +137,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
               alt={item.title}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = bannerDefault;
+                (e.target as HTMLImageElement).src = getItemPoster(item);
               }}
             />
           </div>

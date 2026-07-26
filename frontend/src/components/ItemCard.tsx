@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star, Check } from 'lucide-react';
 import { Item } from '../types';
-import bannerDefault from '../assets/banner_default.png';
+import { getItemPoster } from '../services/posters';
 
 interface ItemCardProps {
   item: Item;
@@ -18,8 +18,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   const starsCount = Math.min(5, Math.max(1, Math.round((item.rating || 10) / 2)));
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено';
 
-  const isDummyOrEmpty = !item.poster_url || item.poster_url.includes('unsplash.com');
-  const posterSrc = isDummyOrEmpty ? bannerDefault : item.poster_url;
+  const posterSrc = getItemPoster(item);
 
   const formatCategory = (cat: string) => {
     switch (cat?.toLowerCase()) {
@@ -45,7 +44,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           className="w-12 h-12 aspect-square object-cover object-center rounded-xl bg-cardDark shrink-0"
           alt={item.title}
           onError={(e) => {
-            (e.target as HTMLImageElement).src = bannerDefault;
+            (e.target as HTMLImageElement).src = getItemPoster(item);
           }}
         />
         <div>

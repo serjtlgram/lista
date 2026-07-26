@@ -3,6 +3,7 @@ import { X, ChevronDown, Check, Sparkles } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
+import { getNextPlaceholderPoster } from '../services/posters';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -212,6 +213,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     let finalPoster = posterUrl.trim();
     if (finalPoster && finalPoster.startsWith('http')) {
       finalPoster = await compressPosterImage(finalPoster);
+    }
+    if (!finalPoster && !editingItem) {
+      finalPoster = getNextPlaceholderPoster();
     }
 
     let finalDuration = '';
