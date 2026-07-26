@@ -181,6 +181,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
             onSelect={onSelectItem}
             showCheckbox={true}
             onToggleStatus={() => onToggleStatus(item)}
+            t={t}
           />
         ))}
 

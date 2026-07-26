@@ -35,7 +35,7 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
       {items.length > 0 ? (
         <div className="space-y-2.5">
           {items.slice(0, 5).map((item) => (
-            <ItemCard key={item.id} item={item} onSelect={onSelectItem} onToggleStatus={onToggleStatus} />
+            <ItemCard key={item.id} item={item} onSelect={onSelectItem} onToggleStatus={onToggleStatus} t={t} />
           ))}
 
           {/* Centered plus in circle button below the last card on Home screen */}

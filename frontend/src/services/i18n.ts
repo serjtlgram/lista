@@ -37,6 +37,30 @@ export const getStoredLanguage = (): Language => {
   if (stored && ['ru', 'uk', 'en', 'es'].includes(stored)) {
     return stored;
   }
+
+  // Detect Telegram WebApp user language code if no explicit preference saved!
+  try {
+    const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
+    if (tgLang) {
+      const code = tgLang.toLowerCase().slice(0, 2);
+      if (code === 'uk' || code === 'ua') return 'uk';
+      if (code === 'en') return 'en';
+      if (code === 'es') return 'es';
+      if (code === 'ru') return 'ru';
+    }
+  } catch (e) {
+    console.warn('Telegram language detection error:', e);
+  }
+
+  // Also check browser navigator.language as fallback
+  try {
+    const navLang = navigator.language?.toLowerCase().slice(0, 2);
+    if (navLang === 'uk' || navLang === 'ua') return 'uk';
+    if (navLang === 'en') return 'en';
+    if (navLang === 'es') return 'es';
+    if (navLang === 'ru') return 'ru';
+  } catch (e) {}
+
   return 'ru';
 };
 
