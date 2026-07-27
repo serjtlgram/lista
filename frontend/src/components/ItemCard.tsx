@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Check } from 'lucide-react';
+import { Star, Check, Plus } from 'lucide-react';
 import { Item } from '../types';
 import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
@@ -8,6 +8,7 @@ interface ItemCardProps {
   item: Item;
   onSelect: (item: Item) => void;
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
+  onAdd?: (item: Item, e: React.MouseEvent) => void;
   showCheckbox?: boolean;
   t?: Translations;
 }
@@ -16,6 +17,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   item,
   onSelect,
   onToggleStatus,
+  onAdd,
   t,
 }) => {
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
@@ -116,21 +118,34 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         </div>
       </div>
 
-      {/* Completion Circle Button replacing simple + */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (onToggleStatus) onToggleStatus(item, e);
-        }}
-        className={`w-7 h-7 rounded-full border flex items-center justify-center transition shrink-0 ${
-          isCompleted
-            ? 'border-accentTeal bg-accentTeal/15 text-accentTeal'
-            : 'border-gray-500 hover:border-accentViolet text-transparent hover:text-gray-400'
-        }`}
-        title={isCompleted ? (t ? t.modal.status_completed : 'Завершено') : (t ? t.modal.status_watching : 'Отметить просмотренным')}
-      >
-        <Check className={`w-4 h-4 stroke-[2.5] ${isCompleted ? 'opacity-100' : 'opacity-0'}`} />
-      </button>
+      {/* Action Button: Either "+ Add" for catalog items or completion checkmark for user items */}
+      {onAdd ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd(item, e);
+          }}
+          className="w-7 h-7 rounded-full bg-accentViolet hover:bg-accentViolet/80 active:scale-95 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-accentViolet/30"
+          title="Добавить в свой список"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+        </button>
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggleStatus) onToggleStatus(item, e);
+          }}
+          className={`w-7 h-7 rounded-full border flex items-center justify-center transition shrink-0 ${
+            isCompleted
+              ? 'border-accentTeal bg-accentTeal/15 text-accentTeal'
+              : 'border-gray-500 hover:border-accentViolet text-transparent hover:text-gray-400'
+          }`}
+          title={isCompleted ? (t ? t.modal.status_completed : 'Завершено') : (t ? t.modal.status_watching : 'Отметить просмотренным')}
+        >
+          <Check className={`w-4 h-4 stroke-[2.5] ${isCompleted ? 'opacity-100' : 'opacity-0'}`} />
+        </button>
+      )}
     </div>
   );
 };

@@ -27,6 +27,7 @@ export interface Item {
 }
 
 export interface CatalogItem {
+  id?: string;
   title: string;
   category: string;
   genre?: string;

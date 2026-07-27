@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Search as SearchIcon, ChevronDown } from 'lucide-react';
-import { Item } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2 } from 'lucide-react';
+import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
 import { Translations } from '../services/i18n';
+import { api } from '../services/api';
 
 interface CategoryScreenProps {
   title: string;
@@ -12,6 +13,7 @@ interface CategoryScreenProps {
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onToggleStatus: (item: Item) => void;
+  onAddCatalogItem?: (catalogItem: CatalogItem) => void;
   t: Translations;
 }
 
@@ -23,12 +25,16 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   onBack,
   onSelectItem,
   onToggleStatus,
+  onAddCatalogItem,
   t,
 }) => {
   const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [showSearchInput, setShowSearchInput] = useState(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
+  const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
+  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
   const filters = [
     { key: 'all', label: t.recently_added.see_all },
@@ -65,6 +71,36 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const normalizedActiveCategories = Array.from(new Set(mappedCategories));
   const displayCategories: string[] = normalizedActiveCategories.length > 0 ? normalizedActiveCategories : canonicalCategories;
 
+  // Search catalog in DB when searchQuery changes
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setCatalogResults([]);
+      setIsSearchingCatalog(false);
+      return;
+    }
+
+    setIsSearchingCatalog(true);
+    const timer = setTimeout(async () => {
+      try {
+        const catFilter = title === 'Все' ? undefined : title;
+        const res = await api.searchCatalog(q, catFilter);
+        setCatalogResults(res || []);
+      } catch (e) {
+        console.warn('Search catalog error:', e);
+      } finally {
+        setIsSearchingCatalog(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, title]);
+
+  const userItemTitles = new Set(items.map((i) => (i.title || '').trim().toLowerCase()));
+  const externalCatalogResults = catalogResults.filter(
+    (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
+  );
+
   const filteredItems = items.filter((item) => {
     if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю') return false;
     if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено') return false;
@@ -83,6 +119,25 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
     return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
   });
+
+  const mapCatalogToItem = (c: CatalogItem): Item => ({
+    id: c.id || `cat_${c.title}`,
+    title: c.title,
+    category: c.category || 'Фильмы',
+    status: 'planned',
+    rating: 0,
+    genre: c.genre || '',
+    duration: c.duration || '',
+    release_year: c.release_year || '',
+    poster_url: c.poster_url || '',
+    description: c.description || '',
+    youtube_url: c.youtube_url || '',
+    director: c.director || '',
+    cast: c.cast || '',
+    isSharedPreview: true,
+  } as any);
+
+  const isSearchActive = searchQuery.trim().length >= 2;
 
   return (
     <div className="space-y-3.5 animate-slide-up">
@@ -159,38 +214,109 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         </div>
       )}
 
-      {/* Subheader count & working sort button */}
-      <div className="flex items-center justify-between text-xs text-gray-400 pt-0.5">
-        <span>{sortedItems.length} {t.details.elements_count}</span>
-        <button
-          onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-          className="flex items-center gap-1 text-gray-300 hover:text-white font-medium transition active:scale-95"
-          title="Сортировать по дате"
-        >
-          <span>{t.details.by_date}</span>
-          <ChevronDown className={`w-3.5 h-3.5 text-accentViolet transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
+      {/* Subheader count & working sort button when not actively searching */}
+      {!isSearchActive && (
+        <div className="flex items-center justify-between text-xs text-gray-400 pt-0.5">
+          <span>{sortedItems.length} {t.details.elements_count}</span>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-1 text-gray-300 hover:text-white font-medium transition active:scale-95"
+            title="Сортировать по дате"
+          >
+            <span>{t.details.by_date}</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-accentViolet transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      )}
 
-      {/* Items List */}
-      <div className="space-y-2.5">
-        {sortedItems.map((item) => (
-          <ItemCard
-            key={item.id}
-            item={item}
-            onSelect={onSelectItem}
-            showCheckbox={true}
-            onToggleStatus={() => onToggleStatus(item)}
-            t={t}
-          />
-        ))}
+      {/* Content Rendering */}
+      {!isSearchActive ? (
+        /* Normal View (User Items List) */
+        <div className="space-y-2.5">
+          {sortedItems.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onSelect={onSelectItem}
+              showCheckbox={true}
+              onToggleStatus={() => onToggleStatus(item)}
+              t={t}
+            />
+          ))}
 
-        {sortedItems.length === 0 && (
-          <div className="text-center py-10 text-xs text-gray-500">
-            {t.details.no_items_found}
+          {sortedItems.length === 0 && (
+            <div className="text-center py-10 text-xs text-gray-500">
+              {t.details.no_items_found}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Dual Search View: User List + Global Catalog Results */
+        <div className="space-y-5 pt-1">
+          {/* Section 1: User's Own List */}
+          {sortedItems.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 px-1">
+                <FolderCheck className="w-4 h-4 text-accentTeal" />
+                <span>В вашем списке ({sortedItems.length})</span>
+              </div>
+              <div className="space-y-2.5">
+                {sortedItems.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    onSelect={onSelectItem}
+                    showCheckbox={true}
+                    onToggleStatus={() => onToggleStatus(item)}
+                    t={t}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 2: Global Database Results */}
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-accentViolet" />
+                <span>В общей базе LISTA</span>
+              </div>
+              {isSearchingCatalog && (
+                <div className="flex items-center gap-1 text-[11px] text-gray-400 font-normal">
+                  <Loader2 className="w-3 h-3 animate-spin text-accentViolet" />
+                  <span>Поиск...</span>
+                </div>
+              )}
+            </div>
+
+            {externalCatalogResults.length > 0 ? (
+              <div className="space-y-2.5">
+                {externalCatalogResults.map((catItem, idx) => {
+                  const mapped = mapCatalogToItem(catItem);
+                  return (
+                    <ItemCard
+                      key={catItem.id || `cat_${catItem.title}_${idx}`}
+                      item={mapped}
+                      onSelect={() => onSelectItem(mapped)}
+                      onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
+                      t={t}
+                    />
+                  );
+                })}
+              </div>
+            ) : !isSearchingCatalog ? (
+              <div className="glass-card p-4 rounded-2xl text-center text-xs text-gray-400 space-y-1">
+                {sortedItems.length === 0 ? (
+                  <p>Ничего не найдено в общей базе</p>
+                ) : (
+                  <p className="text-gray-500">Больше совпадений в общей базе нет</p>
+                )}
+              </div>
+            ) : null}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

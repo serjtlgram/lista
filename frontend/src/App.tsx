@@ -403,6 +403,36 @@ export function App() {
     return false;
   });
 
+  const handleAddCatalogItem = async (catalogItem: any) => {
+    triggerHaptic();
+    const norm = (s?: string) => (s || '').trim().toLowerCase();
+    const existing = items.find((i) => norm(i.title) === norm(catalogItem.title));
+
+    if (existing) {
+      setSelectedItem(existing);
+      setActiveTab('details');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const payload: Partial<Item> = {
+      title: catalogItem.title,
+      category: catalogItem.category || 'Фильмы',
+      status: 'planned',
+      rating: 10,
+      genre: catalogItem.genre || '',
+      duration: catalogItem.duration || '',
+      release_year: catalogItem.release_year || '',
+      poster_url: catalogItem.poster_url || '',
+      description: catalogItem.description || '',
+      youtube_url: catalogItem.youtube_url || '',
+      director: catalogItem.director || '',
+      cast: catalogItem.cast || '',
+    };
+    await api.createItem(payload);
+    loadData();
+  };
+
   return (
     <div
       className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden transition-all duration-200"
@@ -469,6 +499,7 @@ export function App() {
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              onAddCatalogItem={handleAddCatalogItem}
               t={t}
             />
           </section>

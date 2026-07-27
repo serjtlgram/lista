@@ -785,7 +785,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title)) title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+		SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
 		FROM items
 		WHERE LOWER(title) LIKE $1
 	`
@@ -809,7 +809,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	results := []models.CatalogSearchResult{}
 	for rows.Next() {
 		var res models.CatalogSearchResult
-		if err := rows.Scan(&res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
+		if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
 			results = append(results, res)
 		}
 	}

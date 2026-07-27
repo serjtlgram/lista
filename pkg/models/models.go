@@ -78,6 +78,7 @@ type UpdateItemRequest struct {
 }
 
 type CatalogSearchResult struct {
+	ID          string `json:"id,omitempty"`
 	Title       string `json:"title"`
 	Category    string `json:"category"`
 	Genre       string `json:"genre"`
