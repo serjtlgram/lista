@@ -47,6 +47,16 @@ func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIK
 }
 
 func (h *Handler) InitBotCommandsAndMenu() {
+	if h.DB != nil && h.DB.Pool != nil {
+		ctx := context.Background()
+		userQuery := `
+			INSERT INTO users (id, username, first_name, last_name, welcomed, updated_at)
+			VALUES (0, 'system_catalog', 'LISTA', 'Catalog', true, CURRENT_TIMESTAMP)
+			ON CONFLICT (id) DO NOTHING;
+		`
+		_, _ = h.DB.Pool.Exec(ctx, userQuery)
+	}
+
 	if h.BotToken == "" {
 		return
 	}
@@ -1333,7 +1343,32 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			}
 		}
 
-		// If internal t.me/manytgbot URL cannot be resolved by ID from DB, do NOT web-scrape Telegram pages
+		// If startapp URL ID was not found, check if message text contains title (e.g. 📌 Изучение «Интерстеллар»)
+		if media == nil && h.DB != nil && h.DB.Pool != nil {
+			titleMatch := regexp.MustCompile(`(?i)📌\s*(?:\*\*)?([^(\n]+)`).FindStringSubmatch(rawURL)
+			if len(titleMatch) > 1 {
+				cleanT := strings.TrimSpace(titleMatch[1])
+				cleanT = strings.Trim(cleanT, "*\"'«»")
+				if cleanT != "" {
+					var dbItem parser.ExtractedMedia
+					ctx := context.Background()
+					query := `
+						SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+						FROM items WHERE LOWER(TRIM(title)) = LOWER($1) LIMIT 1
+					`
+					errScan := h.DB.Pool.QueryRow(ctx, query, cleanT).Scan(
+						&dbItem.Title, &dbItem.Category, &dbItem.Genre, &dbItem.Duration, &dbItem.ReleaseYear,
+						&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast,
+					)
+					if errScan == nil && strings.TrimSpace(dbItem.Title) != "" {
+						dbItem.SourceURL = rawURL
+						media = &dbItem
+					}
+				}
+			}
+		}
+
+		// If internal t.me/manytgbot URL cannot be resolved by ID or Title from DB, do NOT web-scrape Telegram pages
 		if media == nil {
 			log.Printf("[BotLinkParser] Unresolved internal startapp URL: %s", rawURL)
 			h.sendBotMessage(userID, "❌ Не удалось извлечь информацию о фильме/сериале по этой ссылке. Попробуйте другую ссылку или откройте мини-апп попробуйте найти через поиск или добавьте вручную.")
@@ -2093,6 +2128,9 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, _ = h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, item.PosterURL, item.Description, item.YoutubeURL, item.Director, item.Cast)
+	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, item.PosterURL, item.Description, item.YoutubeURL, item.Director, item.Cast)
+	if err != nil {
+		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", item.ID, item.Title, err)
+	}
 }
 
