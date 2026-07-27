@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	_ = godotenv.Load()
+	_ = godotenv.Load("server_env", ".env")
 
 	port := os.Getenv("PORT")
 	if port == "" {

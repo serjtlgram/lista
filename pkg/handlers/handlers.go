@@ -1697,7 +1697,18 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		return results
 	}
 
-	// 2. iTunes API
+	// 2. TMDb API (The Movie Database)
+	if h.TMDBAPIKey != "" {
+		for _, item := range fetchTMDbInline(query, h.TMDBAPIKey) {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				results = append(results, item)
+			}
+		}
+	}
+
+	// 3. iTunes API
 	for _, item := range fetchITunesInline(query) {
 		tKey := strings.ToLower(strings.TrimSpace(item.Title))
 		if !seenTitles[tKey] {
@@ -1921,6 +1932,108 @@ func fetchWikiInline(query string) []models.CatalogSearchResult {
 			})
 		}
 	}
+	return list
+}
+
+var tmdbGenreMap = map[int]string{
+	28: "Боевик", 12: "Приключения", 16: "Мультфильмы", 35: "Комедия",
+	80: "Детектив", 99: "Другое", 18: "Драма", 10751: "Мультфильмы",
+	14: "Фэнтези", 36: "Другое", 27: "Ужасы", 10402: "Другое",
+	9648: "Детектив", 10749: "Драма", 878: "Фантастика", 10770: "Шоу",
+	53: "Триллер", 10752: "Боевик", 37: "Приключения", 10759: "Боевик",
+	10762: "Мультфильмы", 10763: "Шоу", 10764: "Шоу", 10765: "Фантастика",
+}
+
+func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult {
+	var list []models.CatalogSearchResult
+	if strings.TrimSpace(tmdbKey) == "" {
+		return list
+	}
+
+	apiURL := fmt.Sprintf(
+		"https://api.themoviedb.org/3/search/multi?api_key=%s&query=%s&language=ru-RU&page=1",
+		tmdbKey, url.QueryEscape(query),
+	)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return list
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return list
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Results []struct {
+			ID           int     `json:"id"`
+			Title        string  `json:"title"`
+			Name         string  `json:"name"`
+			MediaType    string  `json:"media_type"`
+			PosterPath   string  `json:"poster_path"`
+			Overview     string  `json:"overview"`
+			ReleaseDate  string  `json:"release_date"`
+			FirstAirDate string  `json:"first_air_date"`
+			VoteAverage  float64 `json:"vote_average"`
+			GenreIDs     []int   `json:"genre_ids"`
+		} `json:"results"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		for _, r := range data.Results {
+			title := r.Title
+			if title == "" {
+				title = r.Name
+			}
+			if title == "" {
+				continue
+			}
+
+			cat := "movie"
+			if r.MediaType == "tv" {
+				cat = "show"
+			} else if r.MediaType == "person" {
+				continue
+			}
+
+			year := ""
+			if len(r.ReleaseDate) >= 4 {
+				year = r.ReleaseDate[:4]
+			} else if len(r.FirstAirDate) >= 4 {
+				year = r.FirstAirDate[:4]
+			}
+
+			poster := ""
+			if r.PosterPath != "" {
+				poster = "https://image.tmdb.org/t/p/w500" + r.PosterPath
+			}
+
+			genre := ""
+			for _, gID := range r.GenreIDs {
+				if gName, ok := tmdbGenreMap[gID]; ok {
+					genre = gName
+					break
+				}
+			}
+
+			list = append(list, models.CatalogSearchResult{
+				ID:          uuid.New().String(),
+				Title:       title,
+				Category:    cat,
+				Genre:       genre,
+				ReleaseYear: year,
+				PosterURL:   poster,
+				Description: r.Overview,
+			})
+		}
+	}
+
 	return list
 }
 
