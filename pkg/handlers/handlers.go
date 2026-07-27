@@ -1812,8 +1812,8 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		}
 	}
 
-	// 4. TVMaze API
-	for _, item := range fetchTVMazeInline(query) {
+	// 4. TVMaze API (TV Shows in English / International)
+	for _, item := range fetchTVMazeInline(query, h.TMDBAPIKey) {
 		tKey := strings.ToLower(strings.TrimSpace(item.Title))
 		if !seenTitles[tKey] {
 			seenTitles[tKey] = true
@@ -1908,7 +1908,34 @@ func fetchITunesInline(query string) []models.CatalogSearchResult {
 	return list
 }
 
-func fetchTVMazeInline(query string) []models.CatalogSearchResult {
+func mapEnglishGenreToRu(g string) string {
+	switch strings.ToLower(strings.TrimSpace(g)) {
+	case "action":
+		return "Боевик"
+	case "adventure":
+		return "Приключения"
+	case "comedy":
+		return "Комедия"
+	case "crime", "mystery":
+		return "Детектив"
+	case "drama":
+		return "Драма"
+	case "fantasy":
+		return "Фэнтези"
+	case "science-fiction", "sci-fi":
+		return "Фантастика"
+	case "thriller":
+		return "Триллер"
+	case "horror":
+		return "Ужасы"
+	case "anime", "animation":
+		return "Мультфильмы"
+	default:
+		return g
+	}
+}
+
+func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	apiURL := fmt.Sprintf("https://api.tvmaze.com/search/shows?q=%s", url.QueryEscape(query))
 
@@ -1916,7 +1943,7 @@ func fetchTVMazeInline(query string) []models.CatalogSearchResult {
 	if err != nil {
 		return list
 	}
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -1928,11 +1955,17 @@ func fetchTVMazeInline(query string) []models.CatalogSearchResult {
 
 	var data []struct {
 		Show struct {
-			Name      string   `json:"name"`
-			Premiered string   `json:"premiered"`
-			Genres    []string `json:"genres"`
-			Summary   string   `json:"summary"`
-			Image     *struct {
+			ID             int      `json:"id"`
+			Name           string   `json:"name"`
+			Premiered      string   `json:"premiered"`
+			Runtime        int      `json:"runtime"`
+			AverageRuntime int      `json:"averageRuntime"`
+			Genres         []string `json:"genres"`
+			Summary        string   `json:"summary"`
+			Externals      struct {
+				IMDb string `json:"imdb"`
+			} `json:"externals"`
+			Image *struct {
 				Medium   string `json:"medium"`
 				Original string `json:"original"`
 			} `json:"image"`
@@ -1940,11 +1973,36 @@ func fetchTVMazeInline(query string) []models.CatalogSearchResult {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
-		for _, item := range data {
+		for i, item := range data {
+			if i >= 6 {
+				break
+			}
 			show := item.Show
 			if show.Name == "" {
 				continue
 			}
+
+			// If show has IMDb ID and tmdbKey is provided, attempt localized TMDb lookup
+			if show.Externals.IMDb != "" && tmdbKey != "" {
+				if tmdbMedia, err := parser.FetchTMDbByExternalID(client, tmdbKey, show.Externals.IMDb); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+					list = append(list, models.CatalogSearchResult{
+						ID:          uuid.New().String(),
+						Title:       tmdbMedia.Title,
+						Category:    "show",
+						Genre:       tmdbMedia.Genre,
+						Duration:    tmdbMedia.Duration,
+						ReleaseYear: tmdbMedia.ReleaseYear,
+						PosterURL:   tmdbMedia.PosterURL,
+						Description: tmdbMedia.Description,
+						YoutubeURL:  tmdbMedia.YoutubeURL,
+						Director:    tmdbMedia.Director,
+						Cast:        tmdbMedia.Cast,
+					})
+					continue
+				}
+			}
+
+			// Fallback to English TVMaze details
 			year := ""
 			if len(show.Premiered) >= 4 {
 				year = show.Premiered[:4]
@@ -1958,7 +2016,14 @@ func fetchTVMazeInline(query string) []models.CatalogSearchResult {
 			}
 			genre := ""
 			if len(show.Genres) > 0 {
-				genre = show.Genres[0]
+				genre = mapEnglishGenreToRu(show.Genres[0])
+			}
+
+			duration := ""
+			if show.AverageRuntime > 0 {
+				duration = fmt.Sprintf("%d мин", show.AverageRuntime)
+			} else if show.Runtime > 0 {
+				duration = fmt.Sprintf("%d мин", show.Runtime)
 			}
 
 			cleanDesc := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(show.Summary, "")
@@ -1968,6 +2033,7 @@ func fetchTVMazeInline(query string) []models.CatalogSearchResult {
 				Title:       show.Name,
 				Category:    "show",
 				Genre:       genre,
+				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
 				Description: cleanDesc,

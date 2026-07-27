@@ -526,6 +526,10 @@ func extractPersonNames(obj interface{}, maxCount int) string {
 }
 
 // TMDb API Integration
+func FetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string) (*ExtractedMedia, error) {
+	return fetchTMDbByExternalID(client, tmdbKey, externalID)
+}
+
 func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string) (*ExtractedMedia, error) {
 	findURL := fmt.Sprintf(
 		"https://api.themoviedb.org/3/find/%s?api_key=%s&external_source=imdb_id&language=ru-RU",
