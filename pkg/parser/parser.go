@@ -147,10 +147,12 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 			}
 		}
 	}
-
 	if media.Title == "" {
 		return nil, fmt.Errorf("could not extract media metadata from URL")
 	}
+
+	// Clean genre to strictly take the first genre if multiple exist
+	media.Genre = cleanFirstGenre(media.Genre)
 
 	// 5. YouTube trailer enrichment
 	enrichYouTubeTrailer(youtubeKey, media)
@@ -159,6 +161,19 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	media.PosterURL = OptimizePosterURL(client, media.PosterURL)
 
 	return media, nil
+}
+
+func cleanFirstGenre(genreStr string) string {
+	if genreStr == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(genreStr, func(r rune) bool {
+		return r == ',' || r == '/' || r == ';' || r == '|'
+	})
+	if len(parts) > 0 {
+		return strings.TrimSpace(parts[0])
+	}
+	return strings.TrimSpace(genreStr)
 }
 
 func isSeriesKeywords(str string) bool {
@@ -461,7 +476,7 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 		if genreObj, ok := data["genre"]; ok {
 			switch g := genreObj.(type) {
 			case string:
-				media.Genre = g
+				media.Genre = cleanFirstGenre(g)
 			case []interface{}:
 				var genres []string
 				for _, item := range g {
@@ -470,7 +485,7 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 					}
 				}
 				if len(genres) > 0 {
-					media.Genre = strings.Join(genres, ", ")
+					media.Genre = cleanFirstGenre(genres[0])
 				}
 			}
 		}
@@ -638,12 +653,8 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 	}
 
 	// Genres
-	var genreNames []string
-	for _, g := range data.Genres {
-		genreNames = append(genreNames, g.Name)
-	}
-	if len(genreNames) > 0 {
-		media.Genre = strings.Join(genreNames, ", ")
+	if len(data.Genres) > 0 {
+		media.Genre = cleanFirstGenre(data.Genres[0].Name)
 	}
 
 	// Director

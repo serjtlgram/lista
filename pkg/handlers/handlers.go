@@ -1104,7 +1104,16 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string, status string, rating int) string {
 	catRu := mapCategoryToRu(category)
 	cleanTitle := html.EscapeString(title)
-	cleanGenre := html.EscapeString(genre)
+	firstGenre := ""
+	if genre != "" {
+		parts := strings.FieldsFunc(genre, func(r rune) bool {
+			return r == ',' || r == '/' || r == ';' || r == '|'
+		})
+		if len(parts) > 0 {
+			firstGenre = strings.TrimSpace(parts[0])
+		}
+	}
+	cleanGenre := html.EscapeString(firstGenre)
 	cleanDirector := html.EscapeString(director)
 	cleanCast := html.EscapeString(cast)
 	cleanDesc := html.EscapeString(description)
@@ -1174,11 +1183,33 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 		{"text": map[bool]string{true: "✓ ✅ Завершено", false: "✅ Завершено"}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
 	}
 
-	// Rows 3-5: 12 Genres (4 in a row)
+	// Rows 3-5: 12 Genres (4 in a row, strictly 1 selection)
+	firstGenre := ""
+	if currentGenre != "" {
+		parts := strings.FieldsFunc(currentGenre, func(r rune) bool {
+			return r == ',' || r == '/' || r == ';' || r == '|'
+		})
+		if len(parts) > 0 {
+			firstGenre = strings.TrimSpace(parts[0])
+		}
+	}
+
+	selectedGenreIdx := -1
+	if firstGenre != "" {
+		firstLc := strings.ToLower(firstGenre)
+		for i, g := range topGenres {
+			gLc := strings.ToLower(g.Val)
+			if firstLc == gLc || strings.Contains(firstLc, gLc) || strings.Contains(gLc, firstLc) {
+				selectedGenreIdx = i
+				break
+			}
+		}
+	}
+
 	var genreRow1, genreRow2, genreRow3 []map[string]interface{}
 	for i, g := range topGenres {
 		btnText := g.Label
-		if strings.Contains(strings.ToLower(currentGenre), strings.ToLower(g.Val)) {
+		if i == selectedGenreIdx {
 			btnText = "✓ " + g.Label
 		}
 		btn := map[string]interface{}{
