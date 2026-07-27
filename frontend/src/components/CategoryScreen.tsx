@@ -77,8 +77,10 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     else if (['game', 'games', 'игры', 'игра'].includes(lc)) mappedCategories.push('Игры');
   });
 
-  const normalizedActiveCategories = Array.from(new Set(mappedCategories));
-  const displayCategories: string[] = normalizedActiveCategories.length > 0 ? normalizedActiveCategories : canonicalCategories;
+  const normalizedActiveSet = new Set(mappedCategories);
+  const displayCategories: string[] = normalizedActiveSet.size > 0
+    ? canonicalCategories.filter((cat) => normalizedActiveSet.has(cat))
+    : canonicalCategories;
 
   // Search catalog in DB when searchQuery changes
   useEffect(() => {

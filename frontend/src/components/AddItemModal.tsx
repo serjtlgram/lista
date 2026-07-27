@@ -313,7 +313,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <div className="w-7 h-7 rounded-xl bg-accentViolet/25 flex items-center justify-center text-accentViolet shrink-0 mt-0.5 shadow-inner">
               <Sparkles className="w-4 h-4" />
             </div>
-            <p className="text-[11px] text-gray-200 leading-relaxed font-normal">
+            <p className="text-xs sm:text-[13px] text-gray-200 leading-relaxed font-normal">
               {t.modal.search_prompt_hint}
             </p>
           </div>
@@ -326,7 +326,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 value={quickSearchQuery}
                 onChange={(e) => handleQuickSearch(e.target.value)}
                 placeholder={t.modal.search_input_placeholder}
-                className="w-full bg-bgDark/90 border border-accentViolet/40 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet focus:ring-1 focus:ring-accentViolet transition shadow-sm"
+                className="w-full bg-bgDark/90 border border-accentViolet/40 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet focus:ring-1 focus:ring-accentViolet transition shadow-sm"
               />
               {quickSearchQuery && (
                 <button
@@ -390,14 +390,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         {/* Divider for Manual Entry */}
         <div className="flex items-center gap-3 pt-1">
           <div className="h-px bg-cardBorder flex-1" />
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t.modal.or_manual_entry}</span>
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t.modal.or_manual_entry}</span>
           <div className="h-px bg-cardBorder flex-1" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 1. Category Selector */}
           <div>
-            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
+            <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.category_label}
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -408,7 +408,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     key={c.value}
                     type="button"
                     onClick={() => setCategory(c.value)}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold transition ${
+                    className={`p-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition ${
                       selected
                         ? 'border-accentViolet bg-accentViolet/15 text-accentViolet shadow-sm font-bold'
                         : 'border-cardBorder bg-bgDark text-gray-300 hover:border-gray-600'
@@ -423,7 +423,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {/* 2. Main Title Input + Autocomplete Suggestions */}
           <div className="relative">
-            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
+            <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.title_label}
             </label>
             <input
@@ -432,7 +432,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder={t.modal.title_placeholder}
-              className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+              className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
             />
 
             {/* Catalog Autocomplete Suggestions Popup */}
@@ -474,7 +474,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {/* 3. Description Input */}
           <div>
-            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
+            <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.description_label}
             </label>
             <textarea
@@ -482,13 +482,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder={t.modal.placeholder_description}
-              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
             />
           </div>
 
           {/* 4. Status Selector */}
           <div>
-            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 block">
+            <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.status_label}
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -497,7 +497,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   key={st.val}
                   type="button"
                   onClick={() => setStatus(st.val)}
-                  className={`p-2 rounded-xl border text-[11px] font-semibold transition ${
+                  className={`p-2 rounded-xl border text-xs sm:text-[13px] font-semibold transition ${
                     status === st.val
                       ? 'border-accentTeal bg-accentTeal/15 text-accentTeal shadow-sm'
                       : 'border-cardBorder bg-bgDark text-gray-300 hover:border-gray-600'
@@ -511,7 +511,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {/* 5. Rating */}
           <div>
-            <label className="text-[11px] font-semibold text-gray-400 mb-1.5 flex justify-between">
+            <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 flex justify-between">
               <span>{t.modal.rating_label}: {rating}/10</span>
             </label>
             <input
@@ -528,7 +528,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-accentViolet hover:underline pt-1 block font-medium"
+            className="text-xs sm:text-sm text-accentViolet hover:underline pt-1 block font-semibold"
           >
             {showAdvanced ? t.modal.advanced_hide : t.modal.advanced_show}
           </button>
@@ -537,12 +537,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <div className="space-y-3 pt-2 border-t border-cardBorder">
               {/* Custom React Dropdown for Genre */}
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">{t.details.genre}</label>
+                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.genre}</label>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setIsGenreDropdownOpen(!isGenreDropdownOpen)}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white flex items-center justify-between transition focus:outline-none focus:border-accentViolet hover:border-gray-500 shadow-sm"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white flex items-center justify-between transition focus:outline-none focus:border-accentViolet hover:border-gray-500 shadow-sm"
                   >
                     <span className="font-semibold text-white truncate">{genre}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isGenreDropdownOpen ? 'rotate-180' : ''}`} />
@@ -559,7 +559,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                             setGenre(g);
                             setIsGenreDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-between ${
                             genre === g
                               ? 'dropdown-option-active bg-accentViolet text-white'
                               : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
@@ -578,46 +578,46 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               {isSeries ? (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.episodes_label}</label>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.episodes_label}</label>
                     <input
                       type="number"
                       value={episodesCount}
                       onChange={(e) => setEpisodesCount(e.target.value)}
                       placeholder={t.modal.episodes_placeholder}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.duration_min_label}</label>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.duration_min_label}</label>
                     <input
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
                       placeholder={t.modal.duration_min_placeholder}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.duration_min_label}</label>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.duration_min_label}</label>
                     <input
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
                       placeholder={t.modal.duration_min_placeholder}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">{t.modal.year_label}</label>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.year_label}</label>
                     <input
                       type="text"
                       value={releaseYear}
                       onChange={(e) => setReleaseYear(e.target.value)}
                       placeholder={t.modal.placeholder_year}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
                 </div>
@@ -625,70 +625,70 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
               {isSeries && (
                 <div>
-                  <label className="text-[10px] text-gray-400 block mb-1">Год</label>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Год</label>
                   <input
                     type="text"
                     value={releaseYear}
                     onChange={(e) => setReleaseYear(e.target.value)}
                     placeholder={t.modal.placeholder_year}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                   />
                 </div>
               )}
 
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">Постер (URL)</label>
+                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Постер (URL)</label>
                 <input
                   type="text"
                   value={posterUrl}
                   onChange={(e) => setPosterUrl(e.target.value)}
                   placeholder={t.modal.placeholder_poster}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-gray-400 block mb-1">{t.details.director}</label>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.director}</label>
                   <input
                     type="text"
                     value={director}
                     onChange={(e) => setDirector(e.target.value)}
                     placeholder="Кристофер Нолан"
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 block mb-1">{t.details.cast}</label>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.cast}</label>
                   <input
                     type="text"
                     value={cast}
                     onChange={(e) => setCast(e.target.value)}
                     placeholder="Мэттью Макконахи, Энн Хэтэуэй"
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">{t.modal.youtube_url_label}</label>
+                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.youtube_url_label}</label>
                 <input
                   type="text"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   placeholder={t.modal.placeholder_youtube_url}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">{t.details.notes}</label>
+                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.notes}</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
                   placeholder={t.modal.placeholder_note}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                 />
               </div>
             </div>
