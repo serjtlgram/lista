@@ -149,5 +149,9 @@ export const en: Translations = {
     categories_title: 'Category Distribution',
     active_legend: 'Active',
     hours_unit: 'h',
+    top_category: 'Top Category',
+    avg_rating: 'Average Rating',
+    completion_rate: 'Completion Rate',
+    activity_chart_subtitle: 'Record additions over time',
   },
 };

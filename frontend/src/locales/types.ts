@@ -149,5 +149,9 @@ export interface Translations {
     categories_title: string;
     active_legend: string;
     hours_unit: string;
+    top_category: string;
+    avg_rating: string;
+    completion_rate: string;
+    activity_chart_subtitle: string;
   };
 }

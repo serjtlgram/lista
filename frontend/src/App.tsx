@@ -30,7 +30,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile' | 'details'>('home');
   const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'stats' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Фильмы');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
@@ -262,6 +262,9 @@ export function App() {
 
   const handleTabChange = (tab: string) => {
     triggerHaptic();
+    if (tab === 'search') {
+      setSelectedCategory('Все');
+    }
     setActiveTab(tab as any);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -501,6 +504,7 @@ export function App() {
               monthlyCount={profile?.monthly_count || 0}
               monthlyHours={profile?.monthly_hours || 0}
               currentStreak={profile?.current_streak || 0}
+              items={items}
               t={t}
             />
             <RecentlyAdded
@@ -581,7 +585,7 @@ export function App() {
         {/* SCREEN 5: STATS */}
         {activeTab === 'stats' && (
           <section>
-            <StatsScreen stats={stats} t={t} />
+            <StatsScreen stats={stats} profile={profile} items={items} t={t} />
           </section>
         )}
       </main>

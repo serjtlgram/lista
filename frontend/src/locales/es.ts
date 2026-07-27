@@ -149,5 +149,9 @@ export const es: Translations = {
     categories_title: 'Distribución por categorías',
     active_legend: 'Activo',
     hours_unit: 'h',
+    top_category: 'Categoría Favorita',
+    avg_rating: 'Calificación Media',
+    completion_rate: 'Tasa de Finalización',
+    activity_chart_subtitle: 'Adición de registros a lo largo del tiempo',
   },
 };

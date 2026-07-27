@@ -149,5 +149,9 @@ export const ru: Translations = {
     categories_title: 'Распределение по категориям',
     active_legend: 'Активно',
     hours_unit: 'ч',
+    top_category: 'Любимая категория',
+    avg_rating: 'Средняя оценка',
+    completion_rate: 'Уровень завершения',
+    activity_chart_subtitle: 'Добавление записей по периодам',
   },
 };

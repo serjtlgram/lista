@@ -149,5 +149,9 @@ export const uk: Translations = {
     categories_title: 'Розподіл за категоріями',
     active_legend: 'Активно',
     hours_unit: 'г',
+    top_category: 'Улюблена категорія',
+    avg_rating: 'Середня оцінка',
+    completion_rate: 'Рівень завершення',
+    activity_chart_subtitle: 'Додавання записів за періодами',
   },
 };
