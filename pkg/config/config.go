@@ -7,12 +7,13 @@ import (
 )
 
 type Config struct {
-	Port          string
-	DatabaseURL   string
-	BotToken      string
-	Environment   string
-	YoutubeAPIKey string
-	TMDBAPIKey    string
+	Port            string
+	DatabaseURL     string
+	BotToken        string
+	Environment     string
+	YoutubeAPIKey   string
+	TMDBAPIKey      string
+	KinopoiskAPIKey string
 }
 
 func LoadConfig() *Config {
@@ -37,13 +38,15 @@ func LoadConfig() *Config {
 
 	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
 	tmdbKey := os.Getenv("TMDB_API_KEY")
+	kinopoiskKey := os.Getenv("KINOPOISK_API_KEY")
 
 	return &Config{
-		Port:          port,
-		DatabaseURL:   dbURL,
-		BotToken:      botToken,
-		Environment:   env,
-		YoutubeAPIKey: youtubeKey,
-		TMDBAPIKey:    tmdbKey,
+		Port:            port,
+		DatabaseURL:     dbURL,
+		BotToken:        botToken,
+		Environment:     env,
+		YoutubeAPIKey:   youtubeKey,
+		TMDBAPIKey:      tmdbKey,
+		KinopoiskAPIKey: kinopoiskKey,
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -48,6 +49,7 @@ var (
 	minDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|minutes|min)\b`)
 	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\.?\s*(\d+)?\s*(?:мин|минут|m)?`)
 	timeColonRegex   = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
+	kinopoiskURLRegex = regexp.MustCompile(`(?i)kinopoisk\.ru/(?:film|series)/(?:[a-zA-Z0-9_-]+-)?(\d+)`)
 )
 
 // ExtractFirstURL extracts the first HTTP/HTTPS URL from a text message
@@ -59,8 +61,8 @@ func ExtractFirstURL(text string) string {
 	return ""
 }
 
-// ParseMediaURL attempts to extract rich metadata from a URL using TMDb API, OpenGraph, JSON-LD, and YouTube
-func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*ExtractedMedia, error) {
+// ParseMediaURL attempts to extract rich metadata from a URL using TMDb API, Kinopoisk API, OpenGraph, JSON-LD, and YouTube
+func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKey ...string) (*ExtractedMedia, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return nil, fmt.Errorf("empty URL")
@@ -76,6 +78,25 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
+
+	// 0. Check if Kinopoisk URL
+	if matches := kinopoiskURLRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		kpID := matches[1]
+		kpKey := ""
+		if len(kinopoiskKey) > 0 {
+			kpKey = kinopoiskKey[0]
+		}
+		if kpKey == "" {
+			kpKey = os.Getenv("KINOPOISK_API_KEY")
+		}
+		if kpKey != "" {
+			if kpMedia, err := FetchKinopoiskFilmByID(client, kpKey, kpID); err == nil && kpMedia != nil && kpMedia.Title != "" {
+				kpMedia.SourceURL = rawURL
+				enrichYouTubeTrailer(youtubeKey, kpMedia)
+				return kpMedia, nil
+			}
+		}
+	}
 
 	// 1. Check if IMDb ID is in URL
 	if matches := imdbIDRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
@@ -807,4 +828,143 @@ func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 	}
 
 	return rawPosterURL
+}
+
+func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string) (*ExtractedMedia, error) {
+	filmID, err := strconv.Atoi(filmIDStr)
+	if err != nil || filmID == 0 {
+		return nil, fmt.Errorf("invalid kinopoisk id")
+	}
+
+	apiURL := fmt.Sprintf("https://kinopoiskapiunofficial.tech/api/v2.2/films/%d", filmID)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-API-KEY", kpKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, fmt.Errorf("kinopoisk api error")
+	}
+	defer resp.Body.Close()
+
+	var film struct {
+		NameRu       string `json:"nameRu"`
+		NameEn       string `json:"nameEn"`
+		NameOriginal string `json:"nameOriginal"`
+		Type         string `json:"type"`
+		Year         int    `json:"year"`
+		FilmLength   int    `json:"filmLength"`
+		Description  string `json:"description"`
+		PosterUrl    string `json:"posterUrl"`
+		Genres       []struct {
+			Genre string `json:"genre"`
+		} `json:"genres"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&film); err != nil {
+		return nil, err
+	}
+
+	title := film.NameRu
+	if title == "" {
+		title = film.NameEn
+	}
+	if title == "" {
+		title = film.NameOriginal
+	}
+	if title == "" {
+		return nil, fmt.Errorf("empty title")
+	}
+
+	cat := "movie"
+	tUpper := strings.ToUpper(film.Type)
+	if strings.Contains(tUpper, "SERIES") || strings.Contains(tUpper, "SHOW") {
+		cat = "show"
+	}
+
+	yearStr := ""
+	if film.Year > 0 {
+		yearStr = strconv.Itoa(film.Year)
+	}
+
+	durationStr := ""
+	if film.FilmLength > 0 {
+		durationStr = fmt.Sprintf("%d мин", film.FilmLength)
+	}
+
+	genreStr := ""
+	if len(film.Genres) > 0 {
+		genreStr = strings.Title(film.Genres[0].Genre)
+	}
+
+	director, cast := FetchKinopoiskStaff(client, kpKey, filmID)
+
+	return &ExtractedMedia{
+		Title:       title,
+		Category:    cat,
+		ReleaseYear: yearStr,
+		Duration:    durationStr,
+		Genre:       genreStr,
+		PosterURL:   film.PosterUrl,
+		Description: film.Description,
+		Director:    director,
+		Cast:        cast,
+	}, nil
+}
+
+func FetchKinopoiskStaff(client *http.Client, kpKey string, filmID int) (string, string) {
+	if filmID == 0 || kpKey == "" {
+		return "", ""
+	}
+	staffURL := fmt.Sprintf("https://kinopoiskapiunofficial.tech/api/v1/staff?filmId=%d", filmID)
+	req, err := http.NewRequest("GET", staffURL, nil)
+	if err != nil {
+		return "", ""
+	}
+	req.Header.Set("X-API-KEY", kpKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return "", ""
+	}
+	defer resp.Body.Close()
+
+	var staffList []struct {
+		NameRu        string `json:"nameRu"`
+		NameEn        string `json:"nameEn"`
+		ProfessionKey string `json:"professionKey"`
+	}
+
+	director := ""
+	var castList []string
+
+	if err := json.NewDecoder(resp.Body).Decode(&staffList); err == nil {
+		for _, s := range staffList {
+			name := s.NameRu
+			if name == "" {
+				name = s.NameEn
+			}
+			if name == "" {
+				continue
+			}
+
+			if s.ProfessionKey == "DIRECTOR" && director == "" {
+				director = name
+			} else if s.ProfessionKey == "ACTOR" && len(castList) < 6 {
+				castList = append(castList, name)
+			}
+		}
+	}
+
+	return director, strings.Join(castList, ", ")
 }

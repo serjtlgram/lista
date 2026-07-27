@@ -29,18 +29,20 @@ import (
 )
 
 type Handler struct {
-	DB            *db.DB
-	BotToken      string
-	YoutubeAPIKey string
-	TMDBAPIKey    string
+	DB              *db.DB
+	BotToken        string
+	YoutubeAPIKey   string
+	TMDBAPIKey      string
+	KinopoiskAPIKey string
 }
 
-func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string) *Handler {
 	h := &Handler{
-		DB:            database,
-		BotToken:      botToken,
-		YoutubeAPIKey: youtubeAPIKey,
-		TMDBAPIKey:    tmdbAPIKey,
+		DB:              database,
+		BotToken:        botToken,
+		YoutubeAPIKey:   youtubeAPIKey,
+		TMDBAPIKey:      tmdbAPIKey,
+		KinopoiskAPIKey: kinopoiskAPIKey,
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
@@ -1392,7 +1394,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			return
 		}
 	} else {
-		media, err = parser.ParseMediaURL(rawURL, h.TMDBAPIKey, h.YoutubeAPIKey)
+		media, err = parser.ParseMediaURL(rawURL, h.TMDBAPIKey, h.YoutubeAPIKey, h.KinopoiskAPIKey)
 	}
 
 	if err != nil || media == nil || strings.TrimSpace(media.Title) == "" {
@@ -1790,7 +1792,19 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		return results
 	}
 
-	// 2. TMDb API (The Movie Database)
+	// 2. Kinopoisk Unofficial API (Kinopoisk HD / Russian Movies & Series)
+	if h.KinopoiskAPIKey != "" {
+		for _, item := range fetchKinopoiskInline(query, h.KinopoiskAPIKey) {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
+		}
+	}
+
+	// 3. TMDb API (The Movie Database)
 	if h.TMDBAPIKey != "" {
 		for _, item := range fetchTMDbInline(query, h.TMDBAPIKey) {
 			tKey := strings.ToLower(strings.TrimSpace(item.Title))
@@ -2254,5 +2268,122 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	if err != nil {
 		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", item.ID, item.Title, err)
 	}
+}
+
+func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResult {
+	var list []models.CatalogSearchResult
+	if strings.TrimSpace(kpKey) == "" {
+		return list
+	}
+
+	apiURL := fmt.Sprintf(
+		"https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword=%s",
+		url.QueryEscape(query),
+	)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return list
+	}
+	req.Header.Set("X-API-KEY", kpKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return list
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Films []struct {
+			FilmID      int    `json:"filmId"`
+			NameRu      string `json:"nameRu"`
+			NameEn      string `json:"nameEn"`
+			Type        string `json:"type"`
+			Year        string `json:"year"`
+			FilmLength  string `json:"filmLength"`
+			Description string `json:"description"`
+			PosterUrl   string `json:"posterUrl"`
+			Genres      []struct {
+				Genre string `json:"genre"`
+			} `json:"genres"`
+		} `json:"films"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		for i, film := range data.Films {
+			if i >= 6 {
+				break
+			}
+			title := film.NameRu
+			if title == "" {
+				title = film.NameEn
+			}
+			if title == "" {
+				continue
+			}
+
+			cat := "movie"
+			tUpper := strings.ToUpper(film.Type)
+			if strings.Contains(tUpper, "SERIES") || strings.Contains(tUpper, "SHOW") {
+				cat = "show"
+			}
+
+			genre := ""
+			if len(film.Genres) > 0 {
+				genre = strings.Title(film.Genres[0].Genre)
+			}
+
+			duration := parseKinopoiskLength(film.FilmLength)
+			poster := film.PosterUrl
+
+			director, cast := parser.FetchKinopoiskStaff(client, kpKey, film.FilmID)
+
+			list = append(list, models.CatalogSearchResult{
+				ID:          uuid.New().String(),
+				Title:       title,
+				Category:    cat,
+				Genre:       genre,
+				Duration:    duration,
+				ReleaseYear: film.Year,
+				PosterURL:   poster,
+				Description: film.Description,
+				Director:    director,
+				Cast:        cast,
+			})
+		}
+	}
+
+	return list
+}
+
+func parseKinopoiskLength(length string) string {
+	if length == "" {
+		return ""
+	}
+	parts := strings.Split(length, ":")
+	if len(parts) == 2 {
+		h, _ := strconv.Atoi(parts[0])
+		m, _ := strconv.Atoi(parts[1])
+		total := h*60 + m
+		if total > 0 {
+			return fmt.Sprintf("%d мин", total)
+		}
+	} else if len(parts) == 3 {
+		h, _ := strconv.Atoi(parts[0])
+		m, _ := strconv.Atoi(parts[1])
+		total := h*60 + m
+		if total > 0 {
+			return fmt.Sprintf("%d мин", total)
+		}
+	}
+	if num, err := strconv.Atoi(length); err == nil && num > 0 {
+		return fmt.Sprintf("%d мин", num)
+	}
+	return length
 }
 
