@@ -1,32 +1,32 @@
 import { Translations } from './i18n';
 
 export type GenreKey =
-  | 'romance_drama'
+  | 'drama'
   | 'comedy'
-  | 'action_war'
   | 'detective'
+  | 'action'
+  | 'thriller'
   | 'horror'
   | 'sci_fi'
-  | 'fantasy'
-  | 'thriller'
   | 'adventure'
-  | 'family'
-  | 'documentary'
-  | 'talk_music';
+  | 'fantasy'
+  | 'animation'
+  | 'show'
+  | 'other';
 
 export const GENRE_KEYS: GenreKey[] = [
-  'romance_drama',
+  'drama',
   'comedy',
-  'action_war',
   'detective',
+  'action',
+  'thriller',
   'horror',
   'sci_fi',
-  'fantasy',
-  'thriller',
   'adventure',
-  'family',
-  'documentary',
-  'talk_music',
+  'fantasy',
+  'animation',
+  'show',
+  'other',
 ];
 
 /**
@@ -36,18 +36,18 @@ export const getGenreKey = (genreStr?: string | null): GenreKey | null => {
   if (!genreStr || !genreStr.trim()) return null;
   const lc = genreStr.toLowerCase().trim();
 
-  if (lc.includes('мелодрама') || lc.includes('драма') || lc.includes('romance') || lc.includes('romance_drama')) return 'romance_drama';
+  if (lc.includes('мелодрама') || lc.includes('драма') || lc.includes('romance') || lc.includes('drama')) return 'drama';
   if (lc.includes('комедия') || lc.includes('комедія') || lc.includes('comedy') || lc.includes('comedia')) return 'comedy';
-  if (lc.includes('боевик') || lc.includes('бойовик') || lc.includes('война') || lc.includes('війна') || lc.includes('action') || lc.includes('acción') || lc.includes('guerra')) return 'action_war';
   if (lc.includes('детектив') || lc.includes('detective')) return 'detective';
-  if (lc.includes('ужасы') || lc.includes('жахи') || lc.includes('horror') || lc.includes('terror')) return 'horror';
-  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('ciencia')) return 'sci_fi';
-  if (lc.includes('фэнтези') || lc.includes('фентезі') || lc.includes('fantasy') || lc.includes('fantasía')) return 'fantasy';
+  if (lc.includes('боевик') || lc.includes('бойовик') || lc.includes('война') || lc.includes('війна') || lc.includes('action') || lc.includes('acción') || lc.includes('guerra')) return 'action';
   if (lc.includes('триллер') || lc.includes('трилер') || lc.includes('thriller')) return 'thriller';
+  if (lc.includes('ужасы') || lc.includes('жахи') || lc.includes('horror') || lc.includes('terror')) return 'horror';
+  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('sci_fi') || lc.includes('ciencia')) return 'sci_fi';
   if (lc.includes('приключения') || lc.includes('пригоди') || lc.includes('adventure') || lc.includes('aventura')) return 'adventure';
-  if (lc.includes('семейный') || lc.includes('сімейний') || lc.includes('family') || lc.includes('familiar')) return 'family';
-  if (lc.includes('документальный') || lc.includes('документальний') || lc.includes('documentary') || lc.includes('documental')) return 'documentary';
-  if (lc.includes('ток-шоу') || lc.includes('музыка') || lc.includes('музика') || lc.includes('talk') || lc.includes('música') || lc.includes('music')) return 'talk_music';
+  if (lc.includes('фэнтези') || lc.includes('фентезі') || lc.includes('fantasy') || lc.includes('fantasía')) return 'fantasy';
+  if (lc.includes('мультфильм') || lc.includes('мультфільм') || lc.includes('анимация') || lc.includes('анімація') || lc.includes('animation') || lc.includes('cartoons') || lc.includes('dibujos') || lc.includes('family') || lc.includes('семейный') || lc.includes('сімейний')) return 'animation';
+  if (lc.includes('ток-шоу') || lc.includes('шоу') || lc.includes('show') || lc.includes('talk') || lc.includes('музыка') || lc.includes('музика') || lc.includes('music')) return 'show';
+  if (lc.includes('документальный') || lc.includes('документальний') || lc.includes('documentary') || lc.includes('другое') || lc.includes('інше') || lc.includes('other') || lc.includes('otro')) return 'other';
 
   return null;
 };
@@ -60,7 +60,7 @@ export const getTranslatedGenreFull = (genreStr: string | null | undefined, t: T
   if (key && t.genres && t.genres[key]) {
     return t.genres[key];
   }
-  return genreStr || (t.genres ? t.genres.romance_drama : '❤️ Мелодрама/Драма');
+  return genreStr || (t.genres ? t.genres.drama : 'Драма');
 };
 
 /**

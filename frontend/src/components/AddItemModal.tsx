@@ -137,7 +137,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setCategory('Фильмы');
       setStatus('completed');
       setRating(10);
-      setGenre(getTranslatedGenreFull('romance_drama', t));
+      setGenre(getTranslatedGenreFull('drama', t));
       setDurationMin('');
       setEpisodesCount('');
       setReleaseYear('');

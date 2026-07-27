@@ -41,6 +41,10 @@ func Connect(connString string) (*DB, error) {
 
 	// Auto-migrate schema additions if needed
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS language_code VARCHAR(50) DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS allows_write_to_pm BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS visits_count INT DEFAULT 1;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS youtube_url TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS director TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_members TEXT DEFAULT '';`)

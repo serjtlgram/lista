@@ -22,12 +22,14 @@ type contextKey string
 const UserContextKey contextKey = "user"
 
 type TGUser struct {
-	ID           int64  `json:"id"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Username     string `json:"username"`
-	PhotoURL     string `json:"photo_url"`
-	LanguageCode string `json:"language_code"`
+	ID              int64  `json:"id"`
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	Username        string `json:"username"`
+	PhotoURL        string `json:"photo_url"`
+	LanguageCode    string `json:"language_code"`
+	IsPremium       bool   `json:"is_premium"`
+	AllowsWriteToPM bool   `json:"allows_write_to_pm"`
 }
 
 // ValidateInitData checks Telegram WebApp initData HMAC-SHA256 hash
@@ -130,12 +132,14 @@ func AuthMiddleware(botToken string, isDevMode bool) func(http.Handler) http.Han
 
 			// Save user object into context
 			user := &models.User{
-				ID:           tgUser.ID,
-				Username:     tgUser.Username,
-				FirstName:    tgUser.FirstName,
-				LastName:     tgUser.LastName,
-				PhotoURL:     tgUser.PhotoURL,
-				LanguageCode: tgUser.LanguageCode,
+				ID:              tgUser.ID,
+				Username:        tgUser.Username,
+				FirstName:       tgUser.FirstName,
+				LastName:        tgUser.LastName,
+				PhotoURL:        tgUser.PhotoURL,
+				LanguageCode:    tgUser.LanguageCode,
+				IsPremium:       tgUser.IsPremium,
+				AllowsWriteToPM: tgUser.AllowsWriteToPM,
 			}
 
 			ctx := r.Context()

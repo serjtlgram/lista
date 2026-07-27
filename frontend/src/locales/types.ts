@@ -89,18 +89,18 @@ export interface Translations {
     save: string;
   };
   genres: {
-    romance_drama: string;
+    drama: string;
     comedy: string;
-    action_war: string;
     detective: string;
+    action: string;
+    thriller: string;
     horror: string;
     sci_fi: string;
-    fantasy: string;
-    thriller: string;
     adventure: string;
-    family: string;
-    documentary: string;
-    talk_music: string;
+    fantasy: string;
+    animation: string;
+    show: string;
+    other: string;
   };
   details: {
     my_rating: string;

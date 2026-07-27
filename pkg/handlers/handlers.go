@@ -119,16 +119,26 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 	}
 	ctx := r.Context()
 	query := `
-		INSERT INTO users (id, username, first_name, last_name, photo_url, updated_at)
-		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+		INSERT INTO users (
+			id, username, first_name, last_name, photo_url, language_code, is_premium, allows_write_to_pm, visits_count, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+		)
 		ON CONFLICT (id) DO UPDATE SET
 			username = EXCLUDED.username,
 			first_name = EXCLUDED.first_name,
 			last_name = EXCLUDED.last_name,
 			photo_url = EXCLUDED.photo_url,
+			language_code = EXCLUDED.language_code,
+			is_premium = EXCLUDED.is_premium,
+			allows_write_to_pm = EXCLUDED.allows_write_to_pm,
+			visits_count = CASE 
+				WHEN users.updated_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes' THEN users.visits_count + 1 
+				ELSE users.visits_count 
+			END,
 			updated_at = CURRENT_TIMESTAMP;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL)
+	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL, u.LanguageCode, u.IsPremium, u.AllowsWriteToPM)
 	if err != nil {
 		return err
 	}
@@ -289,6 +299,20 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+
+	// Fetch full stored user info from DB
+	var dbUser models.User
+	userRow := h.DB.Pool.QueryRow(ctx, `
+		SELECT id, username, first_name, last_name, photo_url, language_code, is_premium, allows_write_to_pm, visits_count, welcomed, created_at, updated_at
+		FROM users WHERE id = $1
+	`, user.ID)
+	if err := userRow.Scan(
+		&dbUser.ID, &dbUser.Username, &dbUser.FirstName, &dbUser.LastName,
+		&dbUser.PhotoURL, &dbUser.LanguageCode, &dbUser.IsPremium, &dbUser.AllowsWriteToPM,
+		&dbUser.VisitsCount, &dbUser.Welcomed, &dbUser.CreatedAt, &dbUser.UpdatedAt,
+	); err == nil {
+		user = &dbUser
+	}
 
 	// Aggregate counts by category
 	catQuery := `
@@ -896,18 +920,18 @@ var topGenres = []struct {
 	Label string
 	Val   string
 }{
-	{"❤️ Драма", "Драма"},
-	{"😂 Комедия", "Комедия"},
-	{"🔫 Боевик", "Боевик"},
-	{"🔍 Детектив", "Детектив"},
-	{"😱 Ужасы", "Ужасы"},
-	{"🚀 Фантастика", "Фантастика"},
-	{"🧙 Фэнтези", "Фэнтези"},
-	{"🕵️ Триллер", "Триллер"},
-	{"🗺️ Приключения", "Приключения"},
-	{"👨‍👩‍👧 Семейный", "Семейный"},
-	{"📚 Документ.", "Документальный"},
-	{"🎙️ Ток-шоу", "Ток-шоу"},
+	{"Драма", "Драма"},
+	{"Комедия", "Комедия"},
+	{"Детектив", "Детектив"},
+	{"Боевик", "Боевик"},
+	{"Триллер", "Триллер"},
+	{"Ужасы", "Ужасы"},
+	{"Фантастика", "Фантастика"},
+	{"Приключения", "Приключения"},
+	{"Фэнтези", "Фэнтези"},
+	{"Мультфильмы", "Мультфильмы"},
+	{"Шоу", "Шоу"},
+	{"Другое", "Другое"},
 }
 
 func mapStatusToRu(status string) string {
@@ -1150,8 +1174,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 		{"text": map[bool]string{true: "✓ ✅ Завершено", false: "✅ Завершено"}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
 	}
 
-	// Rows 3-6: 12 Genres
-	var genreRow1, genreRow2, genreRow3, genreRow4 []map[string]interface{}
+	// Rows 3-5: 12 Genres (4 in a row)
+	var genreRow1, genreRow2, genreRow3 []map[string]interface{}
 	for i, g := range topGenres {
 		btnText := g.Label
 		if strings.Contains(strings.ToLower(currentGenre), strings.ToLower(g.Val)) {
@@ -1161,18 +1185,16 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 			"text":          btnText,
 			"callback_data": fmt.Sprintf("g:%d:%s", i, itemID),
 		}
-		if i < 3 {
+		if i < 4 {
 			genreRow1 = append(genreRow1, btn)
-		} else if i < 6 {
+		} else if i < 8 {
 			genreRow2 = append(genreRow2, btn)
-		} else if i < 9 {
-			genreRow3 = append(genreRow3, btn)
 		} else {
-			genreRow4 = append(genreRow4, btn)
+			genreRow3 = append(genreRow3, btn)
 		}
 	}
 
-	// Rows 7-8: Ratings 1-10
+	// Rows 6-7: Ratings 1-10
 	var ratingRow1, ratingRow2 []map[string]interface{}
 	for r := 1; r <= 10; r++ {
 		btnText := fmt.Sprintf("%d", r)
@@ -1197,7 +1219,6 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 			genreRow1,
 			genreRow2,
 			genreRow3,
-			genreRow4,
 			ratingRow1,
 			ratingRow2,
 			{

@@ -5,15 +5,18 @@ import (
 )
 
 type User struct {
-	ID           int64     `json:"id"`
-	Username     string    `json:"username"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	PhotoURL     string    `json:"photo_url"`
-	LanguageCode string    `json:"language_code"`
-	Welcomed     bool      `json:"welcomed"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID              int64     `json:"id"`
+	Username        string    `json:"username"`
+	FirstName       string    `json:"first_name"`
+	LastName        string    `json:"last_name"`
+	PhotoURL        string    `json:"photo_url"`
+	LanguageCode    string    `json:"language_code"`
+	IsPremium       bool      `json:"is_premium"`
+	AllowsWriteToPM bool      `json:"allows_write_to_pm"`
+	VisitsCount     int       `json:"visits_count"`
+	Welcomed        bool      `json:"welcomed"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type Item struct {

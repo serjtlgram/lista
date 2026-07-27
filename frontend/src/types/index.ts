@@ -39,14 +39,22 @@ export interface CatalogItem {
   cast?: string;
 }
 
+export interface User {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  photo_url: string;
+  language_code?: string;
+  is_premium?: boolean;
+  allows_write_to_pm?: boolean;
+  visits_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface UserProfile {
-  user: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-    photo_url: string;
-  };
+  user: User;
   total_items: number;
   completed_count: number;
   watching_count: number;
