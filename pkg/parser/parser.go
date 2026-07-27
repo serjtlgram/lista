@@ -757,13 +757,33 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 }
 
 // OptimizePosterURL downloads, resizes, and encodes poster to JPEG <= 50KB Data URL
+// OptimizePosterURL downloads, resizes, and encodes poster to JPEG <= 50KB Data URL
 func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 	rawPosterURL = strings.TrimSpace(rawPosterURL)
 	if rawPosterURL == "" {
 		return ""
 	}
 	if strings.HasPrefix(rawPosterURL, "data:image/") {
+		if len(rawPosterURL) <= 65000 {
+			return rawPosterURL
+		}
+		idx := strings.Index(rawPosterURL, ",")
+		if idx != -1 {
+			b64Data := rawPosterURL[idx+1:]
+			dec, err := base64.StdEncoding.DecodeString(b64Data)
+			if err == nil {
+				if img, _, err := image.Decode(bytes.NewReader(dec)); err == nil {
+					if compressed := compressImageToDataURL(img); compressed != "" {
+						return compressed
+					}
+				}
+			}
+		}
 		return rawPosterURL
+	}
+
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
 	}
 
 	req, err := http.NewRequest("GET", rawPosterURL, nil)
@@ -773,12 +793,15 @@ func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
 		return rawPosterURL
 	}
 	defer resp.Body.Close()
 
-	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024)) // 8MB max
+	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024)) // 10MB max
 	if err != nil || len(imgData) == 0 {
 		return rawPosterURL
 	}
@@ -788,15 +811,22 @@ func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 		return rawPosterURL
 	}
 
+	if compressed := compressImageToDataURL(img); compressed != "" {
+		return compressed
+	}
+
+	return rawPosterURL
+}
+
+func compressImageToDataURL(img image.Image) string {
 	bounds := img.Bounds()
 	srcW := bounds.Dx()
 	srcH := bounds.Dy()
 	if srcW == 0 || srcH == 0 {
-		return rawPosterURL
+		return ""
 	}
 
-	// Target max width 350px (preserves 2:3 aspect ratio)
-	targetW := 350
+	targetW := 300
 	if srcW < targetW {
 		targetW = srcW
 	}
@@ -811,23 +841,34 @@ func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 		}
 	}
 
+	qualities := []int{75, 60, 45, 35}
+	for _, q := range qualities {
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: q}); err == nil {
+			if buf.Len() <= 51200 { // 50KB limit
+				return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+			}
+		}
+	}
+
+	// If still over 50KB at Q=35, scale down width to 240px
+	targetW = 240
+	targetH = (srcH * targetW) / srcW
+	dstSmall := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+	for y := 0; y < targetH; y++ {
+		for x := 0; x < targetW; x++ {
+			srcX := bounds.Min.X + (x*srcW)/targetW
+			srcY := bounds.Min.Y + (y*srcH)/targetH
+			dstSmall.Set(x, y, img.At(srcX, srcY))
+		}
+	}
+
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 75}); err != nil {
-		return rawPosterURL
-	}
-
-	compressedBytes := buf.Bytes()
-	if len(compressedBytes) <= 51200 { // 50KB limit
-		return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(compressedBytes)
-	}
-
-	// Try quality 60 if 75 was over 50KB
-	buf.Reset()
-	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 60}); err == nil {
+	if err := jpeg.Encode(&buf, dstSmall, &jpeg.Options{Quality: 60}); err == nil {
 		return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 	}
 
-	return rawPosterURL
+	return ""
 }
 
 func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string) (*ExtractedMedia, error) {

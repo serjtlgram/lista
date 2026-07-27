@@ -513,6 +513,11 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	posterURL := strings.TrimSpace(req.PosterURL)
+	if posterURL != "" {
+		posterURL = parser.OptimizePosterURL(nil, posterURL)
+	}
+
 	query := `
 		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, completed_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
@@ -614,8 +619,12 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	if req.PosterURL != nil {
+		pURL := strings.TrimSpace(*req.PosterURL)
+		if pURL != "" {
+			pURL = parser.OptimizePosterURL(nil, pURL)
+		}
 		query += fmt.Sprintf(", poster_url = $%d", argIdx)
-		args = append(args, *req.PosterURL)
+		args = append(args, pURL)
 		argIdx++
 	}
 	if req.Description != nil {
@@ -2259,12 +2268,18 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	}
 	ctx := context.Background()
 	catEn := mapCategoryToEn(item.Category)
+
+	poster := strings.TrimSpace(item.PosterURL)
+	if poster != "" {
+		poster = parser.OptimizePosterURL(nil, poster)
+	}
+
 	query := `
 		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, created_at, updated_at)
 		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, item.PosterURL, item.Description, item.YoutubeURL, item.Director, item.Cast)
+	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast)
 	if err != nil {
 		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", item.ID, item.Title, err)
 	}
