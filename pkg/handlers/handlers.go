@@ -1289,7 +1289,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	media, err := parser.ParseMediaURL(rawURL, h.TMDBAPIKey, h.YoutubeAPIKey)
 	if err != nil || media == nil || strings.TrimSpace(media.Title) == "" {
 		log.Printf("[BotLinkParser] Failed to parse URL %s: %v", rawURL, err)
-		h.sendBotMessage(userID, "❌ Не удалось извлечь информацию о фильме/сериале по этой ссылке. Попробуйте другую ссылку.")
+		h.sendBotMessage(userID, "❌ Не удалось извлечь информацию о фильме/сериале по этой ссылке. Попробуйте другую ссылку или откройте мини-апп попробуйте найти через поиск или добавьте вручную.")
 		return
 	}
 
