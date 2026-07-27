@@ -220,16 +220,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleShareTelegram = () => {
     const catLabel = formatCategorySingle(item.category);
-    
-    // Only send the item UUID (36 chars max, well within Telegram's 64-char startapp limit)
     const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
     
-    let messageText = `${t.details.share_app_tagline}\n📌 ${item.title} (${catLabel})`;
+    let messageText = `📌 **${item.title} (${catLabel})**`;
     if (!isPlanned) {
       messageText += `\n⭐️ ${t.details.my_rating}: ${currentRating}/10`;
     }
+    messageText += `\n\n${t.details.share_app_tagline}\n${shareUrl}`;
 
-    const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(messageText)}`;
+    const fullTelegramShare = `https://t.me/share/url?text=${encodeURIComponent(messageText)}`;
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {

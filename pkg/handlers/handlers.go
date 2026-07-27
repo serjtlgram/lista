@@ -278,10 +278,11 @@ func (h *Handler) sendWelcomeMessage(userID int64, langCode string) {
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode == http.StatusOK {
 		log.Printf("[WelcomeBot] Welcome message sent successfully to user %d (lang: %s)", userID, langCode)
 	} else {
-		log.Printf("[WelcomeBot] Telegram API returned status %s for user %d", resp.Status, userID)
+		log.Printf("[WelcomeBot] Telegram API returned status %s for user %d: %s", resp.Status, userID, string(bodyBytes))
 	}
 }
 
