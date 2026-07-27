@@ -135,6 +135,8 @@ export interface Translations {
     show_less: string;
     watch_on_youtube: string;
     open_in_youtube: string;
+    to_list_btn: string;
+    lists_coming_soon: string;
   };
   stats: {
     title: string;

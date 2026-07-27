@@ -135,6 +135,8 @@ export const en: Translations = {
     show_less: 'Less',
     watch_on_youtube: 'Watch on YouTube',
     open_in_youtube: 'Open in YouTube',
+    to_list_btn: 'To List',
+    lists_coming_soon: 'Category lists coming soon!',
   },
   stats: {
     title: 'Statistics',

@@ -710,11 +710,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       ) : (
         <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
           <button
-            onClick={() => setToastMessage('Списки категорий скоро будут доступны!')}
+            onClick={() => setToastMessage(t.details.lists_coming_soon)}
             className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
           >
             <FolderPlus className="w-4 h-4 mb-1 text-amber-400" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">В список</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.to_list_btn}</span>
           </button>
           <button
             onClick={() => onEdit(item)}

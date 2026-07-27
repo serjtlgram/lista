@@ -135,6 +135,8 @@ export const ru: Translations = {
     show_less: 'Скрыть',
     watch_on_youtube: 'Смотреть на YouTube',
     open_in_youtube: 'Открыть в YouTube',
+    to_list_btn: 'В список',
+    lists_coming_soon: 'Списки категорий скоро будут доступны!',
   },
   stats: {
     title: 'Статистика',
