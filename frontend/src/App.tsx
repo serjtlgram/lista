@@ -28,6 +28,8 @@ import {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile' | 'details'>('home');
+  const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'stats' | 'profile'>('home');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Фильмы');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
@@ -282,14 +284,45 @@ export function App() {
     setStoredActiveCategories(newCategories);
   };
 
+  const handleBackFromDetails = () => {
+    triggerHaptic();
+    setActiveTab(previousTab || 'home');
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg?.BackButton) return;
+
+    if (activeTab === 'details') {
+      tg.BackButton.show();
+      const onBackClick = () => {
+        handleBackFromDetails();
+      };
+      tg.BackButton.onClick(onBackClick);
+      return () => {
+        tg.BackButton.offClick(onBackClick);
+        tg.BackButton.hide();
+      };
+    } else {
+      tg.BackButton.hide();
+    }
+  }, [activeTab, previousTab]);
+
   const handleOpenCategory = (catTitle: string) => {
     triggerHaptic();
     setSelectedCategory(catTitle);
+    if (activeTab !== 'details') {
+      setPreviousTab(activeTab as any);
+    }
     setActiveTab('search');
   };
 
   const handleSelectItem = (item: Item) => {
     triggerHaptic();
+    if (activeTab !== 'details') {
+      setPreviousTab(activeTab as any);
+    }
     setSelectedItem(item);
     setActiveTab('details');
     window.scrollTo(0, 0);
@@ -495,6 +528,8 @@ export function App() {
               title={selectedCategory}
               items={categoryItems}
               activeCategories={activeCategories}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
               onSelectCategory={(cat) => setSelectedCategory(cat)}
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
@@ -510,7 +545,7 @@ export function App() {
           <section>
             <DetailsScreen
               item={selectedItem}
-              onBack={() => setActiveTab('home')}
+              onBack={handleBackFromDetails}
               onEdit={(item) => {
                 setEditingItem(item);
                 setIsModalOpen(true);

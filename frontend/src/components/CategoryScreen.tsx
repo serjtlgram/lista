@@ -9,6 +9,8 @@ interface CategoryScreenProps {
   title: string;
   items: Item[];
   activeCategories?: string[];
+  searchQuery?: string;
+  onSearchQueryChange?: (q: string) => void;
   onSelectCategory?: (category: string) => void;
   onBack: () => void;
   onSelectItem: (item: Item) => void;
@@ -21,6 +23,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   title,
   items,
   activeCategories = [],
+  searchQuery: searchQueryProp = '',
+  onSearchQueryChange,
   onSelectCategory,
   onBack,
   onSelectItem,
@@ -29,7 +33,12 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   t,
 }) => {
   const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalQuery, setInternalQuery] = useState(searchQueryProp);
+  const searchQuery = onSearchQueryChange ? searchQueryProp : internalQuery;
+  const setSearchQuery = (q: string) => {
+    setInternalQuery(q);
+    if (onSearchQueryChange) onSearchQueryChange(q);
+  };
   const [showSearchInput, setShowSearchInput] = useState(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
