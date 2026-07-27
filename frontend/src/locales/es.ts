@@ -120,6 +120,7 @@ export const es: Translations = {
     rating_planned_warning: 'Cambia el estado a "Viendo" o "Completado" para valorar',
     share_app_tagline: 'LISTA — mini-app para guardar tus impresiones',
     added_to_my_list: '¡Añadido a tu lista!',
+    link_copied: '¡Enlace copiado!',
     search_placeholder: 'Buscar por título o género...',
     elements_count: 'elementos',
     by_date: 'Por fecha',

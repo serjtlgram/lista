@@ -120,6 +120,7 @@ export const ru: Translations = {
     rating_planned_warning: 'Смените статус на "Смотрю" или "Просмотрено", чтобы выставить оценку',
     share_app_tagline: 'LISTA — мини-приложение для сохранения впечатлений',
     added_to_my_list: 'Добавлено в ваш список!',
+    link_copied: 'Ссылка скопирована!',
     search_placeholder: 'Поиск по названию или жанру...',
     elements_count: 'элементов',
     by_date: 'По дате',

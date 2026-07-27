@@ -120,6 +120,7 @@ export interface Translations {
     rating_planned_warning: string;
     share_app_tagline: string;
     added_to_my_list: string;
+    link_copied: string;
     search_placeholder: string;
     elements_count: string;
     by_date: string;

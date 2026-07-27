@@ -120,6 +120,7 @@ export const en: Translations = {
     rating_planned_warning: 'Change status to "Watching" or "Completed" to give a rating',
     share_app_tagline: 'LISTA — mini-app to save your impressions',
     added_to_my_list: 'Added to your list!',
+    link_copied: 'Link copied!',
     search_placeholder: 'Search by title or genre...',
     elements_count: 'items',
     by_date: 'By date',

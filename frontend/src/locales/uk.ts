@@ -120,6 +120,7 @@ export const uk: Translations = {
     rating_planned_warning: 'Змініть статус на "Дивлюсь" або "Завершено", щоб виставити оцінку',
     share_app_tagline: 'LISTA — міні-додаток для збереження вражень',
     added_to_my_list: 'Додано до вашого списку!',
+    link_copied: 'Посилання скопійовано!',
     search_placeholder: 'Пошук за назвою або жанром...',
     elements_count: 'елементів',
     by_date: 'За датою',
