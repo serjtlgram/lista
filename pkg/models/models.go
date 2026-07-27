@@ -89,6 +89,7 @@ type CatalogSearchResult struct {
 	YoutubeURL  string `json:"youtube_url,omitempty"`
 	Director    string `json:"director,omitempty"`
 	Cast        string `json:"cast,omitempty"`
+	Source      string `json:"source,omitempty"`
 }
 
 type CategoryCount struct {

@@ -100,6 +100,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const externalCatalogResults = catalogResults.filter(
     (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
   );
+  const dbCatalogResults = externalCatalogResults.filter((c) => c.source !== 'online');
+  const onlineCatalogResults = externalCatalogResults.filter((c) => c.source === 'online');
 
   const filteredItems = items.filter((item) => {
     if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю') return false;
@@ -276,27 +278,54 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           )}
 
           {/* Section 2: Global Database Results */}
+          {dbCatalogResults.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Globe className="w-4 h-4 text-accentViolet" />
+                  <span>В общей базе LISTA</span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {dbCatalogResults.map((catItem, idx) => {
+                  const mapped = mapCatalogToItem(catItem);
+                  return (
+                    <ItemCard
+                      key={catItem.id || `cat_db_${catItem.title}_${idx}`}
+                      item={mapped}
+                      onSelect={() => onSelectItem(mapped)}
+                      onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
+                      t={t}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Internet Search Results (TMDb, iTunes, TVMaze, Wikipedia) */}
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
               <div className="flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-accentViolet" />
-                <span>В общей базе LISTA</span>
+                <SearchIcon className="w-4 h-4 text-accentBlue" />
+                <span>Поиск в интернете</span>
               </div>
               {isSearchingCatalog && (
                 <div className="flex items-center gap-1 text-[11px] text-gray-400 font-normal">
-                  <Loader2 className="w-3 h-3 animate-spin text-accentViolet" />
-                  <span>Поиск...</span>
+                  <Loader2 className="w-3 h-3 animate-spin text-accentBlue" />
+                  <span>Ищем...</span>
                 </div>
               )}
             </div>
 
-            {externalCatalogResults.length > 0 ? (
+            {onlineCatalogResults.length > 0 ? (
               <div className="space-y-2.5">
-                {externalCatalogResults.map((catItem, idx) => {
+                {onlineCatalogResults.map((catItem, idx) => {
                   const mapped = mapCatalogToItem(catItem);
                   return (
                     <ItemCard
-                      key={catItem.id || `cat_${catItem.title}_${idx}`}
+                      key={catItem.id || `cat_online_${catItem.title}_${idx}`}
                       item={mapped}
                       onSelect={() => onSelectItem(mapped)}
                       onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
@@ -307,10 +336,10 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
               </div>
             ) : !isSearchingCatalog ? (
               <div className="glass-card p-4 rounded-2xl text-center text-xs text-gray-400 space-y-1">
-                {sortedItems.length === 0 ? (
-                  <p>Ничего не найдено в общей базе</p>
+                {sortedItems.length === 0 && dbCatalogResults.length === 0 ? (
+                  <p>Ничего не найдено в интернете</p>
                 ) : (
-                  <p className="text-gray-500">Больше совпадений в общей базе нет</p>
+                  <p className="text-gray-500">Больше совпадений нет</p>
                 )}
               </div>
             ) : null}

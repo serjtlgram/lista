@@ -811,19 +811,36 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 
 	query += " ORDER BY LOWER(title), created_at DESC LIMIT 10;"
 
-	rows, err := h.DB.Pool.Query(r.Context(), query, args...)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]models.CatalogSearchResult{})
-		return
-	}
-	defer rows.Close()
-
 	results := []models.CatalogSearchResult{}
-	for rows.Next() {
-		var res models.CatalogSearchResult
-		if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
-			results = append(results, res)
+	seenTitles := make(map[string]bool)
+
+	if h.DB != nil && h.DB.Pool != nil {
+		rows, err := h.DB.Pool.Query(r.Context(), query, args...)
+		if err == nil && rows != nil {
+			for rows.Next() {
+				var res models.CatalogSearchResult
+				if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
+					res.Source = "db"
+					tKey := strings.ToLower(strings.TrimSpace(res.Title))
+					if !seenTitles[tKey] {
+						seenTitles[tKey] = true
+						results = append(results, res)
+					}
+				}
+			}
+			rows.Close()
+		}
+	}
+
+	// 2. Perform online multi-source search (TMDb, iTunes, TVMaze, Wikipedia)
+	onlineItems := h.searchInlineResults(q, "ru")
+	for _, item := range onlineItems {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			item.Source = "online"
+			results = append(results, item)
+			go h.saveCatalogItemToDB(item)
 		}
 	}
 

@@ -38,6 +38,7 @@ export interface CatalogItem {
   youtube_url?: string;
   director?: string;
   cast?: string;
+  source?: string;
 }
 
 export interface User {
