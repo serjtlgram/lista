@@ -153,5 +153,6 @@ export const en: Translations = {
     avg_rating: 'Average Rating',
     completion_rate: 'Completion Rate',
     activity_chart_subtitle: 'Record additions over time',
+    hours_info_message: 'Time shown is approximate. For accurate tracking, edit your cards and add the exact runtime for movies and shows, and episode counts for series.',
   },
 };

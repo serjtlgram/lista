@@ -153,5 +153,6 @@ export interface Translations {
     avg_rating: string;
     completion_rate: string;
     activity_chart_subtitle: string;
+    hours_info_message: string;
   };
 }

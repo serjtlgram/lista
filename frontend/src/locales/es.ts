@@ -153,5 +153,6 @@ export const es: Translations = {
     avg_rating: 'Calificación Media',
     completion_rate: 'Tasa de Finalización',
     activity_chart_subtitle: 'Adición de registros a lo largo del tiempo',
+    hours_info_message: 'El tiempo es aproximado. Para mayor precisión, edita tus tarjetas e indica la duración exacta de películas y series, así como el número de episodios.',
   },
 };

@@ -86,7 +86,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   return (
     <div
       onClick={() => onSelect(item)}
-      className="glass-card p-2.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition"
+      className="glass-card p-2.5 rounded-2xl flex items-center justify-between cursor-pointer active:scale-95 transition card-hover"
     >
       <div className="flex items-center gap-3">
         {/* Square poster image without distortion */}

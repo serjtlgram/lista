@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Star, Award, Film, Tv, Book, Headphones, Mic, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3 } from 'lucide-react';
+import { Star, Award, Film, Tv, Book, Headphones, Mic, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3, Info } from 'lucide-react';
 import { StatsData, UserProfile, Item } from '../types';
 import { Translations } from '../services/i18n';
+import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
 
 interface StatsScreenProps {
   stats?: StatsData | null;
@@ -10,16 +11,16 @@ interface StatsScreenProps {
   t: Translations;
 }
 
-const CATEGORY_META: Record<string, { hex: string; light: string; label: string; icon: any }> = {
-  Фильмы:     { hex: '#8C7CFF', light: 'rgba(140,124,255,0.15)', label: 'Фильмы',     icon: Film },
-  Сериалы:    { hex: '#00CEC9', light: 'rgba(0,206,201,0.15)',   label: 'Сериалы',    icon: Tv },
-  Книги:      { hex: '#FFB800', light: 'rgba(255,184,0,0.15)',   label: 'Книги',      icon: Book },
-  Аудиокниги: { hex: '#0984E3', light: 'rgba(9,132,227,0.15)',   label: 'Аудиокниги', icon: Headphones },
-  Подкасты:   { hex: '#E84393', light: 'rgba(232,67,147,0.15)',  label: 'Подкасты',   icon: Mic },
-  Игры:       { hex: '#00B894', light: 'rgba(0,184,148,0.15)',   label: 'Игры',       icon: Gamepad2 },
+const CATEGORY_META: Record<string, { hex: string; label: string; icon: any }> = {
+  Фильмы:     { hex: '#8C7CFF', label: 'Фильмы',     icon: Film },
+  Сериалы:    { hex: '#00CEC9', label: 'Сериалы',    icon: Tv },
+  Книги:      { hex: '#FFB800', label: 'Книги',      icon: Book },
+  Аудиокниги: { hex: '#0984E3', label: 'Аудиокниги', icon: Headphones },
+  Подкасты:   { hex: '#E84393', label: 'Подкасты',   icon: Mic },
+  Игры:       { hex: '#00B894', label: 'Игры',       icon: Gamepad2 },
 };
 
-const normalizeCategory = (catStr?: string): string => {
+const normalizeCat = (catStr?: string): string => {
   const lc = (catStr || '').toLowerCase().trim();
   if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'Фильмы';
   if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'Сериалы';
@@ -30,17 +31,7 @@ const normalizeCategory = (catStr?: string): string => {
   return catStr || 'Фильмы';
 };
 
-const parseHours = (durationStr?: string): number => {
-  if (!durationStr) return 0;
-  if (durationStr.includes('•') || durationStr.includes('сер.')) {
-    const parts = durationStr.split('•');
-    const ep = parseInt(parts[0]?.replace(/\D/g, '') || '0', 10);
-    const min = parseInt(parts[1]?.replace(/\D/g, '') || '45', 10);
-    return ((ep > 0 ? ep : 1) * (min > 0 ? min : 45)) / 60;
-  }
-  const min = parseInt(durationStr.replace(/\D/g, '') || '0', 10);
-  return min / 60;
-};
+const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items = [], t }) => {
   const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('month');
@@ -61,40 +52,36 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     const diff = (now.getTime() - new Date(dateStr).getTime()) / (1000 * 3600 * 24);
     if (activeTabKey === 'week')  return diff <= 7;
     if (activeTabKey === 'month') return diff <= 30;
-    if (activeTabKey === 'year')  return diff <= 365;
-    return true;
+    return diff <= 365; // year
   });
 
   const totalPeriodItems = filteredItems.length;
 
   const completedItems = filteredItems.filter(
-    (i) => i.status === 'completed' || i.status === 'Просмотрено' || i.status === 'Завершено'
+    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
   );
-
   const watchingItems = filteredItems.filter(
-    (i) => i.status === 'watching' || i.status === 'Смотрю' || i.status === 'В процессе'
+    (i) => ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')
   );
-
   const plannedItems = filteredItems.filter(
-    (i) => i.status === 'planned' || i.status === 'Планирую'
+    (i) => ['planned', 'Планирую'].includes(i.status || '')
   );
 
   const completedCount = completedItems.length;
   const completionRate = totalPeriodItems > 0 ? Math.round((completedCount / totalPeriodItems) * 100) : 0;
 
-  const computedHours = Math.round(filteredItems.reduce((acc, i) => acc + parseHours(i.duration), 0));
-  const displayHours = computedHours > 0 ? computedHours : (activeTabKey === 'month' ? stats?.total_hours || profile?.monthly_hours || 0 : stats?.total_hours || 0);
+  // Watch hours — computed from completed movies/shows only
+  const displayHours = computeWatchHours(filteredItems);
 
-  // Category breakdown (always over all items for donut to be meaningful)
+  // Category breakdown (over filtered period)
   const categoryCounts: Record<string, number> = {};
-  const baseList = activeTabKey === 'all' ? items : filteredItems;
-  baseList.forEach((item) => {
-    const cat = normalizeCategory(item.category);
+  filteredItems.forEach((item) => {
+    const cat = normalizeCat(item.category);
     categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
   });
-  if (baseList.length === 0 && profile?.categories) {
+  if (filteredItems.length === 0 && profile?.categories) {
     profile.categories.forEach((c) => {
-      const cat = normalizeCategory(c.category);
+      const cat = normalizeCat(c.category);
       categoryCounts[cat] = (categoryCounts[cat] || 0) + c.count;
     });
   }
@@ -106,11 +93,11 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       cat,
       count,
       percent: grandTotal > 0 ? Math.round((count / grandTotal) * 100) : 0,
-      meta: CATEGORY_META[cat] || { hex: '#8C7CFF', light: 'rgba(140,124,255,0.15)', label: cat, icon: Film },
+      meta: CATEGORY_META[cat] || { hex: '#8C7CFF', label: cat, icon: Film },
     }))
     .sort((a, b) => b.count - a.count);
 
-  // Donut arc calc
+  // Donut
   let arcOffset = 0;
   const circumference = 2 * Math.PI * 15.9155;
 
@@ -120,42 +107,62 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     ? (ratedItems.reduce((acc, i) => acc + i.rating, 0) / ratedItems.length).toFixed(1)
     : '—';
 
-  // Activity bar data — only show real bars, no background fill for zero
-  const getBarData = () => {
+  // Bar chart data — rolling window, "today" always on the right
+  const getBarData = (): { labels: string[]; counts: number[] } => {
     if (activeTabKey === 'week') {
-      const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-      const counts = [0, 0, 0, 0, 0, 0, 0];
-      filteredItems.forEach((i) => {
-        const d = new Date(i.created_at || i.completed_at || Date.now());
-        counts[(d.getDay() + 6) % 7]++;
-      });
+      // Last 7 days rolling, today is rightmost
+      const slots = getLastNDays(7);
+      const labels = slots.map(d => DAY_NAMES[d.getDay()]);
+      const counts = countItemsPerSlot(items, slots); // use all items to cover exact days
       return { labels, counts };
-    } else if (activeTabKey === 'month') {
+    }
+
+    if (activeTabKey === 'month') {
       return {
         labels: ['1–7', '8–14', '15–21', '22–31'],
         counts: filteredItems.reduce((acc, i) => {
           const d = new Date(i.created_at || i.completed_at || Date.now()).getDate();
           if (d <= 7) acc[0]++; else if (d <= 14) acc[1]++; else if (d <= 21) acc[2]++; else acc[3]++;
           return acc;
-        }, [0, 0, 0, 0]),
+        }, [0, 0, 0, 0] as number[]),
       };
-    } else {
-      const labels = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-      const counts = new Array(12).fill(0);
-      filteredItems.forEach((i) => {
-        const m = new Date(i.created_at || i.completed_at || Date.now()).getMonth();
-        counts[m]++;
-      });
-      // Show only last 6 months for readability
-      const last6 = labels.slice(6);
-      const last6counts = counts.slice(6);
-      return { labels: last6, counts: last6counts };
     }
+
+    // Year or All — last 6 months rolling
+    const counts = new Array(6).fill(0);
+    const slots = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return d;
+    });
+    const labels = slots.map(d => {
+      const months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+      return months[d.getMonth()];
+    });
+    filteredItems.forEach((item) => {
+      const dateStr = item.created_at || item.completed_at;
+      if (!dateStr) return;
+      const itemDate = new Date(dateStr);
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        const nextSlot = slots[i + 1] ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        if (itemDate >= slot && itemDate < nextSlot) {
+          counts[i]++;
+          break;
+        }
+      }
+    });
+    return { labels, counts };
   };
 
   const { labels: barLabels, counts: barCounts } = getBarData();
   const maxBar = Math.max(...barCounts, 1);
   const hasBarData = barCounts.some((v) => v > 0);
+
+  const showHoursInfo = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    const msg = t.stats.hours_info_message;
+    if (tg?.showAlert) { tg.showAlert(msg); } else { alert(msg); }
+  };
 
   return (
     <div className="space-y-4 animate-slide-up pb-10">
@@ -178,25 +185,42 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
         ))}
       </div>
 
-      {/* KPI Row */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-2">
-        {[
-          { icon: PlusCircle, label: t.stats.card_added,     value: totalPeriodItems, sub: `из ${items.length} всего`,  color: 'text-accentViolet', iconColor: '#8C7CFF' },
-          { icon: Clock,      label: t.stats.card_spent,     value: `${displayHours}${t.stats.hours_unit}`, sub: displayHours > 0 && totalPeriodItems > 0 ? `~${Math.round(displayHours / totalPeriodItems)}ч/запись` : 'нет данных', color: 'text-blue-400', iconColor: '#60A5FA' },
-          { icon: CheckCircle2, label: t.stats.card_completed, value: completedCount, sub: `${completionRate}% готово`, color: 'text-accentTeal', iconColor: '#00CEC9' },
-        ].map(({ icon: Icon, label, value, sub, color, iconColor }) => (
-          <div key={label} className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
-            <div className="flex items-center gap-1">
-              <Icon style={{ color: iconColor }} className="w-3 h-3 shrink-0" />
-              <span className="text-[10px] text-gray-400 truncate">{label}</span>
-            </div>
-            <div className={`text-xl font-extrabold ${color} leading-none`}>{value}</div>
-            <div className="text-[9px] text-gray-400 leading-tight">{sub}</div>
+        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <PlusCircle className="w-3 h-3 shrink-0" style={{ color: '#8C7CFF' }} />
+            <span className="text-[10px] text-gray-400 truncate">{t.stats.card_added}</span>
           </div>
-        ))}
+          <div className="text-xl font-extrabold text-accentViolet leading-none">{totalPeriodItems}</div>
+          <div className="text-[9px] text-gray-400">из {items.length} всего</div>
+        </div>
+
+        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3 shrink-0" style={{ color: '#60A5FA' }} />
+            <span className="text-[10px] text-gray-400 truncate">{t.stats.card_spent}</span>
+            <button onClick={showHoursInfo} className="ml-auto shrink-0 text-gray-400 hover:text-accentViolet transition-colors active:scale-90">
+              <Info className="w-2.5 h-2.5" />
+            </button>
+          </div>
+          <div className="text-xl font-extrabold text-blue-400 leading-none">
+            {displayHours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span>
+          </div>
+          <div className="text-[9px] text-gray-400">фильмы + сериалы</div>
+        </div>
+
+        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 shrink-0" style={{ color: '#00CEC9' }} />
+            <span className="text-[10px] text-gray-400 truncate">{t.stats.card_completed}</span>
+          </div>
+          <div className="text-xl font-extrabold text-accentTeal leading-none">{completedCount}</div>
+          <div className="text-[9px] text-accentTeal font-semibold">{completionRate}% готово</div>
+        </div>
       </div>
 
-      {/* Status breakdown — 3 pill bars */}
+      {/* Status breakdown bars */}
       {totalPeriodItems > 0 && (
         <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-2.5">
           <div className="flex items-center justify-between">
@@ -206,11 +230,10 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             </span>
             <span className="text-[10px] text-gray-400">{totalPeriodItems} записей</span>
           </div>
-
           {[
-            { label: 'Завершено',   count: completedCount,      color: '#00CEC9', pct: completionRate },
-            { label: 'В процессе',  count: watchingItems.length, color: '#8C7CFF', pct: totalPeriodItems > 0 ? Math.round(watchingItems.length / totalPeriodItems * 100) : 0 },
-            { label: 'Запланировано', count: plannedItems.length, color: '#FFB800', pct: totalPeriodItems > 0 ? Math.round(plannedItems.length / totalPeriodItems * 100) : 0 },
+            { label: 'Завершено',     count: completedCount,       color: '#00CEC9', pct: completionRate },
+            { label: 'В процессе',   count: watchingItems.length,  color: '#8C7CFF', pct: totalPeriodItems > 0 ? Math.round(watchingItems.length / totalPeriodItems * 100) : 0 },
+            { label: 'Запланировано', count: plannedItems.length,   color: '#FFB800', pct: totalPeriodItems > 0 ? Math.round(plannedItems.length / totalPeriodItems * 100) : 0 },
           ].map(({ label, count, color, pct }) => (
             <div key={label} className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
@@ -218,17 +241,14 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
                 <span className="font-bold text-white">{count} <span className="text-gray-400 font-normal">({pct}%)</span></span>
               </div>
               <div className="h-1.5 rounded-full bg-cardBorder/40 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: color }}
-                />
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Activity Bar Chart — NO background bars for zero values */}
+      {/* Activity Bar Chart — rolling last-N-days, today always rightmost */}
       <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -243,38 +263,30 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           </div>
         </div>
 
-        {/* Bars */}
         <div className="flex items-end gap-1.5 h-24 mt-2">
           {barCounts.map((count, idx) => {
-            if (!hasBarData) {
-              // show thin flat line if no data
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
-                  <div className="w-full h-0.5 rounded-full bg-cardBorder/30" />
-                </div>
-              );
-            }
-            const heightPct = count > 0 ? Math.max((count / maxBar) * 90, 12) : 0;
-            const isPeak = count === maxBar && count > 0;
+            const isToday = activeTabKey === 'week' && idx === barCounts.length - 1;
+            const isPeak = hasBarData && count === maxBar && count > 0;
+            const heightPct = hasBarData && count > 0 ? Math.max((count / maxBar) * 90, 12) : 0;
             return (
-              <div key={idx} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
+              <div key={idx} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
                 {count > 0 && (
                   <span
                     className="text-[9px] font-bold leading-none shrink-0"
-                    style={{ color: isPeak ? '#00CEC9' : '#8C7CFF' }}
+                    style={{ color: isPeak || isToday ? '#00CEC9' : '#8C7CFF' }}
                   >
                     {count}
                   </span>
                 )}
                 {count > 0 ? (
                   <div
-                    className="w-full rounded-t-lg transition-all duration-300"
+                    className="w-full rounded-t-lg transition-all duration-500"
                     style={{
                       height: `${heightPct}%`,
-                      background: isPeak
+                      background: isPeak || isToday
                         ? 'linear-gradient(to top, #00CEC9, #81ECE8)'
                         : 'linear-gradient(to top, rgba(140,124,255,0.5), #8C7CFF)',
-                      boxShadow: isPeak ? '0 0 10px rgba(0,206,201,0.25)' : undefined,
+                      boxShadow: isPeak || isToday ? '0 0 10px rgba(0,206,201,0.25)' : undefined,
                     }}
                   />
                 ) : (
@@ -285,17 +297,22 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           })}
         </div>
 
-        {/* X-axis labels */}
         <div className="flex justify-between pt-1 border-t border-cardBorder/30">
-          {barLabels.map((lbl, i) => (
-            <span key={i} className="flex-1 text-center text-[9px] text-gray-400 font-medium">
-              {lbl}
-            </span>
-          ))}
+          {barLabels.map((lbl, i) => {
+            const isToday = activeTabKey === 'week' && i === barLabels.length - 1;
+            return (
+              <span
+                key={i}
+                className={`flex-1 text-center text-[9px] font-medium ${isToday ? 'text-accentTeal' : 'text-gray-400'}`}
+              >
+                {lbl}{isToday ? ' ·' : ''}
+              </span>
+            );
+          })}
         </div>
       </div>
 
-      {/* Category Distribution — horizontal progress bars, much cleaner */}
+      {/* Category Distribution */}
       {grandTotal > 0 && (
         <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
           <div className="flex items-center justify-between">
@@ -308,24 +325,27 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <div className="relative shrink-0 w-24 h-24">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3.5" />
-                {categorySegments.map((seg, idx) => {
-                  const len = (seg.percent / 100) * circumference;
-                  const dashArray = `${len} ${circumference - len}`;
-                  const dashOffset = -arcOffset;
-                  arcOffset += len;
-                  return (
-                    <circle
-                      key={idx}
-                      cx="18" cy="18" r="15.9155"
-                      fill="none"
-                      stroke={seg.meta.hex}
-                      strokeWidth="4"
-                      strokeDasharray={dashArray}
-                      strokeDashoffset={dashOffset}
-                      strokeLinecap="butt"
-                    />
-                  );
-                })}
+                {(() => {
+                  arcOffset = 0;
+                  return categorySegments.map((seg, idx) => {
+                    const len = (seg.percent / 100) * circumference;
+                    const dashArray = `${len} ${circumference - len}`;
+                    const dashOffset = -arcOffset;
+                    arcOffset += len;
+                    return (
+                      <circle
+                        key={idx}
+                        cx="18" cy="18" r="15.9155"
+                        fill="none"
+                        stroke={seg.meta.hex}
+                        strokeWidth="4"
+                        strokeDasharray={dashArray}
+                        strokeDashoffset={dashOffset}
+                        strokeLinecap="butt"
+                      />
+                    );
+                  });
+                })()}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-lg font-extrabold text-white leading-none">{grandTotal}</span>
@@ -350,7 +370,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             </div>
           </div>
 
-          {/* Horizontal bar breakdown — no dark backgrounds */}
+          {/* Horizontal progress bars — NO gray boxes */}
           <div className="space-y-2.5 pt-2 border-t border-cardBorder/40">
             {categorySegments.map((seg) => {
               const Icon = seg.meta.icon;
@@ -368,7 +388,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
                   </div>
                   <div className="h-1.5 rounded-full bg-cardBorder/30 overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${seg.percent}%`, background: seg.meta.hex }}
                     />
                   </div>
@@ -381,7 +401,6 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
 
       {/* Insight Cards */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Top Category */}
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accentViolet">
             <Award className="w-3.5 h-3.5" />
@@ -389,64 +408,46 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           </div>
           {categorySegments[0] ? (
             <>
-              <div className="text-sm font-extrabold text-white leading-tight">
-                {categorySegments[0].cat}
-              </div>
-              <div className="text-[10px] text-gray-400">
-                {categorySegments[0].count} карточек · {categorySegments[0].percent}%
-              </div>
+              <div className="text-sm font-extrabold text-white">{categorySegments[0].cat}</div>
+              <div className="text-[10px] text-gray-400">{categorySegments[0].count} карточек · {categorySegments[0].percent}%</div>
             </>
-          ) : (
-            <div className="text-xs text-gray-500">—</div>
-          )}
+          ) : <div className="text-xs text-gray-500">—</div>}
         </div>
 
-        {/* Avg Rating */}
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
             <Star className="w-3.5 h-3.5 fill-amber-400" />
             {t.stats.avg_rating}
           </div>
-          <div className="text-sm font-extrabold text-white leading-tight">
-            {avgRating}
-            {avgRating !== '—' && <span className="text-xs font-normal text-gray-400 ml-1">/ 10</span>}
+          <div className="text-sm font-extrabold text-white">
+            {avgRating}{avgRating !== '—' && <span className="text-xs font-normal text-gray-400 ml-1">/ 10</span>}
           </div>
-          <div className="text-[10px] text-gray-400">
-            {ratedItems.length > 0 ? `${ratedItems.length} оценено` : 'нет оценок'}
-          </div>
+          <div className="text-[10px] text-gray-400">{ratedItems.length > 0 ? `${ratedItems.length} оценено` : 'нет оценок'}</div>
         </div>
 
-        {/* Avg per week */}
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accentTeal">
             <TrendingUp className="w-3.5 h-3.5" />
             Темп добавления
           </div>
-          <div className="text-sm font-extrabold text-white leading-tight">
+          <div className="text-sm font-extrabold text-white">
             {activeTabKey === 'week'
-              ? `${totalPeriodItems} / нед.`
+              ? `${totalPeriodItems}/нед.`
               : activeTabKey === 'month'
-              ? `${(totalPeriodItems / 4).toFixed(1)} / нед.`
-              : `${(totalPeriodItems / 52).toFixed(1)} / нед.`
+              ? `${(totalPeriodItems / 4).toFixed(1)}/нед.`
+              : `${(totalPeriodItems / 52).toFixed(1)}/нед.`
             }
           </div>
-          <div className="text-[10px] text-gray-400">
-            записей в среднем
-          </div>
+          <div className="text-[10px] text-gray-400">в среднем</div>
         </div>
 
-        {/* Watching right now */}
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-400">
             <Clock className="w-3.5 h-3.5" />
-            Сейчас смотрю
+            Смотрю сейчас
           </div>
-          <div className="text-sm font-extrabold text-white leading-tight">
-            {watchingItems.length}
-          </div>
-          <div className="text-[10px] text-gray-400">
-            активных записей
-          </div>
+          <div className="text-sm font-extrabold text-white">{watchingItems.length}</div>
+          <div className="text-[10px] text-gray-400">активных записей</div>
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 import React from 'react';
-import { TrendingUp, Flame, Plus, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Flame, Plus, CheckCircle2, Info } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
+import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
 
 interface ActivityCardProps {
   monthlyCount?: number;
@@ -11,9 +12,10 @@ interface ActivityCardProps {
   t: Translations;
 }
 
+const DAY_NAMES_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
 export const ActivityCard: React.FC<ActivityCardProps> = ({
   monthlyCount = 0,
-  monthlyHours = 0,
   currentStreak = 0,
   items = [],
   t,
@@ -22,9 +24,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
+  // Items added this calendar month
   const monthItems = items.filter((item) => {
-    if (!item.created_at && !item.completed_at) return false;
-    const d = new Date(item.created_at || item.completed_at || '');
+    const dateStr = item.created_at || item.completed_at;
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
@@ -32,34 +36,37 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   // Completed this month
   const completedThisMonth = monthItems.filter(
-    (i) => i.status === 'completed' || i.status === 'Просмотрено' || i.status === 'Завершено'
+    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
   ).length;
 
-  // Compute 4-week activity breakdown for current month — only real month data
+  // Watch hours — only completed movies/shows, calculated from item durations
+  const watchHours = computeWatchHours(items); // all time total for context
+  const monthWatchHours = computeWatchHours(monthItems);
+
+  // Last 4 weeks of current month for sparkline
   const weekCounts = [0, 0, 0, 0];
   monthItems.forEach((item) => {
     const dateStr = item.created_at || item.completed_at;
-    if (dateStr) {
-      const day = new Date(dateStr).getDate();
-      if (day <= 7) weekCounts[0]++;
-      else if (day <= 14) weekCounts[1]++;
-      else if (day <= 21) weekCounts[2]++;
-      else weekCounts[3]++;
-    }
+    if (!dateStr) return;
+    const day = new Date(dateStr).getDate();
+    if (day <= 7) weekCounts[0]++;
+    else if (day <= 14) weekCounts[1]++;
+    else if (day <= 21) weekCounts[2]++;
+    else weekCounts[3]++;
   });
 
   const maxVal = Math.max(...weekCounts, 1);
   const hasRealData = weekCounts.some((v) => v > 0);
+  const peakIdx = weekCounts.indexOf(Math.max(...weekCounts));
 
-  // Build smooth SVG path from 4 control points
-  const pts = weekCounts.map((val, idx) => {
-    const x = 30 + idx * 82;
-    const y = hasRealData ? 32 - (val / maxVal) * 22 : 32;
-    return { x, y, val };
-  });
+  // Build smooth SVG sparkline (Catmull-Rom → Cubic Bezier)
+  const pts = weekCounts.map((val, idx) => ({
+    x: 20 + idx * 85,
+    y: hasRealData ? 30 - (val / maxVal) * 22 : 30,
+    val,
+  }));
 
-  // Catmull-Rom to smooth cubic bezier
-  const smoothPath = () => {
+  const buildPath = () => {
     if (pts.length < 2) return '';
     let d = `M ${pts[0].x},${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
@@ -76,11 +83,15 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
     return d;
   };
 
-  const linePath = smoothPath();
+  const linePath = buildPath();
   const fillPath = `${linePath} L ${pts[pts.length - 1].x},38 L ${pts[0].x},38 Z`;
-  const peakIdx = weekCounts.indexOf(maxVal);
-
   const weekLabels = ['1–7', '8–14', '15–21', '22–31'];
+
+  const showHoursInfo = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    const msg = t.stats.hours_info_message;
+    if (tg?.showAlert) { tg.showAlert(msg); } else { alert(msg); }
+  };
 
   return (
     <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
@@ -95,50 +106,56 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         )}
       </div>
 
-      {/* 3 Stat Rows (no gray backgrounds — just clean dividers) */}
+      {/* 3 Stats — clean divider layout, no gray boxes */}
       <div className="flex items-stretch divide-x divide-cardBorder">
-        <div className="flex-1 flex flex-col items-center gap-0.5 pr-4 text-center">
-          <div className="flex items-center gap-1 text-accentViolet">
-            <Plus className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex-1 flex flex-col items-center gap-1 pr-4 text-center">
+          <Plus className="w-3.5 h-3.5 text-accentViolet" />
           <div className="text-2xl font-extrabold text-white leading-none">{displayCount}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">{t.activity.added}</div>
+          <div className="text-[10px] text-gray-400">{t.activity.added}</div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center gap-0.5 px-4 text-center">
-          <div className="text-[10px] text-gray-400 mt-0.5">{t.activity.spent}</div>
+        <div className="flex-1 flex flex-col items-center gap-1 px-4 text-center">
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-gray-400">{t.activity.spent}</span>
+            <button
+              onClick={showHoursInfo}
+              className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-gray-400 hover:text-accentViolet transition-colors active:scale-90"
+              aria-label="О расчёте времени"
+            >
+              <Info className="w-3 h-3" />
+            </button>
+          </div>
           <div className="text-2xl font-extrabold text-white leading-none">
-            {monthlyHours}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span>
+            {monthWatchHours > 0 ? monthWatchHours : watchHours}
+            <span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span>
           </div>
-          <div className="text-[10px] text-gray-500 mt-0.5">≈ времени</div>
+          <div className="text-[10px] text-gray-500">≈ просмотра</div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center gap-0.5 pl-4 text-center">
-          <div className="flex items-center gap-1 text-accentTeal">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex-1 flex flex-col items-center gap-1 pl-4 text-center">
+          <CheckCircle2 className="w-3.5 h-3.5 text-accentTeal" />
           <div className="text-2xl font-extrabold text-accentTeal leading-none">{completedThisMonth}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">завершено</div>
+          <div className="text-[10px] text-gray-400">завершено</div>
         </div>
       </div>
 
-      {/* Sparkline area chart — pure SVG, no HTML boxes */}
+      {/* Sparkline — Catmull-Rom smooth curve, labels in accent color */}
       <div>
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
             <TrendingUp className="w-3 h-3 text-accentViolet" />
             Активность по неделям
           </span>
           {hasRealData && (
             <span className="text-[10px] font-semibold text-accentViolet">
-              пик W{peakIdx + 1} (+{maxVal})
+              пик W{peakIdx + 1} (+{weekCounts[peakIdx]})
             </span>
           )}
         </div>
 
-        <svg className="w-full overflow-visible" viewBox="0 0 290 50" preserveAspectRatio="none">
+        <svg className="w-full overflow-visible" viewBox="0 0 290 42" preserveAspectRatio="none">
           <defs>
-            <linearGradient id="acGrad" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="acGradAct" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#8C7CFF" stopOpacity="0.35" />
               <stop offset="100%" stopColor="#8C7CFF" stopOpacity="0.0" />
             </linearGradient>
@@ -146,7 +163,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
           {hasRealData ? (
             <>
-              <path d={fillPath} fill="url(#acGrad)" />
+              <path d={fillPath} fill="url(#acGradAct)" />
               <path d={linePath} fill="none" stroke="#8C7CFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               {pts.map((pt, idx) => (
                 <g key={idx}>
@@ -157,13 +174,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                     stroke="white" strokeWidth="1.5"
                   />
                   {pt.val > 0 && (
-                    <text
-                      x={pt.x} y={pt.y - 8}
-                      textAnchor="middle"
-                      fill="#8C7CFF"
-                      fontSize="9"
-                      fontWeight="bold"
-                    >
+                    <text x={pt.x} y={pt.y - 8} textAnchor="middle" fill={idx === peakIdx ? '#00CEC9' : '#8C7CFF'} fontSize="8.5" fontWeight="bold">
                       +{pt.val}
                     </text>
                   )}
@@ -171,11 +182,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               ))}
             </>
           ) : (
-            <line x1="0" y1="34" x2="290" y2="34" stroke="#334155" strokeWidth="1.5" strokeDasharray="4 4" />
+            <line x1="0" y1="30" x2="290" y2="30" stroke="#334155" strokeWidth="1.5" strokeDasharray="4 4" />
           )}
         </svg>
 
-        <div className="flex justify-between text-[9px] text-gray-400 mt-1 px-1">
+        <div className="flex justify-between text-[9px] text-gray-400 mt-1">
           {weekLabels.map((lbl, i) => (
             <span key={i} className="text-center" style={{ width: '25%' }}>{lbl} дн</span>
           ))}
