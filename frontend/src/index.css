@@ -107,11 +107,34 @@ body.light .status-pill-banner span {
   color: #FFFFFF !important;
 }
 
-/* Dropdown menu contrast rules for Light Mode */
-body.light .dropdown-menu-container {
+/* Light mode hover:bg-bgDark override */
+body.light .hover\:bg-bgDark:hover,
+body.light [class*="hover:bg-bgDark"]:hover {
+  background-color: #F1F5F9 !important;
+}
+
+/* Dropdown menu & Suggestions contrast rules for Light Mode */
+body.light .dropdown-menu-container,
+body.light .suggestion-popup-container {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light .suggestion-item {
+  background-color: transparent !important;
+}
+
+body.light .suggestion-item:hover {
+  background-color: #F1F5F9 !important;
+}
+
+body.light .suggestion-item .suggestion-title {
+  color: #0F172A !important;
+}
+
+body.light .suggestion-item .suggestion-sub {
+  color: #64748B !important;
 }
 
 body.light .dropdown-option-inactive {
