@@ -22,7 +22,8 @@ import {
   Maximize2,
   User,
   Users,
-  Video
+  Video,
+  FolderPlus
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -83,6 +84,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   t,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(item.note || '');
   const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
@@ -302,7 +304,60 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <h1 className="text-base font-bold text-white line-clamp-1 max-w-[220px] text-center">
           {item.title}
         </h1>
-        <MoreVertical className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white" />
+        <div className="relative">
+          <button
+            onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+            className="p-1.5 rounded-full text-gray-300 hover:text-white hover:bg-cardDark transition active:scale-90"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          {/* Three Dots Dropdown Menu */}
+          {isHeaderMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setIsHeaderMenuOpen(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-48 glass-card border border-cardBorder rounded-2xl p-1.5 shadow-2xl z-50 animate-slide-up dropdown-menu-container space-y-0.5">
+                <button
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    handleShareTelegram();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                >
+                  <Share2 className="w-4 h-4 text-accentTeal" />
+                  <span>{t.details.share || 'Поделиться'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    onEdit(item);
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                >
+                  <Edit3 className="w-4 h-4 text-accentViolet" />
+                  <span>{t.details.edit || 'Изменить'}</span>
+                </button>
+
+                <div className="h-px bg-cardBorder/50 my-1" />
+
+                <button
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    onDelete(item.id);
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                  <span>{t.details.delete || 'Удалить'}</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Main Poster & Details Card (2:3 Aspect Ratio Layout) */}
@@ -648,27 +703,34 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5 pt-1">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
+          <button
+            onClick={() => setToastMessage('Списки категорий скоро будут доступны!')}
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+          >
+            <FolderPlus className="w-4 h-4 mb-1 text-amber-400" />
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">В список</span>
+          </button>
           <button
             onClick={() => onEdit(item)}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
           >
             <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
-            <span className="text-[11px] font-semibold">{t.details.edit}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.edit}</span>
           </button>
           <button
             onClick={handleShareTelegram}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
           >
             <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
-            <span className="text-[11px] font-semibold">{t.details.share}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.share}</span>
           </button>
           <button
             onClick={() => onDelete(item.id)}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
           >
             <Trash2 className="w-4 h-4 mb-1" />
-            <span className="text-[11px] font-semibold">{t.details.delete}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.delete}</span>
           </button>
         </div>
       )}

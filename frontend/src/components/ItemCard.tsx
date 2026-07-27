@@ -49,38 +49,55 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   };
 
   const formatSubtitle = () => {
+    const parts: string[] = [];
+
+    // 1. Category
     const catLabel = formatCategorySingle(item.category);
-    let durStr = '';
+    if (catLabel) parts.push(catLabel);
 
-    if (item.duration) {
-      const raw = item.duration;
-      if (raw.includes('•')) {
-        const parts = raw.split('•');
-        const epNum = parts[0]?.replace(/\D/g, '') || '';
-        const durNum = parts[1]?.replace(/\D/g, '') || '';
-        const epUnit = t ? t.modal.episodes_unit : 'сер.';
-        const minUnit = t ? t.details.minutes_short : 'мин';
-
-        if (epNum && durNum) {
-          durStr = `${epNum} ${epUnit} • ${durNum} ${minUnit}`;
-        } else if (epNum) {
-          durStr = `${epNum} ${epUnit}`;
-        } else if (durNum) {
-          durStr = `${durNum} ${minUnit}`;
-        }
-      } else if (raw.includes('сер.') || raw.includes('ep.')) {
-        const epNum = raw.replace(/\D/g, '');
-        const epUnit = t ? t.modal.episodes_unit : 'сер.';
-        durStr = epNum ? `${epNum} ${epUnit}` : raw;
-      } else {
-        const durNum = raw.replace(/\D/g, '');
-        const minUnit = t ? t.details.minutes_short : 'мин';
-        durStr = durNum ? `${durNum} ${minUnit}` : raw;
-      }
+    // 2. Release Year
+    if (item.release_year) {
+      parts.push(item.release_year);
     }
 
-    const yearOrDur = durStr || item.release_year || '2024';
-    return `${catLabel} • ${yearOrDur}`;
+    // 3. Genre
+    if (item.genre) {
+      const rawGenre = item.genre.trim();
+      const translatedGenre = t ? (t.genres[rawGenre as keyof typeof t.genres] || rawGenre) : rawGenre;
+      if (translatedGenre) parts.push(translatedGenre);
+    }
+
+    // 4. Duration & Episode count
+    let durStr = '';
+    let epStr = '';
+
+    const rawDur = (item.duration || '').trim();
+    const epUnit = t ? t.modal.episodes_unit : 'сер.';
+    const minUnit = t ? t.details.minutes_short : 'мин';
+
+    if (rawDur.includes('•')) {
+      const splitParts = rawDur.split('•');
+      const epNum = splitParts[0]?.replace(/\D/g, '') || '';
+      const durNum = splitParts[1]?.replace(/\D/g, '') || '';
+      if (durNum) durStr = `${durNum} ${minUnit}`;
+      if (epNum) epStr = `${epNum} ${epUnit}`;
+    } else if (rawDur.includes('сер.') || rawDur.includes('ep.')) {
+      const epNum = rawDur.replace(/\D/g, '');
+      if (epNum) epStr = `${epNum} ${epUnit}`;
+    } else if (rawDur) {
+      const durNum = rawDur.replace(/\D/g, '');
+      if (durNum) durStr = `${durNum} ${minUnit}`;
+      else durStr = rawDur;
+    }
+
+    if (item.episodes && item.episodes > 0 && !epStr) {
+      epStr = `${item.episodes} ${epUnit}`;
+    }
+
+    if (durStr) parts.push(durStr);
+    if (epStr) parts.push(epStr);
+
+    return parts.length > 0 ? parts.join(' • ') : catLabel;
   };
 
   return (
