@@ -81,6 +81,10 @@ export const ru: Translations = {
     minutes_unit: 'мин',
     year_label: 'Год',
     catalog_autofill_hint: 'Найдено в общей базе (нажмите для автозаполнения):',
+    search_prompt_hint: 'Попробуйте найти через поиск, то что вы хотите добавить, скорее всего это уже есть в нашей базе и вы добавите в список за один клик, а потом можно отредактировать под себя.',
+    search_input_placeholder: 'Поиск по нашей базе...',
+    or_manual_entry: 'Или заполните вручную',
+    one_click_add: 'В 1 клик',
   },
   category_modal: {
     title: 'Настройка категорий',

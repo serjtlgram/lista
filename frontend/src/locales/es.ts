@@ -81,6 +81,10 @@ export const es: Translations = {
     minutes_unit: 'min',
     year_label: 'Año',
     catalog_autofill_hint: 'Encontrado en catálogo compartido (toca para autocompletar):',
+    search_prompt_hint: 'Prueba a buscar lo que quieres añadir; es muy probable que ya esté en nuestra base de datos para añadirlo a tu lista con un solo clic y luego editarlo a tu gusto.',
+    search_input_placeholder: 'Buscar en nuestra base de datos...',
+    or_manual_entry: 'O añade manualmente',
+    one_click_add: 'En 1 clic',
   },
   category_modal: {
     title: 'Personalizar Categorías',

@@ -81,6 +81,10 @@ export const uk: Translations = {
     minutes_unit: 'хв',
     year_label: 'Рік',
     catalog_autofill_hint: 'Знайдено в спільній базі (натисніть для автозаповнення):',
+    search_prompt_hint: 'Спробуйте знайти через пошук те, що ви хочете додати, швидше за все це вже є в нашій базі і ви додасте в список за один клік, а потім можна відредагувати під себе.',
+    search_input_placeholder: 'Пошук по нашій базі...',
+    or_manual_entry: 'Або заповніть вручну',
+    one_click_add: 'В 1 клік',
   },
   category_modal: {
     title: 'Налаштування категорій',

@@ -81,6 +81,10 @@ export interface Translations {
     minutes_unit: string;
     year_label: string;
     catalog_autofill_hint: string;
+    search_prompt_hint: string;
+    search_input_placeholder: string;
+    or_manual_entry: string;
+    one_click_add: string;
   };
   category_modal: {
     title: string;

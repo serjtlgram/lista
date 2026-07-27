@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Check, Sparkles } from 'lucide-react';
+import { X, ChevronDown, Check, Sparkles, Search } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
@@ -106,6 +106,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [catalogSuggestions, setCatalogSuggestions] = useState<CatalogItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const [quickSearchQuery, setQuickSearchQuery] = useState('');
+  const [quickSearchResults, setQuickSearchResults] = useState<CatalogItem[]>([]);
+
   useEffect(() => {
     if (editingItem) {
       setTitle(editingItem.title || '');
@@ -149,6 +152,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setNote('');
       setShowAdvanced(true);
     }
+    setQuickSearchQuery('');
+    setQuickSearchResults([]);
   }, [editingItem, isOpen, t]);
 
   if (!isOpen) return null;
@@ -173,6 +178,20 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     return false;
   };
 
+  const handleQuickSearch = async (val: string) => {
+    setQuickSearchQuery(val);
+    if (val.trim().length >= 2) {
+      try {
+        const results = await api.searchCatalog(val);
+        setQuickSearchResults(results || []);
+      } catch (e) {
+        setQuickSearchResults([]);
+      }
+    } else {
+      setQuickSearchResults([]);
+    }
+  };
+
   const handleTitleChange = async (val: string) => {
     setTitle(val);
     if (val.trim().length >= 2) {
@@ -192,13 +211,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSelectSuggestion = (sug: CatalogItem) => {
     setTitle(sug.title);
-    if (sug.genre) setGenre(sug.genre);
+    if (sug.category) {
+      setCategory(sug.category);
+    }
+    if (sug.genre) setGenre(getTranslatedGenreFull(sug.genre, t));
     if (sug.release_year) setReleaseYear(sug.release_year);
     if (sug.poster_url) setPosterUrl(sug.poster_url);
     if (sug.youtube_url) setYoutubeUrl(sug.youtube_url);
     if (sug.description) setDescription(sug.description);
     if (sug.director) setDirector(sug.director);
     if (sug.cast) setCast(sug.cast);
+
+    setQuickSearchQuery('');
+    setQuickSearchResults([]);
     setShowSuggestions(false);
   };
 
@@ -280,6 +305,93 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           <button onClick={onClose} type="button" className="p-1 rounded-full text-gray-400 hover:text-white transition">
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Smart Search Banner */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-accentViolet/20 via-accentViolet/10 to-accentTeal/10 border border-accentViolet/30 space-y-2.5 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-accentViolet/25 flex items-center justify-center text-accentViolet shrink-0 mt-0.5 shadow-inner">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <p className="text-[11px] text-gray-200 leading-relaxed font-normal">
+              {t.modal.search_prompt_hint}
+            </p>
+          </div>
+
+          <div className="relative">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
+              <input
+                type="text"
+                value={quickSearchQuery}
+                onChange={(e) => handleQuickSearch(e.target.value)}
+                placeholder={t.modal.search_input_placeholder}
+                className="w-full bg-bgDark/90 border border-accentViolet/40 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet focus:ring-1 focus:ring-accentViolet transition shadow-sm"
+              />
+              {quickSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickSearchQuery('');
+                    setQuickSearchResults([]);
+                  }}
+                  className="absolute right-2.5 p-1 text-gray-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Search Live Results Dropdown */}
+            {quickSearchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-cardDark border border-accentViolet/40 rounded-2xl p-2 shadow-2xl z-50 animate-slide-up max-h-60 overflow-y-auto space-y-1">
+                <div className="text-[10px] text-accentTeal font-semibold px-2 py-1 flex items-center gap-1 border-b border-cardBorder/50 mb-1">
+                  <Sparkles className="w-3 h-3" />
+                  {t.modal.catalog_autofill_hint}
+                </div>
+                {quickSearchResults.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectSuggestion(sug)}
+                    className="p-2 hover:bg-bgDark/80 rounded-xl cursor-pointer flex items-center justify-between transition group border border-transparent hover:border-accentViolet/30"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      {sug.poster_url ? (
+                        <img src={sug.poster_url} className="w-8 h-11 object-cover rounded-md shadow shrink-0" alt="" />
+                      ) : (
+                        <div className="w-8 h-11 bg-gray-800 rounded-md flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                          {sug.category?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white group-hover:text-accentViolet transition truncate">{sug.title}</div>
+                        <div className="text-[10px] text-gray-400 truncate">
+                          {sug.category ? `${sug.category}` : ''} {sug.release_year ? `• ${sug.release_year}` : ''} {sug.genre ? `• ${sug.genre}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectSuggestion(sug);
+                      }}
+                      className="px-2.5 py-1 text-[10px] bg-accentViolet text-white font-bold rounded-lg shadow-sm hover:bg-accentViolet/90 transition shrink-0 flex items-center gap-1"
+                    >
+                      <span>{t.modal.one_click_add}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Divider for Manual Entry */}
+        <div className="flex items-center gap-3 pt-1">
+          <div className="h-px bg-cardBorder flex-1" />
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t.modal.or_manual_entry}</span>
+          <div className="h-px bg-cardBorder flex-1" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
