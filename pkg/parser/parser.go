@@ -570,6 +570,10 @@ func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID strin
 	return nil, fmt.Errorf("no TMDb match found for %s", externalID)
 }
 
+func FetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string) (*ExtractedMedia, error) {
+	return fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType)
+}
+
 func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string) (*ExtractedMedia, error) {
 	detailsURL := fmt.Sprintf(
 		"https://api.themoviedb.org/3/%s/%s?api_key=%s&language=ru-RU&append_to_response=credits,videos",

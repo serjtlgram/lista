@@ -2066,20 +2066,21 @@ func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult 
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
-		for _, r := range data.Results {
+		for i, r := range data.Results {
+			if i >= 6 {
+				break
+			}
 			title := r.Title
 			if title == "" {
 				title = r.Name
 			}
-			if title == "" {
+			if title == "" || r.MediaType == "person" {
 				continue
 			}
 
 			cat := "movie"
 			if r.MediaType == "tv" {
 				cat = "show"
-			} else if r.MediaType == "person" {
-				continue
 			}
 
 			year := ""
@@ -2102,14 +2103,52 @@ func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult 
 				}
 			}
 
+			overview := r.Overview
+			var duration, director, cast, youtubeURL string
+
+			// Enrich with full TMDb details (duration/runtime, director, cast, trailer)
+			if details, errDet := parser.FetchTMDbDetails(client, tmdbKey, strconv.Itoa(r.ID), r.MediaType); errDet == nil && details != nil {
+				if details.Title != "" {
+					title = details.Title
+				}
+				if details.Duration != "" {
+					duration = details.Duration
+				}
+				if details.Director != "" {
+					director = details.Director
+				}
+				if details.Cast != "" {
+					cast = details.Cast
+				}
+				if details.YoutubeURL != "" {
+					youtubeURL = details.YoutubeURL
+				}
+				if details.Genre != "" {
+					genre = details.Genre
+				}
+				if details.Description != "" {
+					overview = details.Description
+				}
+				if details.PosterURL != "" {
+					poster = details.PosterURL
+				}
+				if details.ReleaseYear != "" {
+					year = details.ReleaseYear
+				}
+			}
+
 			list = append(list, models.CatalogSearchResult{
 				ID:          uuid.New().String(),
 				Title:       title,
 				Category:    cat,
 				Genre:       genre,
+				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
-				Description: r.Overview,
+				Description: overview,
+				YoutubeURL:  youtubeURL,
+				Director:    director,
+				Cast:        cast,
 			})
 		}
 	}
