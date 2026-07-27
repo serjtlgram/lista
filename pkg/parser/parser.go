@@ -102,6 +102,22 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string) (*Extracted
 	scrapedMedia, err := scrapeWebPage(client, rawURL)
 	if err == nil && scrapedMedia != nil && scrapedMedia.Title != "" {
 		media = scrapedMedia
+	} else {
+		// Fallback URL slug parser for sites with Cloudflare / 403 / 302 captcha (Rezka, Kinopoisk, Lordfilm, etc.)
+		if fallbackMedia := parseFallbackFromURL(rawURL); fallbackMedia != nil {
+			if fallbackMedia.Title != "" {
+				media.Title = fallbackMedia.Title
+			}
+			if fallbackMedia.ReleaseYear != "" {
+				media.ReleaseYear = fallbackMedia.ReleaseYear
+			}
+			if fallbackMedia.Category != "" {
+				media.Category = fallbackMedia.Category
+			}
+			if fallbackMedia.PosterURL != "" {
+				media.PosterURL = fallbackMedia.PosterURL
+			}
+		}
 	}
 
 	// Clean up title for searching
@@ -799,4 +815,78 @@ func OptimizePosterURL(client *http.Client, rawPosterURL string) string {
 	}
 
 	return rawPosterURL
+}
+
+var cyrillicMap = map[string]string{
+	"igra": "игра", "prestolov": "престолов", "vlastelin": "властелин", "kolec": "колец",
+	"garri": "гарри", "potter": "поттер", "chelovek": "человек", "pauk": "паук",
+	"zvezdnye": "звездные", "vojny": "войны", "mstiteli": "мстители",
+	"temnyj": "темный", "rycar": "рыцарь", "bystryj": "быстрый", "dune": "дюна",
+}
+
+func parseFallbackFromURL(rawURL string) *ExtractedMedia {
+	media := &ExtractedMedia{
+		Category:  "movie",
+		SourceURL: rawURL,
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return media
+	}
+
+	host := strings.ToLower(u.Host)
+	path := u.Path
+
+	// Detect series category from URL
+	if isSeriesKeywords(path) || isSeriesKeywords(host) {
+		media.Category = "show"
+	}
+
+	// Extract 4-digit release year if present in path (e.g. -2011- or /2011/)
+	if yMatch := yearRegex.FindStringSubmatch(path); len(yMatch) > 1 {
+		media.ReleaseYear = yMatch[1]
+	}
+
+	// Kinopoisk ID extraction (e.g. kinopoisk.ru/film/258687/ or /series/464963/)
+	if strings.Contains(host, "kinopoisk.ru") {
+		kpRegex := regexp.MustCompile(`kinopoisk\.ru/(?:film|series)/(\d+)`)
+		if m := kpRegex.FindStringSubmatch(rawURL); len(m) > 1 {
+			kpID := m[1]
+			media.PosterURL = fmt.Sprintf("https://st.kp.yandex.net/images/film_big/%s.jpg", kpID)
+		}
+	}
+
+	// Slug extraction for Rezka / Lordfilm / Kinogo / general URLs
+	// e.g. /series/fantasy/45-igra-prestolov-2011-latest.html -> igra-prestolov
+	slugRegex := regexp.MustCompile(`(?i)/(?:[a-z0-9_-]+/)*?(?:\d+-)?([a-z0-9_-]+?)(?:-\d{4})?(?:-[a-z0-9_-]+)?\.html`)
+	if m := slugRegex.FindStringSubmatch(path); len(m) > 1 {
+		rawSlug := m[1]
+		// Remove trailing words like 'latest', 'hd', 'full', etc.
+		rawSlug = regexp.MustCompile(`(?i)-(?:latest|hd|full|season|s\d+|e\d+)$`).ReplaceAllString(rawSlug, "")
+		parts := strings.Split(rawSlug, "-")
+		var cleanParts []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" || regexp.MustCompile(`^\d+$`).MatchString(p) {
+				continue
+			}
+			if cyr, ok := cyrillicMap[strings.ToLower(p)]; ok {
+				cleanParts = append(cleanParts, cyr)
+			} else {
+				cleanParts = append(cleanParts, p)
+			}
+		}
+		if len(cleanParts) > 0 {
+			formattedWords := make([]string, len(cleanParts))
+			for i, w := range cleanParts {
+				if len(w) > 0 {
+					formattedWords[i] = strings.ToUpper(w[:1]) + strings.ToLower(w[1:])
+				}
+			}
+			media.Title = strings.Join(formattedWords, " ")
+		}
+	}
+
+	return media
 }
