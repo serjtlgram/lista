@@ -136,7 +136,7 @@ export const uk: Translations = {
     watch_on_youtube: 'Дивитися на YouTube',
     open_in_youtube: 'Відкрити в YouTube',
     to_list_btn: 'До списку',
-    lists_coming_soon: 'Списки категорій скоро будуть доступні!',
+    lists_coming_soon: 'Чекайте незабаром',
   },
   stats: {
     title: 'Статистика',
