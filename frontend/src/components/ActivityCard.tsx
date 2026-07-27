@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TrendingUp, Flame, Plus, CheckCircle2, Info } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
+import { InfoModal } from './InfoModal';
 
 interface ActivityCardProps {
   monthlyCount?: number;
@@ -87,14 +88,17 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const fillPath = `${linePath} L ${pts[pts.length - 1].x},38 L ${pts[0].x},38 Z`;
   const weekLabels = ['1–7', '8–14', '15–21', '22–31'];
 
-  const showHoursInfo = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    const msg = t.stats.hours_info_message;
-    if (tg?.showAlert) { tg.showAlert(msg); } else { alert(msg); }
-  };
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   return (
-    <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
+    <>
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        message={t.stats.hours_info_message}
+        onClose={() => setIsInfoModalOpen(false)}
+        t={t}
+      />
+      <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-white">{t.activity.this_month}</span>
@@ -118,7 +122,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-gray-400">{t.activity.spent}</span>
             <button
-              onClick={showHoursInfo}
+              onClick={() => setIsInfoModalOpen(true)}
               className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-gray-400 hover:text-accentViolet transition-colors active:scale-90"
               aria-label="О расчёте времени"
             >
@@ -193,5 +197,6 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };

@@ -1,7 +1,8 @@
 import { Item } from '../types';
 
-const MOVIE_AVG_HOURS = 2;
-const EPISODE_AVG_MIN = 45;
+const MOVIE_AVG_HOURS = 2; // 120 minutes
+const SHOW_DEFAULT_EPISODES = 10;
+const SHOW_DEFAULT_EPISODE_MIN = 40;
 
 const isCompleted = (status?: string) =>
   ['completed', 'Просмотрено', 'Завершено'].includes(status || '');
@@ -14,9 +15,9 @@ const normCat = (s?: string): string => {
 };
 
 /**
- * Compute approximate watch time in hours for completed movies and shows only.
- * - Movies without duration: counted as 2 hours each.
- * - Shows without duration: 45 min × episodes (or 10 eps × 45 min if no episode info).
+ * Compute watch time in hours for completed movies and TV shows.
+ * - Movies without duration: counted as 2 hours (120 min).
+ * - Shows: if duration or episode count missing, default to 10 episodes and 40 min per episode.
  */
 export const computeWatchHours = (items: Item[]): number => {
   let totalMin = 0;
@@ -29,22 +30,37 @@ export const computeWatchHours = (items: Item[]): number => {
     const dur = (item.duration || '').trim();
 
     if (cat === 'Сериалы') {
+      let episodes = item.episodes || 0;
+      let minPerEp = 0;
+
       if (dur.includes('•')) {
         const parts = dur.split('•');
-        const ep = parseInt(parts[0]?.replace(/\D/g, '') || '0', 10);
-        const minPerEp = parseInt(parts[1]?.replace(/\D/g, '') || String(EPISODE_AVG_MIN), 10);
-        totalMin += (ep > 0 ? ep : 1) * (minPerEp > 0 ? minPerEp : EPISODE_AVG_MIN);
-      } else if (item.episodes && item.episodes > 0) {
-        const minPerEp = dur ? (parseInt(dur.replace(/\D/g, '') || '0', 10) || EPISODE_AVG_MIN) : EPISODE_AVG_MIN;
-        totalMin += item.episodes * minPerEp;
-      } else {
-        const raw = parseInt(dur.replace(/\D/g, '') || '0', 10);
-        totalMin += raw > 0 ? raw : EPISODE_AVG_MIN * 10;
+        const parsedEp = parseInt(parts[0]?.replace(/\D/g, '') || '0', 10);
+        const parsedMin = parseInt(parts[1]?.replace(/\D/g, '') || '0', 10);
+        if (parsedEp > 0) episodes = parsedEp;
+        if (parsedMin > 0) minPerEp = parsedMin;
+      } else if (dur.includes('сер.') || dur.includes('ep.')) {
+        const parsedEp = parseInt(dur.replace(/\D/g, '') || '0', 10);
+        if (parsedEp > 0) episodes = parsedEp;
+      } else if (dur.includes('мин') || dur.includes('min') || dur.includes('ч') || dur.includes('h')) {
+        let rawMin = parseInt(dur.replace(/\D/g, '') || '0', 10);
+        if (dur.includes('ч') || dur.includes('h')) rawMin *= 60;
+        if (rawMin > 0 && rawMin <= 120) minPerEp = rawMin;
+        else if (rawMin > 120) {
+          totalMin += rawMin;
+          continue;
+        }
       }
+
+      if (episodes === 0) episodes = SHOW_DEFAULT_EPISODES; // 10 eps default
+      if (minPerEp === 0) minPerEp = SHOW_DEFAULT_EPISODE_MIN; // 40 min default
+
+      totalMin += episodes * minPerEp;
     } else {
       // Movie
-      const raw = parseInt(dur.replace(/\D/g, '') || '0', 10);
-      totalMin += raw > 0 ? raw : MOVIE_AVG_HOURS * 60;
+      let rawMin = parseInt(dur.replace(/\D/g, '') || '0', 10);
+      if (dur.includes('ч') || dur.includes('h')) rawMin *= 60;
+      totalMin += rawMin > 0 ? rawMin : MOVIE_AVG_HOURS * 60; // 120 min default
     }
   }
 

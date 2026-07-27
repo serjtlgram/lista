@@ -3,6 +3,7 @@ import { Star, Award, Film, Tv, Book, Headphones, Mic, Gamepad2, TrendingUp, Clo
 import { StatsData, UserProfile, Item } from '../types';
 import { Translations } from '../services/i18n';
 import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
+import { InfoModal } from './InfoModal';
 
 interface StatsScreenProps {
   stats?: StatsData | null;
@@ -34,7 +35,8 @@ const normalizeCat = (catStr?: string): string => {
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items = [], t }) => {
-  const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('month');
+  const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('week');
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const periodTabs = [
     { key: 'week',  label: t.stats.tab_week },
@@ -158,14 +160,15 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   const maxBar = Math.max(...barCounts, 1);
   const hasBarData = barCounts.some((v) => v > 0);
 
-  const showHoursInfo = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    const msg = t.stats.hours_info_message;
-    if (tg?.showAlert) { tg.showAlert(msg); } else { alert(msg); }
-  };
-
   return (
-    <div className="space-y-4 animate-slide-up pb-10">
+    <>
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        message={t.stats.hours_info_message}
+        onClose={() => setIsInfoModalOpen(false)}
+        t={t}
+      />
+      <div className="space-y-4 animate-slide-up pb-10">
       <h1 className="text-base font-bold text-center text-white">{t.stats.title}</h1>
 
       {/* Period Tabs */}
@@ -200,7 +203,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3 shrink-0" style={{ color: '#60A5FA' }} />
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_spent}</span>
-            <button onClick={showHoursInfo} className="ml-auto shrink-0 text-gray-400 hover:text-accentViolet transition-colors active:scale-90">
+            <button onClick={() => setIsInfoModalOpen(true)} className="ml-auto shrink-0 text-gray-400 hover:text-accentViolet transition-colors active:scale-90">
               <Info className="w-2.5 h-2.5" />
             </button>
           </div>
@@ -451,5 +454,6 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
         </div>
       </div>
     </div>
+    </>
   );
 };
