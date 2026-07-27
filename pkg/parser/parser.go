@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
+	_ "golang.org/x/image/webp"
 	"io"
 	"net/http"
 	"net/url"
@@ -833,11 +836,18 @@ func compressImageToDataURL(img image.Image) string {
 	targetH := (srcH * targetW) / srcW
 
 	dst := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+	// Fill background with solid dark color so transparent PNGs/WebPs don't render white/black noise
+	draw.Draw(dst, dst.Bounds(), &image.Uniform{color.RGBA{18, 18, 20, 255}}, image.Point{}, draw.Src)
+
 	for y := 0; y < targetH; y++ {
 		for x := 0; x < targetW; x++ {
 			srcX := bounds.Min.X + (x*srcW)/targetW
 			srcY := bounds.Min.Y + (y*srcH)/targetH
-			dst.Set(x, y, img.At(srcX, srcY))
+			c := img.At(srcX, srcY)
+			_, _, _, a := c.RGBA()
+			if a > 1000 {
+				dst.Set(x, y, c)
+			}
 		}
 	}
 
@@ -855,11 +865,17 @@ func compressImageToDataURL(img image.Image) string {
 	targetW = 240
 	targetH = (srcH * targetW) / srcW
 	dstSmall := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+	draw.Draw(dstSmall, dstSmall.Bounds(), &image.Uniform{color.RGBA{18, 18, 20, 255}}, image.Point{}, draw.Src)
+
 	for y := 0; y < targetH; y++ {
 		for x := 0; x < targetW; x++ {
 			srcX := bounds.Min.X + (x*srcW)/targetW
 			srcY := bounds.Min.Y + (y*srcH)/targetH
-			dstSmall.Set(x, y, img.At(srcX, srcY))
+			c := img.At(srcX, srcY)
+			_, _, _, a := c.RGBA()
+			if a > 1000 {
+				dstSmall.Set(x, y, c)
+			}
 		}
 	}
 

@@ -316,7 +316,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
               alt={item.title}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = getItemPoster(item);
+                const target = e.target as HTMLImageElement;
+                if (!target.dataset.fallback) {
+                  target.dataset.fallback = 'true';
+                  target.src = getItemPoster({ id: item.id, title: item.title, poster_url: '' });
+                }
               }}
             />
           </div>

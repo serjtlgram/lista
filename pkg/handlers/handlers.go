@@ -57,6 +57,17 @@ func (h *Handler) InitBotCommandsAndMenu() {
 			ON CONFLICT (id) DO NOTHING;
 		`
 		_, _ = h.DB.Pool.Exec(ctx, userQuery)
+
+		// Clean up corrupted/blank poster_url entries in database
+		_, _ = h.DB.Pool.Exec(ctx, `
+			UPDATE items
+			SET poster_url = ''
+			WHERE poster_url IS NOT NULL
+			  AND (
+				LENGTH(poster_url) < 10
+				OR poster_url LIKE 'data:image/jpeg;base64,ffff%'
+			  );
+		`)
 	}
 
 	if h.BotToken == "" {
