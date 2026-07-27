@@ -107,10 +107,15 @@ body.light .status-pill-banner span {
   color: #FFFFFF !important;
 }
 
-/* Light mode hover:bg-bgDark override */
+/* Light mode hover:bg-bgDark and hover:bg-cardDark overrides */
 body.light .hover\:bg-bgDark:hover,
 body.light [class*="hover:bg-bgDark"]:hover {
   background-color: #F1F5F9 !important;
+}
+
+body.light .hover\:bg-cardDark:hover,
+body.light [class*="hover:bg-cardDark"]:hover {
+  background-color: #E2E8F0 !important;
 }
 
 /* Dropdown menu & Suggestions contrast rules for Light Mode */

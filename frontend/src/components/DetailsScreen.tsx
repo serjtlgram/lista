@@ -307,7 +307,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <div className="relative">
           <button
             onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
-            className="p-1.5 rounded-full text-gray-300 hover:text-white hover:bg-cardDark transition active:scale-90"
+            className={`p-2 rounded-full transition active:scale-90 ${
+              isHeaderMenuOpen
+                ? 'bg-accentViolet/20 text-accentViolet'
+                : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
+            }`}
+            aria-label="Меню"
           >
             <MoreVertical className="w-5 h-5" />
           </button>
