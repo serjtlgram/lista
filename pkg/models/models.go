@@ -152,4 +152,27 @@ type TelegramUpdate struct {
 		} `json:"message"`
 		Data string `json:"data"`
 	} `json:"callback_query"`
+	InlineQuery *struct {
+		ID       string `json:"id"`
+		From     struct {
+			ID           int64  `json:"id"`
+			FirstName    string `json:"first_name"`
+			LastName     string `json:"last_name"`
+			Username     string `json:"username"`
+			LanguageCode string `json:"language_code"`
+		} `json:"from"`
+		Query    string `json:"query"`
+		Offset   string `json:"offset"`
+	} `json:"inline_query"`
+	ChosenInlineResult *struct {
+		ResultID        string `json:"result_id"`
+		From            struct {
+			ID           int64  `json:"id"`
+			FirstName    string `json:"first_name"`
+			Username     string `json:"username"`
+			LanguageCode string `json:"language_code"`
+		} `json:"from"`
+		Query           string `json:"query"`
+		InlineMessageID string `json:"inline_message_id"`
+	} `json:"chosen_inline_result"`
 }

@@ -11,12 +11,15 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/db"
@@ -881,6 +884,18 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if update.InlineQuery != nil && update.InlineQuery.ID != "" {
+		h.handleInlineQuery(update.InlineQuery)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if update.ChosenInlineResult != nil {
+		h.handleChosenInlineResult(update.ChosenInlineResult)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
 		msgText := strings.TrimSpace(update.Message.Text)
@@ -1453,5 +1468,459 @@ func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) e
 		return fmt.Errorf("telegram API status %d: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
+}
+
+func formatCategorySingle(cat string) string {
+	switch strings.ToLower(cat) {
+	case "movie", "фильм", "фильмы":
+		return "Фильм"
+	case "show", "сериал", "сериалы":
+		return "Сериал"
+	case "book", "книга", "книги":
+		return "Книга"
+	case "audiobook", "аудиокнига", "аудиокниги":
+		return "Аудиокнига"
+	case "podcast", "подкаст", "подкасты":
+		return "Подкаст"
+	case "game", "игра", "игры":
+		return "Игра"
+	default:
+		return "Элемент"
+	}
+}
+
+func getInlinePlaceholderText(langCode string) string {
+	lang := strings.ToLower(strings.TrimSpace(langCode))
+	if strings.HasPrefix(lang, "uk") {
+		return "🔍 Пошук фільмів, серіалів, книг та ігор..."
+	} else if strings.HasPrefix(lang, "es") {
+		return "🔍 Buscar películas, series, libros y juegos..."
+	} else if strings.HasPrefix(lang, "en") {
+		return "🔍 Search movies, TV shows, books & games..."
+	}
+	return "🔍 Поиск фильмов, сериалов, книг и игр..."
+}
+
+func getCategoryEmoji(cat string) string {
+	switch strings.ToLower(cat) {
+	case "movie", "фильм", "фильмы":
+		return "🎬"
+	case "show", "сериал", "сериалы":
+		return "📺"
+	case "book", "книга", "книги":
+		return "📚"
+	case "audiobook", "аудиокнига", "аудиокниги":
+		return "🎧"
+	case "podcast", "подкаст", "подкасты":
+		return "🎙"
+	case "game", "игра", "игры":
+		return "🎮"
+	default:
+		return "📌"
+	}
+}
+
+func getWelcomeTagline(langCode string) string {
+	lang := strings.ToLower(strings.TrimSpace(langCode))
+	if strings.HasPrefix(lang, "uk") {
+		return "LISTA — міні-додаток для збереження вражень"
+	} else if strings.HasPrefix(lang, "es") {
+		return "LISTA — mini-app para guardar tus impresiones"
+	} else if strings.HasPrefix(lang, "en") {
+		return "LISTA — mini-app to save your impressions"
+	}
+	return "LISTA — мини-приложение для сохранения впечатлений"
+}
+
+func truncateString(s string, maxLen int) string {
+	s = strings.TrimSpace(s)
+	r := []rune(s)
+	if len(r) <= maxLen {
+		return s
+	}
+	return string(r[:maxLen]) + "..."
+}
+
+func (h *Handler) handleInlineQuery(iq *struct {
+	ID       string `json:"id"`
+	From     struct {
+		ID           int64  `json:"id"`
+		FirstName    string `json:"first_name"`
+		LastName     string `json:"last_name"`
+		Username     string `json:"username"`
+		LanguageCode string `json:"language_code"`
+	} `json:"from"`
+	Query    string `json:"query"`
+	Offset   string `json:"offset"`
+}) {
+	if iq == nil || iq.ID == "" {
+		return
+	}
+
+	query := strings.TrimSpace(iq.Query)
+	langCode := iq.From.LanguageCode
+
+	results := h.searchInlineResults(query, langCode)
+
+	var telegramResults []map[string]interface{}
+	for i, item := range results {
+		catLabel := formatCategorySingle(item.Category)
+		catEmoji := getCategoryEmoji(item.Category)
+
+		titleLine := fmt.Sprintf("📌 <b>%s (%s)</b>", item.Title, catLabel)
+		appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=%s", item.ID)
+		tagline := getWelcomeTagline(langCode)
+
+		msgText := fmt.Sprintf("%s\n\n%s\n%s", titleLine, tagline, appURL)
+
+		descLine := ""
+		if item.Genre != "" {
+			descLine += fmt.Sprintf(" • %s", item.Genre)
+		}
+		if item.ReleaseYear != "" {
+			descLine += fmt.Sprintf(" • %s", item.ReleaseYear)
+		}
+
+		description := fmt.Sprintf("%s%s", catLabel, descLine)
+		if item.Description != "" {
+			description += fmt.Sprintf("\n%s", truncateString(item.Description, 80))
+		}
+
+		article := map[string]interface{}{
+			"type":        "article",
+			"id":          fmt.Sprintf("res_%d_%s", i, item.ID),
+			"title":       fmt.Sprintf("%s %s", catEmoji, item.Title),
+			"description": description,
+			"input_message_content": map[string]interface{}{
+				"message_text":           msgText,
+				"parse_mode":             "HTML",
+				"disable_web_page_preview": false,
+			},
+			"reply_markup": map[string]interface{}{
+				"inline_keyboard": [][]map[string]interface{}{
+					{
+						{
+							"text": "🚀 Открыть в LISTA",
+							"url":  appURL,
+						},
+					},
+				},
+			},
+		}
+
+		if item.PosterURL != "" && strings.HasPrefix(item.PosterURL, "http") {
+			article["thumb_url"] = item.PosterURL
+			article["thumb_width"] = 100
+			article["thumb_height"] = 150
+		}
+
+		telegramResults = append(telegramResults, article)
+	}
+
+	placeholder := getInlinePlaceholderText(langCode)
+
+	payload := map[string]interface{}{
+		"inline_query_id":     iq.ID,
+		"results":             telegramResults,
+		"cache_time":          5,
+		"is_personal":         true,
+		"switch_pm_text":      placeholder,
+		"switch_pm_parameter": "start",
+	}
+
+	_ = h.sendBotAPIRequestWithErr("answerInlineQuery", payload)
+}
+
+func (h *Handler) handleChosenInlineResult(cir *struct {
+	ResultID        string `json:"result_id"`
+	From            struct {
+		ID           int64  `json:"id"`
+		FirstName    string `json:"first_name"`
+		Username     string `json:"username"`
+		LanguageCode string `json:"language_code"`
+	} `json:"from"`
+	Query           string `json:"query"`
+	InlineMessageID string `json:"inline_message_id"`
+}) {
+	if cir == nil || cir.From.ID == 0 {
+		return
+	}
+	userID := cir.From.ID
+	log.Printf("[ChosenInlineResult] User %d selected inline item %s (query: %q)", userID, cir.ResultID, cir.Query)
+}
+
+func (h *Handler) searchInlineResults(query string, langCode string) []models.CatalogSearchResult {
+	var results []models.CatalogSearchResult
+	seenTitles := make(map[string]bool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// 1. Search internal DB catalog
+	if h.DB != nil && h.DB.Pool != nil {
+		var rows pgx.Rows
+		var err error
+		if query != "" {
+			dbQuery := `
+				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+				FROM items
+				WHERE LOWER(title) LIKE $1
+				LIMIT 8
+			`
+			rows, err = h.DB.Pool.Query(ctx, dbQuery, "%"+strings.ToLower(query)+"%")
+		} else {
+			dbQuery := `
+				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+				FROM items
+				ORDER BY LOWER(title), created_at DESC
+				LIMIT 8
+			`
+			rows, err = h.DB.Pool.Query(ctx, dbQuery)
+		}
+
+		if err == nil && rows != nil {
+			for rows.Next() {
+				var item models.CatalogSearchResult
+				if err := rows.Scan(&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.YoutubeURL, &item.Director, &item.Cast); err == nil {
+					tKey := strings.ToLower(strings.TrimSpace(item.Title))
+					if !seenTitles[tKey] {
+						seenTitles[tKey] = true
+						results = append(results, item)
+					}
+				}
+			}
+			rows.Close()
+		}
+	}
+
+	if query == "" {
+		return results
+	}
+
+	// 2. iTunes API
+	for _, item := range fetchITunesInline(query) {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			results = append(results, item)
+		}
+	}
+
+	// 3. TVMaze API
+	for _, item := range fetchTVMazeInline(query) {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			results = append(results, item)
+		}
+	}
+
+	// 4. Wikipedia API
+	for _, item := range fetchWikiInline(query) {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			results = append(results, item)
+		}
+	}
+
+	if len(results) > 15 {
+		results = results[:15]
+	}
+
+	return results
+}
+
+func fetchITunesInline(query string) []models.CatalogSearchResult {
+	var list []models.CatalogSearchResult
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,podcast,audiobook&limit=6&lang=ru_ru", url.QueryEscape(query))
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return list
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return list
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Results []struct {
+			TrackName        string `json:"trackName"`
+			CollectionName   string `json:"collectionName"`
+			ArtworkUrl100    string `json:"artworkUrl100"`
+			Kind             string `json:"kind"`
+			WrapperType      string `json:"wrapperType"`
+			PrimaryGenreName string `json:"primaryGenreName"`
+			ReleaseDate      string `json:"releaseDate"`
+			LongDescription  string `json:"longDescription"`
+		} `json:"results"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		for _, r := range data.Results {
+			title := r.TrackName
+			if title == "" {
+				title = r.CollectionName
+			}
+			if title == "" {
+				continue
+			}
+
+			cat := "movie"
+			if r.Kind == "podcast" || r.WrapperType == "podcast" {
+				cat = "podcast"
+			} else if r.WrapperType == "audiobook" {
+				cat = "audiobook"
+			}
+
+			year := ""
+			if len(r.ReleaseDate) >= 4 {
+				year = r.ReleaseDate[:4]
+			}
+
+			poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
+
+			list = append(list, models.CatalogSearchResult{
+				ID:          uuid.New().String(),
+				Title:       title,
+				Category:    cat,
+				Genre:       r.PrimaryGenreName,
+				ReleaseYear: year,
+				PosterURL:   poster,
+				Description: r.LongDescription,
+			})
+		}
+	}
+	return list
+}
+
+func fetchTVMazeInline(query string) []models.CatalogSearchResult {
+	var list []models.CatalogSearchResult
+	apiURL := fmt.Sprintf("https://api.tvmaze.com/search/shows?q=%s", url.QueryEscape(query))
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return list
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return list
+	}
+	defer resp.Body.Close()
+
+	var data []struct {
+		Show struct {
+			Name      string   `json:"name"`
+			Premiered string   `json:"premiered"`
+			Genres    []string `json:"genres"`
+			Summary   string   `json:"summary"`
+			Image     *struct {
+				Medium   string `json:"medium"`
+				Original string `json:"original"`
+			} `json:"image"`
+		} `json:"show"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		for _, item := range data {
+			show := item.Show
+			if show.Name == "" {
+				continue
+			}
+			year := ""
+			if len(show.Premiered) >= 4 {
+				year = show.Premiered[:4]
+			}
+			poster := ""
+			if show.Image != nil {
+				poster = show.Image.Medium
+				if show.Image.Original != "" {
+					poster = show.Image.Original
+				}
+			}
+			genre := ""
+			if len(show.Genres) > 0 {
+				genre = show.Genres[0]
+			}
+
+			cleanDesc := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(show.Summary, "")
+
+			list = append(list, models.CatalogSearchResult{
+				ID:          uuid.New().String(),
+				Title:       show.Name,
+				Category:    "show",
+				Genre:       genre,
+				ReleaseYear: year,
+				PosterURL:   poster,
+				Description: cleanDesc,
+			})
+		}
+	}
+	return list
+}
+
+func fetchWikiInline(query string) []models.CatalogSearchResult {
+	var list []models.CatalogSearchResult
+	apiURL := fmt.Sprintf("https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", url.QueryEscape(query))
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return list
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return list
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Query struct {
+			Search []struct {
+				Title   string `json:"title"`
+				Snippet string `json:"snippet"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		for i, item := range data.Query.Search {
+			if i >= 4 || item.Title == "" {
+				break
+			}
+			cleanDesc := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(item.Snippet, "")
+
+			cat := "movie"
+			tLower := strings.ToLower(item.Title + " " + cleanDesc)
+			if strings.Contains(tLower, "игра") || strings.Contains(tLower, "game") {
+				cat = "game"
+			} else if strings.Contains(tLower, "книга") || strings.Contains(tLower, "роман") || strings.Contains(tLower, "повесть") {
+				cat = "book"
+			} else if strings.Contains(tLower, "сериал") || strings.Contains(tLower, "телесериал") {
+				cat = "show"
+			}
+
+			list = append(list, models.CatalogSearchResult{
+				ID:          uuid.New().String(),
+				Title:       item.Title,
+				Category:    cat,
+				Description: cleanDesc,
+			})
+		}
+	}
+	return list
 }
 
