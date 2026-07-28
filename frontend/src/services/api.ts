@@ -37,8 +37,6 @@ export const api = {
           { category: 'Фильмы', count: 0 },
           { category: 'Сериалы', count: 0 },
           { category: 'Книги', count: 0 },
-          { category: 'Аудиокниги', count: 0 },
-          { category: 'Подкасты', count: 0 },
           { category: 'Игры', count: 0 },
         ]
       };

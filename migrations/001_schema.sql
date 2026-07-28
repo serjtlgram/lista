@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Items table (Movies, TV Shows, Books, Audiobooks, Podcasts, Games)
+-- Items table (Movies, TV Shows, Books, Games)
 CREATE TABLE IF NOT EXISTS items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
-    category VARCHAR(50) NOT NULL, -- 'movie', 'show', 'book', 'audiobook', 'podcast', 'game'
+    category VARCHAR(50) NOT NULL, -- 'movie', 'show', 'book', 'game'
     status VARCHAR(50) NOT NULL DEFAULT 'planned', -- 'watching', 'completed', 'planned', 'paused'
     rating INT DEFAULT 0, -- 0 to 10
     genre VARCHAR(255) DEFAULT '',

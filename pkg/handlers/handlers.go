@@ -350,7 +350,7 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Pool.Query(ctx, catQuery, user.ID)
 	// Start with zeroes for all known Russian categories
 	categoriesMap := map[string]int{
-		"Фильмы": 0, "Сериалы": 0, "Книги": 0, "Аудиокниги": 0, "Подкасты": 0, "Игры": 0,
+		"Фильмы": 0, "Сериалы": 0, "Книги": 0, "Игры": 0,
 	}
 
 	if err == nil {
