@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"lista-backend/pkg/models"
 	"lista-backend/pkg/youtube"
 )
 
@@ -138,25 +139,42 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 		}
 	}
 
-	// 3. OpenGraph & JSON-LD Web Scraper (Kinopoisk, Netflix, Apple TV, Wikipedia, pirate sites, etc.)
+	// 3. OpenGraph & JSON-LD Web Scraper (Kinopoisk, Netflix, Apple TV, Wikipedia, pirate sites, book stores etc.)
 	scrapedMedia, err := scrapeWebPage(client, rawURL)
 	if err == nil && scrapedMedia != nil && scrapedMedia.Title != "" {
 		media = scrapedMedia
 	}
 
-	// Clean up title for searching
-	cleanedTitle := cleanTitle(media.Title)
-	if cleanedTitle != "" {
-		media.Title = cleanedTitle
+	// Clean up title and detect category
+	if media.Category == "book" || media.Category == "audiobook" || isBookSiteOrKeywords(rawURL, media.Title, media.Description, "") {
+		if isAudiobookKeywords(rawURL, media.Title, "") {
+			media.Category = "audiobook"
+		} else {
+			media.Category = "book"
+		}
+		cTitle, cAuthor, cISBN := cleanBookTitle(media.Title, "")
+		if cTitle != "" {
+			media.Title = cTitle
+		}
+		if media.Author == "" && cAuthor != "" {
+			media.Author = cAuthor
+		}
+		if media.ISBN == "" && cISBN != "" {
+			media.ISBN = cISBN
+		}
+	} else {
+		cleanedTitle := cleanTitle(media.Title)
+		if cleanedTitle != "" {
+			media.Title = cleanedTitle
+		}
+
+		if isSeriesKeywords(rawURL) || isSeriesKeywords(media.Title) || isSeriesKeywords(media.Description) {
+			media.Category = "show"
+		}
 	}
 
-	// Detect Category from URL, Title, and HTML body
-	if isSeriesKeywords(rawURL) || isSeriesKeywords(media.Title) || isSeriesKeywords(media.Description) {
-		media.Category = "show"
-	}
-
-	// 4. TMDb Search Fallback: Query TMDb search API with clean title & year
-	if media.Title != "" {
+	// 4a. TMDb Search Fallback: Query TMDb search API ONLY for movies/shows
+	if media.Category != "book" && media.Category != "audiobook" && media.Title != "" {
 		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear); err == nil && enriched != nil && enriched.Title != "" {
 			if enriched.PosterURL != "" {
 				media.PosterURL = enriched.PosterURL
@@ -187,6 +205,36 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 			}
 		}
 	}
+
+	// 4b. Book Search Fallback: Query Google Books / MultiSource for books
+	if (media.Category == "book" || media.Category == "audiobook") && media.Title != "" {
+		var bookRef []models.CatalogSearchResult
+		if media.ISBN != "" {
+			bookRef, _ = SearchGoogleBooks(media.ISBN)
+		}
+		if len(bookRef) == 0 {
+			bookRef = SearchBooksMultiSource(media.Title)
+		}
+		if len(bookRef) > 0 {
+			best := bookRef[0]
+			if media.Author == "" && best.Author != "" {
+				media.Author = best.Author
+			}
+			if media.ISBN == "" && best.ISBN != "" {
+				media.ISBN = best.ISBN
+			}
+			if media.PosterURL == "" && best.PosterURL != "" {
+				media.PosterURL = best.PosterURL
+			}
+			if media.Description == "" && best.Description != "" {
+				media.Description = best.Description
+			}
+			if media.ReleaseYear == "" && best.ReleaseYear != "" {
+				media.ReleaseYear = best.ReleaseYear
+			}
+		}
+	}
+
 	if media.Title == "" {
 		return nil, fmt.Errorf("could not extract media metadata from URL")
 	}
@@ -392,7 +440,21 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 	if ogType, ok := ogMap["type"]; ok {
 		if strings.Contains(ogType, "tv_show") || strings.Contains(ogType, "episode") || strings.Contains(ogType, "series") {
 			media.Category = "show"
+		} else if strings.Contains(ogType, "book") {
+			media.Category = "book"
 		}
+	}
+	if author, ok := ogMap["book:author"]; ok && media.Author == "" {
+		media.Author = author
+	}
+	if author, ok := ogMap["author"]; ok && media.Author == "" {
+		media.Author = author
+	}
+	if isbn, ok := ogMap["book:isbn"]; ok && media.ISBN == "" {
+		media.ISBN = isbn
+	}
+	if isbn, ok := ogMap["isbn"]; ok && media.ISBN == "" {
+		media.ISBN = isbn
 	}
 
 	// 2. Extract JSON-LD structured data
@@ -403,6 +465,36 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 			if err := json.Unmarshal([]byte(m[1]), &ldData); err == nil {
 				parseJSONLD(ldData, media, pageURL)
 			}
+		}
+	}
+
+	// Check if book / audiobook site or keywords
+	if isBookSiteOrKeywords(pageURL, media.Title, media.Description, html) {
+		if isAudiobookKeywords(pageURL, media.Title, html) {
+			media.Category = "audiobook"
+		} else {
+			media.Category = "book"
+		}
+	}
+
+	if media.Category == "book" || media.Category == "audiobook" {
+		cTitle, cAuthor, cISBN := cleanBookTitle(media.Title, html)
+		if cTitle != "" {
+			media.Title = cTitle
+		}
+		if media.Author == "" && cAuthor != "" {
+			media.Author = cAuthor
+		}
+		if media.ISBN == "" && cISBN != "" {
+			media.ISBN = cISBN
+		}
+	}
+
+	// Fallback HTML Scraper for Book Author
+	if media.Author == "" && (media.Category == "book" || media.Category == "audiobook") {
+		authorRegex := regexp.MustCompile(`(?i)(?:itemprop=["']author["']|class=["'][^"']*author[^"']*["'])[^>]*>(.*?)</`)
+		if m := authorRegex.FindStringSubmatch(html); len(m) > 1 {
+			media.Author = stripHTML(m[1])
 		}
 	}
 
@@ -537,6 +629,30 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 		// Actors (limit 6)
 		if actorObj, ok := data["actor"]; ok {
 			media.Cast = extractPersonNames(actorObj, 6)
+		}
+	} else if tp == "Book" || tp == "Audiobook" || tp == "Product" {
+		if tp == "Audiobook" {
+			media.Category = "audiobook"
+		} else {
+			media.Category = "book"
+		}
+		if name, ok := data["name"].(string); ok && name != "" {
+			media.Title = name
+		}
+		if image, ok := data["image"].(string); ok && image != "" {
+			media.PosterURL = resolveURL(baseURL, image)
+		}
+		if desc, ok := data["description"].(string); ok && desc != "" {
+			media.Description = desc
+		}
+		if isbn, ok := data["isbn"].(string); ok && isbn != "" {
+			media.ISBN = isbn
+		}
+		if authorObj, ok := data["author"]; ok {
+			media.Author = extractPersonNames(authorObj, 3)
+		}
+		if brandObj, ok := data["brand"]; ok && media.Author == "" {
+			media.Author = extractPersonNames(brandObj, 3)
 		}
 	}
 }
@@ -1248,4 +1364,151 @@ func extractOGTag(html, property string) string {
 		return strings.TrimSpace(m[1])
 	}
 	return ""
+}
+
+func isBookSiteOrKeywords(rawURL string, title string, desc string, html string) bool {
+	rawURLLower := strings.ToLower(rawURL)
+	titleLower := strings.ToLower(title)
+	descLower := strings.ToLower(desc)
+	htmlLower := strings.ToLower(html)
+
+	bookSites := []string{
+		"book24", "yakaboo", "vivat", "labirint", "litres", "flibusta", "knigavuhe",
+		"books.google", "openlibrary", "fantlab", "book", "audiobook", "kniga", "аудиокнига",
+	}
+	for _, site := range bookSites {
+		if strings.Contains(rawURLLower, site) {
+			return true
+		}
+	}
+
+	bookKeywords := []string{
+		"купити книгу", "купить книгу", "купить книжку", "купити книжку",
+		"аудиокнига", "аудіокнига", "isbn", "видавництво", "издательство",
+	}
+	for _, kw := range bookKeywords {
+		if strings.Contains(titleLower, kw) || strings.Contains(descLower, kw) || strings.Contains(htmlLower, kw) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isAudiobookKeywords(rawURL string, title string, html string) bool {
+	combined := strings.ToLower(rawURL + " " + title + " " + html)
+	return strings.Contains(combined, "audiobook") ||
+		strings.Contains(combined, "аудиокнига") ||
+		strings.Contains(combined, "аудіокнига") ||
+		strings.Contains(combined, "knigavuhe") ||
+		strings.Contains(combined, "слушать онлайн")
+}
+
+// cleanBookTitle cleans garbage phrases from book titles and extracts title in quotes, author, and ISBN if present
+func cleanBookTitle(rawTitle string, htmlBody string) (string, string, string) {
+	title := strings.TrimSpace(rawTitle)
+	extractedAuthor := ""
+	extractedISBN := ""
+
+	// 1. Extract ISBN from raw title or html body
+	isbnRegex := regexp.MustCompile(`(?i)(?:ISBN(?:-1[03])?:?\s*)(97[89][-\s]?[0-9][-\s]?[0-9]{2,5}[-\s]?[0-9]{2,5}[-\s]?[0-9X]|97[89][0-9]{10}|[0-9]{9}[0-9X])`)
+	if m := isbnRegex.FindStringSubmatch(title); len(m) > 1 {
+		extractedISBN = strings.TrimSpace(m[1])
+	} else if htmlBody != "" {
+		if m := isbnRegex.FindStringSubmatch(htmlBody); len(m) > 1 {
+			extractedISBN = strings.TrimSpace(m[1])
+		}
+	}
+
+	// 2. Extract quotes «...», "...", “...”, ‘...’
+	quoteRegexes := []*regexp.Regexp{
+		regexp.MustCompile(`«([^»]+)»`),
+		regexp.MustCompile(`“([^”]+)”`),
+		regexp.MustCompile(`"([^"]{3,100})"`),
+		regexp.MustCompile(`’([^’]+)’`),
+	}
+
+	var matchTitle string
+	for _, re := range quoteRegexes {
+		if m := re.FindStringSubmatch(title); len(m) > 1 {
+			candidate := strings.TrimSpace(m[1])
+			if len(candidate) >= 2 && !strings.HasPrefix(strings.ToLower(candidate), "http") {
+				matchTitle = candidate
+				break
+			}
+		}
+	}
+
+	if matchTitle != "" {
+		outside := title
+		outside = strings.ReplaceAll(outside, "«"+matchTitle+"»", "")
+		outside = strings.ReplaceAll(outside, "“"+matchTitle+"”", "")
+		outside = strings.ReplaceAll(outside, "\""+matchTitle+"\"", "")
+
+		outside = cleanBookNoise(outside)
+		if len(outside) > 2 && len(strings.Fields(outside)) <= 4 {
+			extractedAuthor = outside
+		}
+		title = matchTitle
+	} else {
+		title = cleanBookNoise(title)
+
+		if idx := strings.Index(title, " — "); idx != -1 {
+			part1 := strings.TrimSpace(title[:idx])
+			part2 := strings.TrimSpace(title[idx+3:])
+			if isLikelyAuthorName(part2) {
+				title = part1
+				extractedAuthor = part2
+			} else if isLikelyAuthorName(part1) {
+				title = part2
+				extractedAuthor = part1
+			}
+		} else if idx := strings.Index(title, " - "); idx != -1 {
+			part1 := strings.TrimSpace(title[:idx])
+			part2 := strings.TrimSpace(title[idx+3:])
+			if isLikelyAuthorName(part2) {
+				title = part1
+				extractedAuthor = part2
+			} else if isLikelyAuthorName(part1) {
+				title = part2
+				extractedAuthor = part1
+			}
+		}
+	}
+
+	title = strings.Trim(title, " «»\"'”’()[]-—|/\\:;,.")
+	return title, extractedAuthor, extractedISBN
+}
+
+func cleanBookNoise(s string) string {
+	noiseSuffixes := []string{
+		"|", "•", "in Ukraine", "в Києві", "в Киеве", "в Украине", "в Україні",
+		"ціни", "цены", "відгуки", "отзывы", "интернет-магазин", "інтернет-магазин",
+		"купити в", "купить в", "Book24", "Yakaboo", "Vivat", "Labirint", "Litres", "ЛитРес",
+		"ISBN", "издательство", "видавництво", "доставка", "купить книжку", "купити книжку",
+	}
+	for _, suf := range noiseSuffixes {
+		if idx := strings.Index(strings.ToLower(s), strings.ToLower(suf)); idx != -1 {
+			s = s[:idx]
+		}
+	}
+
+	prefixRegex := regexp.MustCompile(`(?i)^(?:купити\s+книгу|купить\s+книгу|купить\s+книжку|купити\s+книжку|книга|аудиокнига|аудіокнига|купити\s+аудіокнигу|купить\s+аудиокнигу|скачать\s+книгу|читать\s+онлайн|слушать\s+онлайн)\s+`)
+	s = prefixRegex.ReplaceAllString(s, "")
+
+	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
+	return strings.Trim(s, " «»\"'”’()[]-—|/\\:;,.")
+}
+
+func isLikelyAuthorName(s string) bool {
+	words := strings.Fields(s)
+	if len(words) >= 1 && len(words) <= 3 {
+		for _, w := range words {
+			runes := []rune(w)
+			if len(runes) > 0 && runes[0] >= 'A' && runes[0] <= 'Z' {
+				return true
+			}
+		}
+	}
+	return false
 }
