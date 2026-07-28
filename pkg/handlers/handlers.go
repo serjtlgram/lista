@@ -821,6 +821,66 @@ func mapStatusToEn(st string) string {
 	}
 }
 
+func getCategoryPriority(cat string, selectedCat string) int {
+	targetCatEn := mapCategoryToEn(selectedCat)
+	if targetCatEn == "" || targetCatEn == "all" || targetCatEn == "Все" {
+		return 1
+	}
+
+	cEn := mapCategoryToEn(cat)
+
+	isBook := cEn == "book"
+	isAudiobook := cEn == "audiobook"
+	isMovieOrShow := cEn == "movie" || cEn == "show"
+	isPodcast := cEn == "podcast"
+	isGame := cEn == "game"
+
+	switch targetCatEn {
+	case "audiobook":
+		if isAudiobook {
+			return 1
+		}
+		if isBook {
+			return 2
+		}
+		if isMovieOrShow {
+			return 3
+		}
+		return 4
+	case "book":
+		if isBook {
+			return 1
+		}
+		if isAudiobook {
+			return 2
+		}
+		if isMovieOrShow {
+			return 3
+		}
+		return 4
+	case "movie", "show":
+		if isMovieOrShow {
+			return 1
+		}
+		if isBook || isAudiobook {
+			return 2
+		}
+		return 3
+	case "podcast":
+		if isPodcast {
+			return 1
+		}
+		return 2
+	case "game":
+		if isGame {
+			return 1
+		}
+		return 2
+	default:
+		return 1
+	}
+}
+
 // GET /api/catalog/search?q=Title
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -838,13 +898,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		WHERE LOWER(title) LIKE $1
 	`
 	args := []interface{}{"%" + strings.ToLower(q) + "%"}
-
-	if category != "" && category != "all" && category != "Все" {
-		query += " AND (category = $2 OR category = $3)"
-		args = append(args, category, mapCategoryToEn(category))
-	}
-
-	query += " ORDER BY LOWER(title), created_at DESC LIMIT 10;"
+	query += " ORDER BY LOWER(title), created_at DESC LIMIT 15;"
 
 	results := []models.CatalogSearchResult{}
 	seenTitles := make(map[string]bool)
@@ -856,7 +910,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 				var res models.CatalogSearchResult
 				if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN); err == nil {
 					res.Source = "db"
-					tKey := strings.ToLower(strings.TrimSpace(res.Title))
+					tKey := strings.ToLower(strings.TrimSpace(res.Title)) + "_" + mapCategoryToEn(res.Category)
 					if !seenTitles[tKey] {
 						seenTitles[tKey] = true
 						results = append(results, res)
@@ -867,24 +921,23 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Online search — books only when category is book/audiobook; general search otherwise
+	// 2. Online search — books and audiobooks multi-source
 	catEn := mapCategoryToEn(category)
-	if catEn == "book" || catEn == "audiobook" {
-		// Only run book-specific search — do NOT mix in movies/shows from Kinopoisk/TMDb
-		bookItems := parser.SearchBooksMultiSource(q)
-		for _, item := range bookItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				item.Source = "online"
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
-			}
+	bookItems := parser.SearchBooksMultiSource(q)
+	for _, item := range bookItems {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + mapCategoryToEn(item.Category)
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			item.Source = "online"
+			results = append(results, item)
+			go h.saveCatalogItemToDB(item)
 		}
-	} else {
+	}
+
+	if catEn != "book" && catEn != "audiobook" {
 		onlineItems := h.searchInlineResults(q, "ru")
 		for _, item := range onlineItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + mapCategoryToEn(item.Category)
 			if !seenTitles[tKey] {
 				seenTitles[tKey] = true
 				item.Source = "online"
@@ -894,18 +947,12 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Priority Sort: items matching requested category come FIRST
-	targetCatEn := mapCategoryToEn(category)
-	if targetCatEn != "" && targetCatEn != "all" {
+	// Priority Sort based on active screen category
+	if category != "" && category != "all" && category != "Все" {
 		sort.SliceStable(results, func(i, j int) bool {
-			catI := mapCategoryToEn(results[i].Category)
-			catJ := mapCategoryToEn(results[j].Category)
-			isMatchI := catI == targetCatEn
-			isMatchJ := catJ == targetCatEn
-			if isMatchI != isMatchJ {
-				return isMatchI
-			}
-			return false
+			prioI := getCategoryPriority(results[i].Category, category)
+			prioJ := getCategoryPriority(results[j].Category, category)
+			return prioI < prioJ
 		})
 	}
 

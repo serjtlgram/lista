@@ -111,24 +111,55 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const externalCatalogResults = catalogResults.filter(
     (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
   );
-  const isCategoryMatch = (cCat?: string) => {
-    if (!title || title === 'Все') return true;
-    const tLower = title.toLowerCase().trim();
-    const cLower = (cCat || '').toLowerCase().trim();
-    if (tLower === cLower) return true;
-    if (['book', 'books', 'книги', 'книга'].includes(tLower) && ['book', 'books', 'книги', 'книга'].includes(cLower)) return true;
-    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(tLower) && ['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cLower)) return true;
-    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower) && ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower)) return true;
-    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower) && ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower)) return true;
-    return false;
+  const getCategoryPriority = (itemCat?: string, selectedTitle?: string): number => {
+    if (!selectedTitle || selectedTitle === 'Все') return 1;
+    const tLower = selectedTitle.toLowerCase().trim();
+    const cLower = (itemCat || '').toLowerCase().trim();
+
+    const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
+    const isAudiobook = ['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cLower);
+    const isMovieOrShow = ['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower);
+    const isPodcast = ['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(cLower);
+    const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
+
+    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(tLower)) {
+      if (isAudiobook) return 1;
+      if (isBook) return 2;
+      if (isMovieOrShow) return 3;
+      return 4;
+    }
+
+    if (['book', 'books', 'книги', 'книга'].includes(tLower)) {
+      if (isBook) return 1;
+      if (isAudiobook) return 2;
+      if (isMovieOrShow) return 3;
+      return 4;
+    }
+
+    if (['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
+      if (isMovieOrShow) return 1;
+      if (isBook || isAudiobook) return 2;
+      return 3;
+    }
+
+    if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(tLower)) {
+      if (isPodcast) return 1;
+      return 2;
+    }
+
+    if (['game', 'games', 'игры', 'игра'].includes(tLower)) {
+      if (isGame) return 1;
+      return 2;
+    }
+
+    return 1;
   };
 
   const sortResultsByPriority = (arr: CatalogItem[]) => {
     return [...arr].sort((a, b) => {
-      const matchA = isCategoryMatch(a.category);
-      const matchB = isCategoryMatch(b.category);
-      if (matchA !== matchB) return matchA ? -1 : 1;
-      return 0;
+      const prioA = getCategoryPriority(a.category, title);
+      const prioB = getCategoryPriority(b.category, title);
+      return prioA - prioB;
     });
   };
 
