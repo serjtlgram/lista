@@ -77,6 +77,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 				Authors       []string `json:"authors"`
 				PublishedDate string   `json:"publishedDate"`
 				Description   string   `json:"description"`
+				PageCount     int      `json:"pageCount"`
 				ImageLinks    struct {
 					Thumbnail      string `json:"thumbnail"`
 					SmallThumbnail string `json:"smallThumbnail"`
@@ -107,6 +108,11 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 		year := ""
 		if len(info.PublishedDate) >= 4 {
 			year = info.PublishedDate[:4]
+		}
+
+		pagesStr := ""
+		if info.PageCount > 0 {
+			pagesStr = strconv.Itoa(info.PageCount)
 		}
 
 		isbn := ""
@@ -144,6 +150,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 			Category:    "book",
 			Author:      author,
 			ReleaseYear: year,
+			Duration:    pagesStr,
 			ISBN:        isbn,
 			Description: info.Description,
 			PosterURL:   cover, // Return raw URL directly — no OptimizePosterURL to avoid extra HTTP calls

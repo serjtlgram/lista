@@ -852,7 +852,7 @@ func getCategoryPriority(cat string, selectedCat string) int {
 	}
 }
 
-// GET /api/catalog/search?q=Title
+// GET /api/catalog/search?q=Title&category=Category
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if len(q) < 2 {
@@ -861,74 +861,218 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category := r.URL.Query().Get("category")
+	category := strings.TrimSpace(r.URL.Query().Get("category"))
+	catEn := mapCategoryToEn(category)
+
+	// 1. DB catalog search filtered by category
+	dbResults := h.searchDBCatalog(r.Context(), q, catEn)
+
+	// 2. Online search filtered by category
+	onlineResults := h.searchOnlineCatalog(q, catEn)
+
+	// 3. Merge results adhering strictly to category order & limits
+	finalResults := mergeSearchResults(dbResults, onlineResults, catEn)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(finalResults)
+}
+
+func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) []models.CatalogSearchResult {
+	if h.DB == nil || h.DB.Pool == nil {
+		return nil
+	}
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
+		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
 		FROM items
 		WHERE LOWER(title) LIKE $1
 	`
 	args := []interface{}{"%" + strings.ToLower(q) + "%"}
-	query += " ORDER BY LOWER(title), created_at DESC LIMIT 15;"
 
-	results := []models.CatalogSearchResult{}
-	seenTitles := make(map[string]bool)
+	if catEn == "movie" {
+		query += " AND (LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы') OR LOWER(category) IN ('show', 'shows', 'series', 'сериал', 'сериалы'))"
+	} else if catEn == "show" {
+		query += " AND (LOWER(category) IN ('show', 'shows', 'series', 'сериал', 'сериалы') OR LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы'))"
+	} else if catEn == "book" {
+		query += " AND LOWER(category) IN ('book', 'books', 'книга', 'книги')"
+	} else if catEn == "game" {
+		query += " AND LOWER(category) IN ('game', 'games', 'игра', 'игры')"
+	}
 
-	if h.DB != nil && h.DB.Pool != nil {
-		rows, err := h.DB.Pool.Query(r.Context(), query, args...)
-		if err == nil && rows != nil {
-			for rows.Next() {
-				var res models.CatalogSearchResult
-				if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN); err == nil {
-					res.Source = "db"
-					tKey := strings.ToLower(strings.TrimSpace(res.Title)) + "_" + mapCategoryToEn(res.Category)
-					if !seenTitles[tKey] {
-						seenTitles[tKey] = true
-						results = append(results, res)
-					}
-				}
+	query += " ORDER BY LOWER(title), category, created_at DESC LIMIT 30;"
+
+	var results []models.CatalogSearchResult
+	rows, err := h.DB.Pool.Query(ctx, query, args...)
+	if err == nil && rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var res models.CatalogSearchResult
+			if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN); err == nil {
+				res.Source = "db"
+				res.Category = mapCategoryToEn(res.Category)
+				results = append(results, res)
 			}
-			rows.Close()
 		}
 	}
+	return results
+}
 
-	// 2. Online search
-	catEn := mapCategoryToEn(category)
-	bookItems := parser.SearchBooksMultiSource(q)
-	for _, item := range bookItems {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + mapCategoryToEn(item.Category)
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			item.Source = "online"
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
-		}
-	}
+func (h *Handler) searchOnlineCatalog(q string, catEn string) []models.CatalogSearchResult {
+	var items []models.CatalogSearchResult
 
-	if catEn != "book" {
-		onlineItems := h.searchInlineResults(q, "ru")
-		for _, item := range onlineItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + mapCategoryToEn(item.Category)
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
+	switch catEn {
+	case "book":
+		items = parser.SearchBooksMultiSource(q)
+
+	case "game":
+		items = parser.SearchGamesMultiSource(q)
+
+	case "movie":
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
+		itunes := fetchITunesInline(q)
+		for _, item := range append(append(kinopoisk, tmdb...), itunes...) {
+			cat := mapCategoryToEn(item.Category)
+			if cat == "movie" || cat == "show" {
 				item.Source = "online"
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
+				items = append(items, item)
+			}
+		}
+
+	case "show":
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
+		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
+		for _, item := range append(append(kinopoisk, tmdb...), tvmaze...) {
+			cat := mapCategoryToEn(item.Category)
+			if cat == "show" || cat == "movie" {
+				item.Source = "online"
+				items = append(items, item)
+			}
+		}
+
+	default: // "all" or empty
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
+		itunes := fetchITunesInline(q)
+		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
+		books := parser.SearchBooksMultiSource(q)
+		games := parser.SearchGamesMultiSource(q)
+
+		rawList := append(append(append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...), books...), games...)
+		for _, item := range rawList {
+			item.Source = "online"
+			items = append(items, item)
+		}
+	}
+
+	for _, item := range items {
+		go h.saveCatalogItemToDB(item)
+	}
+
+	return items
+}
+
+func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn string) []models.CatalogSearchResult {
+	movieBucket := []models.CatalogSearchResult{}
+	showBucket := []models.CatalogSearchResult{}
+	bookBucket := []models.CatalogSearchResult{}
+	gameBucket := []models.CatalogSearchResult{}
+
+	seenMovie := make(map[string]bool)
+	seenShow := make(map[string]bool)
+	seenBook := make(map[string]bool)
+	seenGame := make(map[string]bool)
+
+	allRaw := append(dbItems, onlineItems...)
+
+	for _, item := range allRaw {
+		normCat := mapCategoryToEn(item.Category)
+		titleKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if titleKey == "" {
+			continue
+		}
+
+		switch normCat {
+		case "movie":
+			if !seenMovie[titleKey] {
+				seenMovie[titleKey] = true
+				movieBucket = append(movieBucket, item)
+			}
+		case "show":
+			if !seenShow[titleKey] {
+				seenShow[titleKey] = true
+				showBucket = append(showBucket, item)
+			}
+		case "book":
+			if !seenBook[titleKey] {
+				seenBook[titleKey] = true
+				bookBucket = append(bookBucket, item)
+			}
+		case "game":
+			if !seenGame[titleKey] {
+				seenGame[titleKey] = true
+				gameBucket = append(gameBucket, item)
 			}
 		}
 	}
 
-	// Priority Sort based on active screen category
-	if category != "" && category != "all" && category != "Все" {
-		sort.SliceStable(results, func(i, j int) bool {
-			prioI := getCategoryPriority(results[i].Category, category)
-			prioJ := getCategoryPriority(results[j].Category, category)
-			return prioI < prioJ
-		})
+	var results []models.CatalogSearchResult
+
+	switch catEn {
+	case "movie":
+		if len(movieBucket) > 10 {
+			movieBucket = movieBucket[:10]
+		}
+		if len(showBucket) > 5 {
+			showBucket = showBucket[:5]
+		}
+		results = append(results, movieBucket...)
+		results = append(results, showBucket...)
+
+	case "show":
+		if len(showBucket) > 10 {
+			showBucket = showBucket[:10]
+		}
+		if len(movieBucket) > 5 {
+			movieBucket = movieBucket[:5]
+		}
+		results = append(results, showBucket...)
+		results = append(results, movieBucket...)
+
+	case "book":
+		if len(bookBucket) > 15 {
+			bookBucket = bookBucket[:15]
+		}
+		results = append(results, bookBucket...)
+
+	case "game":
+		if len(gameBucket) > 15 {
+			gameBucket = gameBucket[:15]
+		}
+		results = append(results, gameBucket...)
+
+	default: // "all" or empty
+		// Order: Top 5 Movies -> Top 5 Series -> Top 5 Books -> Top 5 Games
+		if len(movieBucket) > 5 {
+			movieBucket = movieBucket[:5]
+		}
+		if len(showBucket) > 5 {
+			showBucket = showBucket[:5]
+		}
+		if len(bookBucket) > 5 {
+			bookBucket = bookBucket[:5]
+		}
+		if len(gameBucket) > 5 {
+			gameBucket = gameBucket[:5]
+		}
+		results = append(results, movieBucket...)
+		results = append(results, showBucket...)
+		results = append(results, bookBucket...)
+		results = append(results, gameBucket...)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
+	return results
 }
 
 // GET /api/public/items/{id}
@@ -1324,8 +1468,17 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	if releaseYear != "" {
 		infoParts = append(infoParts, releaseYear)
 	}
-	if duration != "" && catEn != "book" {
-		infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
+	if duration != "" {
+		if catEn == "book" {
+			durNum := regexp.MustCompile(`\D`).ReplaceAllString(duration, "")
+			if durNum != "" {
+				infoParts = append(infoParts, fmt.Sprintf("📄 %s стр.", durNum))
+			} else {
+				infoParts = append(infoParts, fmt.Sprintf("📄 %s", duration))
+			}
+		} else {
+			infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
+		}
 	}
 	if len(infoParts) > 0 {
 		text += fmt.Sprintf("🗓 <b>Инфо:</b> %s\n", strings.Join(infoParts, " • "))
@@ -2435,6 +2588,11 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	ctx := context.Background()
 	catEn := mapCategoryToEn(item.Category)
 
+	itemID := item.ID
+	if _, err := uuid.Parse(item.ID); err != nil {
+		itemID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(item.ID)).String()
+	}
+
 	poster := strings.TrimSpace(item.PosterURL)
 	if poster != "" {
 		poster = parser.OptimizePosterURL(nil, poster)
@@ -2445,9 +2603,9 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN)
+	_, err := h.DB.Pool.Exec(ctx, query, itemID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN)
 	if err != nil {
-		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", item.ID, item.Title, err)
+		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", itemID, item.Title, err)
 	}
 }
 

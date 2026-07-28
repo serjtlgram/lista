@@ -107,50 +107,40 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const externalCatalogResults = catalogResults.filter(
     (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
   );
-  const getCategoryPriority = (itemCat?: string, selectedTitle?: string): number => {
-    if (!selectedTitle || selectedTitle === 'Все') return 1;
-    const tLower = selectedTitle.toLowerCase().trim();
+  const isCategoryMatch = (itemCat: string, tabTitle: string): boolean => {
+    const tLower = (tabTitle || '').toLowerCase().trim();
+    if (tLower === 'все' || tLower === 'all' || !tLower) return true;
     const cLower = (itemCat || '').toLowerCase().trim();
 
+    const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower);
+    const isShow = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower);
     const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
-    const isMovieOrShow = ['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower);
     const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
 
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower)) {
+      return isMovie || isShow;
+    }
+    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
+      return isShow || isMovie;
+    }
     if (['book', 'books', 'книги', 'книга'].includes(tLower)) {
-      if (isBook) return 1;
-      if (isMovieOrShow) return 2;
-      return 3;
+      return isBook;
     }
-
-    if (['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
-      if (isMovieOrShow) return 1;
-      if (isBook) return 2;
-      return 3;
-    }
-
     if (['game', 'games', 'игры', 'игра'].includes(tLower)) {
-      if (isGame) return 1;
-      return 2;
+      return isGame;
     }
-
-    return 1;
+    return true;
   };
 
-  const sortResultsByPriority = (arr: CatalogItem[]) => {
-    return [...arr].sort((a, b) => {
-      const prioA = getCategoryPriority(a.category, title);
-      const prioB = getCategoryPriority(b.category, title);
-      return prioA - prioB;
-    });
-  };
-
-  const dbCatalogResults = sortResultsByPriority(externalCatalogResults.filter((c) => c.source !== 'online'));
-  const onlineCatalogResults = sortResultsByPriority(externalCatalogResults.filter((c) => c.source === 'online'));
+  const dbCatalogResults = externalCatalogResults.filter((c) => c.source !== 'online');
+  const onlineCatalogResults = externalCatalogResults.filter((c) => c.source === 'online');
 
   const filteredItems = items.filter((item) => {
-    if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю') return false;
-    if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено') return false;
-    if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено') return false;
+    if (!isCategoryMatch(item.category, title)) return false;
+
+    if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю' && item.status !== 'Читаю' && item.status !== 'Граю') return false;
+    if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
+    if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -160,7 +150,43 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     return true;
   });
 
+  const getTabCategoryPriority = (itemCat: string, tabTitle: string): number => {
+    const tLower = (tabTitle || '').toLowerCase().trim();
+    const cLower = (itemCat || '').toLowerCase().trim();
+
+    const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower);
+    const isShow = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower);
+    const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
+    const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
+
+    if (tLower === 'все' || tLower === 'all' || !tLower) {
+      if (isMovie) return 1;
+      if (isShow) return 2;
+      if (isBook) return 3;
+      if (isGame) return 4;
+      return 5;
+    }
+
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower)) {
+      if (isMovie) return 1;
+      if (isShow) return 2;
+      return 3;
+    }
+
+    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
+      if (isShow) return 1;
+      if (isMovie) return 2;
+      return 3;
+    }
+
+    return 1;
+  };
+
   const sortedItems = [...filteredItems].sort((a, b) => {
+    const prioA = getTabCategoryPriority(a.category, title);
+    const prioB = getTabCategoryPriority(b.category, title);
+    if (prioA !== prioB) return prioA - prioB;
+
     const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
     const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
     return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;

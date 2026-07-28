@@ -76,20 +76,23 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     const rawDur = (item.duration || '').trim();
     const epUnit = t ? t.modal.episodes_unit : 'сер.';
     const minUnit = t ? t.details.minutes_short : 'мин';
+    const pageUnit = t ? (t.details.pages_unit || 'стр.') : 'стр.';
+    const catLc = (item.category || '').toLowerCase().trim();
+    const isBook = catLc.includes('book') || catLc.includes('книг');
 
     if (rawDur.includes('•')) {
       const splitParts = rawDur.split('•');
       const epNum = splitParts[0]?.replace(/\D/g, '') || '';
       const durNum = splitParts[1]?.replace(/\D/g, '') || '';
-      if (durNum) durStr = `${durNum} ${minUnit}`;
+      if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
       if (epNum) epStr = `${epNum} ${epUnit}`;
     } else if (rawDur.includes('сер.') || rawDur.includes('ep.')) {
       const epNum = rawDur.replace(/\D/g, '');
       if (epNum) epStr = `${epNum} ${epUnit}`;
     } else if (rawDur) {
       const durNum = rawDur.replace(/\D/g, '');
-      if (durNum) durStr = `${durNum} ${minUnit}`;
-      else durStr = rawDur;
+      if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
+      else durStr = isBook && !rawDur.includes('стр') ? `${rawDur} ${pageUnit}` : rawDur;
     }
 
     if (item.episodes && item.episodes > 0 && !epStr) {

@@ -54,7 +54,6 @@ export interface Translations {
     status_watching: string;
     status_watching_movie: string;
     status_watching_book: string;
-    status_watching_audio: string;
     status_watching_game: string;
     status_completed: string;
     status_planned: string;
@@ -117,6 +116,8 @@ export interface Translations {
     short_watch_date: string;
     genre: string;
     duration: string;
+    pages: string;
+    pages_unit: string;
     episodes: string;
     minutes_short: string;
     description: string;

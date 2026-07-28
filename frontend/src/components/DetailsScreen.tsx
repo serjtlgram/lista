@@ -277,7 +277,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const catLower = (item.category || '').toLowerCase().trim();
   const isBook = catLower.includes('book') || catLower.includes('книг');
 
-  // Separate episodes count and duration in minutes for display
+  // Separate episodes count and duration/pages for display
   let episodesDisplay = item.episodes ? String(item.episodes) : '';
   let durationDisplay = '-';
 
@@ -287,13 +287,17 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       const parts = raw.split('•');
       if (!episodesDisplay) episodesDisplay = parts[0]?.replace(/\D/g, '') || '';
       const durNum = parts[1]?.replace(/\D/g, '') || '';
-      durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : '-';
+      durationDisplay = durNum ? `${durNum} ${isBook ? (t.details.pages_unit || 'стр.') : t.details.minutes_short}` : '-';
     } else if (raw.includes('сер.') || raw.includes('ep.')) {
       if (!episodesDisplay) episodesDisplay = raw.replace(/\D/g, '');
       durationDisplay = '-';
     } else {
       const durNum = raw.replace(/\D/g, '');
-      durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+      if (isBook) {
+        durationDisplay = durNum ? `${durNum} ${t.details.pages_unit || 'стр.'}` : (raw.includes('стр') ? raw : `${raw} ${t.details.pages_unit || 'стр.'}`);
+      } else {
+        durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+      }
     }
   }
 
@@ -418,12 +422,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
               </div>
 
-              {/* Duration Row */}
-              {(!isBook || durationDisplay) && (
+              {/* Duration / Pages Row */}
+              {(!isBook || (durationDisplay && durationDisplay !== '-')) && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    {t.details.duration}
+                    {isBook ? (t.details.pages || 'Страниц') : t.details.duration}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
                 </div>

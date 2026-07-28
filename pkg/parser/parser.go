@@ -1194,6 +1194,7 @@ func ParseGoogleBooksURL(client *http.Client, rawURL string) (*ExtractedMedia, e
 			Authors       []string `json:"authors"`
 			PublishedDate string   `json:"publishedDate"`
 			Description   string   `json:"description"`
+			PageCount     int      `json:"pageCount"`
 			ImageLinks    struct {
 				Thumbnail      string `json:"thumbnail"`
 				SmallThumbnail string `json:"smallThumbnail"`
@@ -1220,6 +1221,11 @@ func ParseGoogleBooksURL(client *http.Client, rawURL string) (*ExtractedMedia, e
 		year = info.PublishedDate[:4]
 	}
 
+	pagesStr := ""
+	if info.PageCount > 0 {
+		pagesStr = strconv.Itoa(info.PageCount)
+	}
+
 	isbn := ""
 	for _, id := range info.IndustryIdentifiers {
 		if id.Type == "ISBN_13" || id.Type == "ISBN_10" {
@@ -1243,6 +1249,7 @@ func ParseGoogleBooksURL(client *http.Client, rawURL string) (*ExtractedMedia, e
 		Category:    "book",
 		Author:      author,
 		ReleaseYear: year,
+		Duration:    pagesStr,
 		ISBN:        isbn,
 		Description: info.Description,
 		PosterURL:   OptimizePosterURL(client, cover),
