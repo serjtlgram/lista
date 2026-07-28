@@ -88,8 +88,8 @@ export const en: Translations = {
   },
   category_modal: {
     title: 'Customize Categories',
-    subtitle: 'Select categories to display on the home screen (minimum 2)',
-    min_warning: 'At least 2 categories must be selected!',
+    subtitle: 'Select categories to display on the home screen (minimum 1)',
+    min_warning: 'At least 1 category must be selected!',
     save: 'Save',
   },
   genres: {

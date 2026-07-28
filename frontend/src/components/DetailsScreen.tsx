@@ -510,7 +510,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {item.description && (
         <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
           <div className="text-xs text-gray-400 font-semibold">{t.details.description}</div>
-          <p className={`text-[14px] text-white leading-relaxed font-normal ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
+          <p className={`text-[14px] text-white leading-relaxed font-normal whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
             {item.description}
           </p>
           {item.description.length > 150 && (
@@ -685,7 +685,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         ) : (
           <p
             onClick={() => setIsEditingNote(true)}
-            className="text-xs text-gray-300 leading-relaxed cursor-pointer hover:text-white transition"
+            className="text-xs text-gray-300 leading-relaxed cursor-pointer hover:text-white transition whitespace-pre-line"
           >
             {item.note && item.note.trim() ? (
               <span className="italic">"{item.note}"</span>

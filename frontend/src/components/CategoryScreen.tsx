@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2 } from 'lucide-react';
+import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2, X } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
 import { Translations } from '../services/i18n';
@@ -169,13 +169,24 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
       </div>
 
       {showSearchInput && (
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t.details.search_placeholder}
-          className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-        />
+        <div className="relative w-full">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.details.search_placeholder}
+            className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 pr-8 text-xs text-white focus:outline-none focus:border-accentViolet"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 focus:outline-none"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
 
       {/* Row 1: Status Filter Chips */}

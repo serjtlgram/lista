@@ -88,8 +88,8 @@ export const es: Translations = {
   },
   category_modal: {
     title: 'Personalizar Categorías',
-    subtitle: 'Seleccione las categorías para la pantalla principal (mínimo 2)',
-    min_warning: '¡Debe seleccionar al menos 2 categorías!',
+    subtitle: 'Seleccione las categorías para la pantalla principal (mínimo 1)',
+    min_warning: '¡Debe seleccionar al menos 1 categoría!',
     save: 'Guardar',
   },
   genres: {

@@ -60,7 +60,7 @@ export const CategorySelectModal: React.FC<CategorySelectModalProps> = ({
   const handleToggle = (catKey: string) => {
     setErrorMsg(null);
     if (selected.includes(catKey)) {
-      if (selected.length <= 2) {
+      if (selected.length <= 1) {
         setErrorMsg(t.category_modal.min_warning);
         return;
       }
@@ -71,7 +71,7 @@ export const CategorySelectModal: React.FC<CategorySelectModalProps> = ({
   };
 
   const handleSave = () => {
-    if (selected.length < 2) {
+    if (selected.length < 1) {
       setErrorMsg(t.category_modal.min_warning);
       return;
     }

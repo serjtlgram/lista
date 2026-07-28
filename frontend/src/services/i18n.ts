@@ -100,14 +100,14 @@ export const setStoredTheme = (theme: 'dark' | 'light'): void => {
   }
 };
 
-export const DEFAULT_ACTIVE_CATEGORIES = ['Фильмы', 'Сериалы'];
+export const DEFAULT_ACTIVE_CATEGORIES = ['Фильмы', 'Сериалы', 'Книги'];
 
 export const getStoredActiveCategories = (): string[] => {
   try {
     const stored = localStorage.getItem('lista_active_categories');
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length >= 2) {
+      if (Array.isArray(parsed) && parsed.length >= 1) {
         return parsed;
       }
     }
