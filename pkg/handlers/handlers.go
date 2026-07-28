@@ -866,30 +866,31 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Perform online multi-source search (Google Books/FantLab/OpenLibrary for books, TMDb/iTunes/etc for movies/shows)
-	catEn := mapCategoryToEn(category)
-	if catEn == "book" || catEn == "audiobook" || category == "Книги" || category == "Аудиокниги" {
-		bookItems := parser.SearchBooksMultiSource(q)
-		for _, item := range bookItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				item.Source = "online"
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
-			}
+	// 2. Perform online multi-source search
+	onlineItems := h.searchInlineResults(q, "ru")
+	for _, item := range onlineItems {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			item.Source = "online"
+			results = append(results, item)
+			go h.saveCatalogItemToDB(item)
 		}
-	} else {
-		onlineItems := h.searchInlineResults(q, "ru")
-		for _, item := range onlineItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				item.Source = "online"
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
+	}
+
+	// Priority Sort: items matching requested category come FIRST
+	targetCatEn := mapCategoryToEn(category)
+	if targetCatEn != "" && targetCatEn != "all" {
+		sort.SliceStable(results, func(i, j int) bool {
+			catI := mapCategoryToEn(results[i].Category)
+			catJ := mapCategoryToEn(results[j].Category)
+			isMatchI := catI == targetCatEn
+			isMatchJ := catJ == targetCatEn
+			if isMatchI != isMatchJ {
+				return isMatchI
 			}
-		}
+			return false
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1025,13 +1026,45 @@ var topGenres = []struct {
 	{"Другое", "Другое"},
 }
 
-func mapStatusToRu(status string) string {
+var bookGenres = []struct {
+	Label string
+	Val   string
+}{
+	{"Sci-Fi", "Sci-Fi"},
+	{"Фэнтези", "Фэнтези"},
+	{"Приключения", "Приключения"},
+	{"Нон-фикшн", "Нон-фикшн"},
+	{"Любовный", "Любовный"},
+	{"Исторический", "Исторический"},
+	{"Биография", "Биография"},
+	{"Юмор", "Юмор"},
+	{"Драма", "Драма"},
+	{"Детектив", "Детектив"},
+	{"Триллер", "Триллер"},
+	{"Ужасы", "Ужасы"},
+}
+
+func mapStatusToRu(status string, category ...string) string {
+	cat := ""
+	if len(category) > 0 {
+		cat = mapCategoryToEn(category[0])
+	}
 	switch strings.ToLower(status) {
 	case "planned", "в планах", "у планах":
 		return "📋 В планах"
-	case "watching", "смотрю", "дивлюсь":
+	case "watching", "смотрю", "читаю", "слушаю", "дивлюсь":
+		if cat == "audiobook" {
+			return "🎧 Слушаю"
+		} else if cat == "book" {
+			return "📖 Читаю"
+		}
 		return "👁 Смотрю"
-	case "completed", "просмотрено", "завершено":
+	case "completed", "просмотрено", "завершено", "прочитано", "прослушано":
+		if cat == "audiobook" {
+			return "✅ Прослушано"
+		} else if cat == "book" {
+			return "✅ Прочитано"
+		}
 		return "✅ Завершено"
 	default:
 		return "📋 В планах"
@@ -1067,11 +1100,15 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 	if strings.HasPrefix(cb.Data, "c:") {
 		parts := strings.Split(cb.Data, ":")
 		if len(parts) >= 3 {
-			catCode := parts[1] // "m" or "s"
+			catCode := parts[1] // "m", "s", "b", "a"
 			itemID := parts[2]
 			newCat := "movie"
 			if catCode == "s" {
 				newCat = "show"
+			} else if catCode == "b" {
+				newCat = "book"
+			} else if catCode == "a" {
+				newCat = "audiobook"
 			}
 
 			if h.DB != nil && h.DB.Pool != nil {
@@ -1116,8 +1153,20 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 			gIdx, err := strconv.Atoi(parts[1])
 			itemID := parts[2]
 
-			if err == nil && gIdx >= 0 && gIdx < len(topGenres) {
-				newGenre := topGenres[gIdx].Val
+			// Check category of item to choose between bookGenres and topGenres
+			activeCategory := "movie"
+			if h.DB != nil && h.DB.Pool != nil {
+				_ = h.DB.Pool.QueryRow(context.Background(), "SELECT category FROM items WHERE id = $1 AND user_id = $2 LIMIT 1", itemID, userID).Scan(&activeCategory)
+			}
+			isBookOrAudio := mapCategoryToEn(activeCategory) == "book" || mapCategoryToEn(activeCategory) == "audiobook"
+
+			targetGenresList := topGenres
+			if isBookOrAudio {
+				targetGenresList = bookGenres
+			}
+
+			if err == nil && gIdx >= 0 && gIdx < len(targetGenresList) {
+				newGenre := targetGenresList[gIdx].Val
 				if h.DB != nil && h.DB.Pool != nil {
 					_, _ = h.DB.Pool.Exec(context.Background(), "UPDATE items SET genre = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3", newGenre, itemID, userID)
 				}
@@ -1193,6 +1242,7 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 }
 
 func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string, status string, rating int) string {
+	catEn := mapCategoryToEn(category)
 	catRu := mapCategoryToRu(category)
 	cleanTitle := html.EscapeString(title)
 	firstGenre := ""
@@ -1208,7 +1258,7 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	cleanDirector := html.EscapeString(director)
 	cleanCast := html.EscapeString(cast)
 	cleanDesc := html.EscapeString(description)
-	statusRu := mapStatusToRu(status)
+	statusRu := mapStatusToRu(status, category)
 
 	text := fmt.Sprintf("✅ <b>«%s»</b> успешно добавлен!\n\n", cleanTitle)
 	text += fmt.Sprintf("📌 <b>Категория:</b> %s\n", catRu)
@@ -1230,7 +1280,7 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	if releaseYear != "" {
 		infoParts = append(infoParts, releaseYear)
 	}
-	if duration != "" {
+	if duration != "" && catEn != "book" {
 		infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
 	}
 	if len(infoParts) > 0 {
@@ -1238,9 +1288,13 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	}
 
 	if cleanDirector != "" {
-		text += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", cleanDirector)
+		if catEn == "book" || catEn == "audiobook" {
+			text += fmt.Sprintf("✍️ <b>Автор:</b> %s\n", cleanDirector)
+		} else {
+			text += fmt.Sprintf("🎬 <b>Режиссёр:</b> %s\n", cleanDirector)
+		}
 	}
-	if cleanCast != "" {
+	if cleanCast != "" && catEn != "book" && catEn != "audiobook" {
 		text += fmt.Sprintf("🎭 <b>Актёры:</b> %s\n", cleanCast)
 	}
 	if cleanDesc != "" {
@@ -1256,25 +1310,45 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 
 func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus string, currentRating int, itemID string) map[string]interface{} {
 	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
+	catCode := mapCategoryToEn(catEn)
 
-	// Row 1: Category
-	catRow := []map[string]interface{}{
-		{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catEn == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
-		{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catEn == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
+	// Rows 1-2: Categories (4 options: Movie, Show, Book, Audiobook)
+	catRow1 := []map[string]interface{}{
+		{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catCode == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
+		{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catCode == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
+	}
+	catRow2 := []map[string]interface{}{
+		{"text": map[bool]string{true: "✓ 📖 Книга", false: "📖 Книга"}[catCode == "book"], "callback_data": fmt.Sprintf("c:b:%s", itemID)},
+		{"text": map[bool]string{true: "✓ 🎧 Аудиокнига", false: "🎧 Аудиокнига"}[catCode == "audiobook"], "callback_data": fmt.Sprintf("c:a:%s", itemID)},
 	}
 
-	// Row 2: Status
+	// Status Row: tailored for category type
 	isPlanned := currentStatus == "" || currentStatus == "planned" || currentStatus == "в планах" || currentStatus == "у планах"
-	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "дивлюсь"
-	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено"
+	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "читаю" || currentStatus == "слушаю" || currentStatus == "дивлюсь"
+	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено" || currentStatus == "прочитано" || currentStatus == "прослушано"
+
+	labelWatching := "👁 Смотрю"
+	labelCompleted := "✅ Завершено"
+	if catCode == "audiobook" {
+		labelWatching = "🎧 Слушаю"
+		labelCompleted = "✅ Прослушано"
+	} else if catCode == "book" {
+		labelWatching = "📖 Читаю"
+		labelCompleted = "✅ Прочитано"
+	}
 
 	statusRow := []map[string]interface{}{
 		{"text": map[bool]string{true: "✓ 📋 В планах", false: "📋 В планах"}[isPlanned], "callback_data": fmt.Sprintf("s:p:%s", itemID)},
-		{"text": map[bool]string{true: "✓ 👁 Смотрю", false: "👁 Смотрю"}[isWatching], "callback_data": fmt.Sprintf("s:w:%s", itemID)},
-		{"text": map[bool]string{true: "✓ ✅ Завершено", false: "✅ Завершено"}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
+		{"text": map[bool]string{true: "✓ " + labelWatching, false: labelWatching}[isWatching], "callback_data": fmt.Sprintf("s:w:%s", itemID)},
+		{"text": map[bool]string{true: "✓ " + labelCompleted, false: labelCompleted}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
 	}
 
-	// Rows 3-5: 12 Genres (4 in a row, strictly 1 selection)
+	// Genre Rows: bookGenres if book/audiobook, else topGenres
+	targetGenresList := topGenres
+	if catCode == "book" || catCode == "audiobook" {
+		targetGenresList = bookGenres
+	}
+
 	firstGenre := ""
 	if currentGenre != "" {
 		parts := strings.FieldsFunc(currentGenre, func(r rune) bool {
@@ -1840,6 +1914,16 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		return results
 	}
 
+	// 1b. Search Books Multi-Source (Google Books, FantLab, Open Library, iTunes eBooks)
+	for _, item := range parser.SearchBooksMultiSource(query) {
+		tKey := strings.ToLower(strings.TrimSpace(item.Title))
+		if !seenTitles[tKey] {
+			seenTitles[tKey] = true
+			results = append(results, item)
+			go h.saveCatalogItemToDB(item)
+		}
+	}
+
 	// 2. Kinopoisk Unofficial API (Kinopoisk HD / Russian Movies & Series)
 	if h.KinopoiskAPIKey != "" {
 		for _, item := range fetchKinopoiskInline(query, h.KinopoiskAPIKey) {
@@ -1903,7 +1987,7 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 
 func fetchITunesInline(query string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
-	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,podcast,audiobook&limit=6&lang=ru_ru", url.QueryEscape(query))
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,podcast,audiobook,ebook&limit=6&lang=ru_ru", url.QueryEscape(query))
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -1947,6 +2031,8 @@ func fetchITunesInline(query string) []models.CatalogSearchResult {
 				cat = "podcast"
 			} else if r.WrapperType == "audiobook" {
 				cat = "audiobook"
+			} else if r.WrapperType == "ebook" || r.Kind == "ebook" {
+				cat = "book"
 			}
 
 			year := ""

@@ -290,7 +290,13 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 
 		optimizedPoster := OptimizePosterURL(client, coverURL)
 
+		itemID := "ol_" + isbn
+		if isbn == "" {
+			itemID = "ol_" + url.QueryEscape(doc.Title)
+		}
+
 		results = append(results, models.CatalogSearchResult{
+			ID:          itemID,
 			Title:       doc.Title,
 			Category:    "book",
 			Author:      author,
@@ -304,7 +310,73 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 	return results, nil
 }
 
-// SearchBooksMultiSource queries Google Books, FantLab, and Open Library concurrently
+// SearchITunesEBooks queries iTunes API specifically for ebooks
+func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	client := &http.Client{Timeout: 4 * time.Second}
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=ebook&limit=5&lang=ru_ru", url.QueryEscape(query))
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Results []struct {
+			TrackName        string `json:"trackName"`
+			ArtistName       string `json:"artistName"`
+			ArtworkUrl100    string `json:"artworkUrl100"`
+			PrimaryGenreName string `json:"primaryGenreName"`
+			ReleaseDate      string `json:"releaseDate"`
+			Description      string `json:"description"`
+		} `json:"results"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	var results []models.CatalogSearchResult
+	for _, r := range data.Results {
+		if strings.TrimSpace(r.TrackName) == "" {
+			continue
+		}
+		year := ""
+		if len(r.ReleaseDate) >= 4 {
+			year = r.ReleaseDate[:4]
+		}
+		poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
+		optimizedPoster := OptimizePosterURL(client, poster)
+
+		results = append(results, models.CatalogSearchResult{
+			ID:          "itunes_ebook_" + url.QueryEscape(r.TrackName),
+			Title:       r.TrackName,
+			Category:    "book",
+			Author:      r.ArtistName,
+			Genre:       r.PrimaryGenreName,
+			ReleaseYear: year,
+			Description: r.Description,
+			PosterURL:   optimizedPoster,
+			Source:      "online",
+		})
+	}
+	return results, nil
+}
+
+// SearchBooksMultiSource queries Google Books, FantLab, Open Library, and iTunes eBooks concurrently
 func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	var combined []models.CatalogSearchResult
 	seenTitles := make(map[string]bool)
@@ -332,6 +404,11 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	// 3. Open Library
 	if olResults, err := SearchOpenLibrary(query); err == nil && len(olResults) > 0 {
 		addItems(olResults)
+	}
+
+	// 4. iTunes eBooks
+	if itResults, err := SearchITunesEBooks(query); err == nil && len(itResults) > 0 {
+		addItems(itResults)
 	}
 
 	return combined

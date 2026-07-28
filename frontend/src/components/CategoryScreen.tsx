@@ -111,8 +111,29 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const externalCatalogResults = catalogResults.filter(
     (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
   );
-  const dbCatalogResults = externalCatalogResults.filter((c) => c.source !== 'online');
-  const onlineCatalogResults = externalCatalogResults.filter((c) => c.source === 'online');
+  const isCategoryMatch = (cCat?: string) => {
+    if (!title || title === 'Все') return true;
+    const tLower = title.toLowerCase().trim();
+    const cLower = (cCat || '').toLowerCase().trim();
+    if (tLower === cLower) return true;
+    if (['book', 'books', 'книги', 'книга'].includes(tLower) && ['book', 'books', 'книги', 'книга'].includes(cLower)) return true;
+    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(tLower) && ['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cLower)) return true;
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower) && ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower)) return true;
+    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower) && ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower)) return true;
+    return false;
+  };
+
+  const sortResultsByPriority = (arr: CatalogItem[]) => {
+    return [...arr].sort((a, b) => {
+      const matchA = isCategoryMatch(a.category);
+      const matchB = isCategoryMatch(b.category);
+      if (matchA !== matchB) return matchA ? -1 : 1;
+      return 0;
+    });
+  };
+
+  const dbCatalogResults = sortResultsByPriority(externalCatalogResults.filter((c) => c.source !== 'online'));
+  const onlineCatalogResults = sortResultsByPriority(externalCatalogResults.filter((c) => c.source === 'online'));
 
   const filteredItems = items.filter((item) => {
     if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю') return false;
