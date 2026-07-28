@@ -85,6 +85,10 @@ export interface Translations {
     search_input_placeholder: string;
     or_manual_entry: string;
     one_click_add: string;
+    author_label: string;
+    author_placeholder: string;
+    isbn_label: string;
+    isbn_placeholder: string;
   };
   category_modal: {
     title: string;
@@ -105,6 +109,11 @@ export interface Translations {
     animation: string;
     show: string;
     other: string;
+    non_fiction: string;
+    romance: string;
+    historical: string;
+    biography: string;
+    humor: string;
   };
   details: {
     my_rating: string;
@@ -115,6 +124,10 @@ export interface Translations {
     episodes: string;
     minutes_short: string;
     description: string;
+    annotation: string;
+    author: string;
+    isbn: string;
+    year_published: string;
     notes: string;
     add_to_list: string;
     edit: string;

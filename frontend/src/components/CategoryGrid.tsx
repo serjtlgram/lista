@@ -58,83 +58,37 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   };
 
   const total = visibleCategories.length;
-  let rowGroups: { items: typeof visibleCategories; cols: number }[] = [];
-
-  if (total % 2 === 0) {
-    // Even number of categories: 2 per row
-    rowGroups = [{ items: visibleCategories, cols: 2 }];
-  } else if (total === 1) {
-    rowGroups = [{ items: visibleCategories, cols: 1 }];
-  } else if (total === 3) {
-    rowGroups = [{ items: visibleCategories, cols: 3 }];
-  } else if (total === 5) {
-    // Row 1: top 3 categories (cols = 3)
-    // Row 2: remaining 2 categories (cols = 2)
-    rowGroups = [
-      { items: visibleCategories.slice(0, 3), cols: 3 },
-      { items: visibleCategories.slice(3), cols: 2 },
-    ];
-  } else {
-    // Fallback for larger odd numbers
-    rowGroups = [
-      { items: visibleCategories.slice(0, 3), cols: 3 },
-      { items: visibleCategories.slice(3), cols: 2 },
-    ];
-  }
-
-  const renderCard = (cat: (typeof ALL_CATEGORY_CONFIGS)[0], cols: number) => {
-    const IconComponent = cat.icon;
-    const count = getCount(cat.key);
-    const title = getTranslatedTitle(cat.key);
-    const isThreeCols = cols === 3;
-
-    return (
-      <div
-        key={cat.key}
-        onClick={() => onSelectCategory(cat.key)}
-        className={`glass-card ${
-          isThreeCols ? 'p-2.5 sm:p-3 gap-2' : 'p-3.5 gap-3'
-        } rounded-2xl flex items-center cursor-pointer active:scale-95 transition card-hover min-w-0`}
-      >
-        <div
-          className={`${
-            isThreeCols ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-10 h-10'
-          } rounded-xl ${cat.bg} flex items-center justify-center ${cat.text} shrink-0`}
-        >
-          <IconComponent className={isThreeCols ? 'w-4 h-4' : 'w-5 h-5'} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div
-            className={`${
-              isThreeCols ? 'text-[11px] sm:text-xs' : 'text-xs'
-            } font-semibold text-gray-300 truncate`}
-          >
-            {title}
-          </div>
-          <div className={`${isThreeCols ? 'text-sm sm:text-base' : 'text-base'} font-bold text-white`}>
-            {count}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const isOdd = total % 2 !== 0;
 
   return (
-    <div className="space-y-2.5 -mb-3">
-      {rowGroups.map((group, groupIdx) => (
-        <div
-          key={groupIdx}
-          className={`grid gap-2.5 ${
-            group.cols === 1
-              ? 'grid-cols-1'
-              : group.cols === 3
-              ? 'grid-cols-3'
-              : 'grid-cols-2'
-          }`}
-        >
-          {group.items.map((cat) => renderCard(cat, group.cols))}
-        </div>
-      ))}
+    <div className="space-y-1.5 -mb-3">
+      {/* Categories Grid - always 2 columns, odd last item spans full row */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {visibleCategories.map((cat, index) => {
+          const IconComponent = cat.icon;
+          const count = getCount(cat.key);
+          const title = getTranslatedTitle(cat.key);
+          const isLastOdd = isOdd && index === total - 1;
+
+          return (
+            <div
+              key={cat.key}
+              onClick={() => onSelectCategory(cat.key)}
+              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition card-hover min-w-0 ${
+                isLastOdd ? 'col-span-2' : ''
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl ${cat.bg} flex items-center justify-center ${cat.text} shrink-0`}>
+                <IconComponent className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-gray-300 truncate">{title}</div>
+                <div className="text-base font-bold text-white">{count}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Discrete Plus Circle Button under the grid */}
       <div className="flex justify-center pt-0.5">

@@ -67,6 +67,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       if (translatedGenre) parts.push(translatedGenre);
     }
 
+    // 3b. Author
+    const authorName = item.author;
+    if (authorName) {
+      parts.push(authorName);
+    }
+
     // 4. Duration & Episode count
     let durStr = '';
     let epStr = '';

@@ -12,7 +12,12 @@ export type GenreKey =
   | 'fantasy'
   | 'animation'
   | 'show'
-  | 'other';
+  | 'other'
+  | 'non_fiction'
+  | 'romance'
+  | 'historical'
+  | 'biography'
+  | 'humor';
 
 export const GENRE_KEYS: GenreKey[] = [
   'drama',
@@ -29,6 +34,21 @@ export const GENRE_KEYS: GenreKey[] = [
   'other',
 ];
 
+export const BOOK_GENRE_KEYS: GenreKey[] = [
+  'sci_fi',
+  'fantasy',
+  'adventure',
+  'non_fiction',
+  'romance',
+  'historical',
+  'biography',
+  'humor',
+  'drama',
+  'detective',
+  'thriller',
+  'horror',
+];
+
 /**
  * Identify canonical genre key from any genre string (Russian, English, Ukrainian, Spanish or key)
  */
@@ -36,18 +56,22 @@ export const getGenreKey = (genreStr?: string | null): GenreKey | null => {
   if (!genreStr || !genreStr.trim()) return null;
   const lc = genreStr.toLowerCase().trim();
 
-  if (lc.includes('мелодрама') || lc.includes('драма') || lc.includes('romance') || lc.includes('drama')) return 'drama';
-  if (lc.includes('комедия') || lc.includes('комедія') || lc.includes('comedy') || lc.includes('comedia')) return 'comedy';
+  if (lc.includes('non_fiction') || lc.includes('нон-фикшн') || lc.includes('нон-фікшн') || lc.includes('non-fiction')) return 'non_fiction';
+  if (lc.includes('romance') || lc.includes('любовный') || lc.includes('любовний') || lc.includes('мелодрама')) return 'romance';
+  if (lc.includes('historical') || lc.includes('исторический') || lc.includes('історичний') || lc.includes('история') || lc.includes('історія')) return 'historical';
+  if (lc.includes('biography') || lc.includes('биография') || lc.includes('біографія') || lc.includes('мемуары')) return 'biography';
+  if (lc.includes('humor') || lc.includes('юмор') || lc.includes('гумор') || lc.includes('комедия')) return 'humor';
+  if (lc.includes('драма') || lc.includes('drama')) return 'drama';
   if (lc.includes('детектив') || lc.includes('detective')) return 'detective';
   if (lc.includes('боевик') || lc.includes('бойовик') || lc.includes('война') || lc.includes('війна') || lc.includes('action') || lc.includes('acción') || lc.includes('guerra')) return 'action';
   if (lc.includes('триллер') || lc.includes('трилер') || lc.includes('thriller')) return 'thriller';
   if (lc.includes('ужасы') || lc.includes('жахи') || lc.includes('horror') || lc.includes('terror')) return 'horror';
-  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('sci_fi') || lc.includes('ciencia')) return 'sci_fi';
+  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('sci_fi') || lc.includes('научная фантастика') || lc.includes('ciencia')) return 'sci_fi';
   if (lc.includes('приключения') || lc.includes('пригоди') || lc.includes('adventure') || lc.includes('aventura')) return 'adventure';
   if (lc.includes('фэнтези') || lc.includes('фентезі') || lc.includes('fantasy') || lc.includes('fantasía')) return 'fantasy';
-  if (lc.includes('мультфильм') || lc.includes('мультфільм') || lc.includes('анимация') || lc.includes('анімація') || lc.includes('animation') || lc.includes('cartoons') || lc.includes('dibujos') || lc.includes('family') || lc.includes('семейный') || lc.includes('сімейний')) return 'animation';
-  if (lc.includes('ток-шоу') || lc.includes('шоу') || lc.includes('show') || lc.includes('talk') || lc.includes('музыка') || lc.includes('музика') || lc.includes('music')) return 'show';
-  if (lc.includes('документальный') || lc.includes('документальний') || lc.includes('documentary') || lc.includes('другое') || lc.includes('інше') || lc.includes('other') || lc.includes('otro')) return 'other';
+  if (lc.includes('мультфильм') || lc.includes('мультфільм') || lc.includes('анимация') || lc.includes('анімація') || lc.includes('animation') || lc.includes('cartoons') || lc.includes('family')) return 'animation';
+  if (lc.includes('ток-шоу') || lc.includes('шоу') || lc.includes('show') || lc.includes('music')) return 'show';
+  if (lc.includes('документальный') || lc.includes('documentary') || lc.includes('другое') || lc.includes('other')) return 'other';
 
   return null;
 };

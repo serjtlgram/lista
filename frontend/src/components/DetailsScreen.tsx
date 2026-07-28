@@ -117,7 +117,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   }, [isFullscreenVideo]);
 
-  // Automatic YouTube search fallback on details view if item is movie/show and youtube_url is missing
+  // Automatic YouTube search fallback on details view if youtube_url is missing
   useEffect(() => {
     const catLower = (item.category || '').toLowerCase();
     const isMovieOrShow =
@@ -126,11 +126,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       catLower.includes('series') ||
       catLower.includes('фильм') ||
       catLower.includes('сериал');
+    const isBook = catLower.includes('book') || (catLower.includes('книг') && !catLower.includes('аудио'));
+    const isAudiobook = catLower.includes('audiobook') || catLower.includes('аудио');
 
-    if (isMovieOrShow && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
+    if ((isMovieOrShow || isBook || isAudiobook) && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
       setIsSearchingYoutube(true);
+      const queryTitle = item.author ? `${item.title} ${item.author}` : item.title;
       api
-        .searchYouTube(item.title, item.category)
+        .searchYouTube(queryTitle, item.category)
         .then((ytUrl) => {
           if (ytUrl) {
             onUpdateItem(item.id, { youtube_url: ytUrl });
@@ -140,7 +143,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           setIsSearchingYoutube(false);
         });
     }
-  }, [item.id, item.title, item.category, item.youtube_url]);
+  }, [item.id, item.title, item.category, item.author, item.youtube_url]);
 
   useEffect(() => {
     setNoteText(item.note || '');
@@ -274,6 +277,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   };
 
+  const catLower = (item.category || '').toLowerCase().trim();
+  const isBook = catLower.includes('book') || (catLower.includes('книг') && !catLower.includes('аудио'));
+  const isAudiobook = catLower.includes('audiobook') || catLower.includes('аудио');
+  const isBookOrAudiobook = isBook || isAudiobook;
+
   // Separate episodes count and duration in minutes for display
   let episodesDisplay = item.episodes ? String(item.episodes) : '';
   let durationDisplay = '-';
@@ -389,7 +397,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <div className="flex-1 space-y-2 text-xs pt-0.5">
             <div>
               <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
-                {formatCategorySingle(item.category)}
+                {isAudiobook ? 'АУДИОКНИГА' : isBook ? 'КНИГА' : formatCategorySingle(item.category)}
               </span>
               <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
             </div>
@@ -415,24 +423,51 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
               </div>
 
-              {/* Separated Duration Row */}
-              <div className="flex items-center justify-between text-gray-300 gap-1">
-                <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  {t.details.duration}
-                </span>
-                <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
-              </div>
+              {/* Duration Row */}
+              {(!isBook || isAudiobook || durationDisplay) && (
+                <div className="flex items-center justify-between text-gray-300 gap-1">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    {t.details.duration}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
+                </div>
+              )}
 
-              {/* Separated Episodes Row (Always shown for series category or if episodesDisplay set) */}
-              {(item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
+              {/* Author Row for Books / Audiobooks or Episodes Row for Series */}
+              {isBookOrAudiobook ? (
                 <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Tv className="w-3.5 h-3.5 text-accentPink" />
-                    {t.details.episodes}
+                    <User className="w-3.5 h-3.5 text-accentPink" />
+                    {t.details.author || 'Автор'}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight">
-                    {episodesDisplay || '-'}
+                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]">
+                    {item.author || item.director || '-'}
+                  </span>
+                </div>
+              ) : (
+                (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
+                  <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                    <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                      <Tv className="w-3.5 h-3.5 text-accentPink" />
+                      {t.details.episodes}
+                    </span>
+                    <span className="font-semibold text-white text-right leading-tight">
+                      {episodesDisplay || '-'}
+                    </span>
+                  </div>
+                )
+              )}
+
+              {/* ISBN Row if present */}
+              {item.isbn && (
+                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Tag className="w-3.5 h-3.5 text-accentBlue" />
+                    {t.details.isbn || 'ISBN'}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight font-mono text-[11px]">
+                    {item.isbn}
                   </span>
                 </div>
               )}
@@ -478,8 +513,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
-      {/* Dedicated Director & Cast Full-Width Block */}
-      {(item.director || item.cast) && (
+      {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
+      {!isBookOrAudiobook && (item.director || item.cast) && (
         <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
           {item.director && (
             <div className="flex items-start gap-2.5">
@@ -506,10 +541,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       )}
 
-      {/* Description Block */}
+      {/* Description / Annotation Block */}
       {item.description && (
         <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
-          <div className="text-xs text-gray-400 font-semibold">{t.details.description}</div>
+          <div className="text-xs text-gray-400 font-semibold">
+            {isBookOrAudiobook ? (t.details.annotation || 'Аннотация') : t.details.description}
+          </div>
           <p className={`text-[14px] text-white leading-relaxed font-normal whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
             {item.description}
           </p>

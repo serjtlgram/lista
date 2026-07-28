@@ -20,6 +20,8 @@ export interface Item {
   episodes?: number;
   director?: string;
   cast?: string;
+  author?: string;
+  isbn?: string;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
@@ -38,6 +40,8 @@ export interface CatalogItem {
   youtube_url?: string;
   director?: string;
   cast?: string;
+  author?: string;
+  isbn?: string;
   source?: string;
 }
 

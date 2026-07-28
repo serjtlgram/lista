@@ -37,6 +37,8 @@ type Item struct {
 	YoutubeURL  string     `json:"youtube_url,omitempty"`
 	Director    string     `json:"director,omitempty"`
 	Cast        string     `json:"cast,omitempty"`
+	Author      string     `json:"author,omitempty"`
+	ISBN        string     `json:"isbn,omitempty"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -58,6 +60,8 @@ type CreateItemRequest struct {
 	YoutubeURL  string `json:"youtube_url,omitempty"`
 	Director    string `json:"director,omitempty"`
 	Cast        string `json:"cast,omitempty"`
+	Author      string `json:"author,omitempty"`
+	ISBN        string `json:"isbn,omitempty"`
 }
 
 type UpdateItemRequest struct {
@@ -75,6 +79,8 @@ type UpdateItemRequest struct {
 	YoutubeURL  *string `json:"youtube_url,omitempty"`
 	Director    *string `json:"director,omitempty"`
 	Cast        *string `json:"cast,omitempty"`
+	Author      *string `json:"author,omitempty"`
+	ISBN        *string `json:"isbn,omitempty"`
 }
 
 type CatalogSearchResult struct {
@@ -89,6 +95,8 @@ type CatalogSearchResult struct {
 	YoutubeURL  string `json:"youtube_url,omitempty"`
 	Director    string `json:"director,omitempty"`
 	Cast        string `json:"cast,omitempty"`
+	Author      string `json:"author,omitempty"`
+	ISBN        string `json:"isbn,omitempty"`
 	Source      string `json:"source,omitempty"`
 }
 

@@ -4,7 +4,7 @@ import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
 import { getNextPlaceholderPoster } from '../services/posters';
-import { GENRE_KEYS, getTranslatedGenreFull } from '../services/genres';
+import { GENRE_KEYS, BOOK_GENRE_KEYS, getTranslatedGenreFull } from '../services/genres';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -98,6 +98,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [description, setDescription] = useState(editingItem?.description || '');
   const [director, setDirector] = useState(editingItem?.director || '');
   const [cast, setCast] = useState(editingItem?.cast || '');
+  const [author, setAuthor] = useState(editingItem?.author || editingItem?.director || '');
+  const [isbn, setIsbn] = useState(editingItem?.isbn || '');
   const [note, setNote] = useState(editingItem?.note || '');
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -122,6 +124,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setDescription(editingItem.description || '');
       setDirector(editingItem.director || '');
       setCast(editingItem.cast || '');
+      setAuthor(editingItem.author || editingItem.director || '');
+      setIsbn(editingItem.isbn || '');
       setNote(editingItem.note || '');
 
       const durStr = editingItem.duration || '';
@@ -221,6 +225,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (sug.description) setDescription(sug.description);
     if (sug.director) setDirector(sug.director);
     if (sug.cast) setCast(sug.cast);
+    if (sug.author) setAuthor(sug.author);
+    if (sug.isbn) setIsbn(sug.isbn);
 
     setQuickSearchQuery('');
     setQuickSearchResults([]);
@@ -264,6 +270,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       description: description.trim(),
       director: director.trim(),
       cast: cast.trim(),
+      author: author.trim(),
+      isbn: isbn.trim(),
       note: note.trim(),
     };
 
@@ -276,6 +284,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       onClose();
     }
   };
+
+  const isBookOrAudiobook = ['book', 'books', 'audiobook', 'audiobooks', 'книги', 'книга', 'аудиокниги', 'аудиокнига'].includes((category || '').toLowerCase().trim());
 
   const categories = [
     { label: t.categories.movie_single, value: 'Фильмы' },
@@ -292,7 +302,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     { label: t.modal.status_planned, val: 'planned' },
   ];
 
-  const genreOptions = GENRE_KEYS.map((k) => t.genres[k]);
+  const activeGenreKeys = isBookOrAudiobook ? BOOK_GENRE_KEYS : GENRE_KEYS;
+  const genreOptions = activeGenreKeys.map((k) => t.genres[k]).filter(Boolean);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center p-3 pb-8 sm:pb-12">
@@ -560,28 +571,53 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.director}</label>
-                  <input
-                    type="text"
-                    value={director}
-                    onChange={(e) => setDirector(e.target.value)}
-                    placeholder="Кристофер Нолан"
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                  />
+              {!isBookOrAudiobook ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.director}</label>
+                    <input
+                      type="text"
+                      value={director}
+                      onChange={(e) => setDirector(e.target.value)}
+                      placeholder="Кристофер Нолан"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.cast}</label>
+                    <input
+                      type="text"
+                      value={cast}
+                      onChange={(e) => setCast(e.target.value)}
+                      placeholder="Мэттью Макконахи, Энн Хэтэуэй"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.cast}</label>
-                  <input
-                    type="text"
-                    value={cast}
-                    onChange={(e) => setCast(e.target.value)}
-                    placeholder="Мэттью Макконахи, Энн Хэтэуэй"
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                  />
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.author_label || 'Автор'}</label>
+                    <input
+                      type="text"
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      placeholder={t.modal.author_placeholder || 'Уильям Гибсон'}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.isbn_label || 'ISBN'}</label>
+                    <input
+                      type="text"
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      placeholder={t.modal.isbn_placeholder || '978-5-17-123456-7'}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.youtube_url_label}</label>

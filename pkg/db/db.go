@@ -48,6 +48,8 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS youtube_url TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS director TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_members TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS author TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS isbn VARCHAR(100) DEFAULT '';`)
 
 	return &DB{Pool: pool}, nil
 }

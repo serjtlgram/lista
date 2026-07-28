@@ -34,6 +34,8 @@ type ExtractedMedia struct {
 	Description string `json:"description"`
 	Director    string `json:"director"`
 	Cast        string `json:"cast"` // 1-4 main actors
+	Author      string `json:"author,omitempty"`
+	ISBN        string `json:"isbn,omitempty"`
 	YoutubeURL  string `json:"youtube_url"`
 	SourceURL   string `json:"source_url"`
 }
@@ -82,7 +84,21 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// 0. Check if Kinopoisk URL
+	// 0a. Check if Google Books URL
+	if strings.Contains(strings.ToLower(rawURL), "google.") && strings.Contains(strings.ToLower(rawURL), "books") {
+		if gbMedia, err := ParseGoogleBooksURL(client, rawURL); err == nil && gbMedia != nil && gbMedia.Title != "" {
+			return gbMedia, nil
+		}
+	}
+
+	// 0b. Check if Flibusta URL
+	if strings.Contains(strings.ToLower(rawURL), "flibusta") {
+		if flMedia, err := ParseFlibustaURL(client, rawURL); err == nil && flMedia != nil && flMedia.Title != "" {
+			return flMedia, nil
+		}
+	}
+
+	// 0c. Check if Kinopoisk URL
 	if matches := kinopoiskURLRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		kpID := matches[1]
 		kpKey := ""
@@ -1024,4 +1040,185 @@ func FetchKinopoiskStaff(client *http.Client, kpKey string, filmID int) (string,
 	}
 
 	return director, strings.Join(castList, ", ")
+}
+
+// ParseGoogleBooksURL extracts book details from a Google Books link
+func ParseGoogleBooksURL(client *http.Client, rawURL string) (*ExtractedMedia, error) {
+	volumeID := ""
+	u, err := url.Parse(rawURL)
+	if err == nil {
+		volumeID = u.Query().Get("id")
+	}
+	if volumeID == "" {
+		re := regexp.MustCompile(`(?i)(?:id=|=|/)([a-zA-Z0-9_-]{10,12})`)
+		m := re.FindStringSubmatch(rawURL)
+		if len(m) > 1 {
+			volumeID = m[1]
+		}
+	}
+
+	if volumeID == "" {
+		return nil, fmt.Errorf("volume ID not found in Google Books URL")
+	}
+
+	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes/%s", volumeID)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "TrackListBot/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google books API returned status %d", resp.StatusCode)
+	}
+
+	var item struct {
+		VolumeInfo struct {
+			Title         string   `json:"title"`
+			Authors       []string `json:"authors"`
+			PublishedDate string   `json:"publishedDate"`
+			Description   string   `json:"description"`
+			ImageLinks    struct {
+				Thumbnail      string `json:"thumbnail"`
+				SmallThumbnail string `json:"smallThumbnail"`
+			} `json:"imageLinks"`
+			IndustryIdentifiers []struct {
+				Type       string `json:"type"`
+				Identifier string `json:"identifier"`
+			} `json:"industryIdentifiers"`
+		} `json:"volumeInfo"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return nil, err
+	}
+
+	info := item.VolumeInfo
+	if strings.TrimSpace(info.Title) == "" {
+		return nil, fmt.Errorf("empty title in google books")
+	}
+
+	author := strings.Join(info.Authors, ", ")
+	year := ""
+	if len(info.PublishedDate) >= 4 {
+		year = info.PublishedDate[:4]
+	}
+
+	isbn := ""
+	for _, id := range info.IndustryIdentifiers {
+		if id.Type == "ISBN_13" || id.Type == "ISBN_10" {
+			isbn = id.Identifier
+			break
+		}
+	}
+
+	cover := info.ImageLinks.Thumbnail
+	if cover == "" {
+		cover = info.ImageLinks.SmallThumbnail
+	}
+	if cover != "" {
+		cover = strings.ReplaceAll(cover, "http://", "https://")
+		cover = strings.ReplaceAll(cover, "zoom=1", "zoom=0")
+		cover = strings.ReplaceAll(cover, "&edge=curl", "")
+	}
+
+	return &ExtractedMedia{
+		Title:       info.Title,
+		Category:    "book",
+		Author:      author,
+		ReleaseYear: year,
+		ISBN:        isbn,
+		Description: info.Description,
+		PosterURL:   OptimizePosterURL(client, cover),
+		SourceURL:   rawURL,
+	}, nil
+}
+
+// ParseFlibustaURL extracts book details from a Flibusta link
+func ParseFlibustaURL(client *http.Client, rawURL string) (*ExtractedMedia, error) {
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("flibusta page status %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	bodyStr := string(bodyBytes)
+
+	title := ""
+	h1Regex := regexp.MustCompile(`(?i)<h1[^>]*>(.*?)</h1>`)
+	if m := h1Regex.FindStringSubmatch(bodyStr); len(m) > 1 {
+		title = stripHTML(m[1])
+	}
+	if title == "" {
+		titleRegex := regexp.MustCompile(`(?i)<title>(.*?)</title>`)
+		if m := titleRegex.FindStringSubmatch(bodyStr); len(m) > 1 {
+			title = stripHTML(m[1])
+			if idx := strings.Index(title, "|"); idx != -1 {
+				title = strings.TrimSpace(title[:idx])
+			}
+		}
+	}
+
+	if title == "" {
+		return nil, fmt.Errorf("failed to parse title from flibusta")
+	}
+
+	author := ""
+	authorRegex := regexp.MustCompile(`(?i)<a\s+href=["']/a/\d+["'][^>]*>(.*?)</a>`)
+	if m := authorRegex.FindStringSubmatch(bodyStr); len(m) > 1 {
+		author = stripHTML(m[1])
+	}
+
+	desc := ""
+	descRegex := regexp.MustCompile(`(?s)<h2>Аннотация</h2>\s*<p>(.*?)</p>`)
+	if m := descRegex.FindStringSubmatch(bodyStr); len(m) > 1 {
+		desc = stripHTML(m[1])
+	} else {
+		desc = extractOGTag(bodyStr, "description")
+	}
+
+	coverURL := ""
+	imgRegex := regexp.MustCompile(`(?i)<img[^>]+src=["'](/b/\d+/cover[^"']*)["']`)
+	if m := imgRegex.FindStringSubmatch(bodyStr); len(m) > 1 {
+		parsedURL, _ := url.Parse(rawURL)
+		coverURL = parsedURL.Scheme + "://" + parsedURL.Host + m[1]
+	} else {
+		coverURL = extractOGTag(bodyStr, "image")
+	}
+
+	year := ""
+	if m := yearRegex.FindStringSubmatch(bodyStr); len(m) > 1 {
+		year = m[1]
+	}
+
+	return &ExtractedMedia{
+		Title:       title,
+		Category:    "book",
+		Author:      author,
+		ReleaseYear: year,
+		Description: desc,
+		PosterURL:   OptimizePosterURL(client, coverURL),
+		SourceURL:   rawURL,
+	}, nil
 }

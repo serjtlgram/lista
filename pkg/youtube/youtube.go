@@ -55,10 +55,31 @@ func SearchYouTube(apiKey, title, category string) (string, error) {
 		return "", nil
 	}
 
-	searchQueries := []string{
-		title + " официальный трейлер",
-		title + " трейлер",
-		title + " official trailer",
+	catLower := strings.ToLower(strings.TrimSpace(category))
+	isBook := strings.Contains(catLower, "book") || (strings.Contains(catLower, "книг") && !strings.Contains(catLower, "аудио"))
+	isAudiobook := strings.Contains(catLower, "audiobook") || strings.Contains(catLower, "аудио")
+
+	var searchQueries []string
+	if isAudiobook {
+		searchQueries = []string{
+			title + " аудиокнига",
+			title + " книга",
+			title + " обзор книги",
+			title + " audiobook",
+		}
+	} else if isBook {
+		searchQueries = []string{
+			title + " книга",
+			title + " обзор книги",
+			title + " book trailer",
+			title + " буктрейлер",
+		}
+	} else {
+		searchQueries = []string{
+			title + " официальный трейлер",
+			title + " трейлер",
+			title + " official trailer",
+		}
 	}
 
 	client := &http.Client{Timeout: 6 * time.Second}

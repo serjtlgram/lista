@@ -407,7 +407,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -447,7 +447,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			items = append(items, item)
@@ -488,7 +488,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	// Check if user already has an item with the same title to prevent duplicates
 	if h.DB != nil && h.DB.Pool != nil {
 		checkQuery := `
-			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
 			LIMIT 1;
@@ -497,7 +497,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
-			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
 		)
 		if err == nil {
 			// Item already exists for this user, return existing item without creating duplicate
@@ -518,7 +518,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ytURL := strings.TrimSpace(req.YoutubeURL)
-	if ytURL == "" && (cat == "movie" || cat == "show") {
+	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book" || cat == "audiobook") {
 		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat); err == nil && foundURL != "" {
 			ytURL = foundURL
 		}
@@ -530,8 +530,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, author, isbn, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -552,12 +552,14 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.YoutubeURL = ytURL
 	createdItem.Director = req.Director
 	createdItem.Cast = req.Cast
+	createdItem.Author = req.Author
+	createdItem.ISBN = req.ISBN
 	createdItem.CompletedAt = completedAt
 
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, req.Director, req.Cast, completedAt,
+		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, req.Director, req.Cast, req.Author, req.ISBN, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -666,6 +668,16 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.Cast != nil {
 		query += fmt.Sprintf(", cast_members = $%d", argIdx)
 		args = append(args, *req.Cast)
+		argIdx++
+	}
+	if req.Author != nil {
+		query += fmt.Sprintf(", author = $%d", argIdx)
+		args = append(args, *req.Author)
+		argIdx++
+	}
+	if req.ISBN != nil {
+		query += fmt.Sprintf(", isbn = $%d", argIdx)
+		args = append(args, *req.ISBN)
 		argIdx++
 	}
 
@@ -820,7 +832,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+		SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
 		FROM items
 		WHERE LOWER(title) LIKE $1
 	`
@@ -841,7 +853,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		if err == nil && rows != nil {
 			for rows.Next() {
 				var res models.CatalogSearchResult
-				if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast); err == nil {
+				if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN); err == nil {
 					res.Source = "db"
 					tKey := strings.ToLower(strings.TrimSpace(res.Title))
 					if !seenTitles[tKey] {
@@ -854,15 +866,29 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Perform online multi-source search (TMDb, iTunes, TVMaze, Wikipedia)
-	onlineItems := h.searchInlineResults(q, "ru")
-	for _, item := range onlineItems {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			item.Source = "online"
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
+	// 2. Perform online multi-source search (Google Books/FantLab/OpenLibrary for books, TMDb/iTunes/etc for movies/shows)
+	catEn := mapCategoryToEn(category)
+	if catEn == "book" || catEn == "audiobook" || category == "Книги" || category == "Аудиокниги" {
+		bookItems := parser.SearchBooksMultiSource(q)
+		for _, item := range bookItems {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				item.Source = "online"
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
+		}
+	} else {
+		onlineItems := h.searchInlineResults(q, "ru")
+		for _, item := range onlineItems {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				item.Source = "online"
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
 		}
 	}
 
@@ -879,7 +905,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
 		FROM items WHERE id = $1 LIMIT 1;
 	`
 
@@ -887,7 +913,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -1442,19 +1468,21 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					genre = CASE WHEN genre = '' OR genre IS NULL THEN $3 ELSE genre END,
 					director = CASE WHEN director = '' OR director IS NULL THEN $4 ELSE director END,
 					cast_members = CASE WHEN cast_members = '' OR cast_members IS NULL THEN $5 ELSE cast_members END,
-					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $6 ELSE youtube_url END,
+					author = CASE WHEN author = '' OR author IS NULL THEN $6 ELSE author END,
+					isbn = CASE WHEN isbn = '' OR isbn IS NULL THEN $7 ELSE isbn END,
+					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
 					updated_at = CURRENT_TIMESTAMP
-				WHERE id = $7 AND user_id = $8;
-			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.YoutubeURL, finalItemID, userID)
+				WHERE id = $9 AND user_id = $10;
+			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, finalItemID, userID)
 		} else {
 			insertQuery := `
-				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members)
-				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12)
+				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn)
+				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 				RETURNING id;
 			`
 			_ = h.DB.Pool.QueryRow(ctx, insertQuery,
 				itemUUID, userID, titleTrimmed, catEn, media.Genre, media.Duration, media.ReleaseYear,
-				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast,
+				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN,
 			).Scan(&finalItemID)
 		}
 	}
@@ -1777,7 +1805,7 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		var err error
 		if query != "" {
 			dbQuery := `
-				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
 				FROM items
 				WHERE LOWER(title) LIKE $1
 				LIMIT 8
@@ -1785,7 +1813,7 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 			rows, err = h.DB.Pool.Query(ctx, dbQuery, "%"+strings.ToLower(query)+"%")
 		} else {
 			dbQuery := `
-				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
 				FROM items
 				ORDER BY LOWER(title), created_at DESC
 				LIMIT 8
@@ -1796,7 +1824,7 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		if err == nil && rows != nil {
 			for rows.Next() {
 				var item models.CatalogSearchResult
-				if err := rows.Scan(&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.YoutubeURL, &item.Director, &item.Cast); err == nil {
+				if err := rows.Scan(&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN); err == nil {
 					tKey := strings.ToLower(strings.TrimSpace(item.Title))
 					if !seenTitles[tKey] {
 						seenTitles[tKey] = true
@@ -2286,11 +2314,11 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, created_at, updated_at)
-		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, created_at, updated_at)
+		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast)
+	_, err := h.DB.Pool.Exec(ctx, query, item.ID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN)
 	if err != nil {
 		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", item.ID, item.Title, err)
 	}
