@@ -108,8 +108,34 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [catalogSuggestions, setCatalogSuggestions] = useState<CatalogItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const titleContainerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (titleContainerRef.current && !titleContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [quickSearchQuery, setQuickSearchQuery] = useState('');
   const [quickSearchResults, setQuickSearchResults] = useState<CatalogItem[]>([]);
+
+  const handleCategorySelect = async (newCat: string) => {
+    setCategory(newCat);
+    if (!editingItem && title.trim().length >= 2) {
+      try {
+        const results = await api.searchCatalog(title, newCat);
+        setCatalogSuggestions(results || []);
+        setShowSuggestions(results && results.length > 0);
+      } catch (e) {
+        setCatalogSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (editingItem) {
@@ -327,7 +353,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   <button
                     key={c.value}
                     type="button"
-                    onClick={() => setCategory(c.value)}
+                    onClick={() => handleCategorySelect(c.value)}
                     className={`p-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition ${
                       selected
                         ? 'border-accentViolet bg-accentViolet/15 text-accentViolet shadow-sm font-bold'
@@ -342,7 +368,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           </div>
 
           {/* 2. Main Title Input + Autocomplete Suggestions */}
-          <div className="relative">
+          <div className="relative" ref={titleContainerRef}>
             <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.title_label}
             </label>
@@ -351,6 +377,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               required
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
+              onFocus={() => {
+                if (catalogSuggestions.length > 0) setShowSuggestions(true);
+              }}
               placeholder={t.modal.title_placeholder}
               className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
             />
@@ -358,9 +387,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             {/* Catalog Autocomplete Suggestions Popup (Add mode only) */}
             {!editingItem && showSuggestions && catalogSuggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-cardDark border border-cardBorder rounded-2xl p-2 shadow-2xl z-50 animate-slide-up max-h-52 overflow-y-auto suggestion-popup-container">
-                <div className="text-[10px] text-accentTeal font-semibold px-2 py-1 border-b border-cardBorder/60 mb-1 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-accentTeal" />
-                  {t.modal.catalog_autofill_hint}
+                <div className="text-[10px] text-accentTeal font-semibold px-2 py-1 border-b border-cardBorder/60 mb-1 flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-accentTeal" />
+                    <span>{t.modal.catalog_autofill_hint}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(false)}
+                    className="p-0.5 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition"
+                    title="Скрыть подсказки"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 {catalogSuggestions.map((sug, idx) => (
                   <div
