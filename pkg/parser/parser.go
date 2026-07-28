@@ -230,12 +230,6 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 			}
 		}
 	}
-			}
-			if media.ReleaseYear == "" && best.ReleaseYear != "" {
-				media.ReleaseYear = best.ReleaseYear
-			}
-		}
-	}
 
 	if media.Title == "" {
 		return nil, fmt.Errorf("could not extract media metadata from URL")
