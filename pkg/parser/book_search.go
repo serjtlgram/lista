@@ -13,23 +13,26 @@ import (
 	"lista-backend/pkg/models"
 )
 
-// SearchGoogleBooks queries Google Books API and formats CatalogSearchResult items
+// httpGet is a helper for simple GET requests with User-Agent
+func bookHTTPGet(rawURL string, timeoutSec int) (*http.Response, error) {
+	client := &http.Client{Timeout: time.Duration(timeoutSec) * time.Second}
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "TrackListBot/1.0")
+	return client.Do(req)
+}
+
+// SearchGoogleBooks queries Google Books API with langRestrict=ru
 func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, nil
 	}
 
-	client := &http.Client{Timeout: 6 * time.Second}
 	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=%s&langRestrict=ru&maxResults=5", url.QueryEscape(query))
-
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "TrackListBot/1.0")
-
-	resp, err := client.Do(req)
+	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +42,33 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 		return nil, fmt.Errorf("google books API status %d", resp.StatusCode)
 	}
 
+	return parseGoogleBooksResponse(resp.Body, "gbooks_ru_")
+}
+
+// SearchGoogleBooksAny queries Google Books API without language restriction (catches all languages)
+func SearchGoogleBooksAny(query string) ([]models.CatalogSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	// Use intitle: prefix for better precision, no langRestrict
+	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=%s&maxResults=5", url.QueryEscape(query))
+	resp, err := bookHTTPGet(apiURL, 6)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google books intitle API status %d", resp.StatusCode)
+	}
+
+	return parseGoogleBooksResponse(resp.Body, "gbooks_any_")
+}
+
+// parseGoogleBooksResponse parses a Google Books API JSON response body
+func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.CatalogSearchResult, error) {
 	var data struct {
 		Items []struct {
 			ID         string `json:"id"`
@@ -50,6 +80,9 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 				ImageLinks    struct {
 					Thumbnail      string `json:"thumbnail"`
 					SmallThumbnail string `json:"smallThumbnail"`
+					ExtraLarge     string `json:"extraLarge"`
+					Large          string `json:"large"`
+					Medium         string `json:"medium"`
 				} `json:"imageLinks"`
 				IndustryIdentifiers []struct {
 					Type       string `json:"type"`
@@ -59,7 +92,7 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 		} `json:"items"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(body).Decode(&data); err != nil {
 		return nil, err
 	}
 
@@ -84,28 +117,36 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 			}
 		}
 
-		rawCover := info.ImageLinks.Thumbnail
-		if rawCover == "" {
-			rawCover = info.ImageLinks.SmallThumbnail
+		// Best quality cover: ExtraLarge > Large > Medium > Thumbnail > SmallThumbnail
+		cover := info.ImageLinks.ExtraLarge
+		if cover == "" {
+			cover = info.ImageLinks.Large
 		}
-		if rawCover != "" {
-			// High-res Google Books cover hack: replace zoom=1 with zoom=0 and strip &edge=curl
-			rawCover = strings.ReplaceAll(rawCover, "http://", "https://")
-			rawCover = strings.ReplaceAll(rawCover, "zoom=1", "zoom=0")
-			rawCover = strings.ReplaceAll(rawCover, "&edge=curl", "")
+		if cover == "" {
+			cover = info.ImageLinks.Medium
 		}
-
-		optimizedPoster := OptimizePosterURL(client, rawCover)
+		if cover == "" {
+			cover = info.ImageLinks.Thumbnail
+		}
+		if cover == "" {
+			cover = info.ImageLinks.SmallThumbnail
+		}
+		if cover != "" {
+			// High-res hack: upgrade zoom and strip edge=curl
+			cover = strings.ReplaceAll(cover, "http://", "https://")
+			cover = strings.ReplaceAll(cover, "zoom=1", "zoom=5")
+			cover = strings.ReplaceAll(cover, "&edge=curl", "")
+		}
 
 		results = append(results, models.CatalogSearchResult{
-			ID:          item.ID,
+			ID:          idPrefix + item.ID,
 			Title:       info.Title,
 			Category:    "book",
 			Author:      author,
 			ReleaseYear: year,
 			ISBN:        isbn,
 			Description: info.Description,
-			PosterURL:   optimizedPoster,
+			PosterURL:   cover, // Return raw URL directly — no OptimizePosterURL to avoid extra HTTP calls
 			Source:      "online",
 		})
 	}
@@ -113,7 +154,7 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 	return results, nil
 }
 
-// SearchFantLab queries FantLab API (for Sci-Fi / Fantasy)
+// SearchFantLab queries FantLab API (Russian sci-fi / fantasy database)
 func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -145,6 +186,7 @@ func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 		WorkNameOrig string      `json:"work_name_orig"`
 		AutorName    string      `json:"autor_name"`
 		WorkYear     interface{} `json:"work_year"`
+		Image        string      `json:"image"`
 	}
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
@@ -178,25 +220,31 @@ func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 			yearStr = fmt.Sprintf("%v", item.WorkYear)
 		}
 
-		// Fetch extended work details for description and cover image
+		// Use cover from search result (available immediately), avoid second HTTP request
+		coverURL := ""
+		if item.Image != "" {
+			if strings.HasPrefix(item.Image, "http") {
+				coverURL = item.Image
+			} else {
+				coverURL = "https://fantlab.ru" + item.Image
+			}
+		}
+
+		// Optionally fetch extended details for description (with a short timeout)
+		desc := ""
 		extURL := fmt.Sprintf("https://api.fantlab.ru/work/%s/extended", workIDStr)
 		extReq, _ := http.NewRequest("GET", extURL, nil)
 		extReq.Header.Set("User-Agent", "TrackListBot/1.0")
-		extResp, extErr := client.Do(extReq)
-
-		desc := ""
-		coverURL := ""
+		extClient := &http.Client{Timeout: 3 * time.Second}
+		extResp, extErr := extClient.Do(extReq)
 		if extErr == nil && extResp.StatusCode == http.StatusOK {
 			var extData struct {
 				WorkDescription string `json:"work_description"`
 				Image           string `json:"image"`
-				Rating          struct {
-					Rating interface{} `json:"rating"`
-				} `json:"rating"`
 			}
 			if json.NewDecoder(extResp.Body).Decode(&extData) == nil {
 				desc = extData.WorkDescription
-				if extData.Image != "" {
+				if coverURL == "" && extData.Image != "" {
 					if strings.HasPrefix(extData.Image, "http") {
 						coverURL = extData.Image
 					} else {
@@ -207,8 +255,6 @@ func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 			extResp.Body.Close()
 		}
 
-		optimizedPoster := OptimizePosterURL(client, coverURL)
-
 		results = append(results, models.CatalogSearchResult{
 			ID:          "fantlab_" + workIDStr,
 			Title:       title,
@@ -216,7 +262,7 @@ func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 			Author:      item.AutorName,
 			ReleaseYear: yearStr,
 			Description: desc,
-			PosterURL:   optimizedPoster,
+			PosterURL:   coverURL,
 			Source:      "online",
 		})
 	}
@@ -231,16 +277,8 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 		return nil, nil
 	}
 
-	client := &http.Client{Timeout: 6 * time.Second}
-	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5", url.QueryEscape(query))
-
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "TrackListBot/1.0")
-
-	resp, err := client.Do(req)
+	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5&fields=title,author_name,first_publish_year,cover_i,isbn", url.QueryEscape(query))
+	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
 	}
@@ -281,14 +319,13 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			isbn = doc.ISBN[0]
 		}
 
+		// Use cover directly without OptimizePosterURL
 		coverURL := ""
 		if doc.CoverI > 0 {
 			coverURL = fmt.Sprintf("https://covers.openlibrary.org/b/id/%d-L.jpg", doc.CoverI)
 		} else if isbn != "" {
 			coverURL = fmt.Sprintf("https://covers.openlibrary.org/b/isbn/%s-L.jpg", isbn)
 		}
-
-		optimizedPoster := OptimizePosterURL(client, coverURL)
 
 		itemID := "ol_" + isbn
 		if isbn == "" {
@@ -302,7 +339,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			Author:      author,
 			ReleaseYear: year,
 			ISBN:        isbn,
-			PosterURL:   optimizedPoster,
+			PosterURL:   coverURL,
 			Source:      "online",
 		})
 	}
@@ -317,15 +354,8 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 		return nil, nil
 	}
 
-	client := &http.Client{Timeout: 4 * time.Second}
 	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=ebook&limit=5&lang=ru_ru", url.QueryEscape(query))
-
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Do(req)
+	resp, err := bookHTTPGet(apiURL, 4)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
 			resp.Body.Close()
@@ -358,8 +388,8 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 		if len(r.ReleaseDate) >= 4 {
 			year = r.ReleaseDate[:4]
 		}
+		// Upgrade artwork resolution
 		poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
-		optimizedPoster := OptimizePosterURL(client, poster)
 
 		results = append(results, models.CatalogSearchResult{
 			ID:          "itunes_ebook_" + url.QueryEscape(r.TrackName),
@@ -369,46 +399,51 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 			Genre:       r.PrimaryGenreName,
 			ReleaseYear: year,
 			Description: r.Description,
-			PosterURL:   optimizedPoster,
+			PosterURL:   poster,
 			Source:      "online",
 		})
 	}
 	return results, nil
 }
 
-// SearchBooksMultiSource queries Google Books, FantLab, Open Library, and iTunes eBooks concurrently
+// SearchBooksMultiSource queries ALL book sources CONCURRENTLY and returns combined results quickly
 func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
+	type resultSet struct {
+		items []models.CatalogSearchResult
+	}
+
+	ch := make(chan resultSet, 5)
+
+	// Run all 5 sources in parallel goroutines
+	go func() { items, _ := SearchGoogleBooks(query); ch <- resultSet{items} }()
+	go func() { items, _ := SearchGoogleBooksAny(query); ch <- resultSet{items} }()
+	go func() { items, _ := SearchFantLab(query); ch <- resultSet{items} }()
+	go func() { items, _ := SearchOpenLibrary(query); ch <- resultSet{items} }()
+	go func() { items, _ := SearchITunesEBooks(query); ch <- resultSet{items} }()
+
+	// Collect all results, wait max 8 seconds
+	timer := time.NewTimer(8 * time.Second)
+	defer timer.Stop()
+
 	var combined []models.CatalogSearchResult
 	seenTitles := make(map[string]bool)
+	received := 0
+	total := 5
 
-	addItems := func(items []models.CatalogSearchResult) {
-		for _, item := range items {
-			key := strings.ToLower(strings.TrimSpace(item.Title))
-			if key != "" && !seenTitles[key] {
-				seenTitles[key] = true
-				combined = append(combined, item)
+	for received < total {
+		select {
+		case res := <-ch:
+			for _, item := range res.items {
+				key := strings.ToLower(strings.TrimSpace(item.Title))
+				if key != "" && !seenTitles[key] {
+					seenTitles[key] = true
+					combined = append(combined, item)
+				}
 			}
+			received++
+		case <-timer.C:
+			return combined
 		}
-	}
-
-	// 1. Google Books
-	if gbResults, err := SearchGoogleBooks(query); err == nil && len(gbResults) > 0 {
-		addItems(gbResults)
-	}
-
-	// 2. FantLab
-	if flResults, err := SearchFantLab(query); err == nil && len(flResults) > 0 {
-		addItems(flResults)
-	}
-
-	// 3. Open Library
-	if olResults, err := SearchOpenLibrary(query); err == nil && len(olResults) > 0 {
-		addItems(olResults)
-	}
-
-	// 4. iTunes eBooks
-	if itResults, err := SearchITunesEBooks(query); err == nil && len(itResults) > 0 {
-		addItems(itResults)
 	}
 
 	return combined

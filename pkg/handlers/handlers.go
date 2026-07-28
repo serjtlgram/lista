@@ -788,17 +788,17 @@ func mapCategoryToRu(cat string) string {
 
 func mapCategoryToEn(cat string) string {
 	switch strings.ToLower(cat) {
-	case "фильмы", "movie", "movies":
+	case "фильмы", "фильм", "movie", "movies":
 		return "movie"
-	case "сериалы", "show", "shows", "series":
+	case "сериалы", "сериал", "show", "shows", "series":
 		return "show"
-	case "книги", "book", "books":
+	case "книги", "книга", "book", "books":
 		return "book"
-	case "аудиокниги", "audiobook", "audiobooks":
+	case "аудиокниги", "аудиокнига", "audiobook", "audiobooks":
 		return "audiobook"
-	case "подкасты", "podcast", "podcasts":
+	case "подкасты", "подкаст", "podcast", "podcasts":
 		return "podcast"
-	case "игры", "game", "games":
+	case "игры", "игра", "game", "games":
 		return "game"
 	default:
 		return cat
@@ -866,15 +866,41 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Perform online multi-source search
-	onlineItems := h.searchInlineResults(q, "ru")
-	for _, item := range onlineItems {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			item.Source = "online"
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
+	// 2. Online search — books first when category is book/audiobook
+	catEn := mapCategoryToEn(category)
+	if catEn == "book" || catEn == "audiobook" {
+		// Priority: run book-specific search FIRST, then add general search results
+		bookItems := parser.SearchBooksMultiSource(q)
+		for _, item := range bookItems {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				item.Source = "online"
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
+		}
+		// Also add general online results for completeness (audiobooks, etc.)
+		onlineItems := h.searchInlineResults(q, "ru")
+		for _, item := range onlineItems {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				item.Source = "online"
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
+		}
+	} else {
+		onlineItems := h.searchInlineResults(q, "ru")
+		for _, item := range onlineItems {
+			tKey := strings.ToLower(strings.TrimSpace(item.Title))
+			if !seenTitles[tKey] {
+				seenTitles[tKey] = true
+				item.Source = "online"
+				results = append(results, item)
+				go h.saveCatalogItemToDB(item)
+			}
 		}
 	}
 
