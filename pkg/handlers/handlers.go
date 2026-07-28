@@ -2099,7 +2099,7 @@ func (h *Handler) handleInlineQuery(iq *struct {
 
 		article := map[string]interface{}{
 			"type":        "article",
-			"id":          fmt.Sprintf("res_%d_%s", i, item.ID),
+			"id":          fmt.Sprintf("item_%d", i),
 			"title":       fmt.Sprintf("%s %s", catEmoji, item.Title),
 			"description": description,
 			"input_message_content": map[string]interface{}{
