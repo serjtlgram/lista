@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1377,7 +1378,7 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 	selectedGenreIdx := -1
 	if firstGenre != "" {
 		firstLc := strings.ToLower(firstGenre)
-		for i, g := range topGenres {
+		for i, g := range targetGenresList {
 			gLc := strings.ToLower(g.Val)
 			if firstLc == gLc || strings.Contains(firstLc, gLc) || strings.Contains(gLc, firstLc) {
 				selectedGenreIdx = i
@@ -1387,7 +1388,7 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 	}
 
 	var genreRow1, genreRow2, genreRow3 []map[string]interface{}
-	for i, g := range topGenres {
+	for i, g := range targetGenresList {
 		btnText := g.Label
 		if i == selectedGenreIdx {
 			btnText = "✓ " + g.Label

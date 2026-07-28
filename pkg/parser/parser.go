@@ -1222,3 +1222,30 @@ func ParseFlibustaURL(client *http.Client, rawURL string) (*ExtractedMedia, erro
 		SourceURL:   rawURL,
 	}, nil
 }
+
+// stripHTML removes HTML tags from a string
+func stripHTML(s string) string {
+	re := regexp.MustCompile(`<[^>]+>`)
+	s = re.ReplaceAllString(s, "")
+	s = strings.ReplaceAll(s, "&amp;", "&")
+	s = strings.ReplaceAll(s, "&lt;", "<")
+	s = strings.ReplaceAll(s, "&gt;", ">")
+	s = strings.ReplaceAll(s, "&quot;", "\"")
+	s = strings.ReplaceAll(s, "&#39;", "'")
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	return strings.TrimSpace(s)
+}
+
+// extractOGTag extracts the content of an Open Graph meta tag from HTML
+func extractOGTag(html, property string) string {
+	re := regexp.MustCompile(`(?i)<meta[^>]+property=["']og:` + regexp.QuoteMeta(property) + `["'][^>]+content=["']([^"']+)["']`)
+	if m := re.FindStringSubmatch(html); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	// Try alternate attribute order
+	re2 := regexp.MustCompile(`(?i)<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:` + regexp.QuoteMeta(property) + `["']`)
+	if m := re2.FindStringSubmatch(html); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	return ""
+}
