@@ -866,23 +866,12 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Online search — books first when category is book/audiobook
+	// 2. Online search — books only when category is book/audiobook; general search otherwise
 	catEn := mapCategoryToEn(category)
 	if catEn == "book" || catEn == "audiobook" {
-		// Priority: run book-specific search FIRST, then add general search results
+		// Only run book-specific search — do NOT mix in movies/shows from Kinopoisk/TMDb
 		bookItems := parser.SearchBooksMultiSource(q)
 		for _, item := range bookItems {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				item.Source = "online"
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
-			}
-		}
-		// Also add general online results for completeness (audiobooks, etc.)
-		onlineItems := h.searchInlineResults(q, "ru")
-		for _, item := range onlineItems {
 			tKey := strings.ToLower(strings.TrimSpace(item.Title))
 			if !seenTitles[tKey] {
 				seenTitles[tKey] = true
@@ -1436,7 +1425,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 
 	return map[string]interface{}{
 		"inline_keyboard": [][]map[string]interface{}{
-			catRow,
+			catRow1,
+			catRow2,
 			statusRow,
 			genreRow1,
 			genreRow2,
