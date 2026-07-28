@@ -851,6 +851,75 @@ func getCategoryPriority(cat string, selectedCat string) int {
 	}
 }
 
+func parseSearchQuery(input string) (string, string) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", ""
+	}
+
+	bookKeywords := map[string]bool{
+		"книга": true, "книги": true, "книгу": true, "книге": true, "книгам": true, "книгах": true,
+		"книжный": true, "книжная": true, "книжное": true, "book": true, "books": true,
+	}
+	gameKeywords := map[string]bool{
+		"игра": true, "игры": true, "игру": true, "игре": true, "играм": true, "играх": true,
+		"игровой": true, "игровая": true, "игровое": true, "game": true, "games": true,
+	}
+	movieKeywords := map[string]bool{
+		"фильм": true, "фильмы": true, "фильма": true, "фильму": true, "фильмов": true, "фильме": true,
+		"кино": true, "movie": true, "movies": true, "film": true,
+	}
+	showKeywords := map[string]bool{
+		"сериал": true, "сериалы": true, "сериала": true, "сериалу": true, "сериалов": true, "сериале": true,
+		"show": true, "shows": true, "series": true, "tv": true,
+	}
+
+	words := strings.Fields(input)
+	var cleanWords []string
+	detectedCat := ""
+
+	for _, word := range words {
+		cleanW := strings.ToLower(strings.Trim(word, `.,!?:;"'()[]{}«»`))
+		if cleanW == "" {
+			continue
+		}
+
+		if detectedCat == "" {
+			if bookKeywords[cleanW] {
+				detectedCat = "book"
+				continue
+			}
+			if gameKeywords[cleanW] {
+				detectedCat = "game"
+				continue
+			}
+			if movieKeywords[cleanW] {
+				detectedCat = "movie"
+				continue
+			}
+			if showKeywords[cleanW] {
+				detectedCat = "show"
+				continue
+			}
+		} else {
+			if bookKeywords[cleanW] || gameKeywords[cleanW] || movieKeywords[cleanW] || showKeywords[cleanW] {
+				continue
+			}
+		}
+
+		cleanWords = append(cleanWords, word)
+	}
+
+	cleanQuery := strings.Join(cleanWords, " ")
+	cleanQuery = strings.TrimSpace(cleanQuery)
+
+	if cleanQuery == "" {
+		cleanQuery = input
+	}
+
+	return detectedCat, cleanQuery
+}
+
 // GET /api/catalog/search?q=Title&category=Category
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -862,6 +931,14 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 	catEn := mapCategoryToEn(category)
+
+	// If no category specified or "all", check if search query contains category trigger words
+	if catEn == "" || catEn == "all" {
+		if parsedCat, cleanedQ := parseSearchQuery(q); parsedCat != "" {
+			catEn = parsedCat
+			q = cleanedQ
+		}
+	}
 
 	// 1. DB catalog search filtered by category
 	dbResults := h.searchDBCatalog(r.Context(), q, catEn)
@@ -884,18 +961,27 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 	query := `
 		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
 		FROM items
-		WHERE LOWER(title) LIKE $1
+		WHERE 1=1
 	`
-	args := []interface{}{"%" + strings.ToLower(q) + "%"}
+	var args []interface{}
+	argIdx := 1
+
+	if strings.TrimSpace(q) != "" {
+		query += fmt.Sprintf(" AND LOWER(title) LIKE $%d", argIdx)
+		args = append(args, "%"+strings.ToLower(strings.TrimSpace(q))+"%")
+		argIdx++
+	}
 
 	if catEn == "movie" {
-		query += " AND (LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы') OR LOWER(category) IN ('show', 'shows', 'series', 'сериал', 'сериалы'))"
+		query += " AND LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы')"
 	} else if catEn == "show" {
-		query += " AND (LOWER(category) IN ('show', 'shows', 'series', 'сериал', 'сериалы') OR LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы'))"
+		query += " AND LOWER(category) IN ('show', 'shows', 'series', 'сериал', 'сериалы')"
 	} else if catEn == "book" {
 		query += " AND LOWER(category) IN ('book', 'books', 'книга', 'книги')"
 	} else if catEn == "game" {
 		query += " AND LOWER(category) IN ('game', 'games', 'игра', 'игры')"
+	} else if catEn == "movies_and_shows" || catEn == "" {
+		query += " AND LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы', 'show', 'shows', 'series', 'сериал', 'сериалы')"
 	}
 
 	query += " ORDER BY LOWER(title), category, created_at DESC LIMIT 30;"
@@ -919,6 +1005,14 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 func (h *Handler) searchOnlineCatalog(q string, catEn string) []models.CatalogSearchResult {
 	var items []models.CatalogSearchResult
 
+	parsedCat, cleanedQ := parseSearchQuery(q)
+	if catEn == "" || catEn == "all" {
+		if parsedCat != "" {
+			catEn = parsedCat
+			q = cleanedQ
+		}
+	}
+
 	switch catEn {
 	case "book":
 		items = parser.SearchBooksMultiSource(q)
@@ -927,41 +1021,44 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string) []models.CatalogSe
 		items = parser.SearchGamesMultiSource(q)
 
 	case "movie":
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
-		itunes := fetchITunesInline(q)
-		for _, item := range append(append(kinopoisk, tmdb...), itunes...) {
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "movie")
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "movie")
+		itunes := fetchITunesInline(q, "movie")
+		wiki := fetchWikiInline(q, "movie")
+		for _, item := range append(append(append(kinopoisk, tmdb...), itunes...), wiki...) {
 			cat := mapCategoryToEn(item.Category)
-			if cat == "movie" || cat == "show" {
+			if cat == "movie" {
 				item.Source = "online"
 				items = append(items, item)
 			}
 		}
 
 	case "show":
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "show")
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "show")
 		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
-		for _, item := range append(append(kinopoisk, tmdb...), tvmaze...) {
+		wiki := fetchWikiInline(q, "show")
+		for _, item := range append(append(append(kinopoisk, tmdb...), tvmaze...), wiki...) {
 			cat := mapCategoryToEn(item.Category)
-			if cat == "show" || cat == "movie" {
+			if cat == "show" {
 				item.Source = "online"
 				items = append(items, item)
 			}
 		}
 
-	default: // "all" or empty
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey)
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey)
-		itunes := fetchITunesInline(q)
+	default: // "all" or empty -> Movies and TV series
+		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all")
+		itunes := fetchITunesInline(q, "movie")
 		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
-		books := parser.SearchBooksMultiSource(q)
-		games := parser.SearchGamesMultiSource(q)
 
-		rawList := append(append(append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...), books...), games...)
+		rawList := append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...)
 		for _, item := range rawList {
-			item.Source = "online"
-			items = append(items, item)
+			cat := mapCategoryToEn(item.Category)
+			if cat == "movie" || cat == "show" {
+				item.Source = "online"
+				items = append(items, item)
+			}
 		}
 	}
 
@@ -2064,127 +2161,116 @@ func (h *Handler) handleChosenInlineResult(cir *struct {
 }
 
 func (h *Handler) searchInlineResults(query string, langCode string) []models.CatalogSearchResult {
-	var results []models.CatalogSearchResult
-	seenTitles := make(map[string]bool)
+	query = strings.TrimSpace(query)
+	categoryFilter, cleanQuery := parseSearchQuery(query)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	type resStruct struct {
+		items []models.CatalogSearchResult
+	}
+
+	ch := make(chan resStruct, 10)
+	var numSources int
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	// 1. Search internal DB catalog
-	if h.DB != nil && h.DB.Pool != nil {
-		var rows pgx.Rows
-		var err error
-		if query != "" {
-			dbQuery := `
-				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
-				FROM items
-				WHERE LOWER(title) LIKE $1
-				LIMIT 8
-			`
-			rows, err = h.DB.Pool.Query(ctx, dbQuery, "%"+strings.ToLower(query)+"%")
-		} else {
-			dbQuery := `
-				SELECT DISTINCT ON (LOWER(title)) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
-				FROM items
-				ORDER BY LOWER(title), created_at DESC
-				LIMIT 8
-			`
-			rows, err = h.DB.Pool.Query(ctx, dbQuery)
-		}
+	switch categoryFilter {
+	case "book":
+		numSources = 2
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "book")} }()
+		go func() { ch <- resStruct{items: parser.SearchBooksMultiSource(cleanQuery)} }()
 
-		if err == nil && rows != nil {
-			for rows.Next() {
-				var item models.CatalogSearchResult
-				if err := rows.Scan(&item.ID, &item.Title, &item.Category, &item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN); err == nil {
-					tKey := strings.ToLower(strings.TrimSpace(item.Title))
-					if !seenTitles[tKey] {
-						seenTitles[tKey] = true
-						results = append(results, item)
-					}
+	case "game":
+		numSources = 2
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "game")} }()
+		go func() { ch <- resStruct{items: parser.SearchGamesMultiSource(cleanQuery)} }()
+
+	case "movie":
+		numSources = 5
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movie")} }()
+		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "movie")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "movie")} }()
+		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
+		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "movie")} }()
+
+	case "show":
+		numSources = 5
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "show")} }()
+		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "show")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "show")} }()
+		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
+		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "show")} }()
+
+	default: // Default mode: Movies & Series only
+		numSources = 5
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movies_and_shows")} }()
+		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "all")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "all")} }()
+		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
+		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
+	}
+
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+
+	var combined []models.CatalogSearchResult
+	seenTitles := make(map[string]bool)
+	received := 0
+
+	for received < numSources {
+		select {
+		case res := <-ch:
+			received++
+			for _, item := range res.items {
+				catEn := mapCategoryToEn(item.Category)
+				item.Category = catEn
+
+				// Filter strictly by target category requirement
+				if categoryFilter != "" && catEn != categoryFilter {
+					continue
+				}
+				if categoryFilter == "" && (catEn != "movie" && catEn != "show") {
+					continue
+				}
+
+				// Ensure deterministic UUID
+				rawSourceID := item.ID
+				if rawSourceID == "" {
+					rawSourceID = item.Title + "_" + catEn
+				}
+				if _, err := uuid.Parse(item.ID); err != nil {
+					item.ID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawSourceID)).String()
+				}
+
+				tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + catEn
+				if !seenTitles[tKey] {
+					seenTitles[tKey] = true
+					combined = append(combined, item)
+					go h.saveCatalogItemToDB(item)
 				}
 			}
-			rows.Close()
+		case <-timer.C:
+			received = numSources
 		}
 	}
 
-	if query == "" {
-		return results
+	if len(combined) > 15 {
+		combined = combined[:15]
 	}
 
-	// 1b. Search Books Multi-Source (Google Books, FantLab, Open Library, iTunes eBooks)
-	for _, item := range parser.SearchBooksMultiSource(query) {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
-		}
-	}
-
-	// 2. Kinopoisk Unofficial API (Kinopoisk HD / Russian Movies & Series)
-	if h.KinopoiskAPIKey != "" {
-		for _, item := range fetchKinopoiskInline(query, h.KinopoiskAPIKey) {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
-			}
-		}
-	}
-
-	// 3. TMDb API (The Movie Database)
-	if h.TMDBAPIKey != "" {
-		for _, item := range fetchTMDbInline(query, h.TMDBAPIKey) {
-			tKey := strings.ToLower(strings.TrimSpace(item.Title))
-			if !seenTitles[tKey] {
-				seenTitles[tKey] = true
-				results = append(results, item)
-				go h.saveCatalogItemToDB(item)
-			}
-		}
-	}
-
-	// 3. iTunes API
-	for _, item := range fetchITunesInline(query) {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
-		}
-	}
-
-	// 4. TVMaze API (TV Shows in English / International)
-	for _, item := range fetchTVMazeInline(query, h.TMDBAPIKey) {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
-		}
-	}
-
-	// 5. Wikipedia API
-	for _, item := range fetchWikiInline(query) {
-		tKey := strings.ToLower(strings.TrimSpace(item.Title))
-		if !seenTitles[tKey] {
-			seenTitles[tKey] = true
-			results = append(results, item)
-			go h.saveCatalogItemToDB(item)
-		}
-	}
-
-	if len(results) > 15 {
-		results = results[:15]
-	}
-
-	return results
+	return combined
 }
 
-func fetchITunesInline(query string) []models.CatalogSearchResult {
+func fetchITunesInline(query string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
-	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,ebook&limit=6&lang=ru_ru", url.QueryEscape(query))
+	entity := "movie"
+	if targetCat == "book" {
+		entity = "ebook"
+	} else if targetCat == "all" {
+		entity = "movie,ebook"
+	}
+
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=%s&limit=6&lang=ru_ru", url.QueryEscape(query), entity)
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -2228,15 +2314,21 @@ func fetchITunesInline(query string) []models.CatalogSearchResult {
 				cat = "book"
 			}
 
+			if targetCat != "" && targetCat != "all" && cat != targetCat {
+				continue
+			}
+
 			year := ""
 			if len(r.ReleaseDate) >= 4 {
 				year = r.ReleaseDate[:4]
 			}
 
 			poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
+			rawID := fmt.Sprintf("itunes_%s_%s", cat, title)
+			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
 			list = append(list, models.CatalogSearchResult{
-				ID:          uuid.New().String(),
+				ID:          itemID,
 				Title:       title,
 				Category:    cat,
 				Genre:       r.PrimaryGenreName,
@@ -2284,7 +2376,7 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 	if err != nil {
 		return list
 	}
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -2296,17 +2388,13 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 
 	var data []struct {
 		Show struct {
-			ID             int      `json:"id"`
-			Name           string   `json:"name"`
-			Premiered      string   `json:"premiered"`
-			Runtime        int      `json:"runtime"`
-			AverageRuntime int      `json:"averageRuntime"`
-			Genres         []string `json:"genres"`
-			Summary        string   `json:"summary"`
-			Externals      struct {
-				IMDb string `json:"imdb"`
-			} `json:"externals"`
-			Image *struct {
+			ID        int      `json:"id"`
+			Name      string   `json:"name"`
+			Premiered string   `json:"premiered"`
+			Runtime   int      `json:"runtime"`
+			Genres    []string `json:"genres"`
+			Summary   string   `json:"summary"`
+			Image     *struct {
 				Medium   string `json:"medium"`
 				Original string `json:"original"`
 			} `json:"image"`
@@ -2323,58 +2411,31 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 				continue
 			}
 
-			// If show has IMDb ID and tmdbKey is provided, attempt localized TMDb lookup
-			if show.Externals.IMDb != "" && tmdbKey != "" {
-				if tmdbMedia, err := parser.FetchTMDbByExternalID(client, tmdbKey, show.Externals.IMDb); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
-					list = append(list, models.CatalogSearchResult{
-						ID:          uuid.New().String(),
-						Title:       tmdbMedia.Title,
-						Category:    "show",
-						Genre:       tmdbMedia.Genre,
-						Duration:    tmdbMedia.Duration,
-						ReleaseYear: tmdbMedia.ReleaseYear,
-						PosterURL:   tmdbMedia.PosterURL,
-						Description: tmdbMedia.Description,
-						YoutubeURL:  tmdbMedia.YoutubeURL,
-						Director:    tmdbMedia.Director,
-						Cast:        tmdbMedia.Cast,
-					})
-					continue
-				}
-			}
-
-			// Fallback to English TVMaze details
 			year := ""
 			if len(show.Premiered) >= 4 {
 				year = show.Premiered[:4]
 			}
 			poster := ""
 			if show.Image != nil {
-				poster = show.Image.Medium
-				if show.Image.Original != "" {
-					poster = show.Image.Original
+				poster = show.Image.Original
+				if poster == "" {
+					poster = show.Image.Medium
 				}
 			}
-			genre := ""
+			genre := "Сериал"
 			if len(show.Genres) > 0 {
 				genre = mapEnglishGenreToRu(show.Genres[0])
 			}
-
-			duration := ""
-			if show.AverageRuntime > 0 {
-				duration = fmt.Sprintf("%d мин", show.AverageRuntime)
-			} else if show.Runtime > 0 {
-				duration = fmt.Sprintf("%d мин", show.Runtime)
-			}
-
 			cleanDesc := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(show.Summary, "")
 
+			rawID := fmt.Sprintf("tvmaze_%d", show.ID)
+			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
+
 			list = append(list, models.CatalogSearchResult{
-				ID:          uuid.New().String(),
+				ID:          itemID,
 				Title:       show.Name,
 				Category:    "show",
 				Genre:       genre,
-				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
 				Description: cleanDesc,
@@ -2384,7 +2445,7 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 	return list
 }
 
-func fetchWikiInline(query string) []models.CatalogSearchResult {
+func fetchWikiInline(query string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	apiURL := fmt.Sprintf("https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", url.QueryEscape(query))
 
@@ -2428,8 +2489,15 @@ func fetchWikiInline(query string) []models.CatalogSearchResult {
 				cat = "show"
 			}
 
+			if targetCat != "" && cat != targetCat {
+				continue
+			}
+
+			rawID := fmt.Sprintf("wiki_%s_%s", cat, item.Title)
+			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
+
 			list = append(list, models.CatalogSearchResult{
-				ID:          uuid.New().String(),
+				ID:          itemID,
 				Title:       item.Title,
 				Category:    cat,
 				Description: cleanDesc,
@@ -2448,7 +2516,7 @@ var tmdbGenreMap = map[int]string{
 	10762: "Мультфильмы", 10763: "Шоу", 10764: "Шоу", 10765: "Фантастика",
 }
 
-func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult {
+func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	if strings.TrimSpace(tmdbKey) == "" {
 		return list
@@ -2464,7 +2532,7 @@ func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult 
 		return list
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -2507,6 +2575,13 @@ func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult 
 				cat = "show"
 			}
 
+			if targetCat == "movie" && cat != "movie" {
+				continue
+			}
+			if targetCat == "show" && cat != "show" {
+				continue
+			}
+
 			year := ""
 			if len(r.ReleaseDate) >= 4 {
 				year = r.ReleaseDate[:4]
@@ -2527,52 +2602,17 @@ func fetchTMDbInline(query string, tmdbKey string) []models.CatalogSearchResult 
 				}
 			}
 
-			overview := r.Overview
-			var duration, director, cast, youtubeURL string
-
-			// Enrich with full TMDb details (duration/runtime, director, cast, trailer)
-			if details, errDet := parser.FetchTMDbDetails(client, tmdbKey, strconv.Itoa(r.ID), r.MediaType); errDet == nil && details != nil {
-				if details.Title != "" {
-					title = details.Title
-				}
-				if details.Duration != "" {
-					duration = details.Duration
-				}
-				if details.Director != "" {
-					director = details.Director
-				}
-				if details.Cast != "" {
-					cast = details.Cast
-				}
-				if details.YoutubeURL != "" {
-					youtubeURL = details.YoutubeURL
-				}
-				if details.Genre != "" {
-					genre = details.Genre
-				}
-				if details.Description != "" {
-					overview = details.Description
-				}
-				if details.PosterURL != "" {
-					poster = details.PosterURL
-				}
-				if details.ReleaseYear != "" {
-					year = details.ReleaseYear
-				}
-			}
+			rawID := fmt.Sprintf("tmdb_%s_%d", r.MediaType, r.ID)
+			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
 			list = append(list, models.CatalogSearchResult{
-				ID:          uuid.New().String(),
+				ID:          itemID,
 				Title:       title,
 				Category:    cat,
 				Genre:       genre,
-				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
-				Description: overview,
-				YoutubeURL:  youtubeURL,
-				Director:    director,
-				Cast:        cast,
+				Description: r.Overview,
 			})
 		}
 	}
@@ -2608,7 +2648,7 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	}
 }
 
-func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResult {
+func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	if strings.TrimSpace(kpKey) == "" {
 		return list
@@ -2626,7 +2666,7 @@ func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResu
 	req.Header.Set("X-API-KEY", kpKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -2671,6 +2711,13 @@ func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResu
 				cat = "show"
 			}
 
+			if targetCat == "movie" && cat != "movie" {
+				continue
+			}
+			if targetCat == "show" && cat != "show" {
+				continue
+			}
+
 			genre := ""
 			if len(film.Genres) > 0 {
 				genre = strings.Title(film.Genres[0].Genre)
@@ -2678,11 +2725,11 @@ func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResu
 
 			duration := parseKinopoiskLength(film.FilmLength)
 			poster := film.PosterUrl
-
-			director, cast := parser.FetchKinopoiskStaff(client, kpKey, film.FilmID)
+			rawID := fmt.Sprintf("kp_%d", film.FilmID)
+			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
 			list = append(list, models.CatalogSearchResult{
-				ID:          uuid.New().String(),
+				ID:          itemID,
 				Title:       title,
 				Category:    cat,
 				Genre:       genre,
@@ -2690,8 +2737,6 @@ func fetchKinopoiskInline(query string, kpKey string) []models.CatalogSearchResu
 				ReleaseYear: film.Year,
 				PosterURL:   poster,
 				Description: film.Description,
-				Director:    director,
-				Cast:        cast,
 			})
 		}
 	}
