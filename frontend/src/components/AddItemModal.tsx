@@ -176,8 +176,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (['movie', 'movies', 'фильмы', 'фильм', 'фільм', 'фільми'].includes(cur) && ['movie', 'movies', 'фильмы', 'фильм', 'фільм', 'фільми'].includes(target)) return true;
     if (['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(cur) && ['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(target)) return true;
     if (['book', 'books', 'книги', 'книга'].includes(cur) && ['book', 'books', 'книги', 'книга'].includes(target)) return true;
-    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'аудиокнига', 'аудіокнига'].includes(cur) && ['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'аудиокнига', 'аудіокнига'].includes(target)) return true;
-    if (['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(cur) && ['podcast', 'podcasts', 'подкасты', 'подкасти', 'подкаст'].includes(target)) return true;
     if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(cur) && ['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(target)) return true;
     return false;
   };
@@ -285,14 +283,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
   };
 
-  const isBookOrAudiobook = ['book', 'books', 'audiobook', 'audiobooks', 'книги', 'книга', 'аудиокниги', 'аудиокнига'].includes((category || '').toLowerCase().trim());
+  const isBook = ['book', 'books', 'книги', 'книга'].includes((category || '').toLowerCase().trim());
 
   const categories = [
     { label: t.categories.movie_single, value: 'Фильмы' },
     { label: t.categories.show_single, value: 'Сериалы' },
     { label: t.categories.book_single, value: 'Книги' },
-    { label: t.categories.audiobook_single, value: 'Аудиокниги' },
-    { label: t.categories.podcast_single, value: 'Подкасты' },
     { label: t.categories.game_single, value: 'Игры' },
   ];
 
@@ -302,7 +298,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     { label: t.modal.status_planned, val: 'planned' },
   ];
 
-  const activeGenreKeys = isBookOrAudiobook ? BOOK_GENRE_KEYS : GENRE_KEYS;
+  const activeGenreKeys = isBook ? BOOK_GENRE_KEYS : GENRE_KEYS;
   const genreOptions = activeGenreKeys.map((k) => t.genres[k]).filter(Boolean);
 
   return (
@@ -571,7 +567,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 />
               </div>
 
-              {!isBookOrAudiobook ? (
+              {!isBook ? (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.director}</label>

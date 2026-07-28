@@ -9,16 +9,12 @@ export const en: Translations = {
   nav_profile: 'Profile',
   categories: {
     movies: 'Movies',
-    shows: 'TV Series',
+    shows: 'TV Shows',
     books: 'Books',
-    audiobooks: 'Audiobooks',
-    podcasts: 'Podcasts',
     games: 'Games',
     movie_single: 'Movie',
-    show_single: 'TV Series',
+    show_single: 'TV Show',
     book_single: 'Book',
-    audiobook_single: 'Audiobook',
-    podcast_single: 'Podcast',
     game_single: 'Game',
   },
   profile: {

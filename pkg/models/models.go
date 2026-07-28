@@ -23,7 +23,7 @@ type Item struct {
 	ID          string     `json:"id"`
 	UserID      int64      `json:"user_id"`
 	Title       string     `json:"title"`
-	Category    string     `json:"category"`    // 'movie', 'show', 'book', 'audiobook', 'podcast', 'game'
+	Category    string     `json:"category"`    // 'movie', 'show', 'book', 'game'
 	Status      string     `json:"status"`      // 'watching', 'completed', 'planned', 'paused'
 	Rating      int        `json:"rating"`      // 0 to 10
 	Genre       string     `json:"genre"`

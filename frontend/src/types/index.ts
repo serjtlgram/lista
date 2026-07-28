@@ -1,4 +1,4 @@
-export type CategoryType = 'movie' | 'show' | 'book' | 'audiobook' | 'podcast' | 'game' | 'Фильмы' | 'Сериалы' | 'Книги' | 'Аудиокниги' | 'Подкасты' | 'Игры';
+export type CategoryType = 'movie' | 'show' | 'book' | 'game' | 'Фильмы' | 'Сериалы' | 'Книги' | 'Игры';
 export type StatusType = 'watching' | 'completed' | 'planned' | 'paused' | 'Смотрю' | 'Просмотрено' | 'Отложено';
 
 export interface Item {

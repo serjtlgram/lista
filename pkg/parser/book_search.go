@@ -406,79 +406,15 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 	return results, nil
 }
 
-// SearchITunesAudiobooks queries iTunes API specifically for audiobooks
-func SearchITunesAudiobooks(query string) ([]models.CatalogSearchResult, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return nil, nil
-	}
-
-	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=audiobook&limit=8&lang=ru_ru", url.QueryEscape(query))
-	resp, err := bookHTTPGet(apiURL, 4)
-	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
-		if resp != nil {
-			resp.Body.Close()
-		}
-		return nil, nil
-	}
-	defer resp.Body.Close()
-
-	var data struct {
-		Results []struct {
-			TrackName        string `json:"trackName"`
-			CollectionName   string `json:"collectionName"`
-			ArtistName       string `json:"artistName"`
-			ArtworkUrl100    string `json:"artworkUrl100"`
-			PrimaryGenreName string `json:"primaryGenreName"`
-			ReleaseDate      string `json:"releaseDate"`
-			Description      string `json:"description"`
-		} `json:"results"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
-	}
-
-	var results []models.CatalogSearchResult
-	for _, r := range data.Results {
-		title := r.TrackName
-		if title == "" {
-			title = r.CollectionName
-		}
-		if strings.TrimSpace(title) == "" {
-			continue
-		}
-		year := ""
-		if len(r.ReleaseDate) >= 4 {
-			year = r.ReleaseDate[:4]
-		}
-		poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
-
-		results = append(results, models.CatalogSearchResult{
-			ID:          "itunes_audiobook_" + url.QueryEscape(title),
-			Title:       title,
-			Category:    "audiobook",
-			Author:      r.ArtistName,
-			Genre:       r.PrimaryGenreName,
-			ReleaseYear: year,
-			Description: r.Description,
-			PosterURL:   poster,
-			Source:      "online",
-		})
-	}
-	return results, nil
-}
-
 // SearchBooksMultiSource queries ALL book sources CONCURRENTLY and returns combined results quickly
 func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	type resultSet struct {
 		items []models.CatalogSearchResult
 	}
 
-	ch := make(chan resultSet, 6)
+	ch := make(chan resultSet, 5)
 
-	// Run all 6 sources in parallel goroutines (including iTunes Audiobooks)
-	go func() { items, _ := SearchITunesAudiobooks(query); ch <- resultSet{items} }()
+	// Run all 5 sources in parallel goroutines
 	go func() { items, _ := SearchGoogleBooks(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchGoogleBooksAny(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchFantLab(query); ch <- resultSet{items} }()
@@ -492,13 +428,13 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	var combined []models.CatalogSearchResult
 	seenTitles := make(map[string]bool)
 	received := 0
-	total := 6
+	total := 5
 
 	for received < total {
 		select {
 		case res := <-ch:
 			for _, item := range res.items {
-				key := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + item.Category
+				key := strings.ToLower(strings.TrimSpace(item.Title))
 				if key != "" && !seenTitles[key] {
 					seenTitles[key] = true
 					combined = append(combined, item)

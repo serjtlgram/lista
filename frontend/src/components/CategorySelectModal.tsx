@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Film, Tv, BookOpen, Headphones, Mic, Gamepad2, AlertCircle } from 'lucide-react';
+import { X, Check, Film, Tv, BookOpen, Gamepad2, AlertCircle } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
 interface CategorySelectModalProps {
@@ -14,8 +14,6 @@ export const ALL_CATEGORIES = [
   { key: 'Фильмы', icon: Film, bg: 'bg-accentViolet/15', text: 'text-accentViolet' },
   { key: 'Сериалы', icon: Tv, bg: 'bg-accentTeal/15', text: 'text-accentTeal' },
   { key: 'Книги', icon: BookOpen, bg: 'bg-accentAmber/15', text: 'text-accentAmber' },
-  { key: 'Аудиокниги', icon: Headphones, bg: 'bg-accentBlue/15', text: 'text-accentBlue' },
-  { key: 'Подкасты', icon: Mic, bg: 'bg-accentPink/15', text: 'text-accentPink' },
   { key: 'Игры', icon: Gamepad2, bg: 'bg-accentGreen/15', text: 'text-accentGreen' },
 ];
 
@@ -46,10 +44,6 @@ export const CategorySelectModal: React.FC<CategorySelectModalProps> = ({
         return t.categories.shows;
       case 'Книги':
         return t.categories.books;
-      case 'Аудиокниги':
-        return t.categories.audiobooks;
-      case 'Подкасты':
-        return t.categories.podcasts;
       case 'Игры':
         return t.categories.games;
       default:

@@ -11,14 +11,10 @@ export interface Translations {
     movies: string;
     shows: string;
     books: string;
-    audiobooks: string;
-    podcasts: string;
     games: string;
     movie_single: string;
     show_single: string;
     book_single: string;
-    audiobook_single: string;
-    podcast_single: string;
     game_single: string;
   };
   profile: {

@@ -25,7 +25,6 @@ export const getTranslatedStatus = (st: string, cat: string, t: Translations): s
   }
   if (['watching', 'смотрю', 'читаю', 'смотрю/читаю', 'дивлясь', 'дивлюсь/читаю', 'слушаю', 'слухаю', 'играю', 'граю', 'viendo'].includes(s)) {
     if (['book', 'books', 'книги', 'книга'].includes(c)) return t.modal.status_watching_book;
-    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудіокниги', 'podcast', 'podcasts', 'подкасты', 'подкасти'].includes(c)) return t.modal.status_watching_audio;
     if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(c)) return t.modal.status_watching_game;
     return t.modal.status_watching_movie; // Default for movies & series
   }
@@ -100,7 +99,9 @@ export const setStoredTheme = (theme: 'dark' | 'light'): void => {
   }
 };
 
-export const DEFAULT_ACTIVE_CATEGORIES = ['Фильмы', 'Сериалы', 'Книги'];
+export const DEFAULT_ACTIVE_CATEGORIES = ['Фильмы', 'Сериалы', 'Книги', 'Игры'];
+
+const CANONICAL_CATEGORIES = ['Фильмы', 'Сериалы', 'Книги', 'Игры'];
 
 export const getStoredActiveCategories = (): string[] => {
   try {
@@ -108,7 +109,8 @@ export const getStoredActiveCategories = (): string[] => {
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length >= 1) {
-        return parsed;
+        const filtered = parsed.filter((c: string) => CANONICAL_CATEGORIES.includes(c));
+        if (filtered.length >= 1) return filtered;
       }
     }
   } catch (e) {

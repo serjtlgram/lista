@@ -56,18 +56,10 @@ func SearchYouTube(apiKey, title, category string) (string, error) {
 	}
 
 	catLower := strings.ToLower(strings.TrimSpace(category))
-	isBook := strings.Contains(catLower, "book") || (strings.Contains(catLower, "книг") && !strings.Contains(catLower, "аудио"))
-	isAudiobook := strings.Contains(catLower, "audiobook") || strings.Contains(catLower, "аудио")
+	isBook := strings.Contains(catLower, "book") || strings.Contains(catLower, "книг")
 
 	var searchQueries []string
-	if isAudiobook {
-		searchQueries = []string{
-			title + " аудиокнига",
-			title + " книга",
-			title + " обзор книги",
-			title + " audiobook",
-		}
-	} else if isBook {
+	if isBook {
 		searchQueries = []string{
 			title + " книга",
 			title + " обзор книги",

@@ -126,10 +126,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       catLower.includes('series') ||
       catLower.includes('фильм') ||
       catLower.includes('сериал');
-    const isBook = catLower.includes('book') || (catLower.includes('книг') && !catLower.includes('аудио'));
-    const isAudiobook = catLower.includes('audiobook') || catLower.includes('аудио');
+    const isBook = catLower.includes('book') || catLower.includes('книг');
 
-    if ((isMovieOrShow || isBook || isAudiobook) && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
+    if ((isMovieOrShow || isBook) && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
       setIsSearchingYoutube(true);
       const queryTitle = item.author ? `${item.title} ${item.author}` : item.title;
       api
@@ -171,8 +170,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       case 'movie': case 'фильмы': case 'фильм': return t.categories.movie_single;
       case 'show': case 'shows': case 'series': case 'сериалы': case 'сериал': return t.categories.show_single;
       case 'book': case 'книги': case 'книга': return t.categories.book_single;
-      case 'audiobook': case 'аудиокниги': case 'аудіокниги': case 'аудиокнига': return t.categories.audiobook_single;
-      case 'podcast': case 'подкасты': case 'подкасти': case 'подкаст': return t.categories.podcast_single;
       case 'game': case 'игры': case 'ігри': case 'игра': case 'гра': return t.categories.game_single;
       default: return cat;
     }
@@ -278,9 +275,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   };
 
   const catLower = (item.category || '').toLowerCase().trim();
-  const isBook = catLower.includes('book') || (catLower.includes('книг') && !catLower.includes('аудио'));
-  const isAudiobook = catLower.includes('audiobook') || catLower.includes('аудио');
-  const isBookOrAudiobook = isBook || isAudiobook;
+  const isBook = catLower.includes('book') || catLower.includes('книг');
 
   // Separate episodes count and duration in minutes for display
   let episodesDisplay = item.episodes ? String(item.episodes) : '';
@@ -395,12 +390,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
           {/* Right: Meta Details (Year, Watch date, Genre, Episodes, Duration, Status) */}
           <div className="flex-1 space-y-2 text-xs pt-0.5">
-            <div>
-              <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
-                {isAudiobook ? 'АУДИОКНИГА' : isBook ? 'КНИГА' : formatCategorySingle(item.category)}
-              </span>
-              <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
-            </div>
+              <div>
+                <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
+                  {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
+                </span>
+                <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
+              </div>
 
             <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
               <div className="flex items-center justify-between text-gray-300 gap-1">
@@ -424,7 +419,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </div>
 
               {/* Duration Row */}
-              {(!isBook || isAudiobook || durationDisplay) && (
+              {(!isBook || durationDisplay) && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
@@ -434,8 +429,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               )}
 
-              {/* Author Row for Books / Audiobooks or Episodes Row for Series */}
-              {isBookOrAudiobook ? (
+              {/* Author Row for Books or Episodes Row for Series */}
+              {isBook ? (
                 <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <User className="w-3.5 h-3.5 text-accentPink" />
@@ -514,7 +509,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       </div>
 
       {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
-      {!isBookOrAudiobook && (item.director || item.cast) && (
+      {!isBook && (item.director || item.cast) && (
         <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
           {item.director && (
             <div className="flex items-start gap-2.5">
@@ -545,7 +540,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {item.description && (
         <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
           <div className="text-xs text-gray-400 font-semibold">
-            {isBookOrAudiobook ? (t.details.annotation || 'Аннотация') : t.details.description}
+            {isBook ? (t.details.annotation || 'Аннотация') : t.details.description}
           </div>
           <p className={`text-[14px] text-white leading-relaxed font-normal whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
             {item.description}

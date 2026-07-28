@@ -193,7 +193,7 @@ func getWelcomeContent(langCode string) WelcomeTexts {
 		return WelcomeTexts{
 			Text: fmt.Sprintf(`✨ <b>Ласкаво просимо до LISTA!</b> 🎬📚🎮
 
-LISTA — твій персональний міні-додаток для збереження вражень від фільмів, серіалів, книг, аудіокниг, подкастів та ігор.
+LISTA — твій персональний міні-додаток для збереження вражень від фільмів, серіалів, книг та ігор.
 
 <b>Що вміє LISTA:</b>
 📌 <b>Зберігай</b> усе, що подивився, прочитав або пройшов
@@ -209,7 +209,7 @@ LISTA — твій персональний міні-додаток для зб�
 		return WelcomeTexts{
 			Text: fmt.Sprintf(`✨ <b>¡Bienvenido a LISTA!</b> 🎬📚🎮
 
-LISTA es tu mini-aplicación personal para guardar impresiones de películas, series, libros, audiolibros, podcasts y juegos.
+LISTA es tu mini-aplicación personal para guardar impresiones de películas, series, libros y juegos.
 
 <b>¿Qué puedes hacer con LISTA?</b>
 📌 <b>Guarda</b> todo lo que has visto, leído o jugado
@@ -225,7 +225,7 @@ LISTA es tu mini-aplicación personal para guardar impresiones de películas, se
 		return WelcomeTexts{
 			Text: fmt.Sprintf(`✨ <b>Welcome to LISTA!</b> 🎬📚🎮
 
-LISTA is your personal mini-app for tracking movies, TV shows, books, audiobooks, podcasts, and games.
+LISTA is your personal mini-app for tracking movies, TV shows, books, and games.
 
 <b>What you can do with LISTA:</b>
 📌 <b>Save</b> everything you've watched, read, or played
@@ -243,7 +243,7 @@ Give it a try — it's fast and easy! 👇
 	return WelcomeTexts{
 		Text: fmt.Sprintf(`✨ <b>Добро пожаловать в LISTA!</b> 🎬📚🎮
 
-LISTA — твое персональное мини-приложение для сохранения впечатлений от фильмов, сериалов, книг, аудиокниг, подкастов и игр.
+LISTA — твое персональное мини-приложение для сохранения впечатлений от фильмов, сериалов, книг и игр.
 
 <b>Что умеет LISTA:</b>
 📌 <b>Сохраняй</b> всё, что посмотрел, прочитал или прошёл
@@ -519,7 +519,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ytURL := strings.TrimSpace(req.YoutubeURL)
-	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book" || cat == "audiobook") {
+	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book") {
 		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat); err == nil && foundURL != "" {
 			ytURL = foundURL
 		}
@@ -776,10 +776,6 @@ func mapCategoryToRu(cat string) string {
 		return "Сериалы"
 	case "book", "books", "книги":
 		return "Книги"
-	case "audiobook", "audiobooks", "аудиокниги":
-		return "Аудиокниги"
-	case "podcast", "podcasts", "подкасты":
-		return "Подкасты"
 	case "game", "games", "игры":
 		return "Игры"
 	default:
@@ -795,10 +791,6 @@ func mapCategoryToEn(cat string) string {
 		return "show"
 	case "книги", "книга", "book", "books":
 		return "book"
-	case "аудиокниги", "аудиокнига", "audiobook", "audiobooks":
-		return "audiobook"
-	case "подкасты", "подкаст", "podcast", "podcasts":
-		return "podcast"
 	case "игры", "игра", "game", "games":
 		return "game"
 	default:
@@ -830,47 +822,26 @@ func getCategoryPriority(cat string, selectedCat string) int {
 	cEn := mapCategoryToEn(cat)
 
 	isBook := cEn == "book"
-	isAudiobook := cEn == "audiobook"
 	isMovieOrShow := cEn == "movie" || cEn == "show"
-	isPodcast := cEn == "podcast"
 	isGame := cEn == "game"
 
 	switch targetCatEn {
-	case "audiobook":
-		if isAudiobook {
-			return 1
-		}
-		if isBook {
-			return 2
-		}
-		if isMovieOrShow {
-			return 3
-		}
-		return 4
 	case "book":
 		if isBook {
 			return 1
 		}
-		if isAudiobook {
+		if isMovieOrShow {
 			return 2
 		}
-		if isMovieOrShow {
-			return 3
-		}
-		return 4
+		return 3
 	case "movie", "show":
 		if isMovieOrShow {
 			return 1
 		}
-		if isBook || isAudiobook {
+		if isBook {
 			return 2
 		}
 		return 3
-	case "podcast":
-		if isPodcast {
-			return 1
-		}
-		return 2
 	case "game":
 		if isGame {
 			return 1
@@ -921,7 +892,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Online search — books and audiobooks multi-source
+	// 2. Online search
 	catEn := mapCategoryToEn(category)
 	bookItems := parser.SearchBooksMultiSource(q)
 	for _, item := range bookItems {
@@ -934,7 +905,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if catEn != "book" && catEn != "audiobook" {
+	if catEn != "book" {
 		onlineItems := h.searchInlineResults(q, "ru")
 		for _, item := range onlineItems {
 			tKey := strings.ToLower(strings.TrimSpace(item.Title)) + "_" + mapCategoryToEn(item.Category)
@@ -1115,18 +1086,18 @@ func mapStatusToRu(status string, category ...string) string {
 	switch strings.ToLower(status) {
 	case "planned", "в планах", "у планах":
 		return "📋 В планах"
-	case "watching", "смотрю", "читаю", "слушаю", "дивлюсь":
-		if cat == "audiobook" {
-			return "🎧 Слушаю"
-		} else if cat == "book" {
+	case "watching", "смотрю", "читаю", "дивлюсь":
+		if cat == "book" {
 			return "📖 Читаю"
+		} else if cat == "game" {
+			return "🎮 Играю"
 		}
 		return "👁 Смотрю"
-	case "completed", "просмотрено", "завершено", "прочитано", "прослушано":
-		if cat == "audiobook" {
-			return "✅ Прослушано"
-		} else if cat == "book" {
+	case "completed", "просмотрено", "завершено", "прочитано":
+		if cat == "book" {
 			return "✅ Прочитано"
+		} else if cat == "game" {
+			return "✅ Пройдено"
 		}
 		return "✅ Завершено"
 	default:
@@ -1170,10 +1141,6 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 				newCat = "show"
 			} else if catCode == "b" {
 				newCat = "book"
-			} else if catCode == "a" {
-				newCat = "audiobook"
-			} else if catCode == "p" {
-				newCat = "podcast"
 			} else if catCode == "g" {
 				newCat = "game"
 			}
@@ -1225,10 +1192,10 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 			if h.DB != nil && h.DB.Pool != nil {
 				_ = h.DB.Pool.QueryRow(context.Background(), "SELECT category FROM items WHERE id = $1 AND user_id = $2 LIMIT 1", itemID, userID).Scan(&activeCategory)
 			}
-			isBookOrAudio := mapCategoryToEn(activeCategory) == "book" || mapCategoryToEn(activeCategory) == "audiobook"
+			isBook := mapCategoryToEn(activeCategory) == "book"
 
 			targetGenresList := topGenres
-			if isBookOrAudio {
+			if isBook {
 				targetGenresList = bookGenres
 			}
 
@@ -1364,7 +1331,7 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 		text += fmt.Sprintf("🗓 <b>Инфо:</b> %s\n", strings.Join(infoParts, " • "))
 	}
 
-	if catEn == "book" || catEn == "audiobook" {
+	if catEn == "book" {
 		if cleanAuthor != "" {
 			text += fmt.Sprintf("✍️ <b>Автор:</b> %s\n", cleanAuthor)
 		} else if cleanDirector != "" {
@@ -1397,31 +1364,24 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=item_%s", itemID)
 	catCode := mapCategoryToEn(catEn)
 
-	// Rows 1-3: Categories (6 options: Movie, Show, Book, Audiobook, Podcast, Game)
+	// Rows 1-2: Categories (4 options: Movie, Show, Book, Game)
 	catRow1 := []map[string]interface{}{
 		{"text": map[bool]string{true: "✓ 🎬 Фильм", false: "🎬 Фильм"}[catCode == "movie"], "callback_data": fmt.Sprintf("c:m:%s", itemID)},
 		{"text": map[bool]string{true: "✓ 📺 Сериал", false: "📺 Сериал"}[catCode == "show"], "callback_data": fmt.Sprintf("c:s:%s", itemID)},
 	}
 	catRow2 := []map[string]interface{}{
 		{"text": map[bool]string{true: "✓ 📖 Книга", false: "📖 Книга"}[catCode == "book"], "callback_data": fmt.Sprintf("c:b:%s", itemID)},
-		{"text": map[bool]string{true: "✓ 🎧 Аудиокнига", false: "🎧 Аудиокнига"}[catCode == "audiobook"], "callback_data": fmt.Sprintf("c:a:%s", itemID)},
-	}
-	catRow3 := []map[string]interface{}{
-		{"text": map[bool]string{true: "✓ 🎙 Подкаст", false: "🎙 Подкаст"}[catCode == "podcast"], "callback_data": fmt.Sprintf("c:p:%s", itemID)},
 		{"text": map[bool]string{true: "✓ 🎮 Игра", false: "🎮 Игра"}[catCode == "game"], "callback_data": fmt.Sprintf("c:g:%s", itemID)},
 	}
 
 	// Status Row: tailored for category type
 	isPlanned := currentStatus == "" || currentStatus == "planned" || currentStatus == "в планах" || currentStatus == "у планах"
-	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "читаю" || currentStatus == "слушаю" || currentStatus == "дивлюсь"
-	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено" || currentStatus == "прочитано" || currentStatus == "прослушано"
+	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "читаю" || currentStatus == "дивлюсь"
+	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено" || currentStatus == "прочитано"
 
 	labelWatching := "👁 Смотрю"
 	labelCompleted := "✅ Завершено"
-	if catCode == "audiobook" || catCode == "podcast" {
-		labelWatching = "🎧 Слушаю"
-		labelCompleted = "✅ Прослушано"
-	} else if catCode == "book" {
+	if catCode == "book" {
 		labelWatching = "📖 Читаю"
 		labelCompleted = "✅ Прочитано"
 	} else if catCode == "game" {
@@ -1435,9 +1395,9 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 		{"text": map[bool]string{true: "✓ " + labelCompleted, false: labelCompleted}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
 	}
 
-	// Genre Rows: bookGenres if book/audiobook, else topGenres
+	// Genre Rows: bookGenres if book, else topGenres
 	targetGenresList := topGenres
-	if catCode == "book" || catCode == "audiobook" {
+	if catCode == "book" {
 		targetGenresList = bookGenres
 	}
 
@@ -1504,7 +1464,6 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 		"inline_keyboard": [][]map[string]interface{}{
 			catRow1,
 			catRow2,
-			catRow3,
 			statusRow,
 			genreRow1,
 			genreRow2,
@@ -1789,10 +1748,6 @@ func formatCategorySingle(cat string) string {
 		return "Сериал"
 	case "book", "книга", "книги":
 		return "Книга"
-	case "audiobook", "аудиокнига", "аудиокниги":
-		return "Аудиокнига"
-	case "podcast", "подкаст", "подкасты":
-		return "Подкаст"
 	case "game", "игра", "игры":
 		return "Игра"
 	default:
@@ -1820,10 +1775,6 @@ func getCategoryEmoji(cat string) string {
 		return "📺"
 	case "book", "книга", "книги":
 		return "📚"
-	case "audiobook", "аудиокнига", "аудиокниги":
-		return "🎧"
-	case "podcast", "подкаст", "подкасты":
-		return "🎙"
 	case "game", "игра", "игры":
 		return "🎮"
 	default:
@@ -2081,7 +2032,7 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 
 func fetchITunesInline(query string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
-	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,podcast,audiobook,ebook&limit=6&lang=ru_ru", url.QueryEscape(query))
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=movie,ebook&limit=6&lang=ru_ru", url.QueryEscape(query))
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -2121,11 +2072,7 @@ func fetchITunesInline(query string) []models.CatalogSearchResult {
 			}
 
 			cat := "movie"
-			if r.Kind == "podcast" || r.WrapperType == "podcast" {
-				cat = "podcast"
-			} else if r.WrapperType == "audiobook" {
-				cat = "audiobook"
-			} else if r.WrapperType == "ebook" || r.Kind == "ebook" {
+			if r.WrapperType == "ebook" || r.Kind == "ebook" {
 				cat = "book"
 			}
 

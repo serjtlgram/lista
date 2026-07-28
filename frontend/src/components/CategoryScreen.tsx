@@ -57,14 +57,12 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return t.categories.movies;
     if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return t.categories.shows;
     if (['book', 'books', 'книги', 'книга'].includes(lc)) return t.categories.books;
-    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(lc)) return t.categories.audiobooks;
-    if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(lc)) return t.categories.podcasts;
     if (['game', 'games', 'игры', 'игра'].includes(lc)) return t.categories.games;
     return catTitle;
   };
 
   // Map activeCategories strictly to canonical known categories only
-  const canonicalCategories = ['Фильмы', 'Сериалы', 'Книги', 'Аудиокниги', 'Подкасты', 'Игры'];
+  const canonicalCategories = ['Фильмы', 'Сериалы', 'Книги', 'Игры'];
 
   const mappedCategories: string[] = [];
   activeCategories.forEach((c) => {
@@ -72,8 +70,6 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) mappedCategories.push('Фильмы');
     else if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) mappedCategories.push('Сериалы');
     else if (['book', 'books', 'книги', 'книга'].includes(lc)) mappedCategories.push('Книги');
-    else if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(lc)) mappedCategories.push('Аудиокниги');
-    else if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(lc)) mappedCategories.push('Подкасты');
     else if (['game', 'games', 'игры', 'игра'].includes(lc)) mappedCategories.push('Игры');
   });
 
@@ -117,34 +113,19 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     const cLower = (itemCat || '').toLowerCase().trim();
 
     const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
-    const isAudiobook = ['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cLower);
     const isMovieOrShow = ['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(cLower);
-    const isPodcast = ['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(cLower);
     const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
-
-    if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(tLower)) {
-      if (isAudiobook) return 1;
-      if (isBook) return 2;
-      if (isMovieOrShow) return 3;
-      return 4;
-    }
 
     if (['book', 'books', 'книги', 'книга'].includes(tLower)) {
       if (isBook) return 1;
-      if (isAudiobook) return 2;
-      if (isMovieOrShow) return 3;
-      return 4;
+      if (isMovieOrShow) return 2;
+      return 3;
     }
 
     if (['movie', 'movies', 'фильмы', 'фильм', 'show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
       if (isMovieOrShow) return 1;
-      if (isBook || isAudiobook) return 2;
+      if (isBook) return 2;
       return 3;
-    }
-
-    if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(tLower)) {
-      if (isPodcast) return 1;
-      return 2;
     }
 
     if (['game', 'games', 'игры', 'игра'].includes(tLower)) {

@@ -31,8 +31,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         case 'movie': case 'movies': case 'фильмы': case 'фильм': return 'Фильм';
         case 'show': case 'shows': case 'series': case 'сериалы': case 'сериал': return 'Сериал';
         case 'book': case 'books': case 'книги': case 'книга': return 'Книга';
-        case 'audiobook': case 'audiobooks': case 'аудиокниги': case 'аудіокниги': case 'аудиокнига': return 'Аудиокнига';
-        case 'podcast': case 'podcasts': case 'подкасты': case 'подкасти': case 'подкаст': return 'Подкаст';
         case 'game': case 'games': case 'игры': case 'ігри': case 'игра': case 'гра': return 'Игра';
         default: return cat;
       }
@@ -41,8 +39,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       case 'movie': case 'movies': case 'фильмы': case 'фильм': return t.categories.movie_single;
       case 'show': case 'shows': case 'series': case 'сериалы': case 'сериал': return t.categories.show_single;
       case 'book': case 'books': case 'книги': case 'книга': return t.categories.book_single;
-      case 'audiobook': case 'audiobooks': case 'аудиокниги': case 'аудіокниги': case 'аудиокнига': return t.categories.audiobook_single;
-      case 'podcast': case 'podcasts': case 'подкасты': case 'подкасти': case 'подкаст': return t.categories.podcast_single;
       case 'game': case 'games': case 'игры': case 'ігри': case 'игра': case 'гра': return t.categories.game_single;
       default: return cat;
     }

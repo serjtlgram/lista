@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Star, Award, Film, Tv, Book, Headphones, Mic, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3, Info } from 'lucide-react';
+import { Star, Award, Film, Tv, Book, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3, Info } from 'lucide-react';
 import { StatsData, UserProfile, Item } from '../types';
 import { Translations } from '../services/i18n';
-import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
+import { computeWatchHours, getLastNDays, countItemsPerSlot } from '../utils/watchTime';
 import { InfoModal } from './InfoModal';
 
 interface StatsScreenProps {
@@ -13,12 +13,10 @@ interface StatsScreenProps {
 }
 
 const CATEGORY_META: Record<string, { hex: string; label: string; icon: any }> = {
-  Фильмы:     { hex: '#8C7CFF', label: 'Фильмы',     icon: Film },
-  Сериалы:    { hex: '#00CEC9', label: 'Сериалы',    icon: Tv },
-  Книги:      { hex: '#FFB800', label: 'Книги',      icon: Book },
-  Аудиокниги: { hex: '#0984E3', label: 'Аудиокниги', icon: Headphones },
-  Подкасты:   { hex: '#E84393', label: 'Подкасты',   icon: Mic },
-  Игры:       { hex: '#00B894', label: 'Игры',       icon: Gamepad2 },
+  Фильмы:  { hex: '#8C7CFF', label: 'Фильмы',  icon: Film },
+  Сериалы: { hex: '#00CEC9', label: 'Сериалы', icon: Tv },
+  Книги:   { hex: '#FFB800', label: 'Книги',   icon: Book },
+  Игры:    { hex: '#00B894', label: 'Игры',    icon: Gamepad2 },
 };
 
 const normalizeCat = (catStr?: string): string => {
@@ -26,8 +24,6 @@ const normalizeCat = (catStr?: string): string => {
   if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'Фильмы';
   if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'Сериалы';
   if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'Книги';
-  if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(lc)) return 'Аудиокниги';
-  if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(lc)) return 'Подкасты';
   if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'Игры';
   return catStr || 'Фильмы';
 };

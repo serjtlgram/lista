@@ -1,5 +1,5 @@
 import React from 'react';
-import { Film, Tv, BookOpen, Headphones, Mic, Gamepad2, PlusCircle } from 'lucide-react';
+import { Film, Tv, BookOpen, Gamepad2, PlusCircle } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
 interface CategoryGridProps {
@@ -14,8 +14,6 @@ const ALL_CATEGORY_CONFIGS = [
   { key: 'Фильмы', icon: Film, bg: 'bg-accentViolet/15', text: 'text-accentViolet' },
   { key: 'Сериалы', icon: Tv, bg: 'bg-accentTeal/15', text: 'text-accentTeal' },
   { key: 'Книги', icon: BookOpen, bg: 'bg-accentAmber/15', text: 'text-accentAmber' },
-  { key: 'Аудиокниги', icon: Headphones, bg: 'bg-accentBlue/15', text: 'text-accentBlue' },
-  { key: 'Подкасты', icon: Mic, bg: 'bg-accentPink/15', text: 'text-accentPink' },
   { key: 'Игры', icon: Gamepad2, bg: 'bg-accentGreen/15', text: 'text-accentGreen' },
 ];
 
@@ -36,10 +34,6 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
         return t.categories.shows;
       case 'Книги':
         return t.categories.books;
-      case 'Аудиокниги':
-        return t.categories.audiobooks;
-      case 'Подкасты':
-        return t.categories.podcasts;
       case 'Игры':
         return t.categories.games;
       default:
@@ -51,8 +45,6 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
     if (catKey === 'Фильмы') return (counts['Фильмы'] || 0) + (counts['movie'] || 0);
     if (catKey === 'Сериалы') return (counts['Сериалы'] || 0) + (counts['show'] || 0);
     if (catKey === 'Книги') return (counts['Книги'] || 0) + (counts['book'] || 0);
-    if (catKey === 'Аудиокниги') return (counts['Аудиокниги'] || 0) + (counts['audiobook'] || 0);
-    if (catKey === 'Подкасты') return (counts['Подкасты'] || 0) + (counts['podcast'] || 0);
     if (catKey === 'Игры') return (counts['Игры'] || 0) + (counts['game'] || 0);
     return counts[catKey] || 0;
   };

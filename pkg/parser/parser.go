@@ -146,12 +146,8 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	}
 
 	// Clean up title and detect category
-	if media.Category == "book" || media.Category == "audiobook" || isBookSiteOrKeywords(rawURL, media.Title, media.Description, "") {
-		if isAudiobookKeywords(rawURL, media.Title, "") {
-			media.Category = "audiobook"
-		} else {
-			media.Category = "book"
-		}
+	if media.Category == "book" || isBookSiteOrKeywords(rawURL, media.Title, media.Description, "") {
+		media.Category = "book"
 		cTitle, cAuthor, cISBN := cleanBookTitle(media.Title, "")
 		if cTitle != "" {
 			media.Title = cTitle
@@ -174,7 +170,7 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	}
 
 	// 4a. TMDb Search Fallback: Query TMDb search API ONLY for movies/shows
-	if media.Category != "book" && media.Category != "audiobook" && media.Title != "" {
+	if media.Category != "book" && media.Title != "" {
 		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear); err == nil && enriched != nil && enriched.Title != "" {
 			if enriched.PosterURL != "" {
 				media.PosterURL = enriched.PosterURL
@@ -207,7 +203,7 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	}
 
 	// 4b. Book Search Fallback: Query Google Books / MultiSource for books
-	if (media.Category == "book" || media.Category == "audiobook") && media.Title != "" {
+	if media.Category == "book" && media.Title != "" {
 		var bookRef []models.CatalogSearchResult
 		if media.ISBN != "" {
 			bookRef, _ = SearchGoogleBooks(media.ISBN)
@@ -228,6 +224,12 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 			}
 			if media.Description == "" && best.Description != "" {
 				media.Description = best.Description
+			}
+			if media.ReleaseYear == "" && best.ReleaseYear != "" {
+				media.ReleaseYear = best.ReleaseYear
+			}
+		}
+	}
 			}
 			if media.ReleaseYear == "" && best.ReleaseYear != "" {
 				media.ReleaseYear = best.ReleaseYear
@@ -468,16 +470,12 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		}
 	}
 
-	// Check if book / audiobook site or keywords
+	// Check if book site or keywords
 	if isBookSiteOrKeywords(pageURL, media.Title, media.Description, html) {
-		if isAudiobookKeywords(pageURL, media.Title, html) {
-			media.Category = "audiobook"
-		} else {
-			media.Category = "book"
-		}
+		media.Category = "book"
 	}
 
-	if media.Category == "book" || media.Category == "audiobook" {
+	if media.Category == "book" {
 		cTitle, cAuthor, cISBN := cleanBookTitle(media.Title, html)
 		if cTitle != "" {
 			media.Title = cTitle
@@ -491,7 +489,7 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 	}
 
 	// Fallback HTML Scraper for Book Author
-	if media.Author == "" && (media.Category == "book" || media.Category == "audiobook") {
+	if media.Author == "" && media.Category == "book" {
 		authorRegex := regexp.MustCompile(`(?i)(?:itemprop=["']author["']|class=["'][^"']*author[^"']*["'])[^>]*>(.*?)</`)
 		if m := authorRegex.FindStringSubmatch(html); len(m) > 1 {
 			media.Author = stripHTML(m[1])
@@ -630,12 +628,8 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 		if actorObj, ok := data["actor"]; ok {
 			media.Cast = extractPersonNames(actorObj, 6)
 		}
-	} else if tp == "Book" || tp == "Audiobook" || tp == "Product" {
-		if tp == "Audiobook" {
-			media.Category = "audiobook"
-		} else {
-			media.Category = "book"
-		}
+	} else if tp == "Book" || tp == "Product" {
+		media.Category = "book"
 		if name, ok := data["name"].(string); ok && name != "" {
 			media.Title = name
 		}
@@ -1373,8 +1367,8 @@ func isBookSiteOrKeywords(rawURL string, title string, desc string, html string)
 	htmlLower := strings.ToLower(html)
 
 	bookSites := []string{
-		"book24", "yakaboo", "vivat", "labirint", "litres", "flibusta", "knigavuhe",
-		"books.google", "openlibrary", "fantlab", "book", "audiobook", "kniga", "аудиокнига",
+		"book24", "yakaboo", "vivat", "labirint", "litres", "flibusta",
+		"books.google", "openlibrary", "fantlab", "book", "kniga",
 	}
 	for _, site := range bookSites {
 		if strings.Contains(rawURLLower, site) {
@@ -1384,7 +1378,7 @@ func isBookSiteOrKeywords(rawURL string, title string, desc string, html string)
 
 	bookKeywords := []string{
 		"купити книгу", "купить книгу", "купить книжку", "купити книжку",
-		"аудиокнига", "аудіокнига", "isbn", "видавництво", "издательство",
+		"isbn", "видавництво", "издательство",
 	}
 	for _, kw := range bookKeywords {
 		if strings.Contains(titleLower, kw) || strings.Contains(descLower, kw) || strings.Contains(htmlLower, kw) {
@@ -1393,15 +1387,6 @@ func isBookSiteOrKeywords(rawURL string, title string, desc string, html string)
 	}
 
 	return false
-}
-
-func isAudiobookKeywords(rawURL string, title string, html string) bool {
-	combined := strings.ToLower(rawURL + " " + title + " " + html)
-	return strings.Contains(combined, "audiobook") ||
-		strings.Contains(combined, "аудиокнига") ||
-		strings.Contains(combined, "аудіокнига") ||
-		strings.Contains(combined, "knigavuhe") ||
-		strings.Contains(combined, "слушать онлайн")
 }
 
 // cleanBookTitle cleans garbage phrases from book titles and extracts title in quotes, author, and ISBN if present
@@ -1493,7 +1478,7 @@ func cleanBookNoise(s string) string {
 		}
 	}
 
-	prefixRegex := regexp.MustCompile(`(?i)^(?:купити\s+книгу|купить\s+книгу|купить\s+книжку|купити\s+книжку|книга|аудиокнига|аудіокнига|купити\s+аудіокнигу|купить\s+аудиокнигу|скачать\s+книгу|читать\s+онлайн|слушать\s+онлайн)\s+`)
+	prefixRegex := regexp.MustCompile(`(?i)^(?:купити\s+книгу|купить\s+книгу|купить\s+книжку|купити\s+книжку|книга|скачать\s+книгу|читать\s+онлайн)\s+`)
 	s = prefixRegex.ReplaceAllString(s, "")
 
 	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")

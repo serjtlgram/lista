@@ -233,8 +233,6 @@ export function App() {
           if (['movie', 'movies', 'фильмы', 'фильм'].includes(cat.toLowerCase())) nonZeroCats.push('Фильмы');
           else if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(cat.toLowerCase())) nonZeroCats.push('Сериалы');
           else if (['book', 'books', 'книги', 'книга'].includes(cat.toLowerCase())) nonZeroCats.push('Книги');
-          else if (['audiobook', 'audiobooks', 'аудиокниги', 'аудиокнига'].includes(cat.toLowerCase())) nonZeroCats.push('Аудиокниги');
-          else if (['podcast', 'podcasts', 'подкасты', 'подкаст'].includes(cat.toLowerCase())) nonZeroCats.push('Подкасты');
           else if (['game', 'games', 'игры', 'игра'].includes(cat.toLowerCase())) nonZeroCats.push('Игры');
           else nonZeroCats.push(cat);
         }
@@ -433,8 +431,6 @@ export function App() {
     if ((sel === 'фильмы' || sel === 'фильм') && (cat === 'movie' || cat === 'movies' || cat === 'фильмы')) return true;
     if ((sel === 'сериалы' || sel === 'сериал') && (cat === 'show' || cat === 'shows' || cat === 'series' || cat === 'сериалы')) return true;
     if ((sel === 'книги' || sel === 'книга') && (cat === 'book' || cat === 'books' || cat === 'книги')) return true;
-    if ((sel === 'аудиокниги' || sel === 'аудиокнига') && (cat === 'audiobook' || cat === 'audiobooks' || cat === 'аудиокниги')) return true;
-    if ((sel === 'подкасты' || sel === 'подкаст') && (cat === 'podcast' || cat === 'podcasts' || cat === 'подкасты')) return true;
     if ((sel === 'игры' || sel === 'игра') && (cat === 'game' || cat === 'games' || cat === 'игры')) return true;
     return false;
   });
