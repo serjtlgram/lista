@@ -187,20 +187,28 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   const rawGenre = (item.genre || '').trim();
   const translatedGenre = t ? (t.genres[rawGenre as keyof typeof t.genres] || rawGenre) : rawGenre;
 
+  const catLc = (item.category || '').toLowerCase();
+  const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(catLc);
+  const isShow = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(catLc);
+  const isBook = ['book', 'books', 'книги', 'книга'].includes(catLc);
+  const isGame = ['game', 'games', 'игры', 'игра'].includes(catLc);
+
+  const getWatchingLabel = () => {
+    if (isBook) return t ? t.modal.status_watching_book : 'Читаю';
+    if (isGame) return t ? t.modal.status_watching_game : 'Играю';
+    return t ? t.modal.status_watching_movie : 'Смотрю';
+  };
+
   const statuses = [
     { value: 'planned', label: t ? t.modal.status_planned : 'В планах' },
-    { value: 'watching', label: t ? t.modal.status_watching : 'Смотрю' },
+    { value: 'watching', label: getWatchingLabel() },
     { value: 'completed', label: t ? t.modal.status_completed : 'Завершено' },
     { value: 'paused', label: 'Отложено' },
   ];
 
   const currentStatusObj = statuses.find(s => s.value === item.status) || statuses[0];
 
-  const catLc = (item.category || '').toLowerCase();
-  const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(catLc);
-  const isShow = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(catLc);
-  const isBook = ['book', 'books', 'книги', 'книга'].includes(catLc);
-  const isGame = ['game', 'games', 'игры', 'игра'].includes(catLc);
+
 
   let availableGenres: string[] = [];
   if (t) {
