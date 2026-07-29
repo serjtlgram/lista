@@ -224,7 +224,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         onClick={() => onSelect(item)}
         className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-95 transition card-hover relative overflow-hidden"
       >
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3 w-full">
           {/* Rectangular poster image */}
           <img
             src={posterSrc}
@@ -266,26 +266,26 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             
             {/* Row 4: Action Buttons */}
             {!onAdd ? (
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <div className="flex items-center gap-1.5 mt-2 flex-nowrap overflow-x-auto hide-scrollbar pb-1 -mb-1 w-full">
                 <button
                   onClick={(e) => { e.stopPropagation(); triggerHaptic(); setIsGenreOpen(true); }}
-                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition"
+                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition shrink-0"
                 >
-                  <span className="truncate max-w-[60px]">{translatedGenre || 'Жанр'}</span>
+                  <span className="truncate max-w-[70px]">{translatedGenre || 'Жанр'}</span>
                   <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                 </button>
 
                 <button
                   onClick={(e) => { e.stopPropagation(); triggerHaptic(); setIsStatusOpen(true); }}
-                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition"
+                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition shrink-0"
                 >
-                  <span>{currentStatusObj.label}</span>
+                  <span className="truncate max-w-[80px]">{currentStatusObj.label}</span>
                   <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                 </button>
 
                 <button
                   onClick={(e) => { triggerHaptic(); openListsModal(e); }}
-                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition"
+                  className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition shrink-0"
                 >
                   <span>Списки</span>
                   <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
@@ -307,6 +307,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({
               </div>
             )}
           </div>
+          
+          {/* Action Button: Minus for list items */}
+          {onRemoveFromList && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFromList(item, e);
+              }}
+              className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-90 shadow-sm ml-1"
+              title="Исключить из списка"
+            >
+              <Minus className="w-4 h-4 stroke-[3]" />
+            </button>
+          )}
         </div>
       </div>
 
