@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Check, Plus } from 'lucide-react';
+import { Star, Check, Plus, Minus } from 'lucide-react';
 import { Item } from '../types';
 import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
@@ -9,6 +9,7 @@ interface ItemCardProps {
   onSelect: (item: Item) => void;
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
   onAdd?: (item: Item, e: React.MouseEvent) => void;
+  onRemoveFromList?: (item: Item, e: React.MouseEvent) => void;
   showCheckbox?: boolean;
   t?: Translations;
 }
@@ -18,6 +19,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   onSelect,
   onToggleStatus,
   onAdd,
+  onRemoveFromList,
   t,
 }) => {
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
@@ -144,8 +146,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         </div>
       </div>
 
-      {/* Action Button: Either "+ Add" for catalog items or completion checkmark for user items */}
-      {onAdd ? (
+      {/* Action Button: Either Minus for list items, "+ Add" for catalog items, or status checkmark */}
+      {onRemoveFromList ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveFromList(item, e);
+          }}
+          className="w-7 h-7 rounded-full border border-gray-500/50 hover:border-red-400 bg-cardDark/60 text-gray-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition shrink-0 active:scale-90 shadow-sm"
+          title="Исключить из списка"
+        >
+          <Minus className="w-4 h-4 stroke-[2.5]" />
+        </button>
+      ) : onAdd ? (
         <button
           onClick={(e) => {
             e.stopPropagation();

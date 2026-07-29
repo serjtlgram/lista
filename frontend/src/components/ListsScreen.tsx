@@ -19,9 +19,10 @@ import {
   createList,
   renameList,
   deleteList,
+  removeItemFromList,
   FAVORITES_ID,
 } from '../services/lists';
-import { getFavoriteIds, setFavoriteIds } from '../services/favorites';
+import { getFavoriteIds, setFavoriteIds, toggleFavorite } from '../services/favorites';
 import { ItemCard } from './ItemCard';
 import { Translations, formatCategorySingle } from '../services/i18n';
 import { api } from '../services/api';
@@ -154,6 +155,19 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     setIsAddItemsModalOpen(false);
   };
 
+  const handleRemoveItemFromCurrentList = (item: Item, e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerHaptic();
+    if (currentList.id === FAVORITES_ID) {
+      toggleFavorite(item.id);
+      showToast((t as any).favorites?.removed || 'Убрано из избранного');
+    } else {
+      removeItemFromList(currentList.id, item.id);
+      showToast((t as any).lists?.item_removed || 'Удалено из списка');
+    }
+    refreshLists();
+  };
+
   const handleShareList = async () => {
     triggerHaptic();
     const listTitle = currentList.isDefault ? t.lists.favorites : currentList.name;
@@ -166,7 +180,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;
     }
 
-    let shareText = `📋 **${listTitle}** (${listItems.length} ${t.lists.items_count})\n\n`;
+    let shareText = `📋 ${listTitle} (${listItems.length} ${t.lists.items_count})\n\n`;
 
     listItems.slice(0, 10).forEach((item, index) => {
       shareText += `${index + 1}. ${item.title}`;
@@ -178,7 +192,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       shareText += `\n... ${t.lists.show_more} ${listItems.length - 10}\n`;
     }
 
-    shareText += `\n➕ Открой ссылку ниже, чтобы добавить весь список себе в 1 клик!`;
+    shareText += `\n➕ Нажми ссылку ниже, чтобы добавить весь список себе в 1 клик:\n${shareUrl}`;
 
     const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
@@ -340,7 +354,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               key={item.id}
               item={item}
               onSelect={onSelectItem}
-              onToggleStatus={onToggleStatus}
+              onRemoveFromList={handleRemoveItemFromCurrentList}
               t={t}
             />
           ))}

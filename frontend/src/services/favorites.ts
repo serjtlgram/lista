@@ -54,14 +54,11 @@ export async function syncFavoritesFromCloud(): Promise<void> {
     }
     try {
       tg.CloudStorage.getItem(FAVORITES_KEY, (err: any, val: string) => {
-        if (!err && val) {
+        if (!err && val !== undefined && val !== null && val !== '') {
           try {
             const parsed = JSON.parse(val);
             if (Array.isArray(parsed)) {
-              // Merge cloud and local
-              const local = getFavoriteIds();
-              const merged = Array.from(new Set([...local, ...parsed]));
-              localStorage.setItem(FAVORITES_KEY, JSON.stringify(merged));
+              localStorage.setItem(FAVORITES_KEY, JSON.stringify(parsed));
             }
           } catch {}
         }
