@@ -104,12 +104,23 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-white">{t.activity.this_month}</span>
-        {currentStreak > 0 && (
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">
-            <Flame className="w-3 h-3" />
-            {currentStreak} дн. подряд
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {currentStreak > 0 && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">
+              <Flame className="w-3 h-3" />
+              {currentStreak} дн.
+            </span>
+          )}
+          {onShowStats && (
+            <button
+              onClick={onShowStats}
+              className="text-xs font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-95 transition"
+            >
+              <span>Полная статистика</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 3 Stats — clean divider layout, no gray boxes */}

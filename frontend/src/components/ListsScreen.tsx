@@ -172,13 +172,29 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     triggerHaptic();
     const listTitle = currentList.isDefault ? t.lists.favorites : currentList.name;
 
-    // Call backend API to create a short shared list ID (e.g. sl_a1b2c3d4 - 11 chars!)
+    // Call backend API to create a short shared list ID (e.g. sl_a1b2c3d4)
     let sharedId = await api.createSharedList(listTitle, listItems);
-    let shareUrl = `https://t.me/manytgbot`;
 
-    if (sharedId) {
-      shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;
+    if (!sharedId) {
+      try {
+        const compactItems = listItems.slice(0, 10).map((i) => ({
+          t: i.title,
+          c: i.category,
+          y: i.release_year,
+          g: i.genre,
+        }));
+        const payload = JSON.stringify({ title: listTitle, items: compactItems });
+        const b64 = btoa(unescape(encodeURIComponent(payload)))
+          .replace(/=/g, '')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
+        sharedId = `sl_${b64.slice(0, 50)}`;
+      } catch {
+        sharedId = `sl_${Date.now()}`;
+      }
     }
+
+    const shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;
 
     let shareText = `📋 ${listTitle} (${listItems.length} ${t.lists.items_count})\n\n`;
 

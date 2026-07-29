@@ -172,12 +172,14 @@ export function App() {
         if (!startParam || !startParam.trim()) return false;
         const rawParam = startParam.trim();
 
-        // 1. Shared List Deep Link Check (sharedlist_... or list_...)
-        if (rawParam.startsWith('sharedlist_') || rawParam.startsWith('list_')) {
-          const payload = rawParam.replace(/^(sharedlist_|list_)/, '');
+        // 1. Shared List Deep Link Check (sl_..., sharedlist_..., or list_...)
+        if (rawParam.startsWith('sl_') || rawParam.startsWith('sharedlist_') || rawParam.startsWith('list_')) {
+          let listId = rawParam;
+          if (rawParam.startsWith('sharedlist_')) listId = rawParam.replace('sharedlist_', '');
+          if (rawParam.startsWith('list_')) listId = rawParam.replace('list_', '');
 
-          if (payload.startsWith('sl_')) {
-            const sharedData = await api.getSharedList(payload);
+          if (listId.startsWith('sl_')) {
+            const sharedData = await api.getSharedList(listId);
             if (sharedData?.title && sharedData?.items?.length) {
               setSharedListModalData({
                 title: sharedData.title,
@@ -188,6 +190,7 @@ export function App() {
           }
 
           try {
+            const payload = rawParam.replace(/^(sl_|sharedlist_|list_)/, '');
             const decodedStr = decodeURIComponent(atob(payload));
             const parsed = JSON.parse(decodedStr);
             if (parsed.title && Array.isArray(parsed.items)) {
