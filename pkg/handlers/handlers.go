@@ -947,7 +947,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	dbResults := h.searchDBCatalog(r.Context(), q, catEn)
 
 	// 2. Online search filtered by category
-	onlineResults := h.searchOnlineCatalog(q, catEn)
+	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults)
 
 	// 3. Merge results adhering strictly to category order & limits
 	finalResults := mergeSearchResults(dbResults, onlineResults, catEn)
@@ -1005,7 +1005,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 	return results
 }
 
-func (h *Handler) searchOnlineCatalog(q string, catEn string) []models.CatalogSearchResult {
+func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models.CatalogSearchResult) []models.CatalogSearchResult {
 	var items []models.CatalogSearchResult
 
 	parsedCat, cleanedQ := parseSearchQuery(q)
@@ -1064,6 +1064,43 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string) []models.CatalogSe
 			}
 		}
 	}
+
+	// 1. Build map of existing DB posters by title
+	dbPosterMap := make(map[string]string)
+	for _, dbItem := range dbResults {
+		titleKey := strings.ToLower(strings.TrimSpace(dbItem.Title))
+		if titleKey != "" && strings.TrimSpace(dbItem.PosterURL) != "" {
+			dbPosterMap[titleKey] = dbItem.PosterURL
+		}
+	}
+
+	// 2. Reuse DB poster if available, or optimize raw poster URL concurrently
+	var wg sync.WaitGroup
+	client := &http.Client{Timeout: 3 * time.Second}
+
+	for i := range items {
+		titleKey := strings.ToLower(strings.TrimSpace(items[i].Title))
+		if existingPoster, ok := dbPosterMap[titleKey]; ok && strings.TrimSpace(existingPoster) != "" {
+			items[i].PosterURL = existingPoster
+			continue
+		}
+
+		pURL := strings.TrimSpace(items[i].PosterURL)
+		if pURL == "" || strings.HasPrefix(pURL, "data:image/") {
+			continue
+		}
+
+		wg.Add(1)
+		go func(idx int, rawURL string) {
+			defer wg.Done()
+			opt := parser.OptimizePosterURL(client, rawURL)
+			if opt != "" {
+				items[idx].PosterURL = opt
+			}
+		}(i, pURL)
+	}
+
+	wg.Wait()
 
 	for _, item := range items {
 		go h.saveCatalogItemToDB(item)
