@@ -42,6 +42,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (onSearchQueryChange) onSearchQueryChange(q);
   };
   const [showSearchInput, setShowSearchInput] = useState(true);
+  const [sortBy, setSortBy] = useState<'date' | 'year'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
@@ -189,6 +190,21 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     const prioB = getTabCategoryPriority(b.category, title);
     if (prioA !== prioB) return prioA - prioB;
 
+    if (sortBy === 'year') {
+      const yearStrA = (a.release_year || '').toString();
+      const yearStrB = (b.release_year || '').toString();
+      const matchA = yearStrA.match(/\d{4}/);
+      const matchB = yearStrB.match(/\d{4}/);
+      const yearA = matchA ? parseInt(matchA[0], 10) : 0;
+      const yearB = matchB ? parseInt(matchB[0], 10) : 0;
+
+      if (yearA !== yearB) {
+        if (yearA === 0) return 1;
+        if (yearB === 0) return -1;
+        return sortOrder === 'desc' ? yearB - yearA : yearA - yearB;
+      }
+    }
+
     const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
     const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
     return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
@@ -299,18 +315,63 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         </div>
       )}
 
-      {/* Subheader count & working sort button when not actively searching */}
+      {/* Subheader count & working sort buttons when not actively searching */}
       {!isSearchActive && (
         <div className="flex items-center justify-between text-xs text-gray-400 pt-0.5">
           <span>{sortedItems.length} {t.details.elements_count}</span>
-          <button
-            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-            className="flex items-center gap-1 text-gray-300 hover:text-white font-medium transition active:scale-95"
-            title="Сортировать по дате"
-          >
-            <span>{t.details.by_date}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-accentViolet transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (sortBy === 'year') {
+                  setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setSortBy('year');
+                  setSortOrder('desc');
+                }
+              }}
+              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+                sortBy === 'year' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
+              }`}
+              title={t.details.by_year}
+            >
+              <span>{t.details.by_year}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  sortBy === 'year'
+                    ? sortOrder === 'asc'
+                      ? 'rotate-180 text-accentViolet'
+                      : 'text-accentViolet'
+                    : 'text-gray-400'
+                }`}
+              />
+            </button>
+
+            <button
+              onClick={() => {
+                if (sortBy === 'date') {
+                  setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setSortBy('date');
+                  setSortOrder('desc');
+                }
+              }}
+              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+                sortBy === 'date' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
+              }`}
+              title={t.details.by_date}
+            >
+              <span>{t.details.by_date}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  sortBy === 'date'
+                    ? sortOrder === 'asc'
+                      ? 'rotate-180 text-accentViolet'
+                      : 'text-accentViolet'
+                    : 'text-gray-400'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       )}
 

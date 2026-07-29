@@ -139,6 +139,7 @@ export interface Translations {
     search_placeholder: string;
     elements_count: string;
     by_date: string;
+    by_year: string;
     no_items_found: string;
     director: string;
     cast: string;

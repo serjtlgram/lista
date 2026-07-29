@@ -10,6 +10,7 @@ import {
   BookMarked,
   X,
   Search,
+  ChevronDown,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
@@ -98,6 +99,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   const currentList = lists.find((l) => l.id === selectedListId) || lists[0];
 
+  const [sortBy, setSortBy] = useState<'date' | 'year'>('date');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
   // Get items belonging to selected list
   const favoriteIds = getFavoriteIds();
   const listItems = items.filter((item) => {
@@ -105,6 +109,30 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       return favoriteIds.includes(item.id);
     }
     return currentList.itemIds.includes(item.id);
+  });
+
+  const sortedListItems = [...listItems].sort((a, b) => {
+    if (sortBy === 'year') {
+      const yearStrA = (a.release_year || '').toString();
+      const yearStrB = (b.release_year || '').toString();
+      const matchA = yearStrA.match(/\d{4}/);
+      const matchB = yearStrB.match(/\d{4}/);
+      const yearA = matchA ? parseInt(matchA[0], 10) : 0;
+      const yearB = matchB ? parseInt(matchB[0], 10) : 0;
+
+      if (yearA !== yearB) {
+        if (yearA === 0) return 1;
+        if (yearB === 0) return -1;
+        return sortOrder === 'desc' ? yearB - yearA : yearA - yearB;
+      }
+    }
+
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (timeA !== timeB) {
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    }
+    return 0;
   });
 
   const handleCreateList = (e: React.FormEvent) => {
@@ -376,10 +404,76 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </div>
       </div>
 
+      {/* Subheader count & sort buttons for current list */}
+      {listItems.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-gray-400 px-1 pt-1 pb-0.5">
+          <span>
+            {sortedListItems.length} {t.details.elements_count}
+          </span>
+          <div className="flex items-center gap-3">
+            {/* Sort by Year */}
+            <button
+              onClick={() => {
+                triggerHaptic();
+                if (sortBy === 'year') {
+                  setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setSortBy('year');
+                  setSortOrder('desc');
+                }
+              }}
+              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+                sortBy === 'year' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
+              }`}
+              title={t.details.by_year}
+            >
+              <span>{t.details.by_year}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  sortBy === 'year'
+                    ? sortOrder === 'asc'
+                      ? 'rotate-180 text-accentViolet'
+                      : 'text-accentViolet'
+                    : 'text-gray-400'
+                }`}
+              />
+            </button>
+
+            {/* Sort by Date */}
+            <button
+              onClick={() => {
+                triggerHaptic();
+                if (sortBy === 'date') {
+                  setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setSortBy('date');
+                  setSortOrder('desc');
+                }
+              }}
+              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+                sortBy === 'date' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
+              }`}
+              title={t.details.by_date}
+            >
+              <span>{t.details.by_date}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  sortBy === 'date'
+                    ? sortOrder === 'asc'
+                      ? 'rotate-180 text-accentViolet'
+                      : 'text-accentViolet'
+                    : 'text-gray-400'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Items list */}
-      {listItems.length > 0 ? (
+      {sortedListItems.length > 0 ? (
         <div className="space-y-2.5">
-          {listItems.map((item) => (
+          {sortedListItems.map((item) => (
             <ItemCard
               key={item.id}
               item={item}
