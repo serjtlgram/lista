@@ -54,7 +54,11 @@ export const isMissingOrDummyPoster = (url?: string | null): boolean => {
  */
 export const getItemPoster = (item: { id?: string; title?: string; poster_url?: string | null }): string => {
   if (!isMissingOrDummyPoster(item.poster_url)) {
-    return item.poster_url!;
+    let url = item.poster_url!.trim();
+    if (url.startsWith('http://')) {
+      url = 'https://' + url.slice(7);
+    }
+    return url;
   }
 
   let seed = 0;
@@ -64,3 +68,4 @@ export const getItemPoster = (item: { id?: string; title?: string; poster_url?: 
   }
   return PLACEHOLDER_POSTERS[Math.abs(seed) % PLACEHOLDER_POSTERS.length];
 };
+

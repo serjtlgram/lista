@@ -409,7 +409,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       {sug.poster_url ? (
-                        <img src={sug.poster_url} className="w-7 h-10 object-cover rounded shadow" alt="" />
+                        <img src={sug.poster_url} referrerPolicy="no-referrer" className="w-7 h-10 object-cover rounded shadow" alt="" />
                       ) : (
                         <div className="w-7 h-10 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 font-bold">
                           {sug.category?.[0]?.toUpperCase()}

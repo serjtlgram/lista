@@ -399,6 +399,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <div className="relative shrink-0 w-32 aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border border-cardBorder group cursor-pointer">
             <img
               src={posterSrc}
+              referrerPolicy="no-referrer"
               onClick={() => setIsFullscreenPoster(true)}
               className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
               alt={item.title}
