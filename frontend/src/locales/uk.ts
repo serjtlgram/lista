@@ -172,7 +172,7 @@ export const uk: Translations = {
   },
   favorites: {
     title: 'Улюблене',
-    see_more: 'Еще',
+    see_more: 'Ще',
     empty: 'Додайте зірочку на карткці',
     added: 'Додано до улюбленого',
     removed: 'Видалено з улюбленого',
@@ -186,7 +186,7 @@ export const uk: Translations = {
     share: 'Поділитися',
     share_list: 'Поділитися списком',
     add_items: 'Додати',
-    show_more: 'Еще',
+    show_more: 'Ще',
     empty_list: 'Список порожній',
     empty_favorites: 'Позначте зірочкою для додавання',
     create_name_placeholder: 'Назва списку...',

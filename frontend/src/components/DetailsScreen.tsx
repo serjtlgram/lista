@@ -31,6 +31,7 @@ import { getItemPoster } from '../services/posters';
 import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 import { isFavorite, toggleFavorite } from '../services/favorites';
+import { ListSelectionModal } from './ListSelectionModal';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -163,6 +164,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         });
     }
   }, [item.id, item.title, item.category, item.author, item.youtube_url]);
+
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
 
   useEffect(() => {
     setNoteText(item.note || '');
@@ -777,7 +780,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       ) : (
         <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
           <button
-            onClick={() => setToastMessage(t.details.lists_coming_soon)}
+            onClick={() => setIsListModalOpen(true)}
             className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
           >
             <FolderPlus className="w-4 h-4 mb-1 text-amber-400" />
@@ -854,6 +857,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>,
         document.body
       )}
+
+      {/* List Selection Modal */}
+      <ListSelectionModal
+        isOpen={isListModalOpen}
+        onClose={() => setIsListModalOpen(false)}
+        item={item}
+        t={t}
+      />
     </div>
   );
 };

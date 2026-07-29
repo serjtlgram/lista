@@ -6,6 +6,7 @@ import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
 import { getLists, saveLists, FAVORITES_ID } from '../services/lists';
 import { getFavoriteIds, toggleFavorite } from '../services/favorites';
+import { ListSelectionModal } from './ListSelectionModal';
 
 interface ItemCardProps {
   item: Item;
@@ -203,7 +204,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     { value: 'planned', label: t ? t.modal.status_planned : 'В планах' },
     { value: 'watching', label: getWatchingLabel() },
     { value: 'completed', label: t ? t.modal.status_completed : 'Завершено' },
-    { value: 'paused', label: 'Отложено' },
   ];
 
   const currentStatusObj = statuses.find(s => s.value === item.status) || statuses[0];
@@ -381,47 +381,13 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         document.body
       )}
 
-      {isListsOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setIsListsOpen(false)}>
-          <div className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-4 animate-slide-up pb-8 sm:pb-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-cardBorder pb-3">
-              <h3 className="text-base font-bold text-white">Списки</h3>
-              <button onClick={() => setIsListsOpen(false)} className="text-gray-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="max-h-[50vh] overflow-y-auto space-y-2 hide-scrollbar">
-              {allUserLists.map(list => {
-                const isSelected = tempListIds.includes(list.id);
-                return (
-                  <div
-                    key={list.id}
-                    onClick={() => { triggerHaptic(); toggleTempList(list.id); }}
-                    className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
-                      isSelected ? 'bg-accentViolet/20 border-accentViolet' : 'bg-bgDark border-cardBorder hover:border-gray-600'
-                    }`}
-                  >
-                    <span className="text-sm font-bold text-white">{list.name}</span>
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
-                      isSelected ? 'bg-accentViolet border-accentViolet text-white' : 'border-cardBorder bg-bgDark text-transparent'
-                    }`}>
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    </div>
-                  </div>
-                );
-              })}
-              {allUserLists.length === 0 && (
-                <div className="text-center py-4 text-xs text-gray-500">У вас еще нет списков</div>
-              )}
-            </div>
-            <button
-              onClick={() => { triggerHaptic(); saveListsChanges(); }}
-              className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg hover:bg-opacity-90 transition mt-2"
-            >
-              {t ? t.modal.save : 'Сохранить'}
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ListSelectionModal
+        isOpen={isListsOpen}
+        onClose={() => setIsListsOpen(false)}
+        item={item}
+        t={t}
+        onSave={() => recalculateLists()}
+      />
     </>
   );
 };
