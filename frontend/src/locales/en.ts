@@ -184,7 +184,7 @@ export const en: Translations = {
     delete: 'Delete List',
     share: 'Share',
     share_list: 'Share List',
-    add_items: 'Add Items',
+    add_items: 'Add',
     show_more: 'More',
     empty_list: 'List is empty',
     empty_favorites: 'Star items to add them here',

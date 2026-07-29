@@ -184,7 +184,7 @@ export const uk: Translations = {
     delete: 'Видалити список',
     share: 'Поділитися',
     share_list: 'Поділитися списком',
-    add_items: 'Додати елементи',
+    add_items: 'Додати',
     show_more: 'Еще',
     empty_list: 'Список порожній',
     empty_favorites: 'Позначте зірочкою для додавання',

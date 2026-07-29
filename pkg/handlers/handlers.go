@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -28,20 +29,23 @@ import (
 )
 
 type Handler struct {
-	DB              *db.DB
-	BotToken        string
-	YoutubeAPIKey   string
-	TMDBAPIKey      string
-	KinopoiskAPIKey string
+	DB               *db.DB
+	BotToken         string
+	YoutubeAPIKey    string
+	TMDBAPIKey       string
+	KinopoiskAPIKey  string
+	sharedListsCache map[string][]byte
+	cacheMu          sync.RWMutex
 }
 
 func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string) *Handler {
 	h := &Handler{
-		DB:              database,
-		BotToken:        botToken,
-		YoutubeAPIKey:   youtubeAPIKey,
-		TMDBAPIKey:      tmdbAPIKey,
-		KinopoiskAPIKey: kinopoiskAPIKey,
+		DB:               database,
+		BotToken:         botToken,
+		YoutubeAPIKey:    youtubeAPIKey,
+		TMDBAPIKey:       tmdbAPIKey,
+		KinopoiskAPIKey:  kinopoiskAPIKey,
+		sharedListsCache: make(map[string][]byte),
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
@@ -2782,15 +2786,20 @@ func (h *Handler) CreateSharedList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := fmt.Sprintf("sl_%d", time.Now().UnixNano())
+	shortUUID := strings.ReplaceAll(uuid.New().String(), "-", "")[:8]
+	id := fmt.Sprintf("sl_%s", shortUUID)
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		http.Error(w, `{"error":"failed to serialize list"}`, http.StatusInternalServerError)
 		return
 	}
 
+	h.cacheMu.Lock()
+	h.sharedListsCache[id] = jsonData
+	h.cacheMu.Unlock()
+
 	if h.DB != nil && h.DB.Pool != nil {
-		_, err = h.DB.Pool.Exec(r.Context(), `INSERT INTO shared_lists (id, title, data) VALUES ($1, $2, $3)`, id, req.Title, jsonData)
+		_, err = h.DB.Pool.Exec(r.Context(), `INSERT INTO shared_lists (id, title, data) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`, id, req.Title, jsonData)
 		if err != nil {
 			log.Printf("Failed to insert shared_list: %v", err)
 		}
@@ -2811,15 +2820,22 @@ func (h *Handler) GetSharedList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var data []byte
-	if h.DB != nil && h.DB.Pool != nil {
+	h.cacheMu.RLock()
+	data, found := h.sharedListsCache[listID]
+	h.cacheMu.RUnlock()
+
+	if !found && h.DB != nil && h.DB.Pool != nil {
 		err := h.DB.Pool.QueryRow(r.Context(), `SELECT data FROM shared_lists WHERE id = $1 LIMIT 1`, listID).Scan(&data)
-		if err != nil {
-			http.Error(w, `{"error":"shared list not found"}`, http.StatusNotFound)
-			return
+		if err == nil && len(data) > 0 {
+			found = true
+			h.cacheMu.Lock()
+			h.sharedListsCache[listID] = data
+			h.cacheMu.Unlock()
 		}
-	} else {
-		http.Error(w, `{"error":"database unavailable"}`, http.StatusServiceUnavailable)
+	}
+
+	if !found || len(data) == 0 {
+		http.Error(w, `{"error":"shared list not found"}`, http.StatusNotFound)
 		return
 	}
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Star,
   Share2,
@@ -18,11 +19,9 @@ import {
   createList,
   renameList,
   deleteList,
-  addItemToList,
-  removeItemFromList,
   FAVORITES_ID,
 } from '../services/lists';
-import { getFavoriteIds } from '../services/favorites';
+import { getFavoriteIds, setFavoriteIds } from '../services/favorites';
 import { ItemCard } from './ItemCard';
 import { Translations, formatCategorySingle } from '../services/i18n';
 import { api } from '../services/api';
@@ -52,7 +51,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
 
-  // Add Items Modal state — uses local state tempSelectedIds to prevent layout shifts!
+  // Add Items Modal state
   const [isAddItemsModalOpen, setIsAddItemsModalOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
@@ -123,12 +122,16 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   // Opens Add Items modal and initializes tempSelectedIds
   const handleOpenAddItemsModal = () => {
     triggerHaptic();
-    setTempSelectedIds([...currentList.itemIds]);
+    if (currentList.id === FAVORITES_ID) {
+      setTempSelectedIds([...getFavoriteIds()]);
+    } else {
+      setTempSelectedIds([...currentList.itemIds]);
+    }
     setItemsSearchQuery('');
     setIsAddItemsModalOpen(true);
   };
 
-  // Toggles item in local modal state (no parent re-renders/jumps!)
+  // Toggles item in local modal state
   const handleToggleTempItem = (itemId: string) => {
     triggerHaptic();
     setTempSelectedIds((prev) =>
@@ -136,14 +139,18 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     );
   };
 
-  // Saves local modal state to list
+  // Saves local modal state to list or favorites
   const handleSaveAddItems = () => {
     triggerHaptic();
-    const updatedLists = lists.map((l) =>
-      l.id === currentList.id ? { ...l, itemIds: tempSelectedIds } : l
-    );
-    saveLists(updatedLists);
-    setLists(updatedLists);
+    if (currentList.id === FAVORITES_ID) {
+      setFavoriteIds(tempSelectedIds);
+    } else {
+      const updatedLists = lists.map((l) =>
+        l.id === currentList.id ? { ...l, itemIds: tempSelectedIds } : l
+      );
+      saveLists(updatedLists);
+      setLists(updatedLists);
+    }
     setIsAddItemsModalOpen(false);
   };
 
@@ -151,32 +158,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     triggerHaptic();
     const listTitle = currentList.isDefault ? t.lists.favorites : currentList.name;
 
-    // Try backend shared list API first
+    // Call backend API to create a short shared list ID (e.g. sl_a1b2c3d4 - 11 chars!)
     let sharedId = await api.createSharedList(listTitle, listItems);
-    let shareUrl = '';
+    let shareUrl = `https://t.me/manytgbot`;
 
     if (sharedId) {
-      shareUrl = `https://t.me/manytgbot?startapp=sharedlist_${sharedId}`;
-    } else {
-      // Fallback encoding
-      try {
-        const compactData = {
-          title: listTitle,
-          items: listItems.map((i) => ({
-            t: i.title,
-            c: i.category,
-            y: i.release_year,
-            g: i.genre,
-            p: i.poster_url,
-            d: i.duration,
-            r: i.rating,
-          })),
-        };
-        const encoded = btoa(encodeURIComponent(JSON.stringify(compactData)));
-        shareUrl = `https://t.me/manytgbot?startapp=sharedlist_${encoded}`;
-      } catch {
-        shareUrl = `https://t.me/manytgbot`;
-      }
+      shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;
     }
 
     let shareText = `📋 **${listTitle}** (${listItems.length} ${t.lists.items_count})\n\n`;
@@ -191,7 +178,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       shareText += `\n... ${t.lists.show_more} ${listItems.length - 10}\n`;
     }
 
-    shareText += `\n➕ Нажми ссылку ниже, чтобы добавить весь список себе в 1 клик!`;
+    shareText += `\n➕ Открой ссылку ниже, чтобы добавить весь список себе в 1 клик!`;
 
     const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
@@ -238,7 +225,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </button>
       </div>
 
-      {/* Horizontal List Selector / Tabs (ITEM 5: No icons except Star for Favorites!) */}
+      {/* Horizontal List Selector / Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         {lists.map((list) => {
           const isSelected = list.id === selectedListId;
@@ -258,7 +245,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
               }`}
             >
-              {/* Only show Star icon for Favorites (Item 5) */}
+              {/* Only show Star icon for Favorites */}
               {isFav && (
                 <Star
                   className={`w-3.5 h-3.5 ${
@@ -279,7 +266,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         })}
       </div>
 
-      {/* ITEM 1 FIX: Title on Top, Action Buttons on Bottom row so nothing overflows! */}
+      {/* Current List Action Header Card */}
       <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
         {/* Top Row: List Title & Item Count */}
         <div className="flex items-center gap-2.5">
@@ -298,7 +285,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           </div>
         </div>
 
-        {/* Bottom Row: Action Buttons (Share, Edit, Delete, Add Items) */}
+        {/* Bottom Row: Action Buttons (Share, Edit, Delete, "+ Добавить") */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-cardBorder/50">
           <div className="flex items-center gap-1.5">
             <button
@@ -333,15 +320,15 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             )}
           </div>
 
-          {!currentList.isDefault && (
-            <button
-              onClick={handleOpenAddItemsModal}
-              className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95 shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t.lists.add_items}</span>
-            </button>
-          )}
+          {/* ITEM 3 FIX: "+ Добавить" button is ALWAYS present, even for Favorites! */}
+          {/* ITEM 2 FIX: Button text is "+ Добавить" (without "элементы") */}
+          <button
+            onClick={handleOpenAddItemsModal}
+            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95 shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Добавить</span>
+          </button>
         </div>
       </div>
 
@@ -364,6 +351,13 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             <>
               <Star className="w-10 h-10 mx-auto text-amber-400 opacity-60" />
               <p className="text-xs text-gray-300 font-medium">{t.lists.empty_favorites}</p>
+              <button
+                onClick={handleOpenAddItemsModal}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Добавить</span>
+              </button>
             </>
           ) : (
             <>
@@ -374,7 +368,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>{t.lists.add_items}</span>
+                <span>Добавить</span>
               </button>
             </>
           )}
@@ -388,178 +382,184 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </div>
       )}
 
-      {/* Modal: Create List */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
-            <div className="flex items-center justify-between border-b border-cardBorder pb-2">
-              <h3 className="text-base font-bold text-white">{t.lists.new_list}</h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateList} className="space-y-4">
-              <input
-                type="text"
-                autoFocus
-                required
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder={t.lists.create_name_placeholder}
-                className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
-              />
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
-                >
-                  {t.lists.cancel_btn}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
-                >
-                  {t.lists.create_btn}
+      {/* Modal: Create List (ITEM 5 FIX: Rendered via createPortal to document.body to prevent layout/scroll jumping) */}
+      {isCreateModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+                <h3 className="text-base font-bold text-white">{t.lists.new_list}</h3>
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleCreateList} className="space-y-4">
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder={t.lists.create_name_placeholder}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                />
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                  >
+                    {t.lists.cancel_btn}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
+                  >
+                    {t.lists.create_btn}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Modal: Rename List */}
-      {isRenameModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
-            <div className="flex items-center justify-between border-b border-cardBorder pb-2">
-              <h3 className="text-base font-bold text-white">{t.lists.rename}</h3>
-              <button onClick={() => setIsRenameModalOpen(false)} className="text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleRenameList} className="space-y-4">
-              <input
-                type="text"
-                autoFocus
-                required
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                placeholder={t.lists.rename_placeholder}
-                className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
-              />
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsRenameModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
-                >
-                  {t.lists.cancel_btn}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
-                >
-                  {t.modal.save}
+      {isRenameModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+                <h3 className="text-base font-bold text-white">{t.lists.rename}</h3>
+                <button onClick={() => setIsRenameModalOpen(false)} className="text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* ITEM 2 FIX: Clean Centered Modal Dialog for Add Items + Local State to prevent shifts & translates categories */}
-      {isAddItemsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[82vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
-              <h3 className="text-base font-bold text-white">{t.lists.add_items}</h3>
-              <button onClick={() => setIsAddItemsModalOpen(false)} className="text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <form onSubmit={handleRenameList} className="space-y-4">
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  placeholder={t.lists.rename_placeholder}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                />
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsRenameModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                  >
+                    {t.lists.cancel_btn}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
+                  >
+                    {t.modal.save}
+                  </button>
+                </div>
+              </form>
             </div>
+          </div>,
+          document.body
+        )}
 
-            {/* Search filter */}
-            <div className="relative shrink-0">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                value={itemsSearchQuery}
-                onChange={(e) => setItemsSearchQuery(e.target.value)}
-                placeholder={t.details.search_placeholder}
-                className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-              />
-            </div>
+      {/* ITEM 5 FIX: Rendered via createPortal to document.body! Perfectly centered, no jumping or bottom clipping! */}
+      {isAddItemsModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+            <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[82vh] flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
+                <h3 className="text-base font-bold text-white">{t.lists.add_items}</h3>
+                <button onClick={() => setIsAddItemsModalOpen(false)} className="text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            {/* Items Checkbox List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 hide-scrollbar">
-              {items
-                .filter((item) =>
-                  itemsSearchQuery
-                    ? item.title.toLowerCase().includes(itemsSearchQuery.toLowerCase()) ||
-                      (item.genre && item.genre.toLowerCase().includes(itemsSearchQuery.toLowerCase()))
-                    : true
-                )
-                .map((item) => {
-                  const isInTemp = tempSelectedIds.includes(item.id);
-                  const categoryLabel = formatCategorySingle(item.category, t);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => handleToggleTempItem(item.id)}
-                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
-                        isInTemp
-                          ? 'bg-accentViolet/20 border-accentViolet shadow-sm'
-                          : 'bg-bgDark border-cardBorder hover:border-gray-600'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        {item.poster_url ? (
-                          <img
-                            src={item.poster_url}
-                            alt=""
-                            className="w-9 h-12 object-cover rounded-xl shrink-0 bg-gray-800"
-                          />
-                        ) : (
-                          <div className="w-9 h-12 bg-gray-800 rounded-xl flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
-                            {item.title.charAt(0)}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
-                          <p className="text-[10px] text-gray-400">
-                            {categoryLabel} {item.release_year ? `• ${item.release_year}` : ''}
-                          </p>
-                        </div>
-                      </div>
+              {/* Search filter */}
+              <div className="relative shrink-0">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={itemsSearchQuery}
+                  onChange={(e) => setItemsSearchQuery(e.target.value)}
+                  placeholder={t.details.search_placeholder}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                />
+              </div>
 
+              {/* Items Checkbox List */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 hide-scrollbar">
+                {items
+                  .filter((item) =>
+                    itemsSearchQuery
+                      ? item.title.toLowerCase().includes(itemsSearchQuery.toLowerCase()) ||
+                        (item.genre && item.genre.toLowerCase().includes(itemsSearchQuery.toLowerCase()))
+                      : true
+                  )
+                  .map((item) => {
+                    const isInTemp = tempSelectedIds.includes(item.id);
+                    const categoryLabel = formatCategorySingle(item.category, t);
+                    return (
                       <div
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center transition border shrink-0 ${
+                        key={item.id}
+                        onClick={() => handleToggleTempItem(item.id)}
+                        className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
                           isInTemp
-                            ? 'bg-accentViolet border-accentViolet text-white'
-                            : 'border-cardBorder bg-bgDark text-transparent'
+                            ? 'bg-accentViolet/20 border-accentViolet shadow-sm'
+                            : 'bg-bgDark border-cardBorder hover:border-gray-600'
                         }`}
                       >
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          {item.poster_url ? (
+                            <img
+                              src={item.poster_url}
+                              alt=""
+                              className="w-9 h-12 object-cover rounded-xl shrink-0 bg-gray-800"
+                            />
+                          ) : (
+                            <div className="w-9 h-12 bg-gray-800 rounded-xl flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                              {item.title.charAt(0)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
+                            <p className="text-[10px] text-gray-400">
+                              {categoryLabel} {item.release_year ? `• ${item.release_year}` : ''}
+                            </p>
+                          </div>
+                        </div>
 
-            <button
-              onClick={handleSaveAddItems}
-              className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition shrink-0"
-            >
-              {t.modal.save}
-            </button>
-          </div>
-        </div>
-      )}
+                        <div
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition border shrink-0 ${
+                            isInTemp
+                              ? 'bg-accentViolet border-accentViolet text-white'
+                              : 'border-cardBorder bg-bgDark text-transparent'
+                          }`}
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <button
+                onClick={handleSaveAddItems}
+                className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition shrink-0"
+              >
+                {t.modal.save}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

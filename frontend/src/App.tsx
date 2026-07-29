@@ -550,19 +550,19 @@ export function App() {
               }}
               t={t}
             />
+            <FavoritesSection
+              items={items.filter((i) => getFavoriteIds().includes(i.id))}
+              onSeeAll={() => handleTabChange('lists')}
+              onSelectItem={handleSelectItem}
+              onToggleStatus={handleToggleStatus}
+              t={t}
+            />
             <ActivityCard
               monthlyCount={profile?.monthly_count || 0}
               monthlyHours={profile?.monthly_hours || 0}
               currentStreak={profile?.current_streak || 0}
               items={items}
               onShowStats={() => handleTabChange('stats')}
-              t={t}
-            />
-            <FavoritesSection
-              items={items.filter((i) => getFavoriteIds().includes(i.id))}
-              onSeeAll={() => handleTabChange('lists')}
-              onSelectItem={handleSelectItem}
-              onToggleStatus={handleToggleStatus}
               t={t}
             />
             <RecentlyAdded

@@ -184,7 +184,7 @@ export const ru: Translations = {
     delete: 'Удалить список',
     share: 'Поделиться',
     share_list: 'Поделиться списком',
-    add_items: 'Добавить элементы',
+    add_items: 'Добавить',
     show_more: 'Ещё',
     empty_list: 'Список пуст',
     empty_favorites: 'Помечайте звёздочкой для добавления',
