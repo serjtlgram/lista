@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, BarChart3, User } from 'lucide-react';
+import { Home, Search, BookMarked, User } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
 interface NavbarProps {
@@ -12,7 +12,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t }) => 
   const tabs = [
     { id: 'home', label: t.nav_home, icon: Home },
     { id: 'search', label: t.nav_search, icon: Search },
-    { id: 'stats', label: t.nav_stats, icon: BarChart3 },
+    { id: 'lists', label: t.nav_lists, icon: BookMarked },
     { id: 'profile', label: t.nav_profile, icon: User },
   ];
 

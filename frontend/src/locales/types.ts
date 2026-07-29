@@ -6,6 +6,7 @@ export interface Translations {
   nav_home: string;
   nav_search: string;
   nav_stats: string;
+  nav_lists: string;
   nav_profile: string;
   categories: {
     movies: string;
@@ -166,5 +167,37 @@ export interface Translations {
     completion_rate: string;
     activity_chart_subtitle: string;
     hours_info_message: string;
+    show_more: string;
+  };
+  favorites: {
+    title: string;
+    see_more: string;
+    empty: string;
+    added: string;
+    removed: string;
+  };
+  lists: {
+    title: string;
+    favorites: string;
+    new_list: string;
+    rename: string;
+    delete: string;
+    share: string;
+    share_list: string;
+    add_items: string;
+    show_more: string;
+    empty_list: string;
+    empty_favorites: string;
+    create_name_placeholder: string;
+    rename_placeholder: string;
+    create_btn: string;
+    cancel_btn: string;
+    delete_confirm: string;
+    items_count: string;
+    open_lista_app: string;
+    list_shared: string;
+    cannot_delete_default: string;
+    cannot_rename_default: string;
+    go_to_stats: string;
   };
 }

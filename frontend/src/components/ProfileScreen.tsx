@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Sun, Moon, Grid, ShieldCheck, User as UserIcon, ChevronRight } from 'lucide-react';
+import { Globe, Sun, Moon, Grid, ShieldCheck, User as UserIcon, ChevronRight, BarChart3 } from 'lucide-react';
 import { Language, Translations } from '../services/i18n';
 import { UserProfile } from '../types';
 
@@ -11,6 +11,7 @@ interface ProfileScreenProps {
   onThemeChange: (theme: 'dark' | 'light') => void;
   activeCategories: string[];
   onOpenCategoryConfig: () => void;
+  onGoToStats?: () => void;
   t: Translations;
 }
 
@@ -22,6 +23,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onThemeChange,
   activeCategories,
   onOpenCategoryConfig,
+  onGoToStats,
   t,
 }) => {
   const userName =
@@ -70,7 +72,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {userHandle && <p className="text-xs text-gray-400">@{userHandle}</p>}
           <div className="flex items-center gap-1 mt-1 text-[11px] text-accentTeal font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>TrackList User</span>
+            <span>Lista User</span>
           </div>
         </div>
       </div>
@@ -165,9 +167,36 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </button>
       </div>
 
+      {/* Statistics Navigation Card */}
+      {onGoToStats && (
+        <div
+          onClick={onGoToStats}
+          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-98 shadow-md group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  {t.stats.title}
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  {t.lists.go_to_stats || 'Перейти к подробной статистике'}
+                </p>
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer Info */}
       <div className="text-center pt-2 text-[11px] text-gray-500 space-y-0.5">
-        <p>TrackList App v1.2.0</p>
+        <p>Lista App v1.2.0</p>
         <p>@manytgbot</p>
       </div>
     </div>

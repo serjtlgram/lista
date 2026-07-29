@@ -1719,7 +1719,7 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 			ratingRow1,
 			ratingRow2,
 			{
-				{"text": "🎬 Открыть в TrackList", "url": appURL},
+				{"text": "🎬 Открыть в Lista", "url": appURL},
 			},
 		},
 	}

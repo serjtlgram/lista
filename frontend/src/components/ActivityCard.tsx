@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Flame, Plus, CheckCircle2, Info } from 'lucide-react';
+import { TrendingUp, Flame, Plus, CheckCircle2, Info, ChevronRight } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
@@ -10,6 +10,7 @@ interface ActivityCardProps {
   monthlyHours?: number;
   currentStreak?: number;
   items?: Item[];
+  onShowStats?: () => void;
   t: Translations;
 }
 
@@ -19,6 +20,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   monthlyCount = 0,
   currentStreak = 0,
   items = [],
+  onShowStats,
   t,
 }) => {
   const now = new Date();
@@ -150,10 +152,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             <TrendingUp className="w-3 h-3 text-accentViolet" />
             Активность по неделям
           </span>
-          {hasRealData && (
-            <span className="text-[10px] font-semibold text-accentViolet">
-              пик W{peakIdx + 1} (+{weekCounts[peakIdx]})
-            </span>
+          {onShowStats && (
+            <button
+              onClick={onShowStats}
+              className="text-[10px] font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-95 transition"
+            >
+              <span>{t.stats.show_more || 'показать больше'}</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
           )}
         </div>
 

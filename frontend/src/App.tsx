@@ -5,8 +5,10 @@ import { Header } from './components/Header';
 import { CategoryGrid } from './components/CategoryGrid';
 import { ActivityCard } from './components/ActivityCard';
 import { RecentlyAdded } from './components/RecentlyAdded';
+import { FavoritesSection } from './components/FavoritesSection';
 import { CategoryScreen } from './components/CategoryScreen';
 import { DetailsScreen } from './components/DetailsScreen';
+import { ListsScreen } from './components/ListsScreen';
 import { StatsScreen } from './components/StatsScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { CategorySelectModal } from './components/CategorySelectModal';
@@ -14,6 +16,8 @@ import { AddItemModal } from './components/AddItemModal';
 import { Navbar } from './components/Navbar';
 
 import { api } from './services/api';
+import { getFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
+import { syncListsFromCloud } from './services/lists';
 import { Item, UserProfile, StatsData } from './types';
 import {
   Language,
@@ -27,8 +31,8 @@ import {
 } from './services/i18n';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'stats' | 'profile' | 'details'>('home');
-  const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'stats' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details'>('home');
+  const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -48,6 +52,11 @@ export function App() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return !!(window as any).Telegram?.WebApp?.isFullscreen;
   });
+
+  useEffect(() => {
+    syncFavoritesFromCloud();
+    syncListsFromCloud();
+  }, []);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -501,6 +510,14 @@ export function App() {
               monthlyHours={profile?.monthly_hours || 0}
               currentStreak={profile?.current_streak || 0}
               items={items}
+              onShowStats={() => handleTabChange('stats')}
+              t={t}
+            />
+            <FavoritesSection
+              items={items.filter((i) => getFavoriteIds().includes(i.id))}
+              onSeeAll={() => handleTabChange('lists')}
+              onSelectItem={handleSelectItem}
+              onToggleStatus={handleToggleStatus}
               t={t}
             />
             <RecentlyAdded
@@ -559,7 +576,19 @@ export function App() {
           </section>
         )}
 
-        {/* SCREEN 4: PROFILE */}
+        {/* SCREEN 4: LISTS */}
+        {activeTab === 'lists' && (
+          <section>
+            <ListsScreen
+              items={items}
+              onSelectItem={handleSelectItem}
+              onToggleStatus={handleToggleStatus}
+              t={t}
+            />
+          </section>
+        )}
+
+        {/* SCREEN 5: PROFILE */}
         {activeTab === 'profile' && (
           <section>
             <ProfileScreen
@@ -573,12 +602,13 @@ export function App() {
                 triggerHaptic();
                 setIsCategoryModalOpen(true);
               }}
+              onGoToStats={() => handleTabChange('stats')}
               t={t}
             />
           </section>
         )}
 
-        {/* SCREEN 5: STATS */}
+        {/* SCREEN 6: STATS */}
         {activeTab === 'stats' && (
           <section>
             <StatsScreen stats={stats} profile={profile} items={items} t={t} />

@@ -1,0 +1,505 @@
+import React, { useState } from 'react';
+import {
+  ListPlus,
+  Star,
+  Share2,
+  Edit2,
+  Trash2,
+  Plus,
+  Check,
+  ChevronLeft,
+  BookMarked,
+  X,
+  Search,
+} from 'lucide-react';
+import { Item } from '../types';
+import { UserList, getLists, saveLists, createList, renameList, deleteList, addItemToList, removeItemFromList, FAVORITES_ID } from '../services/lists';
+import { getFavoriteIds } from '../services/favorites';
+import { ItemCard } from './ItemCard';
+import { Translations } from '../services/i18n';
+
+interface ListsScreenProps {
+  items: Item[];
+  onSelectItem: (item: Item) => void;
+  onToggleStatus: (item: Item, e: React.MouseEvent) => void;
+  t: Translations;
+  initialListId?: string;
+}
+
+export const ListsScreen: React.FC<ListsScreenProps> = ({
+  items,
+  onSelectItem,
+  onToggleStatus,
+  t,
+  initialListId,
+}) => {
+  const [lists, setLists] = useState<UserList[]>(() => getLists());
+  const [selectedListId, setSelectedListId] = useState<string>(initialListId || FAVORITES_ID);
+
+  // Modals state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+
+  const [isAddItemsModalOpen, setIsAddItemsModalOpen] = useState(false);
+  const [itemsSearchQuery, setItemsSearchQuery] = useState('');
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const refreshLists = () => {
+    const updated = getLists();
+    setLists(updated);
+  };
+
+  const triggerHaptic = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('light');
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const currentList = lists.find((l) => l.id === selectedListId) || lists[0];
+
+  // Get items belonging to selected list
+  const favoriteIds = getFavoriteIds();
+  const listItems = items.filter((item) => {
+    if (currentList.id === FAVORITES_ID) {
+      return favoriteIds.includes(item.id);
+    }
+    return currentList.itemIds.includes(item.id);
+  });
+
+  const handleCreateList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) return;
+    triggerHaptic();
+    const created = createList(newListName.trim());
+    refreshLists();
+    setSelectedListId(created.id);
+    setNewListName('');
+    setIsCreateModalOpen(false);
+  };
+
+  const handleRenameList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameValue.trim() || currentList.isDefault) return;
+    triggerHaptic();
+    renameList(currentList.id, renameValue.trim());
+    refreshLists();
+    setIsRenameModalOpen(false);
+  };
+
+  const handleDeleteList = () => {
+    if (currentList.isDefault) {
+      showToast(t.lists.cannot_delete_default);
+      return;
+    }
+    if (window.confirm(t.lists.delete_confirm)) {
+      triggerHaptic();
+      deleteList(currentList.id);
+      refreshLists();
+      setSelectedListId(FAVORITES_ID);
+    }
+  };
+
+  const handleToggleItemInList = (itemId: string) => {
+    triggerHaptic();
+    if (currentList.itemIds.includes(itemId)) {
+      removeItemFromList(currentList.id, itemId);
+    } else {
+      addItemToList(currentList.id, itemId);
+    }
+    refreshLists();
+  };
+
+  const handleShareList = async () => {
+    triggerHaptic();
+    const listTitle = currentList.isDefault ? t.lists.favorites : currentList.name;
+    let shareText = `📋 **${listTitle}** (${listItems.length} ${t.lists.items_count})\n\n`;
+
+    listItems.slice(0, 15).forEach((item, index) => {
+      shareText += `${index + 1}. ${item.title}`;
+      if (item.rating && item.rating > 0) shareText += ` — ⭐️ ${item.rating}/10`;
+      shareText += '\n';
+    });
+
+    if (listItems.length > 15) {
+      shareText += `\n... ${t.lists.show_more} ${listItems.length - 15}\n`;
+    }
+
+    shareText += `\n${t.details.share_app_tagline}`;
+
+    const tg = (window as any).Telegram?.WebApp;
+    const shareUrl = `https://t.me/manytgbot`;
+    const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
+    let opened = false;
+    if (tg?.openTelegramLink) {
+      try {
+        tg.openTelegramLink(fullTelegramShare);
+        opened = true;
+      } catch (e) {}
+    }
+    if (!opened) {
+      try {
+        window.open(fullTelegramShare, '_blank');
+      } catch (e) {}
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        showToast(t.lists.list_shared || t.details.link_copied);
+      }
+    } catch (e) {}
+  };
+
+  return (
+    <div className="space-y-4 pb-8 animate-slide-up">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookMarked className="w-5 h-5 text-accentViolet" />
+          <h1 className="text-lg font-bold text-white">{t.lists.title}</h1>
+        </div>
+        <button
+          onClick={() => {
+            triggerHaptic();
+            setNewListName('');
+            setIsCreateModalOpen(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accentViolet/20 border border-accentViolet/40 text-accentViolet hover:bg-accentViolet text-xs font-bold transition active:scale-95 shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t.lists.new_list}</span>
+        </button>
+      </div>
+
+      {/* Horizontal List Selector / Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+        {lists.map((list) => {
+          const isSelected = list.id === selectedListId;
+          const isFav = list.id === FAVORITES_ID;
+          const itemCount = isFav
+            ? favoriteIds.length
+            : list.itemIds.length;
+
+          return (
+            <button
+              key={list.id}
+              onClick={() => {
+                triggerHaptic();
+                setSelectedListId(list.id);
+              }}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition border shrink-0 ${
+                isSelected
+                  ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                  : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+              }`}
+            >
+              {isFav ? (
+                <Star className={`w-3.5 h-3.5 ${isSelected ? 'fill-white text-white' : 'fill-amber-400 text-amber-400'}`} />
+              ) : (
+                <BookMarked className="w-3.5 h-3.5 opacity-70" />
+              )}
+              <span>{isFav ? t.lists.favorites : list.name}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
+                }`}
+              >
+                {itemCount}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Current List Action Header Card */}
+      <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {currentList.isDefault ? (
+              <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+            ) : (
+              <BookMarked className="w-5 h-5 text-accentViolet" />
+            )}
+            <div>
+              <h2 className="text-base font-bold text-white">
+                {currentList.isDefault ? t.lists.favorites : currentList.name}
+              </h2>
+              <p className="text-[11px] text-gray-400">
+                {listItems.length} {t.lists.items_count}
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleShareList}
+              className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentTeal hover:bg-accentTeal/10 transition active:scale-95"
+              title={t.lists.share}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+
+            {!currentList.isDefault && (
+              <>
+                <button
+                  onClick={() => {
+                    setRenameValue(currentList.name);
+                    setIsRenameModalOpen(true);
+                  }}
+                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentViolet hover:bg-accentViolet/10 transition active:scale-95"
+                  title={t.lists.rename}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleDeleteList}
+                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-red-400 hover:bg-red-500/10 transition active:scale-95"
+                  title={t.lists.delete}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+
+            {!currentList.isDefault && (
+              <button
+                onClick={() => setIsAddItemsModalOpen(true)}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t.lists.add_items}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Items list */}
+      {listItems.length > 0 ? (
+        <div className="space-y-2.5">
+          {listItems.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onSelect={onSelectItem}
+              onToggleStatus={onToggleStatus}
+              t={t}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="glass-card p-8 rounded-3xl text-center space-y-3 border-dashed">
+          {currentList.isDefault ? (
+            <>
+              <Star className="w-10 h-10 mx-auto text-amber-400 opacity-60" />
+              <p className="text-xs text-gray-300 font-medium">{t.lists.empty_favorites}</p>
+            </>
+          ) : (
+            <>
+              <BookMarked className="w-10 h-10 mx-auto text-accentViolet opacity-60" />
+              <p className="text-xs text-gray-300 font-medium">{t.lists.empty_list}</p>
+              <button
+                onClick={() => setIsAddItemsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.lists.add_items}</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-accentViolet/95 backdrop-blur-md text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-2xl animate-fade-in text-center max-w-[85vw] border border-white/20">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Modal: Create List */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+              <h3 className="text-base font-bold text-white">{t.lists.new_list}</h3>
+              <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateList} className="space-y-4">
+              <input
+                type="text"
+                autoFocus
+                required
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder={t.lists.create_name_placeholder}
+                className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+              />
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                >
+                  {t.lists.cancel_btn}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
+                >
+                  {t.lists.create_btn}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Rename List */}
+      {isRenameModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+              <h3 className="text-base font-bold text-white">{t.lists.rename}</h3>
+              <button onClick={() => setIsRenameModalOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameList} className="space-y-4">
+              <input
+                type="text"
+                autoFocus
+                required
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder={t.lists.rename_placeholder}
+                className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+              />
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsRenameModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                >
+                  {t.lists.cancel_btn}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
+                >
+                  {t.modal.save}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add Items to List */}
+      {isAddItemsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
+          <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[80vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
+              <h3 className="text-base font-bold text-white">{t.lists.add_items}</h3>
+              <button onClick={() => setIsAddItemsModalOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search filter */}
+            <div className="relative shrink-0">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={itemsSearchQuery}
+                onChange={(e) => setItemsSearchQuery(e.target.value)}
+                placeholder={t.details.search_placeholder}
+                className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+              />
+            </div>
+
+            {/* Items Checkbox List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {items
+                .filter((item) =>
+                  itemsSearchQuery
+                    ? item.title.toLowerCase().includes(itemsSearchQuery.toLowerCase())
+                    : true
+                )
+                .map((item) => {
+                  const isInList = currentList.itemIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleToggleItemInList(item.id)}
+                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition ${
+                        isInList
+                          ? 'bg-accentViolet/15 border-accentViolet'
+                          : 'bg-bgDark border-cardBorder hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        {item.poster_url ? (
+                          <img
+                            src={item.poster_url}
+                            alt=""
+                            className="w-8 h-11 object-cover rounded-lg shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-11 bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                            {item.title.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
+                          <p className="text-[10px] text-gray-400">
+                            {item.category} {item.release_year ? `• ${item.release_year}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center transition border ${
+                          isInList
+                            ? 'bg-accentViolet border-accentViolet text-white'
+                            : 'border-cardBorder bg-bgDark text-transparent'
+                        }`}
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setIsAddItemsModalOpen(false)}
+              className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition shrink-0"
+            >
+              {t.modal.save}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

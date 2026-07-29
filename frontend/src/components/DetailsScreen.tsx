@@ -30,6 +30,7 @@ import { Translations, getTranslatedStatus } from '../services/i18n';
 import { getItemPoster } from '../services/posters';
 import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
+import { isFavorite, toggleFavorite } from '../services/favorites';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -92,6 +93,25 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isFav, setIsFav] = useState<boolean>(() => isFavorite(item.id));
+
+  useEffect(() => {
+    setIsFav(isFavorite(item.id));
+  }, [item.id]);
+
+  const handleToggleFav = () => {
+    const updated = toggleFavorite(item.id);
+    setIsFav(updated);
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('medium');
+    }
+    setToastMessage(
+      updated
+        ? t.favorites?.added || 'Добавлено в избранное'
+        : t.favorites?.removed || 'Убрано из избранного'
+    );
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -394,11 +414,21 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
           {/* Right: Meta Details (Year, Watch date, Genre, Episodes, Duration, Status) */}
           <div className="flex-1 space-y-2 text-xs pt-0.5">
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
-                  {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
-                </span>
-                <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
+                    {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
+                  </span>
+                  <span className="text-sm font-bold text-white">{item.release_year ? `${item.release_year}` : '2024'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleFav}
+                  className="p-1 text-amber-500 hover:scale-110 active:scale-90 transition -mr-1 -mt-1"
+                  title={t.favorites?.title || 'Избранное'}
+                >
+                  <Star className={`w-6 h-6 transition ${isFav ? 'fill-amber-400 text-amber-400' : 'text-amber-500 stroke-[2] fill-none'}`} />
+                </button>
               </div>
 
             <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
