@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  ListPlus,
   Star,
   Share2,
   Edit2,
   Trash2,
   Plus,
   Check,
-  ChevronLeft,
   BookMarked,
   X,
   Search,
 } from 'lucide-react';
 import { Item } from '../types';
-import { UserList, getLists, saveLists, createList, renameList, deleteList, addItemToList, removeItemFromList, FAVORITES_ID } from '../services/lists';
+import {
+  UserList,
+  getLists,
+  saveLists,
+  createList,
+  renameList,
+  deleteList,
+  addItemToList,
+  removeItemFromList,
+  FAVORITES_ID,
+} from '../services/lists';
 import { getFavoriteIds } from '../services/favorites';
 import { ItemCard } from './ItemCard';
-import { Translations } from '../services/i18n';
+import { Translations, formatCategorySingle } from '../services/i18n';
+import { api } from '../services/api';
 
 interface ListsScreenProps {
   items: Item[];
@@ -43,7 +52,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
 
+  // Add Items Modal state — uses local state tempSelectedIds to prevent layout shifts!
   const [isAddItemsModalOpen, setIsAddItemsModalOpen] = useState(false);
+  const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -109,37 +120,82 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     }
   };
 
-  const handleToggleItemInList = (itemId: string) => {
+  // Opens Add Items modal and initializes tempSelectedIds
+  const handleOpenAddItemsModal = () => {
     triggerHaptic();
-    if (currentList.itemIds.includes(itemId)) {
-      removeItemFromList(currentList.id, itemId);
-    } else {
-      addItemToList(currentList.id, itemId);
-    }
-    refreshLists();
+    setTempSelectedIds([...currentList.itemIds]);
+    setItemsSearchQuery('');
+    setIsAddItemsModalOpen(true);
+  };
+
+  // Toggles item in local modal state (no parent re-renders/jumps!)
+  const handleToggleTempItem = (itemId: string) => {
+    triggerHaptic();
+    setTempSelectedIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  // Saves local modal state to list
+  const handleSaveAddItems = () => {
+    triggerHaptic();
+    const updatedLists = lists.map((l) =>
+      l.id === currentList.id ? { ...l, itemIds: tempSelectedIds } : l
+    );
+    saveLists(updatedLists);
+    setLists(updatedLists);
+    setIsAddItemsModalOpen(false);
   };
 
   const handleShareList = async () => {
     triggerHaptic();
     const listTitle = currentList.isDefault ? t.lists.favorites : currentList.name;
+
+    // Try backend shared list API first
+    let sharedId = await api.createSharedList(listTitle, listItems);
+    let shareUrl = '';
+
+    if (sharedId) {
+      shareUrl = `https://t.me/manytgbot?startapp=sharedlist_${sharedId}`;
+    } else {
+      // Fallback encoding
+      try {
+        const compactData = {
+          title: listTitle,
+          items: listItems.map((i) => ({
+            t: i.title,
+            c: i.category,
+            y: i.release_year,
+            g: i.genre,
+            p: i.poster_url,
+            d: i.duration,
+            r: i.rating,
+          })),
+        };
+        const encoded = btoa(encodeURIComponent(JSON.stringify(compactData)));
+        shareUrl = `https://t.me/manytgbot?startapp=sharedlist_${encoded}`;
+      } catch {
+        shareUrl = `https://t.me/manytgbot`;
+      }
+    }
+
     let shareText = `📋 **${listTitle}** (${listItems.length} ${t.lists.items_count})\n\n`;
 
-    listItems.slice(0, 15).forEach((item, index) => {
+    listItems.slice(0, 10).forEach((item, index) => {
       shareText += `${index + 1}. ${item.title}`;
       if (item.rating && item.rating > 0) shareText += ` — ⭐️ ${item.rating}/10`;
       shareText += '\n';
     });
 
-    if (listItems.length > 15) {
-      shareText += `\n... ${t.lists.show_more} ${listItems.length - 15}\n`;
+    if (listItems.length > 10) {
+      shareText += `\n... ${t.lists.show_more} ${listItems.length - 10}\n`;
     }
 
-    shareText += `\n${t.details.share_app_tagline}`;
+    shareText += `\n➕ Нажми ссылку ниже, чтобы добавить весь список себе в 1 клик!`;
 
-    const tg = (window as any).Telegram?.WebApp;
-    const shareUrl = `https://t.me/manytgbot`;
     const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
+    const tg = (window as any).Telegram?.WebApp;
     let opened = false;
     if (tg?.openTelegramLink) {
       try {
@@ -163,7 +219,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   return (
     <div className="space-y-4 pb-8 animate-slide-up">
-      {/* Header */}
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BookMarked className="w-5 h-5 text-accentViolet" />
@@ -182,14 +238,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </button>
       </div>
 
-      {/* Horizontal List Selector / Tabs */}
+      {/* Horizontal List Selector / Tabs (ITEM 5: No icons except Star for Favorites!) */}
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         {lists.map((list) => {
           const isSelected = list.id === selectedListId;
           const isFav = list.id === FAVORITES_ID;
-          const itemCount = isFav
-            ? favoriteIds.length
-            : list.itemIds.length;
+          const itemCount = isFav ? favoriteIds.length : list.itemIds.length;
 
           return (
             <button
@@ -198,16 +252,19 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 triggerHaptic();
                 setSelectedListId(list.id);
               }}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition border shrink-0 ${
+              className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition border shrink-0 ${
                 isSelected
                   ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                   : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
               }`}
             >
-              {isFav ? (
-                <Star className={`w-3.5 h-3.5 ${isSelected ? 'fill-white text-white' : 'fill-amber-400 text-amber-400'}`} />
-              ) : (
-                <BookMarked className="w-3.5 h-3.5 opacity-70" />
+              {/* Only show Star icon for Favorites (Item 5) */}
+              {isFav && (
+                <Star
+                  className={`w-3.5 h-3.5 ${
+                    isSelected ? 'fill-white text-white' : 'fill-amber-400 text-amber-400'
+                  }`}
+                />
               )}
               <span>{isFav ? t.lists.favorites : list.name}</span>
               <span
@@ -222,26 +279,27 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         })}
       </div>
 
-      {/* Current List Action Header Card */}
+      {/* ITEM 1 FIX: Title on Top, Action Buttons on Bottom row so nothing overflows! */}
       <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {currentList.isDefault ? (
-              <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-            ) : (
-              <BookMarked className="w-5 h-5 text-accentViolet" />
-            )}
-            <div>
-              <h2 className="text-base font-bold text-white">
-                {currentList.isDefault ? t.lists.favorites : currentList.name}
-              </h2>
-              <p className="text-[11px] text-gray-400">
-                {listItems.length} {t.lists.items_count}
-              </p>
-            </div>
+        {/* Top Row: List Title & Item Count */}
+        <div className="flex items-center gap-2.5">
+          {currentList.isDefault ? (
+            <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
+          ) : (
+            <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
+          )}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold text-white truncate">
+              {currentList.isDefault ? t.lists.favorites : currentList.name}
+            </h2>
+            <p className="text-[11px] text-gray-400">
+              {listItems.length} {t.lists.items_count}
+            </p>
           </div>
+        </div>
 
-          {/* Action Buttons */}
+        {/* Bottom Row: Action Buttons (Share, Edit, Delete, Add Items) */}
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-cardBorder/50">
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleShareList}
@@ -273,17 +331,17 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 </button>
               </>
             )}
-
-            {!currentList.isDefault && (
-              <button
-                onClick={() => setIsAddItemsModalOpen(true)}
-                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t.lists.add_items}</span>
-              </button>
-            )}
           </div>
+
+          {!currentList.isDefault && (
+            <button
+              onClick={handleOpenAddItemsModal}
+              className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t.lists.add_items}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -312,7 +370,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               <BookMarked className="w-10 h-10 mx-auto text-accentViolet opacity-60" />
               <p className="text-xs text-gray-300 font-medium">{t.lists.empty_list}</p>
               <button
-                onClick={() => setIsAddItemsModalOpen(true)}
+                onClick={handleOpenAddItemsModal}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
               >
                 <Plus className="w-4 h-4" />
@@ -332,7 +390,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
       {/* Modal: Create List */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
             <div className="flex items-center justify-between border-b border-cardBorder pb-2">
               <h3 className="text-base font-bold text-white">{t.lists.new_list}</h3>
@@ -374,7 +432,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
       {/* Modal: Rename List */}
       {isRenameModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
             <div className="flex items-center justify-between border-b border-cardBorder pb-2">
               <h3 className="text-base font-bold text-white">{t.lists.rename}</h3>
@@ -414,10 +472,10 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </div>
       )}
 
-      {/* Modal: Add Items to List */}
+      {/* ITEM 2 FIX: Clean Centered Modal Dialog for Add Items + Local State to prevent shifts & translates categories */}
       {isAddItemsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
-          <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[82vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
               <h3 className="text-base font-bold text-white">{t.lists.add_items}</h3>
               <button onClick={() => setIsAddItemsModalOpen(false)} className="text-gray-400 hover:text-white">
@@ -433,27 +491,29 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 value={itemsSearchQuery}
                 onChange={(e) => setItemsSearchQuery(e.target.value)}
                 placeholder={t.details.search_placeholder}
-                className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
               />
             </div>
 
             {/* Items Checkbox List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 hide-scrollbar">
               {items
                 .filter((item) =>
                   itemsSearchQuery
-                    ? item.title.toLowerCase().includes(itemsSearchQuery.toLowerCase())
+                    ? item.title.toLowerCase().includes(itemsSearchQuery.toLowerCase()) ||
+                      (item.genre && item.genre.toLowerCase().includes(itemsSearchQuery.toLowerCase()))
                     : true
                 )
                 .map((item) => {
-                  const isInList = currentList.itemIds.includes(item.id);
+                  const isInTemp = tempSelectedIds.includes(item.id);
+                  const categoryLabel = formatCategorySingle(item.category, t);
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleToggleItemInList(item.id)}
-                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition ${
-                        isInList
-                          ? 'bg-accentViolet/15 border-accentViolet'
+                      onClick={() => handleToggleTempItem(item.id)}
+                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
+                        isInTemp
+                          ? 'bg-accentViolet/20 border-accentViolet shadow-sm'
                           : 'bg-bgDark border-cardBorder hover:border-gray-600'
                       }`}
                     >
@@ -462,24 +522,24 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                           <img
                             src={item.poster_url}
                             alt=""
-                            className="w-8 h-11 object-cover rounded-lg shrink-0"
+                            className="w-9 h-12 object-cover rounded-xl shrink-0 bg-gray-800"
                           />
                         ) : (
-                          <div className="w-8 h-11 bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                          <div className="w-9 h-12 bg-gray-800 rounded-xl flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
                             {item.title.charAt(0)}
                           </div>
                         )}
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
                           <p className="text-[10px] text-gray-400">
-                            {item.category} {item.release_year ? `• ${item.release_year}` : ''}
+                            {categoryLabel} {item.release_year ? `• ${item.release_year}` : ''}
                           </p>
                         </div>
                       </div>
 
                       <div
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center transition border ${
-                          isInList
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center transition border shrink-0 ${
+                          isInTemp
                             ? 'bg-accentViolet border-accentViolet text-white'
                             : 'border-cardBorder bg-bgDark text-transparent'
                         }`}
@@ -492,7 +552,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             </div>
 
             <button
-              onClick={() => setIsAddItemsModalOpen(false)}
+              onClick={handleSaveAddItems}
               className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition shrink-0"
             >
               {t.modal.save}

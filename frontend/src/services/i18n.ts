@@ -132,3 +132,12 @@ export const setStoredActiveCategories = (cats: string[]): void => {
     console.warn('CloudStorage setActiveCategories exception:', e);
   }
 };
+
+export const formatCategorySingle = (cat: string, t?: Translations): string => {
+  const c = (cat || '').toLowerCase().trim();
+  if (['movie', 'movies', 'фильмы', 'фильм', 'фільм', 'фільми'].includes(c)) return t ? t.categories.movie_single : 'Фильм';
+  if (['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(c)) return t ? t.categories.show_single : 'Сериал';
+  if (['book', 'books', 'книги', 'книга'].includes(c)) return t ? t.categories.book_single : 'Книга';
+  if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(c)) return t ? t.categories.game_single : 'Игра';
+  return cat || '';
+};

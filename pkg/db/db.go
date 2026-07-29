@@ -50,6 +50,7 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_members TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS author TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS isbn VARCHAR(100) DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS shared_lists (id VARCHAR(64) PRIMARY KEY, title VARCHAR(255) NOT NULL, data JSONB NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);`)
 
 	return &DB{Pool: pool}, nil
 }

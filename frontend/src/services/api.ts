@@ -144,4 +144,31 @@ export const api = {
       return null;
     }
   },
+
+  async createSharedList(title: string, items: Item[]): Promise<string | null> {
+    try {
+      const res = await fetch(`${API_BASE}/api/public/shared_lists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, items }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.id || null;
+    } catch (e) {
+      console.warn('API createSharedList error:', e);
+      return null;
+    }
+  },
+
+  async getSharedList(id: string): Promise<{ title: string; items: Item[] } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/api/public/shared_lists/${id}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.warn('API getSharedList error:', e);
+      return null;
+    }
+  },
 };

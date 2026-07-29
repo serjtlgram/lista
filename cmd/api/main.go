@@ -54,6 +54,8 @@ func main() {
 		w.Write([]byte(`{"status":"ok","service":"tracklist-api"}`))
 	})
 	r.Get("/api/public/items/{id}", h.GetPublicItem)
+	r.Get("/api/public/shared_lists/{id}", h.GetSharedList)
+	r.Post("/api/public/shared_lists", h.CreateSharedList)
 	r.Post("/api/telegram/webhook", h.HandleTelegramWebhook)
 
 	// Protected API Routes (Requires HMAC Telegram Auth)

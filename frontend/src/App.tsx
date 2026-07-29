@@ -9,6 +9,7 @@ import { FavoritesSection } from './components/FavoritesSection';
 import { CategoryScreen } from './components/CategoryScreen';
 import { DetailsScreen } from './components/DetailsScreen';
 import { ListsScreen } from './components/ListsScreen';
+import { SharedListModal } from './components/SharedListModal';
 import { StatsScreen } from './components/StatsScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { CategorySelectModal } from './components/CategorySelectModal';
@@ -48,6 +49,9 @@ export function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  const [sharedListModalData, setSharedListModalData] = useState<{ title: string; items: Item[] } | null>(null);
+  const [targetListIdToOpen, setTargetListIdToOpen] = useState<string | undefined>(undefined);
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return !!(window as any).Telegram?.WebApp?.isFullscreen;
@@ -152,7 +156,7 @@ export function App() {
       }
     }
 
-    // Deep link: read Telegram startapp param (UUID of item, max 36 chars)
+    // Deep link: read Telegram startapp param
     const attemptDeepLink = async (): Promise<boolean> => {
       try {
         const tgWA = (window as any).Telegram?.WebApp;
@@ -160,14 +164,56 @@ export function App() {
         const startParam: string | null =
           tgWA?.initDataUnsafe?.start_param ||
           urlParams.get('item') ||
+          urlParams.get('shared_list') ||
           urlParams.get('startapp') ||
           urlParams.get('tgWebAppStartParam') ||
           null;
 
         if (!startParam || !startParam.trim()) return false;
-        const itemId = startParam.trim().replace(/^item_/, '');
+        const rawParam = startParam.trim();
 
-        // UUID format check: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        // 1. Shared List Deep Link Check (sharedlist_... or list_...)
+        if (rawParam.startsWith('sharedlist_') || rawParam.startsWith('list_')) {
+          const payload = rawParam.replace(/^(sharedlist_|list_)/, '');
+
+          if (payload.startsWith('sl_')) {
+            const sharedData = await api.getSharedList(payload);
+            if (sharedData?.title && sharedData?.items?.length) {
+              setSharedListModalData({
+                title: sharedData.title,
+                items: sharedData.items,
+              });
+              return true;
+            }
+          }
+
+          try {
+            const decodedStr = decodeURIComponent(atob(payload));
+            const parsed = JSON.parse(decodedStr);
+            if (parsed.title && Array.isArray(parsed.items)) {
+              setSharedListModalData({
+                title: parsed.title,
+                items: parsed.items.map((i: any) => ({
+                  id: `shared_${Math.random()}`,
+                  title: i.t || i.title,
+                  category: i.c || i.category || 'Фильмы',
+                  status: 'planned',
+                  rating: i.r || i.rating || 0,
+                  release_year: i.y || i.release_year,
+                  genre: i.g || i.genre,
+                  poster_url: i.p || i.poster_url,
+                  duration: i.d || i.duration,
+                })),
+              });
+              return true;
+            }
+          } catch (e) {
+            console.warn('Failed base64 list decode:', e);
+          }
+        }
+
+        // 2. Single Item Deep Link Check
+        const itemId = rawParam.replace(/^item_/, '');
         const isUUID = /^[0-9a-f-]{32,36}$/i.test(itemId);
         if (!isUUID) return false;
 
@@ -183,7 +229,6 @@ export function App() {
         );
 
         if (existingItem) {
-          // Already in user's list! Open user's own item details card directly
           setSelectedItem(existingItem);
         } else {
           setSelectedItem({
@@ -583,6 +628,7 @@ export function App() {
               items={items}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              initialListId={targetListIdToOpen}
               t={t}
             />
           </section>
@@ -632,6 +678,24 @@ export function App() {
 
       {/* Bottom Navbar */}
       <Navbar activeTab={activeTab === 'details' ? 'search' : activeTab} onTabChange={handleTabChange} t={t} />
+
+      {/* Shared List Deep Link Import Modal */}
+      {sharedListModalData && (
+        <SharedListModal
+          isOpen={!!sharedListModalData}
+          sharedListTitle={sharedListModalData.title}
+          sharedItems={sharedListModalData.items}
+          userItems={items}
+          onClose={() => setSharedListModalData(null)}
+          onSuccessImport={(newListId) => {
+            setSharedListModalData(null);
+            setTargetListIdToOpen(newListId);
+            setActiveTab('lists');
+            loadData();
+          }}
+          t={t}
+        />
+      )}
 
       {/* Category Select Modal */}
       <CategorySelectModal
