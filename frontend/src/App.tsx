@@ -156,6 +156,25 @@ export function App() {
       }
     }
 
+function safeBase64Decode(str: string): any {
+  try {
+    let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) {
+      b64 += '=';
+    }
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const jsonStr = new TextDecoder().decode(bytes);
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.warn('Base64 decode error:', e);
+    return null;
+  }
+}
+
     // Deep link: read Telegram startapp param
     const attemptDeepLink = async (): Promise<boolean> => {
       try {
@@ -178,7 +197,8 @@ export function App() {
           if (rawParam.startsWith('sharedlist_')) listId = rawParam.replace('sharedlist_', '');
           if (rawParam.startsWith('list_')) listId = rawParam.replace('list_', '');
 
-          if (listId.startsWith('sl_')) {
+          // Try server DB lookup first for short IDs (e.g. sl_a1b2c3d4)
+          if (/^sl_[a-f0-9]{8,12}$/i.test(listId) || listId.length < 25) {
             const sharedData = await api.getSharedList(listId);
             if (sharedData?.title && sharedData?.items?.length) {
               setSharedListModalData({
@@ -189,29 +209,35 @@ export function App() {
             }
           }
 
-          try {
-            const payload = rawParam.replace(/^(sl_|sharedlist_|list_)/, '');
-            const decodedStr = decodeURIComponent(atob(payload));
-            const parsed = JSON.parse(decodedStr);
-            if (parsed.title && Array.isArray(parsed.items)) {
-              setSharedListModalData({
-                title: parsed.title,
-                items: parsed.items.map((i: any) => ({
-                  id: `shared_${Math.random()}`,
-                  title: i.t || i.title,
-                  category: i.c || i.category || 'Фильмы',
-                  status: 'planned',
-                  rating: i.r || i.rating || 0,
-                  release_year: i.y || i.release_year,
-                  genre: i.g || i.genre,
-                  poster_url: i.p || i.poster_url,
-                  duration: i.d || i.duration,
-                })),
-              });
-              return true;
-            }
-          } catch (e) {
-            console.warn('Failed base64 list decode:', e);
+          // Try safeBase64Decode for client-side encoded payloads
+          const payload = listId.replace(/^sl_/, '');
+          const parsed = safeBase64Decode(payload);
+          if (parsed && parsed.title && Array.isArray(parsed.items)) {
+            setSharedListModalData({
+              title: parsed.title,
+              items: parsed.items.map((i: any) => ({
+                id: `shared_${Math.random()}`,
+                title: i.t || i.title,
+                category: i.c || i.category || 'Фильмы',
+                status: 'planned',
+                rating: i.r || i.rating || 0,
+                release_year: i.y || i.release_year,
+                genre: i.g || i.genre,
+                poster_url: i.p || i.poster_url,
+                duration: i.d || i.duration,
+              })),
+            });
+            return true;
+          }
+
+          // Fallback: query API with listId directly
+          const sharedData = await api.getSharedList(listId);
+          if (sharedData?.title && sharedData?.items?.length) {
+            setSharedListModalData({
+              title: sharedData.title,
+              items: sharedData.items,
+            });
+            return true;
           }
         }
 

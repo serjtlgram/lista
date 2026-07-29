@@ -35,6 +35,24 @@ interface ListsScreenProps {
   initialListId?: string;
 }
 
+export function safeBase64Encode(data: any): string {
+  try {
+    const jsonStr = JSON.stringify(data);
+    const bytes = new TextEncoder().encode(jsonStr);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary)
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+  } catch (e) {
+    console.warn('Base64 encode error:', e);
+    return '';
+  }
+}
+
 export const ListsScreen: React.FC<ListsScreenProps> = ({
   items,
   onSelectItem,
@@ -176,22 +194,16 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     let sharedId = await api.createSharedList(listTitle, listItems);
 
     if (!sharedId) {
-      try {
-        const compactItems = listItems.slice(0, 10).map((i) => ({
-          t: i.title,
-          c: i.category,
-          y: i.release_year,
-          g: i.genre,
-        }));
-        const payload = JSON.stringify({ title: listTitle, items: compactItems });
-        const b64 = btoa(unescape(encodeURIComponent(payload)))
-          .replace(/=/g, '')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
-        sharedId = `sl_${b64.slice(0, 50)}`;
-      } catch {
-        sharedId = `sl_${Date.now()}`;
-      }
+      const compactItems = listItems.slice(0, 15).map((i) => ({
+        t: i.title,
+        c: i.category,
+        y: i.release_year,
+        g: i.genre,
+        r: i.rating,
+        p: i.poster_url,
+      }));
+      const encoded = safeBase64Encode({ title: listTitle, items: compactItems });
+      sharedId = `sl_${encoded}`;
     }
 
     const shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;
