@@ -584,6 +584,7 @@ function safeBase64Decode(str: string): any {
               onSeeAll={() => handleTabChange('lists')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              onUpdateItem={handleUpdateItem}
               t={t}
             />
             <ActivityCard
@@ -592,6 +593,7 @@ function safeBase64Decode(str: string): any {
               currentStreak={profile?.current_streak || 0}
               items={items}
               onShowStats={() => handleTabChange('stats')}
+              onUpdateItem={handleUpdateItem}
               t={t}
             />
             <RecentlyAdded
@@ -602,6 +604,7 @@ function safeBase64Decode(str: string): any {
               }}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              onUpdateItem={handleUpdateItem}
               onAddItemClick={() => {
                 triggerHaptic();
                 setEditingItem(null);
@@ -625,6 +628,7 @@ function safeBase64Decode(str: string): any {
               onBack={() => handleTabChange('home')}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              onUpdateItem={handleUpdateItem}
               onAddCatalogItem={handleAddCatalogItem}
               t={t}
             />
@@ -657,6 +661,7 @@ function safeBase64Decode(str: string): any {
               items={items}
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
+              onUpdateItem={handleUpdateItem}
               initialListId={targetListIdToOpen}
               t={t}
             />

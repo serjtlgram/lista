@@ -9,6 +9,7 @@ interface FavoritesSectionProps {
   onSeeAll: () => void;
   onSelectItem: (item: Item) => void;
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   t: Translations;
 }
 
@@ -17,6 +18,7 @@ export const FavoritesSection: React.FC<FavoritesSectionProps> = ({
   onSeeAll,
   onSelectItem,
   onToggleStatus,
+  onUpdateItem,
   t,
 }) => {
   return (
@@ -36,7 +38,14 @@ export const FavoritesSection: React.FC<FavoritesSectionProps> = ({
       {items.length > 0 ? (
         <div className="space-y-2.5">
           {items.slice(0, 10).map((item) => (
-            <ItemCard key={item.id} item={item} onSelect={onSelectItem} onToggleStatus={onToggleStatus} t={t} />
+            <ItemCard
+              key={item.id}
+              item={item}
+              onSelect={onSelectItem}
+              onToggleStatus={onToggleStatus}
+              onUpdateItem={onUpdateItem}
+              t={t}
+            />
           ))}
         </div>
       ) : (

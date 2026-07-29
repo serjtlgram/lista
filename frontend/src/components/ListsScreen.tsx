@@ -31,6 +31,7 @@ interface ListsScreenProps {
   items: Item[];
   onSelectItem: (item: Item) => void;
   onToggleStatus: (item: Item, e: React.MouseEvent) => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   t: Translations;
   initialListId?: string;
 }
@@ -57,6 +58,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   items,
   onSelectItem,
   onToggleStatus,
+  onUpdateItem,
   t,
   initialListId,
 }) => {
@@ -383,6 +385,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               item={item}
               onSelect={onSelectItem}
               onRemoveFromList={handleRemoveItemFromCurrentList}
+              onUpdateItem={onUpdateItem}
               t={t}
             />
           ))}

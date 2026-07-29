@@ -4,13 +4,15 @@ import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
 import { InfoModal } from './InfoModal';
+import { ItemCard } from './ItemCard';
 
 interface ActivityCardProps {
   monthlyCount?: number;
   monthlyHours?: number;
   currentStreak?: number;
-  items?: Item[];
-  onShowStats?: () => void;
+  items: Item[];
+  onShowStats: () => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   t: Translations;
 }
 
@@ -21,6 +23,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   currentStreak = 0,
   items = [],
   onShowStats,
+  onUpdateItem,
   t,
 }) => {
   const now = new Date();

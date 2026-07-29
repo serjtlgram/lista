@@ -15,6 +15,7 @@ interface CategoryScreenProps {
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onToggleStatus: (item: Item) => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   onAddCatalogItem?: (catalogItem: CatalogItem) => void;
   t: Translations;
 }
@@ -29,6 +30,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   onBack,
   onSelectItem,
   onToggleStatus,
+  onUpdateItem,
   onAddCatalogItem,
   t,
 }) => {
@@ -323,6 +325,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
               onSelect={onSelectItem}
               showCheckbox={true}
               onToggleStatus={() => onToggleStatus(item)}
+              onUpdateItem={onUpdateItem}
               t={t}
             />
           ))}
@@ -351,6 +354,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                     onSelect={onSelectItem}
                     showCheckbox={true}
                     onToggleStatus={() => onToggleStatus(item)}
+                    onUpdateItem={onUpdateItem}
                     t={t}
                   />
                 ))}

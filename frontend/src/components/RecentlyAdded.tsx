@@ -9,6 +9,7 @@ interface RecentlyAddedProps {
   onSeeAll: () => void;
   onSelectItem: (item: Item) => void;
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
+  onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   onAddItemClick?: () => void;
   t: Translations;
 }
@@ -18,6 +19,7 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
   onSeeAll,
   onSelectItem,
   onToggleStatus,
+  onUpdateItem,
   onAddItemClick,
   t,
 }) => {
@@ -35,7 +37,14 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
       {items.length > 0 ? (
         <div className="space-y-2.5">
           {items.slice(0, 5).map((item) => (
-            <ItemCard key={item.id} item={item} onSelect={onSelectItem} onToggleStatus={onToggleStatus} t={t} />
+            <ItemCard 
+              key={item.id} 
+              item={item} 
+              onSelect={onSelectItem} 
+              onToggleStatus={onToggleStatus} 
+              onUpdateItem={onUpdateItem}
+              t={t} 
+            />
           ))}
 
           {/* Centered plus in circle button below the last card on Home screen */}
