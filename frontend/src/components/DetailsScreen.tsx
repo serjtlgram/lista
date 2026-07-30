@@ -22,7 +22,8 @@ import {
   User,
   Users,
   Video,
-  FolderPlus
+  FolderPlus,
+  Copy
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -552,18 +553,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 )
               )}
 
-              {/* ISBN Row if present */}
-              {item.isbn && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Tag className="w-3.5 h-3.5 text-accentBlue" />
-                    {t.details.isbn || 'ISBN'}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight font-mono text-[11px] truncate min-w-0">
-                    {item.isbn}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Interactive Status Pill Button */}
@@ -652,6 +641,29 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </button>
           )}
         </div>
+      )}
+
+      {/* ISBN Dedicated Block */}
+      {item.isbn && (
+        <button
+          onClick={() => {
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(item.isbn!);
+              triggerHaptic();
+              showToast(t.details.link_copied || 'Скопировано');
+            }
+          }}
+          className="w-full glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm active:scale-95 transition mt-3"
+        >
+          <div className="flex items-center gap-2 text-gray-400">
+            <Tag className="w-4 h-4 text-accentBlue" />
+            <span className="text-xs font-semibold">{t.details.isbn || 'ISBN'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-white">
+            <span className="text-[13px] font-mono font-bold">{item.isbn}</span>
+            <Copy className="w-3.5 h-3.5 text-gray-400" />
+          </div>
+        </button>
       )}
 
       {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
