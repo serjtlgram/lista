@@ -449,7 +449,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       </div>
 
       {/* All Lists Layout (Top row & Wrapped Expanded row) */}
-      <div className="flex flex-wrap items-center gap-2 w-full">
+      <div className="flex flex-wrap items-center gap-[6px] w-full">
         {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
         <button
           onClick={() => handleSelectTab(FAVORITES_ID)}
@@ -500,9 +500,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 onMouseDown={(e) => handlePressStart(list, e)}
                 onMouseUp={handlePressEnd}
                 onMouseLeave={handlePressEnd}
-                className={`px-3.5 py-2 rounded-2xl text-xs font-bold items-center gap-2 transition border select-none ${
-                  isFirstCustom ? 'flex-1 min-w-0 justify-between' : 'shrink-0'
-                } ${!isFirstCustom && isMoreExpanded ? 'animate-slide-up mt-1' : ''} ${
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold items-center gap-2 transition border select-none shrink-0 ${
+                  !isFirstCustom && isMoreExpanded ? 'animate-slide-up' : ''
+                } ${
                   isSelected
                     ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                     : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
@@ -522,25 +522,22 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 </span>
               </button>
 
-              {/* Render More button immediately after the first custom list to keep it on the top row */}
+              {/* Render More button immediately after the first custom list */}
               {isFirstCustom && userListsOnly.length > 1 && (
-                <React.Fragment key="more-btn-group">
-                  <button
-                    onClick={() => {
-                      triggerHaptic();
-                      setIsMoreExpanded(!isMoreExpanded);
-                    }}
-                    className="px-2 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-[0.97] select-none"
-                  >
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isMoreExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {/* Force flex line break so remaining lists go to the next line without squishing the first capsule */}
-                  <div className="basis-full h-0 m-0 p-0" />
-                </React.Fragment>
+                <button
+                  key="more-btn"
+                  onClick={() => {
+                    triggerHaptic();
+                    setIsMoreExpanded(!isMoreExpanded);
+                  }}
+                  className="px-1.5 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-[0.97] select-none"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isMoreExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
               )}
             </React.Fragment>
           );
