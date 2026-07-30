@@ -448,8 +448,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </button>
       </div>
 
-      {/* Non-scrolling Top 2 Lists + "Ещё" Button */}
-      <div className="flex items-center gap-2 w-full">
+      {/* All Lists Layout (Top row & Wrapped Expanded row) */}
+      <div className="flex flex-wrap items-center gap-2 w-full">
         {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
         <button
           onClick={() => handleSelectTab(FAVORITES_ID)}
@@ -478,83 +478,30 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           </span>
         </button>
 
-        {/* Tab 2: Second / First Custom List in Order */}
-        {secondList ? (
-          <button
-            key={secondList.id}
-            data-list-id={secondList.id}
-            onClick={() => handleSelectTab(secondList.id)}
-            onTouchStart={(e) => handlePressStart(secondList, e)}
-            onTouchEnd={handlePressEnd}
-            onMouseDown={(e) => handlePressStart(secondList, e)}
-            onMouseUp={handlePressEnd}
-            onMouseLeave={handlePressEnd}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border min-w-0 flex-1 justify-between select-none ${
-              activeSelectedListId === secondList.id
-                ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
-                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-            } ${
-              dragState?.list.id === secondList.id
-                ? 'opacity-40 border-dashed border-accentViolet/60 bg-accentViolet/10'
-                : ''
-            }`}
-          >
-            <span className="truncate">{secondList.name}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${
-                activeSelectedListId === secondList.id
-                  ? 'bg-white/20 text-white'
-                  : 'bg-bgDark text-gray-400'
-              }`}
-            >
-              {secondList.itemIds.length}
-            </span>
-          </button>
-        ) : (
-          <div className="flex-1" />
-        )}
+        {userListsOnly.length === 0 && <div className="flex-1" />}
 
-        {/* Right Action: "Ещё" Button */}
-        {userListsOnly.length > 1 && (
-          <button
-            onClick={() => {
-              triggerHaptic();
-              setIsMoreExpanded(!isMoreExpanded);
-            }}
-            className={`px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-              isMoreExpanded
-                ? 'bg-accentViolet/20 border-accentViolet text-accentViolet shadow-sm'
-                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-            }`}
-          >
-            <span>Ещё</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                isMoreExpanded ? 'rotate-180 text-accentViolet' : 'text-gray-400'
-              }`}
-            />
-          </button>
-        )}
-      </div>
+        {/* Custom Lists & "Ещё" Button */}
+        {userListsOnly.map((list, index) => {
+          const isFirstCustom = index === 0;
+          // Hide subsequent lists if not expanded
+          const isHidden = !isMoreExpanded && !isFirstCustom;
+          const isSelected = list.id === activeSelectedListId;
+          const isDragging = list.id === dragState?.list.id;
 
-      {/* Expanded Remaining Lists (Same pill bubble layout underneath top row) */}
-      {isMoreExpanded && (
-        <div className="flex flex-wrap gap-2 pt-1 animate-slide-up">
-          {userListsOnly.slice(1).map((list) => {
-            const isSelected = list.id === activeSelectedListId;
-            const isDragging = list.id === dragState?.list.id;
-
-            return (
+          return (
+            <React.Fragment key={list.id}>
               <button
-                key={list.id}
                 data-list-id={list.id}
+                style={{ display: isHidden ? 'none' : 'flex' }}
                 onClick={() => handleSelectTab(list.id)}
                 onTouchStart={(e) => handlePressStart(list, e)}
                 onTouchEnd={handlePressEnd}
                 onMouseDown={(e) => handlePressStart(list, e)}
                 onMouseUp={handlePressEnd}
                 onMouseLeave={handlePressEnd}
-                className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border select-none ${
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold items-center gap-2 transition border select-none ${
+                  isFirstCustom ? 'flex-1 min-w-0 justify-between' : 'shrink-0'
+                } ${!isFirstCustom && isMoreExpanded ? 'animate-slide-up mt-1' : ''} ${
                   isSelected
                     ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                     : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
@@ -567,18 +514,39 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 <span className="truncate">{list.name}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${
-                    isSelected
-                      ? 'bg-white/20 text-white'
-                      : 'bg-bgDark text-gray-400'
+                    isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
                   }`}
                 >
                   {list.itemIds.length}
                 </span>
               </button>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Render More button immediately after the first custom list to keep it on the top row */}
+              {isFirstCustom && userListsOnly.length > 1 && (
+                <button
+                  key="more-btn"
+                  onClick={() => {
+                    triggerHaptic();
+                    setIsMoreExpanded(!isMoreExpanded);
+                  }}
+                  className={`px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+                    isMoreExpanded
+                      ? 'bg-accentViolet/20 border-accentViolet text-accentViolet shadow-sm'
+                      : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+                  }`}
+                >
+                  <span>Ещё</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isMoreExpanded ? 'rotate-180 text-accentViolet' : 'text-gray-400'
+                    }`}
+                  />
+                </button>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
 
       {/* Floating Dragged Pill ("Летит по экрану") */}
       {dragState &&
