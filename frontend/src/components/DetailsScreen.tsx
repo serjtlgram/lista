@@ -511,7 +511,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   <Tag className="w-3.5 h-3.5 text-accentTeal" />
                   {t.details.genre}
                 </span>
-                <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]">
+                <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
                   {getTranslatedGenreShort(item.genre, t)}
                 </span>
               </div>
@@ -523,7 +523,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
                     {isBook ? (t.details.pages || 'Страниц') : t.details.duration}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight">{durationDisplay}</span>
+                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">{durationDisplay}</span>
                 </div>
               )}
 
@@ -534,7 +534,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     <User className="w-3.5 h-3.5 text-accentPink" />
                     {t.details.author || 'Автор'}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate max-w-[130px]">
+                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
                     {item.author || item.director || '-'}
                   </span>
                 </div>
@@ -545,7 +545,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       <Tv className="w-3.5 h-3.5 text-accentPink" />
                       {t.details.episodes}
                     </span>
-                    <span className="font-semibold text-white text-right leading-tight">
+                    <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
                       {episodesDisplay || '-'}
                     </span>
                   </div>
@@ -559,7 +559,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     <Tag className="w-3.5 h-3.5 text-accentBlue" />
                     {t.details.isbn || 'ISBN'}
                   </span>
-                  <span className="font-semibold text-white text-right leading-tight font-mono text-[11px]">
+                  <span className="font-semibold text-white text-right leading-tight font-mono text-[11px] truncate min-w-0">
                     {item.isbn}
                   </span>
                 </div>
