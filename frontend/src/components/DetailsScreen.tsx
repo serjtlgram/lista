@@ -64,18 +64,49 @@ const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
 };
 
 const renderTextWithLinks = (text: string) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
+  const linkRegex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_]+)/g;
+  const parts = text.split(linkRegex);
   return parts.map((part, i) => {
-    if (part.match(urlRegex)) {
+    if (part.match(linkRegex)) {
+      const isTgMention = part.startsWith('@');
+      const href = isTgMention ? `https://t.me/${part.slice(1)}` : part;
+
+      const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tg = (window as any).Telegram?.WebApp;
+        const isTgUrl = href.startsWith('https://t.me/') || href.startsWith('tg://');
+
+        if (isTgUrl && tg?.openTelegramLink) {
+          try {
+            tg.openTelegramLink(href);
+            return;
+          } catch (err) {
+            console.warn('openTelegramLink error:', err);
+          }
+        }
+        
+        if (tg?.openLink) {
+          try {
+            tg.openLink(href);
+            return;
+          } catch (err) {
+            console.warn('openLink error:', err);
+          }
+        }
+        
+        window.open(href, '_blank');
+      };
+
       return (
         <a 
           key={i} 
-          href={part} 
+          href={href} 
           target="_blank" 
           rel="nofollow noopener noreferrer"
           className="text-accentTeal hover:underline break-all"
-          onClick={(e) => e.stopPropagation()}
+          onClick={handleClick}
         >
           {part}
         </a>
