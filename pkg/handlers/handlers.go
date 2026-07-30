@@ -2018,7 +2018,84 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 	ctx := context.Background()
 
 	switch cmdLower {
-	case "/stats", "/users", "/count", "/users_count":
+	case "/stats":
+		if h.DB == nil || h.DB.Pool == nil {
+			return
+		}
+		var totalUsers int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+
+		var totalUserItems int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id != 0").Scan(&totalUserItems)
+
+		userCatRows, err := h.DB.Pool.Query(ctx, `
+			SELECT category, COUNT(*)
+			FROM items
+			WHERE user_id != 0
+			GROUP BY category
+			ORDER BY COUNT(*) DESC;
+		`)
+		userCats := map[string]int{}
+		if err == nil {
+			for userCatRows.Next() {
+				var cat string
+				var cnt int
+				if err := userCatRows.Scan(&cat, &cnt); err == nil {
+					userCats[cat] = cnt
+				}
+			}
+			userCatRows.Close()
+		}
+
+		var totalCatalogItems int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = 0").Scan(&totalCatalogItems)
+
+		catRows, err := h.DB.Pool.Query(ctx, `
+			SELECT category, COUNT(*)
+			FROM items
+			WHERE user_id = 0
+			GROUP BY category
+			ORDER BY COUNT(*) DESC;
+		`)
+		type catStat struct {
+			cat string
+			cnt int
+		}
+		catalogCats := []catStat{}
+		if err == nil {
+			for catRows.Next() {
+				var cat string
+				var cnt int
+				if err := catRows.Scan(&cat, &cnt); err == nil {
+					catalogCats = append(catalogCats, catStat{cat, cnt})
+				}
+			}
+			catRows.Close()
+		}
+
+		var sb strings.Builder
+		sb.WriteString("📊 <b>Общая статистика Lista</b>\n\n")
+		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи:</b> %d чел.\n\n", totalUsers))
+
+		sb.WriteString(fmt.Sprintf("👤 <b>Элементы пользователей (всего %s):</b>\n", formatNumberSpace(totalUserItems)))
+		for _, catKey := range []string{"movie", "show", "book", "game"} {
+			cnt := userCats[catKey]
+			sb.WriteString(fmt.Sprintf("  • %s: <b>%s</b>\n", formatCategoryLabelWithEmoji(catKey), formatNumberSpace(cnt)))
+		}
+		for catKey, cnt := range userCats {
+			if catKey != "movie" && catKey != "show" && catKey != "book" && catKey != "game" {
+				sb.WriteString(fmt.Sprintf("  • %s: <b>%s</b>\n", formatCategoryLabelWithEmoji(catKey), formatNumberSpace(cnt)))
+			}
+		}
+
+		sb.WriteString(fmt.Sprintf("\n📦 <b>Кэш каталога (всего в базе %s):</b>\n", formatNumberSpace(totalCatalogItems)))
+		for _, item := range catalogCats {
+			sb.WriteString(fmt.Sprintf("  • %s: <b>%s</b>\n", formatCategoryLabelWithEmoji(item.cat), formatNumberSpace(item.cnt)))
+		}
+
+		h.sendAdminBotMessage(userID, sb.String())
+
+	case "/users", "/count", "/users_count":
 		if h.DB == nil || h.DB.Pool == nil {
 			return
 		}
@@ -2093,6 +2170,40 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 
 		h.sendAdminBotMessage(userID, sb.String())
 	}
+}
+
+func formatCategoryLabelWithEmoji(cat string) string {
+	switch strings.ToLower(strings.TrimSpace(cat)) {
+	case "movie", "movies", "фильм", "фильмы":
+		return "🎬 Фильмы"
+	case "show", "shows", "series", "сериал", "сериалы":
+		return "📺 Сериалы"
+	case "book", "books", "книга", "книги":
+		return "📚 Книги"
+	case "game", "games", "игра", "игры":
+		return "🎮 Игры"
+	case "audiobook", "аудиокнига", "аудиокниги":
+		return "🎧 Аудиокниги"
+	case "podcast", "podcasts", "подкаст", "подкасты":
+		return "🎙 Подкасты"
+	default:
+		if cat == "" {
+			return "📁 Прочее"
+		}
+		return "📁 " + strings.Title(cat)
+	}
+}
+
+func formatNumberSpace(n int) string {
+	in := strconv.Itoa(n)
+	out := ""
+	for i, c := range in {
+		if i > 0 && (len(in)-i)%3 == 0 {
+			out += " "
+		}
+		out += string(c)
+	}
+	return out
 }
 
 func (h *Handler) sendAdminBotMessage(userID int64, text string) {
