@@ -169,7 +169,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [item]);
+  }, [item.id]);
 
   // Handle Telegram WebApp native BackButton when fullscreen video is active
   useEffect(() => {
