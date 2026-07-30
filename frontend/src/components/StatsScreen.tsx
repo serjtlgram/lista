@@ -36,7 +36,6 @@ const getCatTranslation = (cat: string, t: Translations) => {
   return cat;
 };
 
-const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items = [], t }) => {
   const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('week');
@@ -134,7 +133,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     if (activeTabKey === 'week') {
       // Last 7 days rolling, today is rightmost
       const slots = getLastNDays(7);
-      const labels = slots.map(d => DAY_NAMES[d.getDay()]);
+      const labels = slots.map(d => t.stats.short_days[d.getDay()]);
       const counts = countItemsPerSlot(items, slots); // use all items to cover exact days
       return { labels, counts };
     }
@@ -157,7 +156,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       return d;
     });
     const labels = slots.map(d => {
-      const months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+      const months = t.stats.short_months;
       return months[d.getMonth()];
     });
     filteredItems.forEach((item) => {
@@ -431,8 +430,8 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           </div>
           {categorySegments[0] ? (
             <>
-              <div className="text-sm font-extrabold text-white">{categorySegments[0].cat}</div>
-              <div className="text-[10px] text-gray-400">{categorySegments[0].count} карточек · {categorySegments[0].percent}%</div>
+              <div className="text-sm font-extrabold text-white">{getCatTranslation(categorySegments[0].cat, t)}</div>
+              <div className="text-[10px] text-gray-400">{categorySegments[0].count} {t.stats.records_count} · {categorySegments[0].percent}%</div>
             </>
           ) : <div className="text-xs text-gray-500">—</div>}
         </div>
@@ -445,32 +444,32 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="text-sm font-extrabold text-white">
             {avgRating}{avgRating !== '—' && <span className="text-xs font-normal text-gray-400 ml-1">/ 10</span>}
           </div>
-          <div className="text-[10px] text-gray-400">{ratedItems.length > 0 ? `${ratedItems.length} оценено` : 'нет оценок'}</div>
+          <div className="text-[10px] text-gray-400">{ratedItems.length > 0 ? `${ratedItems.length} ${t.stats.rated_count}` : t.stats.no_ratings}</div>
         </div>
 
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accentTeal">
             <TrendingUp className="w-3.5 h-3.5" />
-            Темп добавления
+            {t.stats.add_rate}
           </div>
           <div className="text-sm font-extrabold text-white">
             {activeTabKey === 'week'
-              ? `${totalPeriodItems}/нед.`
+              ? `${totalPeriodItems}${t.stats.per_week}`
               : activeTabKey === 'month'
-              ? `${(totalPeriodItems / 4).toFixed(1)}/нед.`
-              : `${(totalPeriodItems / 52).toFixed(1)}/нед.`
+              ? `${(totalPeriodItems / 4).toFixed(1)}${t.stats.per_week}`
+              : `${(totalPeriodItems / 52).toFixed(1)}${t.stats.per_week}`
             }
           </div>
-          <div className="text-[10px] text-gray-400">в среднем</div>
+          <div className="text-[10px] text-gray-400">{t.stats.on_average}</div>
         </div>
 
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-400">
             <Clock className="w-3.5 h-3.5" />
-            Смотрю сейчас
+            {t.stats.watching_now}
           </div>
           <div className="text-sm font-extrabold text-white">{watchingItems.length}</div>
-          <div className="text-[10px] text-gray-400">активных записей</div>
+          <div className="text-[10px] text-gray-400">{t.stats.active_records}</div>
         </div>
       </div>
     </div>

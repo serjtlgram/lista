@@ -16,7 +16,7 @@ interface ActivityCardProps {
   t: Translations;
 }
 
-const DAY_NAMES_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
 
 export const ActivityCard: React.FC<ActivityCardProps> = ({
   monthlyCount = 0,
@@ -135,7 +135,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               onClick={onShowStats}
               className="text-xs font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-[0.97] transition"
             >
-              <span>Полная статистика</span>
+              <span>{t.stats.full_stats}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           )}
@@ -164,13 +164,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <div className="text-2xl font-extrabold text-white leading-none">
             {renderWatchTime(monthWatchHours > 0 ? monthWatchHours : watchHours)}
           </div>
-          <div className="text-[10px] text-gray-500">≈ просмотра</div>
+          <div className="text-[10px] text-gray-500">{t.stats.approx_watch_time}</div>
         </div>
 
         <div className="flex-1 flex flex-col items-center gap-1 pl-4 text-center">
           <CheckCircle2 className="w-3.5 h-3.5 text-accentTeal" />
           <div className="text-2xl font-extrabold text-accentTeal leading-none">{completedThisMonth}</div>
-          <div className="text-[10px] text-gray-400">завершено</div>
+          <div className="text-[10px] text-gray-400">{t.stats.completed_items}</div>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
             <TrendingUp className="w-3 h-3 text-accentViolet" />
-            Активность по неделям
+            {t.stats.weekly_activity}
           </span>
           {onShowStats && (
             <button
@@ -227,7 +227,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
         <div className="flex justify-between text-[9px] text-gray-400 mt-1">
           {weekLabels.map((lbl, i) => (
-            <span key={i} className="text-center" style={{ width: '25%' }}>{lbl} дн</span>
+            <span key={i} className="text-center" style={{ width: '25%' }}>{lbl} {t.stats.days_unit || 'дн'}</span>
           ))}
         </div>
       </div>

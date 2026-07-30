@@ -212,6 +212,19 @@ export interface Translations {
     percent_completed: string;
     statuses: string;
     records_count: string;
+    rated_count: string;
+    no_ratings: string;
+    add_rate: string;
+    per_week: string;
+    on_average: string;
+    watching_now: string;
+    active_records: string;
+    short_days: string[];
+    short_months: string[];
+    full_stats: string;
+    approx_watch_time: string;
+    completed_items: string;
+    weekly_activity: string;
   };
   favorites: {
     title: string;
