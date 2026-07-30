@@ -320,7 +320,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
               e.stopPropagation();
               onRemoveFromList(item, e);
             }}
-            className="absolute top-1/2 right-2.5 -translate-y-1/2 w-[26px] h-[26px] rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition active:scale-[0.97] shadow-sm z-10 backdrop-blur-md"
+            className="absolute top-[calc(50%-7px)] right-2.5 -translate-y-1/2 w-[26px] h-[26px] rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition active:scale-[0.97] shadow-sm z-10 backdrop-blur-md"
             title={t?.details.remove_from_list}
           >
             <Minus className="w-3.5 h-3.5 stroke-[3]" />

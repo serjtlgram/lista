@@ -156,7 +156,7 @@ export const ru: Translations = {
     pages: 'Страниц',
     pages_unit: 'стр.',
     episodes: 'Серий',
-    minutes_short: 'м',
+    minutes_short: 'мин',
     description: 'Описание',
     annotation: 'Аннотация',
     author: 'Автор',
