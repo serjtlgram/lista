@@ -36,6 +36,7 @@ export interface Translations {
     spent: string;
     streak: string;
     hours_suffix: string;
+    days_suffix: string;
   };
   recently_added: {
     title: string;
@@ -203,6 +204,7 @@ export interface Translations {
     completion_rate: string;
     activity_chart_subtitle: string;
     hours_info_message: string;
+    days_unit: string;
     show_more: string;
     total_suffix: string;
     out_of_total: string;

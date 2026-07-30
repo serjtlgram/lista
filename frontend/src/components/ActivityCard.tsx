@@ -95,6 +95,22 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
+  const renderWatchTime = (hours: number) => {
+    if (hours < 24) {
+      return (
+        <>{hours}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span></>
+      );
+    }
+    const d = Math.floor(hours / 24);
+    const h = hours % 24;
+    return (
+      <>
+        {d}<span className="text-base font-normal text-gray-400 ml-0.5 mr-1.5">{t.activity.days_suffix}</span>
+        {h > 0 && <>{h}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span></>}
+      </>
+    );
+  };
+
   return (
     <>
       <InfoModal
@@ -146,8 +162,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             </button>
           </div>
           <div className="text-2xl font-extrabold text-white leading-none">
-            {monthWatchHours > 0 ? monthWatchHours : watchHours}
-            <span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span>
+            {renderWatchTime(monthWatchHours > 0 ? monthWatchHours : watchHours)}
           </div>
           <div className="text-[10px] text-gray-500">≈ просмотра</div>
         </div>

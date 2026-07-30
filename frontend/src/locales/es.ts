@@ -36,6 +36,7 @@ export const es: Translations = {
     spent: 'Horas',
     streak: 'Días seguidos',
     hours_suffix: 'h',
+    days_suffix: 'd',
   },
   recently_added: {
     title: 'Añadidos Recientemente',
@@ -199,6 +200,8 @@ export const es: Translations = {
     categories_title: 'Distribución por categorías',
     active_legend: 'Activo',
     hours_unit: 'h',
+    days_unit: 'd',
+    days_suffix: 'd',
     top_category: 'Categoría Favorita',
     avg_rating: 'Calificación Media',
     completion_rate: 'Tasa de Finalización',

@@ -79,6 +79,22 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   // Watch hours — computed from completed movies/shows only
   const displayHours = computeWatchHours(filteredItems);
 
+  const renderWatchTime = (hours: number) => {
+    if (hours < 24) {
+      return (
+        <>{hours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span></>
+      );
+    }
+    const d = Math.floor(hours / 24);
+    const h = hours % 24;
+    return (
+      <>
+        {d}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.days_unit || 'дн'}</span>
+        {h > 0 && <>{h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span></>}
+      </>
+    );
+  };
+
   // Category breakdown (over filtered period)
   const categoryCounts: Record<string, number> = {};
   filteredItems.forEach((item) => {
@@ -212,7 +228,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             </button>
           </div>
           <div className="text-xl font-extrabold text-blue-400 leading-none">
-            {displayHours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span>
+            {renderWatchTime(displayHours)}
           </div>
           <div className="text-[9px] text-gray-400">{t.stats.movies_and_shows}</div>
         </div>

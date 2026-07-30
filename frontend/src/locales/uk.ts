@@ -36,6 +36,7 @@ export const uk: Translations = {
     spent: 'Витрачено',
     streak: 'Днів поспіль',
     hours_suffix: 'г',
+    days_suffix: 'дн',
   },
   recently_added: {
     title: 'Нещодавно додані',
@@ -199,6 +200,8 @@ export const uk: Translations = {
     categories_title: 'Розподіл за категоріями',
     active_legend: 'Активно',
     hours_unit: 'г',
+    days_unit: 'дн',
+    days_suffix: 'дн',
     top_category: 'Улюблена категорія',
     avg_rating: 'Середня оцінка',
     completion_rate: 'Рівень завершення',

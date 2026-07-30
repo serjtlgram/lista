@@ -36,6 +36,7 @@ export const ru: Translations = {
     spent: 'Потрачено',
     streak: 'Дней подряд',
     hours_suffix: 'ч',
+    days_suffix: 'дн',
   },
   recently_added: {
     title: 'Недавние',
@@ -199,6 +200,7 @@ export const ru: Translations = {
     categories_title: 'Распределение по категориям',
     active_legend: 'Активно',
     hours_unit: 'ч',
+    days_unit: 'дн',
     top_category: 'Любимая категория',
     avg_rating: 'Средняя оценка',
     completion_rate: 'Уровень завершения',
