@@ -325,12 +325,76 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   return (
     <div className="space-y-4 animate-slide-up pb-6">
-      {/* Main Poster & Details Card (Title inside card, 2:3 Aspect Ratio Layout) */}
+      {/* Main Poster & Details Card (Title & Menu in top row, 2:3 Aspect Ratio Layout) */}
       <div className="glass-card p-4 rounded-3xl space-y-3 shadow-xl">
-        {/* Full Title at Top of Card */}
-        <h1 className="text-base sm:text-lg font-bold text-white leading-snug break-words pb-2 border-b border-cardBorder/50">
-          {item.title}
-        </h1>
+        {/* Title & Three-Dots Menu Row (No line below) */}
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-base sm:text-lg font-bold text-white leading-snug break-words flex-1">
+            {item.title}
+          </h1>
+
+          {/* Three-Dots Menu at top right of title */}
+          <div className="relative shrink-0 -mr-1 -mt-1">
+            <button
+              type="button"
+              onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+              className={`p-1.5 rounded-full transition active:scale-90 ${
+                isHeaderMenuOpen
+                  ? 'bg-accentViolet/20 text-accentViolet'
+                  : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
+              }`}
+              aria-label="Меню"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {/* Three Dots Dropdown Menu */}
+            {isHeaderMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsHeaderMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 w-48 glass-card border border-cardBorder rounded-2xl p-1.5 shadow-2xl z-50 animate-slide-up dropdown-menu-container space-y-0.5">
+                  <button
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      handleShareTelegram();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                  >
+                    <Share2 className="w-4 h-4 text-accentTeal" />
+                    <span>{t.details.share || 'Поделиться'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      onEdit(item);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                  >
+                    <Edit3 className="w-4 h-4 text-accentViolet" />
+                    <span>{t.details.edit || 'Изменить'}</span>
+                  </button>
+
+                  <div className="h-px bg-cardBorder/50 my-1" />
+
+                  <button
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      onDelete(item.id);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                    <span>{t.details.delete || 'Удалить'}</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
 
         <div className="flex gap-4 items-start pt-1">
           {/* Left: Vertical Poster Image (2:3 Aspect Ratio) */}
@@ -363,82 +427,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
               </div>
 
-              {/* Star + Three Dots Menu inside Card */}
-              <div className="flex items-center gap-1 -mr-1 -mt-1">
-                <button
-                  type="button"
-                  onClick={handleToggleFav}
-                  className="p-1 text-amber-500 hover:scale-110 active:scale-90 transition"
-                  title={t.favorites?.title || 'Избранное'}
-                >
-                  <Star
-                    className={`w-6 h-6 transition ${
-                      isFav ? 'fill-amber-400 text-amber-400' : 'text-amber-500 stroke-[2] fill-none'
-                    }`}
-                  />
-                </button>
-
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
-                    className={`p-1.5 rounded-full transition active:scale-90 ${
-                      isHeaderMenuOpen
-                        ? 'bg-accentViolet/20 text-accentViolet'
-                        : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
-                    }`}
-                    aria-label="Меню"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-
-                  {/* Three Dots Dropdown Menu */}
-                  {isHeaderMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsHeaderMenuOpen(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-2 w-48 glass-card border border-cardBorder rounded-2xl p-1.5 shadow-2xl z-50 animate-slide-up dropdown-menu-container space-y-0.5">
-                        <button
-                          onClick={() => {
-                            setIsHeaderMenuOpen(false);
-                            handleShareTelegram();
-                          }}
-                          className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
-                        >
-                          <Share2 className="w-4 h-4 text-accentTeal" />
-                          <span>{t.details.share || 'Поделиться'}</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setIsHeaderMenuOpen(false);
-                            onEdit(item);
-                          }}
-                          className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
-                        >
-                          <Edit3 className="w-4 h-4 text-accentViolet" />
-                          <span>{t.details.edit || 'Изменить'}</span>
-                        </button>
-
-                        <div className="h-px bg-cardBorder/50 my-1" />
-
-                        <button
-                          onClick={() => {
-                            setIsHeaderMenuOpen(false);
-                            onDelete(item.id);
-                          }}
-                          className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                          <span>{t.details.delete || 'Удалить'}</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+              {/* Favorite Star Button returned to right side of category/year */}
+              <button
+                type="button"
+                onClick={handleToggleFav}
+                className="p-1 text-amber-500 hover:scale-110 active:scale-90 transition -mr-1 -mt-1"
+                title={t.favorites?.title || 'Избранное'}
+              >
+                <Star
+                  className={`w-6 h-6 transition ${
+                    isFav ? 'fill-amber-400 text-amber-400' : 'text-amber-500 stroke-[2] fill-none'
+                  }`}
+                />
+              </button>
             </div>
 
             <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">

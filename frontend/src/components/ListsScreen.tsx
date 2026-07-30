@@ -11,10 +11,6 @@ import {
   X,
   Search,
   ChevronDown,
-  ChevronUp,
-  ArrowUp,
-  ArrowDown,
-  GripVertical,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
@@ -104,10 +100,15 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
 
-  // More lists dropdown & Reorder mode state
+  // More lists dropdown & Drag reorder state
   const [isMoreExpanded, setIsMoreExpanded] = useState(false);
-  const [isReordering, setIsReordering] = useState(false);
+  const [draggingListId, setDraggingListId] = useState<string | null>(null);
+  const draggingListIdRef = useRef<string | null>(null);
+  draggingListIdRef.current = draggingListId;
   const longPressTimerRef = useRef<any>(null);
+
+  const listsRef = useRef<UserList[]>(lists);
+  listsRef.current = lists;
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -129,12 +130,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   };
 
   const handlePressStart = (listId: string) => {
+    if (listId === FAVORITES_ID) return;
     longPressTimerRef.current = setTimeout(() => {
       triggerHaptic('medium');
-      setIsReordering(true);
+      setDraggingListId(listId);
       setIsMoreExpanded(true);
-      showToast('Режим упорядочивания списков включён');
-    }, 400);
+    }, 350);
   };
 
   const handlePressEnd = () => {
@@ -144,25 +145,59 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     }
   };
 
-  const handleMoveList = (index: number, direction: 'up' | 'down', e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    triggerHaptic('medium');
-    const userLists = lists.filter((l) => l.id !== FAVORITES_ID);
-    const targetIdx = index - 1; // index among userLists (excluding favorites at index 0)
-    if (direction === 'up' && targetIdx > 0) {
-      const temp = userLists[targetIdx];
-      userLists[targetIdx] = userLists[targetIdx - 1];
-      userLists[targetIdx - 1] = temp;
-    } else if (direction === 'down' && targetIdx < userLists.length - 1) {
-      const temp = userLists[targetIdx];
-      userLists[targetIdx] = userLists[targetIdx + 1];
-      userLists[targetIdx + 1] = temp;
-    }
-    const fav = lists.find((l) => l.id === FAVORITES_ID) || lists[0];
-    const updatedAll = [fav, ...userLists];
-    setLists(updatedAll);
-    saveLists(updatedAll);
-  };
+  useEffect(() => {
+    if (!draggingListId) return;
+
+    const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      if (!draggingListIdRef.current) return;
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
+      if (clientX === undefined || clientY === undefined) return;
+
+      const elem = document.elementFromPoint(clientX, clientY);
+      if (!elem) return;
+
+      const listBtn = elem.closest('[data-list-id]') as HTMLElement;
+      if (listBtn) {
+        const targetId = listBtn.getAttribute('data-list-id');
+        if (targetId && targetId !== FAVORITES_ID && targetId !== draggingListIdRef.current) {
+          const currentLists = [...listsRef.current];
+          const sourceIdx = currentLists.findIndex((l) => l.id === draggingListIdRef.current);
+          const targetIdx = currentLists.findIndex((l) => l.id === targetId);
+
+          if (sourceIdx > 0 && targetIdx > 0 && sourceIdx !== targetIdx) {
+            const [moved] = currentLists.splice(sourceIdx, 1);
+            currentLists.splice(targetIdx, 0, moved);
+            setLists(currentLists);
+            saveLists(currentLists);
+            triggerHaptic('light');
+          }
+        }
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (draggingListIdRef.current) {
+        triggerHaptic('light');
+        setDraggingListId(null);
+        saveLists(listsRef.current);
+      }
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: true });
+    window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('touchcancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchcancel', handlePointerUp);
+    };
+  }, [draggingListId]);
 
   const currentList = lists.find((l) => l.id === activeSelectedListId) || lists[0];
 
@@ -408,16 +443,22 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         {/* Tab 2: Second / Active Custom List */}
         {secondList ? (
           <button
+            key={secondList.id}
+            data-list-id={secondList.id}
             onClick={() => handleSelectTab(secondList.id)}
             onTouchStart={() => handlePressStart(secondList.id)}
             onTouchEnd={handlePressEnd}
             onMouseDown={() => handlePressStart(secondList.id)}
             onMouseUp={handlePressEnd}
             onMouseLeave={handlePressEnd}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border min-w-0 flex-1 justify-between ${
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border min-w-0 flex-1 justify-between select-none ${
               activeSelectedListId === secondList.id
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                 : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+            } ${
+              draggingListId === secondList.id
+                ? 'scale-105 shadow-xl border-accentViolet ring-2 ring-accentViolet/50 bg-accentViolet/30 text-white z-30 cursor-grabbing'
+                : ''
             }`}
           >
             <span className="truncate">{secondList.name}</span>
@@ -436,110 +477,70 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         )}
 
         {/* Right Action: "Ещё" Button */}
-        <button
-          onClick={() => {
-            triggerHaptic();
-            setIsMoreExpanded(!isMoreExpanded);
-          }}
-          className={`px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-            isMoreExpanded
-              ? 'bg-accentViolet/20 border-accentViolet text-accentViolet shadow-sm'
-              : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-          }`}
-        >
-          <span>Ещё</span>
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              isMoreExpanded ? 'rotate-180 text-accentViolet' : 'text-gray-400'
+        {userListsOnly.length > 1 && (
+          <button
+            onClick={() => {
+              triggerHaptic();
+              setIsMoreExpanded(!isMoreExpanded);
+            }}
+            className={`px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+              isMoreExpanded
+                ? 'bg-accentViolet/20 border-accentViolet text-accentViolet shadow-sm'
+                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
             }`}
-          />
-        </button>
+          >
+            <span>Ещё</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                isMoreExpanded ? 'rotate-180 text-accentViolet' : 'text-gray-400'
+              }`}
+            />
+          </button>
+        )}
       </div>
 
-      {/* Expanded All Lists Panel (with Long Press Reordering) */}
+      {/* Expanded Remaining Lists (Same pill bubble layout underneath top row) */}
       {isMoreExpanded && (
-        <div className="glass-card p-3.5 rounded-3xl border border-cardBorder space-y-2.5 animate-slide-up shadow-xl">
-          <div className="flex items-center justify-between px-1 border-b border-cardBorder/50 pb-2">
-            <span className="text-xs text-gray-300 font-bold">Все списки ({lists.length})</span>
-            <button
-              onClick={() => {
-                triggerHaptic();
-                setIsReordering(!isReordering);
-              }}
-              className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border transition ${
-                isReordering
-                  ? 'bg-accentViolet text-white border-accentViolet shadow-sm'
-                  : 'border-cardBorder text-accentViolet hover:bg-accentViolet/10'
-              }`}
-            >
-              {isReordering ? 'Готово' : 'Упорядочить'}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-1.5 pt-0.5">
-            {lists.map((list, index) => {
-              const isFav = list.id === FAVORITES_ID;
+        <div className="flex flex-wrap gap-2 pt-1 animate-slide-up">
+          {userListsOnly
+            .filter((l) => l.id !== secondList?.id)
+            .map((list) => {
               const isSelected = list.id === activeSelectedListId;
-              const itemCount = isFav ? favoriteIds.length : list.itemIds.length;
+              const isDragging = list.id === draggingListId;
 
               return (
-                <div
+                <button
                   key={list.id}
-                  onClick={() => {
-                    handleSelectTab(list.id);
-                    setIsMoreExpanded(false);
-                  }}
+                  data-list-id={list.id}
+                  onClick={() => handleSelectTab(list.id)}
                   onTouchStart={() => handlePressStart(list.id)}
                   onTouchEnd={handlePressEnd}
                   onMouseDown={() => handlePressStart(list.id)}
                   onMouseUp={handlePressEnd}
                   onMouseLeave={handlePressEnd}
-                  className={`p-2.5 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border select-none ${
                     isSelected
-                      ? 'bg-accentViolet/20 border-accentViolet text-white font-bold shadow-sm'
-                      : 'bg-bgDark/60 border-cardBorder text-gray-300 hover:border-gray-600'
+                      ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                      : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+                  } ${
+                    isDragging
+                      ? 'scale-105 shadow-xl border-accentViolet ring-2 ring-accentViolet/50 bg-accentViolet/30 text-white z-30 cursor-grabbing'
+                      : ''
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    {isFav ? (
-                      <Star className="w-4 h-4 fill-amber-400 text-amber-400 shrink-0" />
-                    ) : (
-                      <BookMarked className="w-4 h-4 text-accentViolet shrink-0" />
-                    )}
-                    <span className="text-xs truncate">{isFav ? t.lists.favorites : list.name}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-cardDark text-gray-400 border border-cardBorder">
-                      {itemCount}
-                    </span>
-
-                    {/* Move Up / Down controls in Reorder Mode */}
-                    {isReordering && !isFav && (
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          disabled={index <= 1}
-                          onClick={(e) => handleMoveList(index, 'up', e)}
-                          className="p-1 rounded-lg bg-cardDark border border-cardBorder text-gray-300 hover:text-white hover:border-accentViolet disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition"
-                          title="Вверх"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          disabled={index >= lists.length - 1}
-                          onClick={(e) => handleMoveList(index, 'down', e)}
-                          className="p-1 rounded-lg bg-cardDark border border-cardBorder text-gray-300 hover:text-white hover:border-accentViolet disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition"
-                          title="Вниз"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <span className="truncate">{list.name}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : 'bg-bgDark text-gray-400'
+                    }`}
+                  >
+                    {list.itemIds.length}
+                  </span>
+                </button>
               );
             })}
-          </div>
         </div>
       )}
 
