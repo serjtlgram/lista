@@ -84,7 +84,9 @@ export const uk: Translations = {
     author_label: 'Автор',
     author_placeholder: "Ім'я автора (наприклад, Вільям Гібсон)",
     isbn_label: 'ISBN',
-    isbn_placeholder: 'Код ISBN (наприклад, 978-5-17-123456-7)',
+    isbn_placeholder: 'Номер ISBN (напр., 978-5-17-123456-7)',
+    select_genre: 'Оберіть жанр',
+    select_status: 'Оберіть статус',
   },
   category_modal: {
     title: 'Налаштування категорій',
@@ -148,7 +150,8 @@ export const uk: Translations = {
     watch_on_youtube: 'Дивитися на YouTube',
     open_in_youtube: 'Відкрити в YouTube',
     to_list_btn: 'До списку',
-    lists_coming_soon: 'Чекайте незабаром',
+    lists_coming_soon: 'Списки скоро з\'являться!',
+    remove_from_list: 'Вилучити зі списку',
   },
   stats: {
     title: 'Статистика',
@@ -169,6 +172,12 @@ export const uk: Translations = {
     activity_chart_subtitle: 'Додавання записів за періодами',
     hours_info_message: 'Час вказано приблизно. Якщо хочете точніше — відредагуйте картки і вкажіть точну тривалість фільмів та серіалів, а також кількість епізодів у серіалах.',
     show_more: 'Показати більше',
+    total_suffix: 'всього',
+    out_of_total: 'з {count} всього',
+    movies_and_shows: 'фільми + серіали',
+    percent_completed: '% готово',
+    statuses: 'Статуси',
+    records_count: 'записів',
   },
   favorites: {
     title: 'Улюблене',

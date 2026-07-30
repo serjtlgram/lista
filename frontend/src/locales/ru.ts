@@ -84,7 +84,9 @@ export const ru: Translations = {
     author_label: 'Автор',
     author_placeholder: 'Имя автора (например, Уильям Гибсон)',
     isbn_label: 'ISBN',
-    isbn_placeholder: 'Код ISBN (например, 978-5-17-123456-7)',
+    isbn_placeholder: 'Номер ISBN (напр. 978-5-17-123456-7)',
+    select_genre: 'Выберите жанр',
+    select_status: 'Выберите статус',
   },
   category_modal: {
     title: 'Настройка категорий',
@@ -149,6 +151,7 @@ export const ru: Translations = {
     open_in_youtube: 'Открыть в YouTube',
     to_list_btn: 'В список',
     lists_coming_soon: 'Списки категорий скоро будут доступны!',
+    remove_from_list: 'Исключить из списка',
   },
   stats: {
     title: 'Статистика',
@@ -169,6 +172,12 @@ export const ru: Translations = {
     activity_chart_subtitle: 'Добавление записей по периодам',
     hours_info_message: 'Время указано примерное. Если хотите точнее — отредактируйте карточки и укажите точную длительность фильмов и сериалов, а также количество серий в сериалах.',
     show_more: 'Показать больше',
+    total_suffix: 'всего',
+    out_of_total: 'из {count} всего',
+    movies_and_shows: 'фильмы + сериалы',
+    percent_completed: '% готово',
+    statuses: 'Статусы',
+    records_count: 'записей',
   },
   favorites: {
     title: 'Избранное',

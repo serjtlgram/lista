@@ -28,6 +28,14 @@ const normalizeCat = (catStr?: string): string => {
   return catStr || 'Фильмы';
 };
 
+const getCatTranslation = (cat: string, t: Translations) => {
+  if (cat === 'Фильмы') return t.categories.movies;
+  if (cat === 'Сериалы') return t.categories.shows;
+  if (cat === 'Книги') return t.categories.books;
+  if (cat === 'Игры') return t.categories.games;
+  return cat;
+};
+
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items = [], t }) => {
@@ -192,7 +200,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_added}</span>
           </div>
           <div className="text-xl font-extrabold text-accentViolet leading-none">{totalPeriodItems}</div>
-          <div className="text-[9px] text-gray-400">из {items.length} всего</div>
+          <div className="text-[9px] text-gray-400">{t.stats.out_of_total.replace('{count}', items.length.toString())}</div>
         </div>
 
         <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
@@ -206,7 +214,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="text-xl font-extrabold text-blue-400 leading-none">
             {displayHours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span>
           </div>
-          <div className="text-[9px] text-gray-400">фильмы + сериалы</div>
+          <div className="text-[9px] text-gray-400">{t.stats.movies_and_shows}</div>
         </div>
 
         <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
@@ -215,7 +223,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_completed}</span>
           </div>
           <div className="text-xl font-extrabold text-accentTeal leading-none">{completedCount}</div>
-          <div className="text-[9px] text-accentTeal font-semibold">{completionRate}% готово</div>
+          <div className="text-[9px] text-accentTeal font-semibold">{t.stats.percent_completed.replace('%', completionRate + '%')}</div>
         </div>
       </div>
 
@@ -225,14 +233,14 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-accentViolet" />
-              Статусы
+              {t.stats.statuses}
             </span>
-            <span className="text-[10px] text-gray-400">{totalPeriodItems} записей</span>
+            <span className="text-[10px] text-gray-400">{totalPeriodItems} {t.stats.records_count}</span>
           </div>
           {[
-            { label: 'Завершено',     count: completedCount,       color: '#00CEC9', pct: completionRate },
-            { label: 'В процессе',   count: watchingItems.length,  color: '#8C7CFF', pct: totalPeriodItems > 0 ? Math.round(watchingItems.length / totalPeriodItems * 100) : 0 },
-            { label: 'Запланировано', count: plannedItems.length,   color: '#FFB800', pct: totalPeriodItems > 0 ? Math.round(plannedItems.length / totalPeriodItems * 100) : 0 },
+            { label: t.modal.status_completed,     count: completedCount,       color: '#00CEC9', pct: completionRate },
+            { label: t.modal.status_watching,   count: watchingItems.length,  color: '#8C7CFF', pct: totalPeriodItems > 0 ? Math.round(watchingItems.length / totalPeriodItems * 100) : 0 },
+            { label: t.modal.status_planned, count: plannedItems.length,   color: '#FFB800', pct: totalPeriodItems > 0 ? Math.round(plannedItems.length / totalPeriodItems * 100) : 0 },
           ].map(({ label, count, color, pct }) => (
             <div key={label} className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
@@ -258,7 +266,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <div className="text-[10px] text-gray-400 mt-0.5">{t.stats.activity_chart_subtitle}</div>
           </div>
           <div className="text-[10px] font-bold text-accentViolet bg-accentViolet/10 px-2.5 py-1 rounded-full">
-            {totalPeriodItems} записей
+            {totalPeriodItems} {t.stats.records_count}
           </div>
         </div>
 
@@ -316,7 +324,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
         <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white">{t.stats.categories_title}</span>
-            <span className="text-[10px] text-gray-400">{grandTotal} всего</span>
+            <span className="text-[10px] text-gray-400">{grandTotal} {t.stats.total_suffix}</span>
           </div>
 
           <div className="flex items-center gap-5">
@@ -348,7 +356,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-lg font-extrabold text-white leading-none">{grandTotal}</span>
-                <span className="text-[9px] text-gray-400">записей</span>
+                <span className="text-[9px] text-gray-400">{t.stats.records_count}</span>
               </div>
             </div>
 
@@ -360,7 +368,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
                   <div key={seg.cat} className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: seg.meta.hex }} />
                     <Icon style={{ color: seg.meta.hex }} className="w-3 h-3 shrink-0" />
-                    <span className="text-xs font-semibold text-gray-200 flex-1 truncate">{seg.cat}</span>
+                    <span className="text-xs font-semibold text-gray-200 flex-1 truncate">{getCatTranslation(seg.cat, t)}</span>
                     <span className="text-xs font-bold text-white">{seg.count}</span>
                     <span className="text-[10px] text-gray-400 w-8 text-right">{seg.percent}%</span>
                   </div>
@@ -378,7 +386,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
                       <Icon style={{ color: seg.meta.hex }} className="w-3.5 h-3.5" />
-                      <span className="font-medium text-gray-300">{seg.cat}</span>
+                      <span className="font-medium text-gray-300">{getCatTranslation(seg.cat, t)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-white">{seg.count}</span>

@@ -84,7 +84,9 @@ export const en: Translations = {
     author_label: 'Author',
     author_placeholder: 'Author name (e.g. William Gibson)',
     isbn_label: 'ISBN',
-    isbn_placeholder: 'ISBN code (e.g. 978-0-441-56956-4)',
+    isbn_placeholder: 'ISBN Number (e.g. 978-5-17-123456-7)',
+    select_genre: 'Select genre',
+    select_status: 'Select status',
   },
   category_modal: {
     title: 'Customize Categories',
@@ -149,6 +151,7 @@ export const en: Translations = {
     open_in_youtube: 'Open in YouTube',
     to_list_btn: 'To List',
     lists_coming_soon: 'Category lists coming soon!',
+    remove_from_list: 'Remove from list',
   },
   stats: {
     title: 'Statistics',
@@ -169,6 +172,12 @@ export const en: Translations = {
     activity_chart_subtitle: 'Record additions over time',
     hours_info_message: 'Time shown is approximate. For accurate tracking, edit your cards and add the exact runtime for movies and shows, and episode counts for series.',
     show_more: 'Show more',
+    total_suffix: 'total',
+    out_of_total: 'out of {count} total',
+    movies_and_shows: 'movies + shows',
+    percent_completed: '% completed',
+    statuses: 'Statuses',
+    records_count: 'items',
   },
   favorites: {
     title: 'Favorites',

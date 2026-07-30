@@ -85,6 +85,8 @@ export interface Translations {
     author_placeholder: string;
     isbn_label: string;
     isbn_placeholder: string;
+    select_genre: string;
+    select_status: string;
   };
   category_modal: {
     title: string;
@@ -149,6 +151,7 @@ export interface Translations {
     open_in_youtube: string;
     to_list_btn: string;
     lists_coming_soon: string;
+    remove_from_list: string;
   };
   stats: {
     title: string;
@@ -169,6 +172,12 @@ export interface Translations {
     activity_chart_subtitle: string;
     hours_info_message: string;
     show_more: string;
+    total_suffix: string;
+    out_of_total: string;
+    movies_and_shows: string;
+    percent_completed: string;
+    statuses: string;
+    records_count: string;
   };
   favorites: {
     title: string;

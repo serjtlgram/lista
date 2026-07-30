@@ -634,7 +634,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95 shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Добавить</span>
+            <span>{t.lists.add_items}</span>
           </button>
         </div>
       </div>
@@ -730,7 +730,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Добавить</span>
+                <span>{t.lists.add_items}</span>
               </button>
             </>
           ) : (
@@ -742,7 +742,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Добавить</span>
+                <span>{t.lists.add_items}</span>
               </button>
             </>
           )}

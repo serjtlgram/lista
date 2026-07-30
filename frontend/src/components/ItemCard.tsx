@@ -296,7 +296,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                   onClick={(e) => { triggerHaptic(); openListsModal(e); }}
                   className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition shrink-0"
                 >
-                  <span>Списки</span>
+                  <span>{t?.lists.title}</span>
                   <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                 </button>
               </div>
@@ -311,7 +311,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accentViolet hover:bg-accentViolet/80 text-white text-[10px] font-bold transition shadow-sm w-max"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Добавить</span>
+                  <span>{t?.lists.add_items}</span>
                 </button>
               </div>
             )}
@@ -325,7 +325,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                 onRemoveFromList(item, e);
               }}
               className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-90 shadow-sm ml-1"
-              title="Исключить из списка"
+              title={t?.details.remove_from_list}
             >
               <Minus className="w-4 h-4 stroke-[3]" />
             </button>
@@ -338,7 +338,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setIsGenreOpen(false)}>
           <div className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-cardBorder pb-3">
-              <h3 className="text-base font-bold text-white">Выберите жанр</h3>
+              <h3 className="text-base font-bold text-white">{t?.modal.select_genre}</h3>
               <button onClick={() => setIsGenreOpen(false)} className="text-gray-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="max-h-[50vh] overflow-y-auto space-y-1.5 hide-scrollbar">
@@ -361,7 +361,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setIsStatusOpen(false)}>
           <div className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-cardBorder pb-3">
-              <h3 className="text-base font-bold text-white">Состояние</h3>
+              <h3 className="text-base font-bold text-white">{t?.modal.status_label}</h3>
               <button onClick={() => setIsStatusOpen(false)} className="text-gray-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-1.5">
