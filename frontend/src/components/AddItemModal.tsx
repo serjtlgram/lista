@@ -277,6 +277,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       const minStr = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
       if (epStr && minStr) finalDuration = `${epStr} • ${minStr}`;
       else finalDuration = epStr || minStr;
+    } else if (isBook) {
+      finalDuration = durationMin ? `${durationMin} ${t.details?.pages_unit || 'стр.'}` : '';
     } else {
       finalDuration = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
     }
@@ -559,12 +561,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.duration_min_label}</label>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">
+                      {isBook ? t.modal.pages_label : t.modal.duration_min_label}
+                    </label>
                     <input
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
-                      placeholder={t.modal.duration_min_placeholder}
+                      placeholder={isBook ? t.modal.pages_placeholder : t.modal.duration_min_placeholder}
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>

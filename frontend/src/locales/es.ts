@@ -73,6 +73,8 @@ export const es: Translations = {
     episodes_placeholder: 'ej. 8',
     duration_min_label: 'Duración (mins)',
     duration_min_placeholder: 'ej. 45 mins',
+    pages_label: 'Páginas',
+    pages_placeholder: 'ej. 300 páginas',
     episodes_unit: 'ep.',
     minutes_unit: 'min',
     year_label: 'Año',

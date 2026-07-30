@@ -73,6 +73,8 @@ export const ru: Translations = {
     episodes_placeholder: 'Например: 8',
     duration_min_label: 'Длительность (мин)',
     duration_min_placeholder: 'Например: 45 мин',
+    pages_label: 'Страниц',
+    pages_placeholder: 'Например: 45 стр',
     episodes_unit: 'сер.',
     minutes_unit: 'мин',
     year_label: 'Год',

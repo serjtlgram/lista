@@ -73,6 +73,8 @@ export const uk: Translations = {
     episodes_placeholder: 'Наприклад: 8',
     duration_min_label: 'Тривалість (хв)',
     duration_min_placeholder: 'Наприклад: 45 хв',
+    pages_label: 'Сторінок',
+    pages_placeholder: 'Наприклад: 300 стор',
     episodes_unit: 'сер.',
     minutes_unit: 'хв',
     year_label: 'Рік',

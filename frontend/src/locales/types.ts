@@ -73,6 +73,8 @@ export interface Translations {
     episodes_placeholder: string;
     duration_min_label: string;
     duration_min_placeholder: string;
+    pages_label: string;
+    pages_placeholder: string;
     episodes_unit: string;
     minutes_unit: string;
     year_label: string;
