@@ -647,10 +647,13 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {item.isbn && (
         <button
           onClick={() => {
-            if (navigator.clipboard) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(item.isbn!);
-              triggerHaptic();
-              showToast(t.details.link_copied || 'Скопировано');
+              const tg = (window as any).Telegram?.WebApp;
+              if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+              }
+              setToastMessage(t.details.link_copied || 'Скопировано');
             }
           }}
           className="w-full glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm active:scale-95 transition mt-3"
