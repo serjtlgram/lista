@@ -528,29 +528,17 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               )}
 
-              {/* Author Row for Books or Episodes Row for Series */}
-              {isBook ? (
+              {/* Episodes Row for Series */}
+              {!isBook && (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <User className="w-3.5 h-3.5 text-accentPink" />
-                    {t.details.author || 'Автор'}
+                    <Tv className="w-3.5 h-3.5 text-accentPink" />
+                    {t.details.episodes}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                    {item.author || item.director || '-'}
+                    {episodesDisplay || '-'}
                   </span>
                 </div>
-              ) : (
-                (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
-                  <div className="flex items-center justify-between text-gray-300 gap-1">
-                    <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                      <Tv className="w-3.5 h-3.5 text-accentPink" />
-                      {t.details.episodes}
-                    </span>
-                    <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                      {episodesDisplay || '-'}
-                    </span>
-                  </div>
-                )
               )}
 
             </div>
@@ -623,6 +611,47 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       )}
 
+      {/* Dedicated Author & ISBN Block for Books */}
+      {isBook && (item.author || item.isbn) && (
+        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+          {item.author && (
+            <div className="flex items-start gap-2.5">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                <User className="w-4 h-4 text-accentPink" />
+                {t.details.author || 'Автор'}:
+              </span>
+              <span className="text-xs text-white font-medium leading-relaxed">
+                {item.author}
+              </span>
+            </div>
+          )}
+          {item.isbn && (
+            <button
+              onClick={() => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(item.isbn!);
+                  const tg = (window as any).Telegram?.WebApp;
+                  if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                  }
+                  setToastMessage(t.details.link_copied || 'Скопировано');
+                }
+              }}
+              className="w-full bg-cardDark/50 border border-cardBorder p-3 rounded-2xl flex items-center justify-between shadow-sm active:scale-[0.97] transition"
+            >
+              <div className="flex items-center gap-2 text-gray-400">
+                <Tag className="w-4 h-4 text-accentBlue" />
+                <span className="text-xs font-semibold">{t.details.isbn || 'ISBN'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-white">
+                <span className="text-[13px] font-mono font-bold">{item.isbn}</span>
+                <Copy className="w-3.5 h-3.5 text-gray-400" />
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Description / Annotation Block */}
       {item.description && (
         <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
@@ -643,31 +672,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       )}
 
-      {/* ISBN Dedicated Block */}
-      {item.isbn && (
-        <button
-          onClick={() => {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(item.isbn!);
-              const tg = (window as any).Telegram?.WebApp;
-              if (tg?.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-              }
-              setToastMessage(t.details.link_copied || 'Скопировано');
-            }
-          }}
-          className="w-full glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm active:scale-[0.97] transition mt-3"
-        >
-          <div className="flex items-center gap-2 text-gray-400">
-            <Tag className="w-4 h-4 text-accentBlue" />
-            <span className="text-xs font-semibold">{t.details.isbn || 'ISBN'}</span>
-          </div>
-          <div className="flex items-center gap-2 text-white">
-            <span className="text-[13px] font-mono font-bold">{item.isbn}</span>
-            <Copy className="w-3.5 h-3.5 text-gray-400" />
-          </div>
-        </button>
-      )}
+
 
       {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
       {item.youtube_url && item.youtube_url.trim() && (
