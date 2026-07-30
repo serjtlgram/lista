@@ -474,7 +474,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 : 'bg-bgDark text-gray-400'
             }`}
           >
-            {favoriteIds.length}
+            {favoriteIds.filter(id => items.some(item => item.id === id)).length}
           </span>
         </button>
 
@@ -487,6 +487,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           const isHidden = !isMoreExpanded && !isFirstCustom;
           const isSelected = list.id === activeSelectedListId;
           const isDragging = list.id === dragState?.list.id;
+          const validCount = list.itemIds.filter(id => items.some(item => item.id === id)).length;
 
           return (
             <React.Fragment key={list.id}>
@@ -517,7 +518,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
                   }`}
                 >
-                  {list.itemIds.length}
+                  {validCount}
                 </span>
               </button>
 
@@ -566,7 +567,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           >
             <span className="truncate">{dragState.list.name}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-extrabold bg-white/20 text-white shrink-0">
-              {dragState.list.itemIds.length}
+              {dragState.list.itemIds.filter(id => items.some(item => item.id === id)).length}
             </span>
           </div>,
           document.body
