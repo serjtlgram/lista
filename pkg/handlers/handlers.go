@@ -12,6 +12,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -2093,6 +2095,30 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			sb.WriteString(fmt.Sprintf("  • %s: <b>%s</b>\n", formatCategoryLabelWithEmoji(item.cat), formatNumberSpace(item.cnt)))
 		}
 
+		var dbSizeBytes int64
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT pg_database_size(current_database())").Scan(&dbSizeBytes)
+
+		var appFilesSize int64
+		appDir := "/opt/tracklist"
+		if _, err := os.Stat(appDir); os.IsNotExist(err) {
+			appDir, _ = os.Getwd()
+		}
+		_ = filepath.Walk(appDir, func(_ string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() {
+				appFilesSize += info.Size()
+			}
+			return nil
+		})
+
+		totalAppSizeBytes := dbSizeBytes + appFilesSize
+
+		sb.WriteString("\n💾 <b>Размеры системы:</b>\n")
+		sb.WriteString(fmt.Sprintf("  • 🗄 <b>Размер базы данных:</b> <code>%s</code>\n", formatByteSize(dbSizeBytes)))
+		if appFilesSize > 0 {
+			sb.WriteString(fmt.Sprintf("  • ⚙ <b>Файлы сервера (бинарник):</b> <code>%s</code>\n", formatByteSize(appFilesSize)))
+			sb.WriteString(fmt.Sprintf("  • 🐘 <b>Размер всего приложения:</b> <code>%s</code>\n", formatByteSize(totalAppSizeBytes)))
+		}
+
 		h.sendAdminBotMessage(userID, sb.String())
 
 	case "/users", "/count", "/users_count":
@@ -2204,6 +2230,23 @@ func formatNumberSpace(n int) string {
 		out += string(c)
 	}
 	return out
+}
+
+func formatByteSize(b int64) string {
+	if b <= 0 {
+		return "0 B"
+	}
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	units := []string{"KB", "MB", "GB", "TB"}
+	return fmt.Sprintf("%.1f %s", float64(b)/float64(div), units[exp])
 }
 
 func (h *Handler) sendAdminBotMessage(userID int64, text string) {
