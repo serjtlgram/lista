@@ -304,16 +304,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             )}
           </div>
           
-          {/* Right Action Column: Star Rating (top) and Minus Button (bottom) */}
+          {/* Right Action Column: Star Rating (top) and Minus Button */}
           {(!isPlanned && item.rating > 0) || onRemoveFromList ? (
-            <div className="flex flex-col items-end justify-between shrink-0 self-stretch py-0.5 ml-1">
-              {!isPlanned && item.rating > 0 ? (
+            <div className="flex flex-col items-end gap-1.5 shrink-0 py-0.5 ml-1">
+              {!isPlanned && item.rating > 0 && (
                 <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.5 rounded-md">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                   <span>{item.rating}</span>
                 </div>
-              ) : (
-                <div />
               )}
 
               {onRemoveFromList && (
@@ -322,10 +320,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                     e.stopPropagation();
                     onRemoveFromList(item, e);
                   }}
-                  className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm mt-2"
+                  className="w-6 h-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm"
                   title={t?.details.remove_from_list}
                 >
-                  <Minus className="w-4 h-4 stroke-[3]" />
+                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
               )}
             </div>
