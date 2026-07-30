@@ -201,7 +201,6 @@ export const es: Translations = {
     active_legend: 'Activo',
     hours_unit: 'h',
     days_unit: 'd',
-    days_suffix: 'd',
     top_category: 'Categoría Favorita',
     avg_rating: 'Calificación Media',
     completion_rate: 'Tasa de Finalización',

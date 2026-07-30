@@ -201,7 +201,6 @@ export const uk: Translations = {
     active_legend: 'Активно',
     hours_unit: 'г',
     days_unit: 'дн',
-    days_suffix: 'дн',
     top_category: 'Улюблена категорія',
     avg_rating: 'Середня оцінка',
     completion_rate: 'Рівень завершення',
