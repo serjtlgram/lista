@@ -114,6 +114,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   const dragStateRef = useRef<typeof dragState>(null);
   dragStateRef.current = dragState;
+  const overlayRef = useRef<HTMLDivElement | null>(null);
 
   const longPressTimerRef = useRef<any>(null);
   const listsRef = useRef<UserList[]>(lists);
@@ -170,15 +171,30 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   useEffect(() => {
     if (!dragState) return;
 
+    // Prevent page scrolling while dragging capsules
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      // 100% block native page scrolling while capsule drag is active
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
       const curDrag = dragStateRef.current;
       if (!curDrag) return;
       const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
       if (clientX === undefined || clientY === undefined) return;
 
-      // Smoothly update floating overlay position so it flies across screen following finger
-      setDragState((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
+      // Update overlay position directly via GPU transform (zero React re-render lag)
+      if (overlayRef.current) {
+        const posX = clientX - curDrag.offsetX;
+        const posY = clientY - curDrag.offsetY;
+        overlayRef.current.style.transform = `translate3d(${posX}px, ${posY}px, 0) scale(1.08)`;
+      }
 
       const elem = document.elementFromPoint(clientX, clientY);
       if (!elem) return;
@@ -203,6 +219,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     };
 
     const handlePointerUp = () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
       if (dragStateRef.current) {
         triggerHaptic('light');
         setDragState(null);
@@ -210,13 +228,15 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       }
     };
 
-    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mousemove', handlePointerMove, { passive: false });
     window.addEventListener('mouseup', handlePointerUp);
-    window.addEventListener('touchmove', handlePointerMove, { passive: true });
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
     window.addEventListener('touchcancel', handlePointerUp);
 
     return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
       window.removeEventListener('mousemove', handlePointerMove);
       window.removeEventListener('mouseup', handlePointerUp);
       window.removeEventListener('touchmove', handlePointerMove);
@@ -564,16 +584,19 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {dragState &&
         createPortal(
           <div
+            ref={overlayRef}
             style={{
               position: 'fixed',
-              left: `${dragState.x - dragState.offsetX}px`,
-              top: `${dragState.y - dragState.offsetY}px`,
+              left: 0,
+              top: 0,
+              transform: `translate3d(${dragState.x - dragState.offsetX}px, ${dragState.y - dragState.offsetY}px, 0) scale(1.08)`,
               width: `${dragState.width}px`,
               height: `${dragState.height}px`,
               pointerEvents: 'none',
               zIndex: 9999,
+              willChange: 'transform',
             }}
-            className="px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 bg-accentViolet text-white border-2 border-white/90 shadow-2xl scale-110 opacity-95 transition-transform duration-75 cursor-grabbing"
+            className="px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 bg-accentViolet text-white border-2 border-white/90 shadow-2xl opacity-95 transition-transform duration-75 cursor-grabbing"
           >
             <span className="truncate">{dragState.list.name}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-extrabold bg-white/20 text-white shrink-0">
