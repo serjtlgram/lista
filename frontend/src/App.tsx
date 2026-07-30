@@ -52,6 +52,7 @@ export function App() {
 
   const [sharedListModalData, setSharedListModalData] = useState<{ title: string; items: Item[] } | null>(null);
   const [targetListIdToOpen, setTargetListIdToOpen] = useState<string | undefined>(undefined);
+  const [selectedListId, setSelectedListId] = useState<string>('favorites');
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return !!(window as any).Telegram?.WebApp?.isFullscreen;
@@ -662,6 +663,8 @@ function safeBase64Decode(str: string): any {
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
+              selectedListId={selectedListId}
+              onSelectList={setSelectedListId}
               initialListId={targetListIdToOpen}
               t={t}
             />
@@ -724,6 +727,7 @@ function safeBase64Decode(str: string): any {
           onSuccessImport={(newListId) => {
             setSharedListModalData(null);
             setTargetListIdToOpen(newListId);
+            setSelectedListId(newListId);
             setActiveTab('lists');
             loadData();
           }}
