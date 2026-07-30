@@ -212,11 +212,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
   let availableGenres: string[] = [];
   if (t) {
-    if (isMovie || isShow) availableGenres = Object.values(t.genres).slice(0, 15);
-    else if (isBook) availableGenres = ['Роман', 'Фантастика', 'Детектив', 'Фэнтези', 'Биография', 'Другое'];
-    else if (isGame) availableGenres = ['Action', 'RPG', 'Shooter', 'Strategy', 'Puzzle', 'Другое'];
+    if (isMovie || isShow) availableGenres = Object.values(t.genres);
+    else if (isBook) availableGenres = t.book_genres ? Object.values(t.book_genres) : ['Роман', 'Фантастика', 'Детектив', 'Фэнтези', 'Биография', 'Другое'];
+    else if (isGame) availableGenres = t.game_genres ? Object.values(t.game_genres) : ['Action', 'RPG', 'Shooter', 'Strategy', 'Puzzle', 'Другое'];
+    else availableGenres = Object.values(t.genres);
   } else {
-    availableGenres = ['Драма', 'Комедия', 'Триллер', 'Фантастика', 'Ужасы', 'Документальный', 'Другое'];
+    if (isBook) availableGenres = ['Роман', 'Фантастика', 'Детектив', 'Фэнтези', 'Биография', 'Другое'];
+    else if (isGame) availableGenres = ['Экшен', 'RPG', 'Шутер', 'Стратегия', 'Головоломка', 'Другое'];
+    else availableGenres = ['Драма', 'Комедия', 'Триллер', 'Фантастика', 'Ужасы', 'Документальный', 'Другое'];
   }
 
   const triggerHaptic = () => {
