@@ -4,7 +4,7 @@ import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
 import { getNextPlaceholderPoster } from '../services/posters';
-import { GENRE_KEYS, BOOK_GENRE_KEYS, getTranslatedGenreFull } from '../services/genres';
+import { getTranslatedGenreFull, getAvailableGenres } from '../services/genres';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -324,8 +324,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     { label: t.modal.status_planned, val: 'planned' },
   ];
 
-  const activeGenreKeys = isBook ? BOOK_GENRE_KEYS : GENRE_KEYS;
-  const genreOptions = activeGenreKeys.map((k) => t.genres[k]).filter(Boolean);
+  const genreOptions = getAvailableGenres(category, t);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center p-3 pb-8 sm:pb-12">

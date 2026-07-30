@@ -98,3 +98,21 @@ export const getTranslatedGenreShort = (genreStr: string | null | undefined, t: 
   main = main.split(',')[0].trim();
   return main || '-';
 };
+
+/**
+ * Get the list of available genres for a specific category
+ */
+export const getAvailableGenres = (category: string, t?: Translations): string[] => {
+  if (!t) return [];
+  const catLc = (category || '').toLowerCase().trim();
+  const isMovie = ['movie', 'movies', 'фильмы', 'фильм', 'фільми', 'películas'].includes(catLc);
+  const isShow = ['show', 'shows', 'series', 'сериалы', 'сериал', 'серіал', 'серіали'].includes(catLc);
+  const isBook = ['book', 'books', 'книги', 'книга', 'книжка', 'книжки', 'libros'].includes(catLc);
+  const isGame = ['game', 'games', 'игры', 'игра', 'ігри', 'гра', 'juegos'].includes(catLc);
+
+  if (isMovie || isShow) return Object.values(t.genres);
+  if (isBook) return t.book_genres ? Object.values(t.book_genres) : Object.values(t.genres);
+  if (isGame) return t.game_genres ? Object.values(t.game_genres) : Object.values(t.genres);
+  
+  return Object.values(t.genres);
+};

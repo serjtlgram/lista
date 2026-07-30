@@ -5,6 +5,7 @@ import { Item } from '../types';
 import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
 import { getLists, saveLists, FAVORITES_ID } from '../services/lists';
+import { getTranslatedGenreShort, getTranslatedGenreFull, getAvailableGenres } from '../services/genres';
 import { getFavoriteIds, toggleFavorite } from '../services/favorites';
 import { ListSelectionModal } from './ListSelectionModal';
 
@@ -210,17 +211,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
 
 
-  let availableGenres: string[] = [];
-  if (t) {
-    if (isMovie || isShow) availableGenres = Object.values(t.genres);
-    else if (isBook) availableGenres = t.book_genres ? Object.values(t.book_genres) : ['Роман', 'Фантастика', 'Детектив', 'Фэнтези', 'Биография', 'Другое'];
-    else if (isGame) availableGenres = t.game_genres ? Object.values(t.game_genres) : ['Action', 'RPG', 'Shooter', 'Strategy', 'Puzzle', 'Другое'];
-    else availableGenres = Object.values(t.genres);
-  } else {
-    if (isBook) availableGenres = ['Роман', 'Фантастика', 'Детектив', 'Фэнтези', 'Биография', 'Другое'];
-    else if (isGame) availableGenres = ['Экшен', 'RPG', 'Шутер', 'Стратегия', 'Головоломка', 'Другое'];
-    else availableGenres = ['Драма', 'Комедия', 'Триллер', 'Фантастика', 'Ужасы', 'Документальный', 'Другое'];
-  }
+  const availableGenres = getAvailableGenres(item.category, t);
 
   const triggerHaptic = () => {
     const tg = (window as any).Telegram?.WebApp;
