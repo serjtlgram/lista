@@ -467,7 +467,11 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           </button>
         )}
 
-        <div className={`flex flex-wrap items-center gap-[6px] w-full ${userListsOnly.length > 1 ? 'pr-7' : ''}`}>
+        <div
+          className={`flex flex-wrap items-center gap-[6px] w-full transition-all duration-300 ${
+            userListsOnly.length > 1 ? 'pr-7' : ''
+          } ${!isMoreExpanded ? 'max-h-[34px] overflow-hidden' : ''}`}
+        >
           {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
           <button
             onClick={() => handleSelectTab(FAVORITES_ID)}
@@ -499,10 +503,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           {userListsOnly.length === 0 && <div className="flex-1" />}
 
           {/* Custom Lists */}
-          {userListsOnly.map((list, index) => {
-            const isFirstCustom = index === 0;
-            // Hide subsequent lists if not expanded
-            const isHidden = !isMoreExpanded && !isFirstCustom;
+          {userListsOnly.map((list) => {
             const isSelected = list.id === activeSelectedListId;
             const isDragging = list.id === dragState?.list.id;
             const validCount = list.itemIds.filter(id => items.some(item => item.id === id)).length;
@@ -511,16 +512,13 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               <button
                 key={list.id}
                 data-list-id={list.id}
-                style={{ display: isHidden ? 'none' : 'flex' }}
                 onClick={() => handleSelectTab(list.id)}
                 onTouchStart={(e) => handlePressStart(list, e)}
                 onTouchEnd={handlePressEnd}
                 onMouseDown={(e) => handlePressStart(list, e)}
                 onMouseUp={handlePressEnd}
                 onMouseLeave={handlePressEnd}
-                className={`px-3.5 py-2 rounded-2xl text-xs font-bold items-center gap-2 transition border select-none shrink-0 ${
-                  !isFirstCustom && isMoreExpanded ? 'animate-slide-up' : ''
-                } ${
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border select-none shrink-0 ${
                   isSelected
                     ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                     : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
