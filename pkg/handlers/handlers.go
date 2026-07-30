@@ -1887,18 +1887,19 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					author = CASE WHEN author = '' OR author IS NULL THEN $6 ELSE author END,
 					isbn = CASE WHEN isbn = '' OR isbn IS NULL THEN $7 ELSE isbn END,
 					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
+					note = CASE WHEN note = '' OR note IS NULL THEN $9 ELSE note END,
 					updated_at = CURRENT_TIMESTAMP
-				WHERE id = $9 AND user_id = $10;
-			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, finalItemID, userID)
+				WHERE id = $10 AND user_id = $11;
+			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, rawURL, finalItemID, userID)
 		} else {
 			insertQuery := `
-				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn)
-				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, note)
+				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 				RETURNING id;
 			`
 			_ = h.DB.Pool.QueryRow(ctx, insertQuery,
 				itemUUID, userID, titleTrimmed, catEn, media.Genre, media.Duration, media.ReleaseYear,
-				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN,
+				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN, rawURL,
 			).Scan(&finalItemID)
 		}
 	}

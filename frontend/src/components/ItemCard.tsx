@@ -226,12 +226,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         onClick={() => onSelect(item)}
         className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-[0.97] transition card-hover relative overflow-hidden"
       >
-        <div className="flex items-center gap-3 w-full">
+        <div className="flex items-stretch gap-3 w-full">
           {/* Rectangular poster image */}
           <img
             src={posterSrc}
             referrerPolicy="no-referrer"
-            className="w-[52px] h-[78px] object-cover object-center rounded-xl bg-gray-200 dark:bg-cardDark shrink-0"
+            className="w-[52px] h-[78px] object-cover object-center rounded-xl bg-gray-200 dark:bg-cardDark shrink-0 self-center"
             alt={item.title}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -241,17 +241,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({
               }
             }}
           />
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
             {/* Row 1: Title */}
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-sm font-bold text-white line-clamp-1 leading-tight">{item.title}</h3>
-              {/* Star Rating on top right next to title */}
-              {!isPlanned && item.rating > 0 && (
-                <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.5 rounded-md">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-                  <span>{item.rating}</span>
-                </div>
-              )}
             </div>
             
             {/* Row 2: Subtitle */}
@@ -311,19 +304,32 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             )}
           </div>
           
-          {/* Action Button: Minus for list items */}
-          {onRemoveFromList && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemoveFromList(item, e);
-              }}
-              className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm ml-1"
-              title={t?.details.remove_from_list}
-            >
-              <Minus className="w-4 h-4 stroke-[3]" />
-            </button>
-          )}
+          {/* Right Action Column: Star Rating (top) and Minus Button (bottom) */}
+          {(!isPlanned && item.rating > 0) || onRemoveFromList ? (
+            <div className="flex flex-col items-end justify-between shrink-0 self-stretch py-0.5 ml-1">
+              {!isPlanned && item.rating > 0 ? (
+                <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.5 rounded-md">
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                  <span>{item.rating}</span>
+                </div>
+              ) : (
+                <div />
+              )}
+
+              {onRemoveFromList && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveFromList(item, e);
+                  }}
+                  className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm mt-2"
+                  title={t?.details.remove_from_list}
+                >
+                  <Minus className="w-4 h-4 stroke-[3]" />
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
