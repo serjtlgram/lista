@@ -63,6 +63,28 @@ const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   }
 };
 
+const renderTextWithLinks = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a 
+          key={i} 
+          href={part} 
+          target="_blank" 
+          rel="nofollow noopener noreferrer"
+          className="text-accentTeal hover:underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 interface DetailsScreenProps {
   item: Item;
   onBack: () => void;
@@ -760,16 +782,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </div>
           </div>
         ) : (
-          <p
-            onClick={() => setIsEditingNote(true)}
-            className="text-xs text-gray-300 leading-relaxed cursor-pointer hover:text-white transition whitespace-pre-line"
+          <div
+            className="text-xs text-gray-300 leading-relaxed transition whitespace-pre-line"
           >
             {item.note && item.note.trim() ? (
-              <span className="italic">"{item.note}"</span>
+              <span className="italic">"{renderTextWithLinks(item.note)}"</span>
             ) : (
               <span className="text-gray-500 font-normal italic">{t.details.note_placeholder_empty}</span>
             )}
-          </p>
+          </div>
         )}
       </div>
 
