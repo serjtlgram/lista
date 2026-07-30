@@ -243,18 +243,18 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           />
           <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
             {/* Row 1: Title */}
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2 pr-9">
               <h3 className="text-sm font-bold text-white line-clamp-1 leading-tight">{item.title}</h3>
             </div>
             
             {/* Row 2: Subtitle */}
-            <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+            <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 pr-9">
               {formatSubtitle()}
             </p>
 
             {/* Row 3: Lists */}
             {listsItemIsIn.length > 0 && (
-              <div className="flex items-center gap-1 mt-1.5 text-[10px] font-medium text-accentViolet flex-wrap">
+              <div className="flex items-center gap-1 mt-1.5 text-[10px] font-medium text-accentViolet flex-wrap pr-9">
                 <FolderCheck className="w-3 h-3" />
                 <span className="truncate">{listsItemIsIn.map(l => l.name).join(', ')}</span>
               </div>
@@ -262,7 +262,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             
             {/* Row 4: Action Buttons */}
             {!onAdd ? (
-              <div className="flex items-center gap-1.5 mt-2 flex-nowrap overflow-x-auto hide-scrollbar pb-1 -mb-1 w-full">
+              <div className="flex items-center gap-1.5 mt-2 flex-nowrap overflow-x-auto hide-scrollbar pb-1 -mb-1 w-full pr-10">
                 <button
                   onClick={(e) => { e.stopPropagation(); triggerHaptic(); setIsGenreOpen(true); }}
                   className="px-2 py-1 rounded-lg bg-cardDark border border-cardBorder hover:border-gray-500 text-[10px] font-bold text-gray-300 flex items-center gap-1 transition shrink-0"
@@ -303,32 +303,29 @@ export const ItemCard: React.FC<ItemCardProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Right Action Column: Star Rating (top) and Minus Button */}
-          {(!isPlanned && item.rating > 0) || onRemoveFromList ? (
-            <div className="flex flex-col items-end gap-1.5 shrink-0 py-0.5 ml-1">
-              {!isPlanned && item.rating > 0 && (
-                <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.5 rounded-md">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-                  <span>{item.rating}</span>
-                </div>
-              )}
-
-              {onRemoveFromList && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveFromList(item, e);
-                  }}
-                  className="w-6 h-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm"
-                  title={t?.details.remove_from_list}
-                >
-                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              )}
-            </div>
-          ) : null}
         </div>
+
+        {/* Absolute Star Rating (Top Right) */}
+        {!isPlanned && item.rating > 0 && (
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-md shadow-sm z-10 backdrop-blur-md">
+            <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+            <span>{item.rating}</span>
+          </div>
+        )}
+
+        {/* Absolute Minus Button (Centered vertically) */}
+        {onRemoveFromList && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveFromList(item, e);
+            }}
+            className="absolute top-1/2 right-2.5 -translate-y-1/2 w-[26px] h-[26px] rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition active:scale-[0.97] shadow-sm z-10 backdrop-blur-md"
+            title={t?.details.remove_from_list}
+          >
+            <Minus className="w-3.5 h-3.5 stroke-[3]" />
+          </button>
+        )}
       </div>
 
       {/* Modals via Portal */}
