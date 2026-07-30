@@ -449,49 +449,67 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       </div>
 
       {/* All Lists Layout (Top row & Wrapped Expanded row) */}
-      <div className="flex flex-wrap items-center gap-[6px] w-full">
-        {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
-        <button
-          onClick={() => handleSelectTab(FAVORITES_ID)}
-          className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-            activeSelectedListId === FAVORITES_ID
-              ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
-              : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-          }`}
-          title={t.lists.favorites}
-        >
-          <Star
-            className={`w-4 h-4 ${
-              activeSelectedListId === FAVORITES_ID
-                ? 'fill-white text-white'
-                : 'fill-amber-400 text-amber-400'
-            }`}
-          />
-          <span
-            className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-              activeSelectedListId === FAVORITES_ID
-                ? 'bg-white/20 text-white'
-                : 'bg-bgDark text-gray-400'
-            }`}
+      <div className="relative w-full">
+        {userListsOnly.length > 1 && (
+          <button
+            onClick={() => {
+              triggerHaptic();
+              setIsMoreExpanded(!isMoreExpanded);
+            }}
+            className="absolute top-0 right-0 h-[34px] px-1 text-xs font-bold text-accentViolet flex items-center justify-center transition shrink-0 hover:opacity-70 active:scale-[0.97] select-none z-10"
+            title={isMoreExpanded ? 'Свернуть' : 'Ещё'}
           >
-            {favoriteIds.filter(id => items.some(item => item.id === id)).length}
-          </span>
-        </button>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${
+                isMoreExpanded ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+        )}
 
-        {userListsOnly.length === 0 && <div className="flex-1" />}
+        <div className={`flex flex-wrap items-center gap-[6px] w-full ${userListsOnly.length > 1 ? 'pr-7' : ''}`}>
+          {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
+          <button
+            onClick={() => handleSelectTab(FAVORITES_ID)}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+              activeSelectedListId === FAVORITES_ID
+                ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+            }`}
+            title={t.lists.favorites}
+          >
+            <Star
+              className={`w-4 h-4 ${
+                activeSelectedListId === FAVORITES_ID
+                  ? 'fill-white text-white'
+                  : 'fill-amber-400 text-amber-400'
+              }`}
+            />
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                activeSelectedListId === FAVORITES_ID
+                  ? 'bg-white/20 text-white'
+                  : 'bg-bgDark text-gray-400'
+              }`}
+            >
+              {favoriteIds.filter(id => items.some(item => item.id === id)).length}
+            </span>
+          </button>
 
-        {/* Custom Lists & "Ещё" Button */}
-        {userListsOnly.map((list, index) => {
-          const isFirstCustom = index === 0;
-          // Hide subsequent lists if not expanded
-          const isHidden = !isMoreExpanded && !isFirstCustom;
-          const isSelected = list.id === activeSelectedListId;
-          const isDragging = list.id === dragState?.list.id;
-          const validCount = list.itemIds.filter(id => items.some(item => item.id === id)).length;
+          {userListsOnly.length === 0 && <div className="flex-1" />}
 
-          return (
-            <React.Fragment key={list.id}>
+          {/* Custom Lists */}
+          {userListsOnly.map((list, index) => {
+            const isFirstCustom = index === 0;
+            // Hide subsequent lists if not expanded
+            const isHidden = !isMoreExpanded && !isFirstCustom;
+            const isSelected = list.id === activeSelectedListId;
+            const isDragging = list.id === dragState?.list.id;
+            const validCount = list.itemIds.filter(id => items.some(item => item.id === id)).length;
+
+            return (
               <button
+                key={list.id}
                 data-list-id={list.id}
                 style={{ display: isHidden ? 'none' : 'flex' }}
                 onClick={() => handleSelectTab(list.id)}
@@ -521,27 +539,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   {validCount}
                 </span>
               </button>
-
-              {/* Render More button immediately after the first custom list */}
-              {isFirstCustom && userListsOnly.length > 1 && (
-                <button
-                  key="more-btn"
-                  onClick={() => {
-                    triggerHaptic();
-                    setIsMoreExpanded(!isMoreExpanded);
-                  }}
-                  className="px-1.5 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-[0.97] select-none"
-                >
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      isMoreExpanded ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-              )}
-            </React.Fragment>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Floating Dragged Pill ("Летит по экрану") */}
