@@ -1313,6 +1313,8 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 			// Always send welcome message when user explicitly presses /start command
 			langCode := update.Message.From.LanguageCode
 			go h.sendWelcomeMessage(userID, langCode)
+		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stats") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
+			go h.handleAdminCommand(userID, update.Message.From.Username, msgText)
 		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
 			log.Printf("[TelegramWebhook] Extracted URL from user %d: %s", userID, extractedURL)
 			go h.processIncomingMediaURL(userID, update.Message.From, extractedURL)
@@ -1998,6 +2000,107 @@ func (h *Handler) sendBotMessage(userID int64, text string) {
 	payload := map[string]interface{}{
 		"chat_id": userID,
 		"text":    text,
+	}
+	h.sendBotAPIRequest("sendMessage", payload)
+}
+
+func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) {
+	usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(username), "@"))
+	if usernameLc != "neznayca" && usernameLc != "znayca" {
+		return
+	}
+
+	cmdLower := strings.ToLower(strings.Fields(cmd)[0])
+	if idx := strings.Index(cmdLower, "@"); idx != -1 {
+		cmdLower = cmdLower[:idx]
+	}
+
+	ctx := context.Background()
+
+	switch cmdLower {
+	case "/stats", "/users", "/count", "/users_count":
+		if h.DB == nil || h.DB.Pool == nil {
+			return
+		}
+		var totalUsers int
+		err := h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+		if err != nil {
+			log.Printf("[AdminCommand] Count error: %v", err)
+			return
+		}
+
+		msg := fmt.Sprintf("📊 <b>Статистика пользователей</b>\n\n👥 Всего пользователей в приложении: <b>%d</b>", totalUsers)
+		h.sendAdminBotMessage(userID, msg)
+
+	case "/users_list", "/list", "/userslist", "/admin_users":
+		if h.DB == nil || h.DB.Pool == nil {
+			return
+		}
+		var totalUsers int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+
+		rows, err := h.DB.Pool.Query(ctx, `
+			SELECT id, username, first_name, last_name, created_at, updated_at
+			FROM users
+			WHERE id != 0
+			ORDER BY created_at ASC
+			LIMIT 50;
+		`)
+		if err != nil {
+			log.Printf("[AdminCommand] List error: %v", err)
+			return
+		}
+		defer rows.Close()
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи приложения (%d):</b>\n\n", totalUsers))
+
+		idx := 1
+		for rows.Next() {
+			var id int64
+			var uname, fName, lName string
+			var createdAt, updatedAt time.Time
+
+			if err := rows.Scan(&id, &uname, &fName, &lName, &createdAt, &updatedAt); err != nil {
+				continue
+			}
+
+			fullName := strings.TrimSpace(fName + " " + lName)
+			if fullName == "" {
+				fullName = "Пользователь"
+			}
+			cleanFullName := html.EscapeString(fullName)
+			cleanUname := html.EscapeString(strings.TrimSpace(uname))
+
+			var userLink string
+			if cleanUname != "" {
+				userLink = fmt.Sprintf("<a href=\"https://t.me/%s\">@%s</a> (%s)", cleanUname, cleanUname, cleanFullName)
+			} else {
+				userLink = fmt.Sprintf("<a href=\"tg://user?id=%d\">%s</a> (ID: <code>%d</code>)", id, cleanFullName, id)
+			}
+
+			firstIn := createdAt.Format("02.01.2006 15:04")
+			lastIn := updatedAt.Format("02.01.2006 15:04")
+
+			entry := fmt.Sprintf("%d. %s\n   🗓 <b>Первый вход:</b> <code>%s</code>\n   🕒 <b>Последний вход:</b> <code>%s</code>\n\n", idx, userLink, firstIn, lastIn)
+
+			if sb.Len()+len(entry) > 3900 {
+				break
+			}
+			sb.WriteString(entry)
+			idx++
+		}
+
+		h.sendAdminBotMessage(userID, sb.String())
+	}
+}
+
+func (h *Handler) sendAdminBotMessage(userID int64, text string) {
+	payload := map[string]interface{}{
+		"chat_id":                  userID,
+		"text":                     text,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview": true,
 	}
 	h.sendBotAPIRequest("sendMessage", payload)
 }
