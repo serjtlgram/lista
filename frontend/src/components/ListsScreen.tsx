@@ -102,11 +102,20 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   // More lists dropdown & Drag reorder state
   const [isMoreExpanded, setIsMoreExpanded] = useState(false);
-  const [draggingListId, setDraggingListId] = useState<string | null>(null);
-  const draggingListIdRef = useRef<string | null>(null);
-  draggingListIdRef.current = draggingListId;
-  const longPressTimerRef = useRef<any>(null);
+  const [dragState, setDragState] = useState<{
+    list: UserList;
+    x: number;
+    y: number;
+    offsetX: number;
+    offsetY: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
+  const dragStateRef = useRef<typeof dragState>(null);
+  dragStateRef.current = dragState;
+
+  const longPressTimerRef = useRef<any>(null);
   const listsRef = useRef<UserList[]>(lists);
   listsRef.current = lists;
 
@@ -129,13 +138,26 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handlePressStart = (listId: string) => {
-    if (listId === FAVORITES_ID) return;
+  const handlePressStart = (list: UserList, e: React.TouchEvent | React.MouseEvent) => {
+    if (list.id === FAVORITES_ID) return;
+    const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as React.MouseEvent).clientY;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
     longPressTimerRef.current = setTimeout(() => {
       triggerHaptic('medium');
-      setDraggingListId(listId);
       setIsMoreExpanded(true);
-    }, 350);
+      setDragState({
+        list,
+        x: clientX,
+        y: clientY,
+        offsetX: clientX - rect.left,
+        offsetY: clientY - rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }, 300);
   };
 
   const handlePressEnd = () => {
@@ -146,13 +168,17 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   };
 
   useEffect(() => {
-    if (!draggingListId) return;
+    if (!dragState) return;
 
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
-      if (!draggingListIdRef.current) return;
+      const curDrag = dragStateRef.current;
+      if (!curDrag) return;
       const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
       if (clientX === undefined || clientY === undefined) return;
+
+      // Smoothly update floating overlay position so it flies across screen following finger
+      setDragState((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
 
       const elem = document.elementFromPoint(clientX, clientY);
       if (!elem) return;
@@ -160,9 +186,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       const listBtn = elem.closest('[data-list-id]') as HTMLElement;
       if (listBtn) {
         const targetId = listBtn.getAttribute('data-list-id');
-        if (targetId && targetId !== FAVORITES_ID && targetId !== draggingListIdRef.current) {
+        if (targetId && targetId !== FAVORITES_ID && targetId !== curDrag.list.id) {
           const currentLists = [...listsRef.current];
-          const sourceIdx = currentLists.findIndex((l) => l.id === draggingListIdRef.current);
+          const sourceIdx = currentLists.findIndex((l) => l.id === curDrag.list.id);
           const targetIdx = currentLists.findIndex((l) => l.id === targetId);
 
           if (sourceIdx > 0 && targetIdx > 0 && sourceIdx !== targetIdx) {
@@ -177,9 +203,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     };
 
     const handlePointerUp = () => {
-      if (draggingListIdRef.current) {
+      if (dragStateRef.current) {
         triggerHaptic('light');
-        setDraggingListId(null);
+        setDragState(null);
         saveLists(listsRef.current);
       }
     };
@@ -197,7 +223,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       window.removeEventListener('touchend', handlePointerUp);
       window.removeEventListener('touchcancel', handlePointerUp);
     };
-  }, [draggingListId]);
+  }, [dragState?.list.id]);
 
   const currentList = lists.find((l) => l.id === activeSelectedListId) || lists[0];
 
@@ -379,10 +405,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   };
 
   const userListsOnly = lists.filter((l) => l.id !== FAVORITES_ID);
-  const secondList =
-    activeSelectedListId !== FAVORITES_ID
-      ? lists.find((l) => l.id === activeSelectedListId) || userListsOnly[0]
-      : userListsOnly[0];
+  const secondList = userListsOnly[0]; // Always stays as first custom list in custom user order
 
   return (
     <div className="space-y-4 pb-8 animate-slide-up">
@@ -410,11 +433,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
         <button
           onClick={() => handleSelectTab(FAVORITES_ID)}
-          onTouchStart={() => handlePressStart(FAVORITES_ID)}
-          onTouchEnd={handlePressEnd}
-          onMouseDown={() => handlePressStart(FAVORITES_ID)}
-          onMouseUp={handlePressEnd}
-          onMouseLeave={handlePressEnd}
           className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
             activeSelectedListId === FAVORITES_ID
               ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
@@ -440,15 +458,15 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           </span>
         </button>
 
-        {/* Tab 2: Second / Active Custom List */}
+        {/* Tab 2: Second / First Custom List in Order */}
         {secondList ? (
           <button
             key={secondList.id}
             data-list-id={secondList.id}
             onClick={() => handleSelectTab(secondList.id)}
-            onTouchStart={() => handlePressStart(secondList.id)}
+            onTouchStart={(e) => handlePressStart(secondList, e)}
             onTouchEnd={handlePressEnd}
-            onMouseDown={() => handlePressStart(secondList.id)}
+            onMouseDown={(e) => handlePressStart(secondList, e)}
             onMouseUp={handlePressEnd}
             onMouseLeave={handlePressEnd}
             className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border min-w-0 flex-1 justify-between select-none ${
@@ -456,8 +474,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                 : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
             } ${
-              draggingListId === secondList.id
-                ? 'scale-105 shadow-xl border-accentViolet ring-2 ring-accentViolet/50 bg-accentViolet/30 text-white z-30 cursor-grabbing'
+              dragState?.list.id === secondList.id
+                ? 'opacity-40 border-dashed border-accentViolet/60 bg-accentViolet/10'
                 : ''
             }`}
           >
@@ -502,47 +520,68 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {/* Expanded Remaining Lists (Same pill bubble layout underneath top row) */}
       {isMoreExpanded && (
         <div className="flex flex-wrap gap-2 pt-1 animate-slide-up">
-          {userListsOnly
-            .filter((l) => l.id !== secondList?.id)
-            .map((list) => {
-              const isSelected = list.id === activeSelectedListId;
-              const isDragging = list.id === draggingListId;
+          {userListsOnly.slice(1).map((list) => {
+            const isSelected = list.id === activeSelectedListId;
+            const isDragging = list.id === dragState?.list.id;
 
-              return (
-                <button
-                  key={list.id}
-                  data-list-id={list.id}
-                  onClick={() => handleSelectTab(list.id)}
-                  onTouchStart={() => handlePressStart(list.id)}
-                  onTouchEnd={handlePressEnd}
-                  onMouseDown={() => handlePressStart(list.id)}
-                  onMouseUp={handlePressEnd}
-                  onMouseLeave={handlePressEnd}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border select-none ${
+            return (
+              <button
+                key={list.id}
+                data-list-id={list.id}
+                onClick={() => handleSelectTab(list.id)}
+                onTouchStart={(e) => handlePressStart(list, e)}
+                onTouchEnd={handlePressEnd}
+                onMouseDown={(e) => handlePressStart(list, e)}
+                onMouseUp={handlePressEnd}
+                onMouseLeave={handlePressEnd}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition border select-none ${
+                  isSelected
+                    ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                    : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+                } ${
+                  isDragging
+                    ? 'opacity-40 border-dashed border-accentViolet/60 bg-accentViolet/10'
+                    : ''
+                }`}
+              >
+                <span className="truncate">{list.name}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${
                     isSelected
-                      ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
-                      : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-                  } ${
-                    isDragging
-                      ? 'scale-105 shadow-xl border-accentViolet ring-2 ring-accentViolet/50 bg-accentViolet/30 text-white z-30 cursor-grabbing'
-                      : ''
+                      ? 'bg-white/20 text-white'
+                      : 'bg-bgDark text-gray-400'
                   }`}
                 >
-                  <span className="truncate">{list.name}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${
-                      isSelected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-bgDark text-gray-400'
-                    }`}
-                  >
-                    {list.itemIds.length}
-                  </span>
-                </button>
-              );
-            })}
+                  {list.itemIds.length}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
+
+      {/* Floating Dragged Pill ("Летит по экрану") */}
+      {dragState &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: `${dragState.x - dragState.offsetX}px`,
+              top: `${dragState.y - dragState.offsetY}px`,
+              width: `${dragState.width}px`,
+              height: `${dragState.height}px`,
+              pointerEvents: 'none',
+              zIndex: 9999,
+            }}
+            className="px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 bg-accentViolet text-white border-2 border-white/90 shadow-2xl scale-110 opacity-95 transition-transform duration-75 cursor-grabbing"
+          >
+            <span className="truncate">{dragState.list.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-extrabold bg-white/20 text-white shrink-0">
+              {dragState.list.itemIds.length}
+            </span>
+          </div>,
+          document.body
+        )}
 
       {/* Current List Action Header Card */}
       <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
