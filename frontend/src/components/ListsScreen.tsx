@@ -468,9 +468,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         )}
 
         <div
-          className={`flex flex-wrap items-center gap-[6px] w-full transition-all duration-300 ${
+          className={`flex flex-wrap items-center gap-[6px] w-full py-0.5 transition-all duration-300 ${
             userListsOnly.length > 1 ? 'pr-7' : ''
-          } ${!isMoreExpanded ? 'max-h-[34px] overflow-hidden' : ''}`}
+          } ${!isMoreExpanded ? 'max-h-[42px] overflow-hidden' : ''}`}
         >
           {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
           <button
