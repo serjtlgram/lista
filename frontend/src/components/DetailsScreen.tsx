@@ -529,7 +529,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
               {/* Author Row for Books or Episodes Row for Series */}
               {isBook ? (
-                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <User className="w-3.5 h-3.5 text-accentPink" />
                     {t.details.author || 'Автор'}
@@ -540,7 +540,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               ) : (
                 (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
-                  <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                  <div className="flex items-center justify-between text-gray-300 gap-1">
                     <span className="text-gray-400 flex items-center gap-1 shrink-0">
                       <Tv className="w-3.5 h-3.5 text-accentPink" />
                       {t.details.episodes}
@@ -554,7 +554,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
               {/* ISBN Row if present */}
               {item.isbn && (
-                <div className="flex items-center justify-between text-gray-300 gap-1 pt-1 border-t border-cardBorder/40">
+                <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <Tag className="w-3.5 h-3.5 text-accentBlue" />
                     {t.details.isbn || 'ISBN'}
