@@ -531,7 +531,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     }}
                     className="px-2 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-95 select-none"
                   >
-                    <span>Ещё</span>
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         isMoreExpanded ? 'rotate-180' : ''
