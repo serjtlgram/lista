@@ -523,25 +523,24 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               {/* Render More button immediately after the first custom list to keep it on the top row */}
               {isFirstCustom && userListsOnly.length > 1 && (
-                <button
-                  key="more-btn"
-                  onClick={() => {
-                    triggerHaptic();
-                    setIsMoreExpanded(!isMoreExpanded);
-                  }}
-                  className={`px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-                    isMoreExpanded
-                      ? 'bg-accentViolet/20 border-accentViolet text-accentViolet shadow-sm'
-                      : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-                  }`}
-                >
-                  <span>Ещё</span>
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isMoreExpanded ? 'rotate-180 text-accentViolet' : 'text-gray-400'
-                    }`}
-                  />
-                </button>
+                <React.Fragment key="more-btn-group">
+                  <button
+                    onClick={() => {
+                      triggerHaptic();
+                      setIsMoreExpanded(!isMoreExpanded);
+                    }}
+                    className="px-2 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-95 select-none"
+                  >
+                    <span>Ещё</span>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isMoreExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {/* Force flex line break so remaining lists go to the next line without squishing the first capsule */}
+                  <div className="basis-full h-0 m-0 p-0" />
+                </React.Fragment>
               )}
             </React.Fragment>
           );
