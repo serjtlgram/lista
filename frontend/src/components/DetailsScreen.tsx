@@ -613,14 +613,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
       {/* Dedicated Author & ISBN Block for Books */}
       {isBook && (item.author || item.isbn) && (
-        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm flex flex-col">
           {item.author && (
-            <div className="flex items-start gap-2.5">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0">
                 <User className="w-4 h-4 text-accentPink" />
-                {t.details.author || 'Автор'}:
+                {t.details.author || 'Автор'}
               </span>
-              <span className="text-xs text-white font-medium leading-relaxed">
+              <span className="text-xs text-white font-medium leading-relaxed text-right truncate min-w-0">
                 {item.author}
               </span>
             </div>
@@ -637,15 +637,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   setToastMessage(t.details.link_copied || 'Скопировано');
                 }
               }}
-              className="w-full bg-cardDark/50 border border-cardBorder p-3 rounded-2xl flex items-center justify-between shadow-sm active:scale-[0.97] transition"
+              className="w-full flex items-center justify-between active:opacity-60 transition"
             >
-              <div className="flex items-center gap-2 text-gray-400">
+              <div className="flex items-center gap-1.5 text-gray-400 shrink-0">
                 <Tag className="w-4 h-4 text-accentBlue" />
                 <span className="text-xs font-semibold">{t.details.isbn || 'ISBN'}</span>
               </div>
-              <div className="flex items-center gap-2 text-white">
-                <span className="text-[13px] font-mono font-bold">{item.isbn}</span>
-                <Copy className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex items-center gap-2 text-white min-w-0">
+                <span className="text-[13px] font-mono font-medium text-right truncate">{item.isbn}</span>
+                <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0" />
               </div>
             </button>
           )}
