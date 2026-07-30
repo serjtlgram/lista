@@ -17,7 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t }) => 
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-cardDark/95 backdrop-blur-md border-t border-cardBorder py-2 px-6 flex justify-between items-center z-30 shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-cardDark/90 backdrop-blur-xl py-2 px-6 flex justify-between items-center z-30 shadow-[0_-8px_30px_rgba(0,0,0,0.4)]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;

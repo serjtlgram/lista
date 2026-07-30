@@ -329,7 +329,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                   setSortOrder('desc');
                 }
               }}
-              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+              className={`flex items-center gap-1 font-medium transition active:scale-[0.97] ${
                 sortBy === 'year' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
               }`}
               title={t.details.by_year}
@@ -355,7 +355,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                   setSortOrder('desc');
                 }
               }}
-              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+              className={`flex items-center gap-1 font-medium transition active:scale-[0.97] ${
                 sortBy === 'date' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
               }`}
               title={t.details.by_date}

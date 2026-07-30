@@ -223,7 +223,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3 shrink-0" style={{ color: '#60A5FA' }} />
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_spent}</span>
-            <button onClick={() => setIsInfoModalOpen(true)} className="ml-auto shrink-0 text-gray-400 hover:text-accentViolet transition-colors active:scale-90">
+            <button onClick={() => setIsInfoModalOpen(true)} className="ml-auto shrink-0 text-gray-400 hover:text-accentViolet transition-colors active:scale-[0.97]">
               <Info className="w-2.5 h-2.5" />
             </button>
           </div>

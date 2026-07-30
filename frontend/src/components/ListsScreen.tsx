@@ -441,7 +441,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             setNewListName('');
             setIsCreateModalOpen(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accentViolet/20 border border-accentViolet/40 text-accentViolet hover:bg-accentViolet text-xs font-bold transition active:scale-95 shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accentViolet/20 border border-accentViolet/40 text-accentViolet hover:bg-accentViolet text-xs font-bold transition active:scale-[0.97] shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>{t.lists.new_list}</span>
@@ -530,7 +530,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       triggerHaptic();
                       setIsMoreExpanded(!isMoreExpanded);
                     }}
-                    className="px-2 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-95 select-none"
+                    className="px-2 py-2 text-xs font-bold text-accentViolet flex items-center gap-1 transition shrink-0 hover:opacity-70 active:scale-[0.97] select-none"
                   >
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
@@ -597,7 +597,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleShareList}
-              className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentTeal hover:bg-accentTeal/10 transition active:scale-95"
+              className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentTeal hover:bg-accentTeal/10 transition active:scale-[0.97]"
               title={t.lists.share}
             >
               <Share2 className="w-4 h-4" />
@@ -610,7 +610,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     setRenameValue(currentList.name);
                     setIsRenameModalOpen(true);
                   }}
-                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentViolet hover:bg-accentViolet/10 transition active:scale-95"
+                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentViolet hover:bg-accentViolet/10 transition active:scale-[0.97]"
                   title={t.lists.rename}
                 >
                   <Edit2 className="w-4 h-4" />
@@ -618,7 +618,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
                 <button
                   onClick={handleDeleteList}
-                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-red-400 hover:bg-red-500/10 transition active:scale-95"
+                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-red-400 hover:bg-red-500/10 transition active:scale-[0.97]"
                   title={t.lists.delete}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -631,7 +631,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           {/* ITEM 2 FIX: Button text is "+ Добавить" (without "элементы") */}
           <button
             onClick={handleOpenAddItemsModal}
-            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95 shrink-0"
+            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t.lists.add_items}</span>
@@ -657,7 +657,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   setSortOrder('desc');
                 }
               }}
-              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+              className={`flex items-center gap-1 font-medium transition active:scale-[0.97] ${
                 sortBy === 'year' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
               }`}
               title={t.details.by_year}
@@ -685,7 +685,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   setSortOrder('desc');
                 }
               }}
-              className={`flex items-center gap-1 font-medium transition active:scale-95 ${
+              className={`flex items-center gap-1 font-medium transition active:scale-[0.97] ${
                 sortBy === 'date' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
               }`}
               title={t.details.by_date}

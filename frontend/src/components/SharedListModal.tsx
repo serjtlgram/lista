@@ -120,7 +120,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
           <button
             onClick={handleImportAll}
             disabled={isImporting || importDone}
-            className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98 ${
+            className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.97] ${
               importDone
                 ? 'bg-accentTeal text-white'
                 : 'bg-gradient-to-r from-accentViolet to-accentTeal text-white hover:opacity-95'

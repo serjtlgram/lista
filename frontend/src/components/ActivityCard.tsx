@@ -133,7 +133,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           {onShowStats && (
             <button
               onClick={onShowStats}
-              className="text-xs font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-95 transition"
+              className="text-xs font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-[0.97] transition"
             >
               <span>Полная статистика</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -155,7 +155,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             <span className="text-[10px] text-gray-400">{t.activity.spent}</span>
             <button
               onClick={() => setIsInfoModalOpen(true)}
-              className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-gray-400 hover:text-accentViolet transition-colors active:scale-90"
+              className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-gray-400 hover:text-accentViolet transition-colors active:scale-[0.97]"
               aria-label="О расчёте времени"
             >
               <Info className="w-3 h-3" />
@@ -184,7 +184,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           {onShowStats && (
             <button
               onClick={onShowStats}
-              className="text-[10px] font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-95 transition"
+              className="text-[10px] font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-[0.97] transition"
             >
               <span>{t.stats.show_more || 'показать больше'}</span>
               <ChevronRight className="w-3 h-3" />

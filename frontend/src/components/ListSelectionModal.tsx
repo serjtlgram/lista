@@ -244,7 +244,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
         {/* Save button */}
         <button
           onClick={handleSave}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-lg hover:opacity-90 active:scale-98 transition mt-2"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-lg hover:opacity-90 active:scale-[0.97] transition mt-2"
         >
           {trans.modal.save}
         </button>

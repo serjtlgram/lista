@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ userName, photoUrl, onAvatarClic
       {/* User Avatar Button replacing Bell Icon */}
       <button
         onClick={onAvatarClick}
-        className="w-10 h-10 rounded-full bg-cardDark border border-cardBorder p-0.5 overflow-hidden flex items-center justify-center hover:border-accentViolet transition active:scale-95 shadow-md"
+        className="w-10 h-10 rounded-full bg-cardDark border border-cardBorder p-0.5 overflow-hidden flex items-center justify-center hover:border-accentViolet transition active:scale-[0.97] shadow-md"
         title={t.nav_profile}
       >
         {photoUrl ? (

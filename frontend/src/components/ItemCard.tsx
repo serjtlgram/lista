@@ -224,7 +224,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     <>
       <div
         onClick={() => onSelect(item)}
-        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-95 transition card-hover relative overflow-hidden"
+        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-[0.97] transition card-hover relative overflow-hidden"
       >
         <div className="flex items-center gap-3 w-full">
           {/* Rectangular poster image */}
@@ -318,7 +318,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
                 e.stopPropagation();
                 onRemoveFromList(item, e);
               }}
-              className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-90 shadow-sm ml-1"
+              className="w-7 h-7 rounded-full border border-red-500/40 bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition shrink-0 active:scale-[0.97] shadow-sm ml-1"
               title={t?.details.remove_from_list}
             >
               <Minus className="w-4 h-4 stroke-[3]" />

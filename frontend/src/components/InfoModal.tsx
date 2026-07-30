@@ -121,7 +121,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-[0.97]"
             style={closeBtn}
           >
             <X className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
         <div className="px-5 pb-5">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+            className="w-full py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
             style={{
               background: 'linear-gradient(135deg, #6C5CE7 0%, #8B7EFF 100%)',
               boxShadow: isLight

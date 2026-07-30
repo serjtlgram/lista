@@ -66,7 +66,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <div
               key={cat.key}
               onClick={() => onSelectCategory(cat.key)}
-              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition card-hover min-w-0 ${
+              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-[0.97] transition card-hover min-w-0 ${
                 isLastOdd ? 'col-span-2' : ''
               }`}
             >
@@ -86,7 +86,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
       <div className="flex justify-center pt-0.5">
         <button
           onClick={onOpenCategoryConfig}
-          className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-90 transition opacity-80 hover:opacity-100"
+          className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-[0.97] transition opacity-80 hover:opacity-100"
           title={t.profile.categories_manage}
         >
           <PlusCircle className="w-6 h-6 stroke-[2]" />

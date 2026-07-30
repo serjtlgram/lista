@@ -392,7 +392,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             <button
               type="button"
               onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
-              className={`p-1.5 rounded-full transition active:scale-90 ${
+              className={`p-1.5 rounded-full transition active:scale-[0.97] ${
                 isHeaderMenuOpen
                   ? 'bg-accentViolet/20 text-accentViolet'
                   : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
@@ -485,7 +485,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               <button
                 type="button"
                 onClick={handleToggleFav}
-                className="p-1 text-amber-500 hover:scale-110 active:scale-90 transition -mr-1 -mt-1"
+                className="p-1 text-amber-500 hover:scale-110 active:scale-[0.97] transition -mr-1 -mt-1"
                 title={t.favorites?.title || 'Избранное'}
               >
                 <Star
@@ -559,7 +559,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             <div className="relative pt-1.5">
               <button
                 onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-95 shadow-md hover:border-accentViolet"
+                className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
               >
                 <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
                 <div className="flex items-center gap-1 shrink-0">
@@ -635,7 +635,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           {item.description.length > 150 && (
             <button
               onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-              className="mt-1 text-xs font-bold text-accentTeal hover:underline flex items-center gap-1 focus:outline-none transition active:scale-95"
+              className="mt-1 text-xs font-bold text-accentTeal hover:underline flex items-center gap-1 focus:outline-none transition active:scale-[0.97]"
             >
               {isDescriptionExpanded ? (t.details.show_less || 'Скрыть') : (t.details.show_more || 'Ещё...')}
             </button>
@@ -656,7 +656,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               setToastMessage(t.details.link_copied || 'Скопировано');
             }
           }}
-          className="w-full glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm active:scale-95 transition mt-3"
+          className="w-full glass-card p-4 rounded-3xl flex items-center justify-between shadow-sm active:scale-[0.97] transition mt-3"
         >
           <div className="flex items-center gap-2 text-gray-400">
             <Tag className="w-4 h-4 text-accentBlue" />
@@ -719,7 +719,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsFullscreenVideo(true)}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-95 z-10"
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
                     title="На весь экран"
                   >
                     <Maximize2 className="w-4 h-4" />
@@ -768,7 +768,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 (e.currentTarget as HTMLElement).blur();
                 handleSelectRating(starNum);
               }}
-              className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-95"
+              className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-[0.97]"
               title={`${starNum}/10`}
             >
               <Star
@@ -845,7 +845,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <div className="pt-2">
           <button
             onClick={() => onAddSharedItem && onAddSharedItem(item)}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-xl hover:opacity-90 active:scale-98 transition flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-xl hover:opacity-90 active:scale-[0.97] transition flex items-center justify-center gap-2"
           >
             <PlusCircle className="w-5 h-5" />
             <span>{t.details.add_to_list}</span>
@@ -855,28 +855,28 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
           <button
             onClick={() => setIsListModalOpen(true)}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
           >
             <FolderPlus className="w-4 h-4 mb-1 text-amber-400" />
             <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.to_list_btn}</span>
           </button>
           <button
             onClick={() => onEdit(item)}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
           >
             <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
             <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.edit}</span>
           </button>
           <button
             onClick={handleShareTelegram}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
           >
             <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
             <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.share}</span>
           </button>
           <button
             onClick={() => onDelete(item.id)}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-95 shadow-sm"
+            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-[0.97] shadow-sm"
           >
             <Trash2 className="w-4 h-4 mb-1" />
             <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.delete}</span>
@@ -899,7 +899,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         >
           <button
             onClick={() => setIsFullscreenPoster(false)}
-            className="absolute right-6 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-90 shadow-xl"
+            className="absolute right-6 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-[0.97] shadow-xl"
             style={{
               top: 'max(68px, env(safe-area-inset-top, 68px))',
             }}

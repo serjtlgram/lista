@@ -707,7 +707,7 @@ function safeBase64Decode(str: string): any {
             setEditingItem(null);
             setIsModalOpen(true);
           }}
-          className="fixed bottom-16 right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-90 transition z-40"
+          className="fixed bottom-16 right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition z-40"
         >
           <Plus className="w-6 h-6" />
         </button>

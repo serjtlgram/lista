@@ -142,7 +142,7 @@ export const CategorySelectModal: React.FC<CategorySelectModalProps> = ({
         {/* Save Action */}
         <button
           onClick={handleSave}
-          className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 hover:bg-opacity-90 active:scale-98 transition"
+          className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-sm shadow-lg shadow-accentViolet/30 hover:bg-opacity-90 active:scale-[0.97] transition"
         >
           {t.category_modal.save}
         </button>

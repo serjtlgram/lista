@@ -51,7 +51,7 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
           <div className="flex justify-center pt-2">
             <button
               onClick={onAddItemClick}
-              className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-90 transition opacity-80 hover:opacity-100"
+              className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-[0.97] transition opacity-80 hover:opacity-100"
               title={t.modal.add_item}
             >
               <PlusCircle className="w-6 h-6 stroke-[2]" />

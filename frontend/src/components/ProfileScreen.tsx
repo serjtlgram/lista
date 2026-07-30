@@ -157,7 +157,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         <button
           onClick={onOpenCategoryConfig}
-          className="w-full p-3.5 rounded-2xl bg-bgDark border border-cardBorder text-gray-200 hover:text-white hover:border-accentViolet flex items-center justify-between text-xs font-semibold transition active:scale-98"
+          className="w-full p-3.5 rounded-2xl bg-bgDark border border-cardBorder text-gray-200 hover:text-white hover:border-accentViolet flex items-center justify-between text-xs font-semibold transition active:scale-[0.97]"
         >
           <span>{t.profile.categories_manage}</span>
           <div className="flex items-center gap-1 text-accentViolet font-bold">
@@ -171,7 +171,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {onGoToStats && (
         <div
           onClick={onGoToStats}
-          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-98 shadow-md group"
+          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-[0.97] shadow-md group"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
