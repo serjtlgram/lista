@@ -615,12 +615,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {isBook && (item.author || item.isbn) && (
         <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm flex flex-col">
           {item.author && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0">
+            <div className="flex items-start gap-2.5">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
                 <User className="w-4 h-4 text-accentPink" />
-                {t.details.author || 'Автор'}
+                {t.details.author || 'Автор'}:
               </span>
-              <span className="text-xs text-white font-medium leading-relaxed text-right truncate min-w-0">
+              <span className="text-xs text-white font-medium leading-relaxed truncate min-w-0">
                 {item.author}
               </span>
             </div>
@@ -639,14 +639,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               }}
               className="w-full flex items-center justify-between active:opacity-60 transition"
             >
-              <div className="flex items-center gap-1.5 text-gray-400 shrink-0">
-                <Tag className="w-4 h-4 text-accentBlue" />
-                <span className="text-xs font-semibold">{t.details.isbn || 'ISBN'}</span>
+              <div className="flex items-start gap-2.5 text-left min-w-0">
+                <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                  <Tag className="w-4 h-4 text-accentBlue" />
+                  {t.details.isbn || 'ISBN'}:
+                </span>
+                <span className="text-[13px] text-white font-mono font-medium leading-relaxed truncate">
+                  {item.isbn}
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-white min-w-0">
-                <span className="text-[13px] font-mono font-medium text-right truncate">{item.isbn}</span>
-                <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              </div>
+              <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-2" />
             </button>
           )}
         </div>
