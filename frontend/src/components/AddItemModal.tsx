@@ -193,6 +193,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setDescription('');
       setDirector('');
       setCast('');
+      setAuthor('');
+      setIsbn('');
       setNote('');
       setShowAdvanced(true);
     }
@@ -265,6 +267,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (sug.cast) setCast(sug.cast);
     if (sug.author) setAuthor(sug.author);
     if (sug.isbn) setIsbn(sug.isbn);
+    if (sug.duration) {
+      const digits = sug.duration.replace(/\D/g, '');
+      if (digits) setDurationMin(digits);
+    }
 
     setQuickSearchQuery('');
     setQuickSearchResults([]);
@@ -434,7 +440,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       <div>
                         <div className="text-xs font-bold text-white group-hover:text-accentViolet transition suggestion-title">{sug.title}</div>
                         <div className="text-[10px] text-gray-400 suggestion-sub">
-                          {sug.release_year ? `${sug.release_year} г.` : ''} {sug.genre ? `• ${sug.genre}` : ''}
+                          {sug.release_year ? `${sug.release_year} г.` : ''} {sug.genre ? `• ${sug.genre}` : ''} {sug.author ? `• ${sug.author}` : ''}
                         </div>
                       </div>
                     </div>

@@ -1120,7 +1120,7 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 
 	seenMovie := make(map[string]bool)
 	seenShow := make(map[string]bool)
-	seenBook := make(map[string]bool)
+	seenBook := make(map[string]int)
 	seenGame := make(map[string]bool)
 
 	allRaw := append(dbItems, onlineItems...)
@@ -1144,9 +1144,25 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 				showBucket = append(showBucket, item)
 			}
 		case "book":
-			if !seenBook[titleKey] {
-				seenBook[titleKey] = true
+			if idx, ok := seenBook[titleKey]; !ok {
+				seenBook[titleKey] = len(bookBucket)
 				bookBucket = append(bookBucket, item)
+			} else {
+				if bookBucket[idx].Author == "" && item.Author != "" {
+					bookBucket[idx].Author = item.Author
+				}
+				if bookBucket[idx].ISBN == "" && item.ISBN != "" {
+					bookBucket[idx].ISBN = item.ISBN
+				}
+				if bookBucket[idx].Duration == "" && item.Duration != "" {
+					bookBucket[idx].Duration = item.Duration
+				}
+				if bookBucket[idx].Description == "" && item.Description != "" {
+					bookBucket[idx].Description = item.Description
+				}
+				if bookBucket[idx].PosterURL == "" && item.PosterURL != "" {
+					bookBucket[idx].PosterURL = item.PosterURL
+				}
 			}
 		case "game":
 			if !seenGame[titleKey] {

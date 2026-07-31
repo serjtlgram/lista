@@ -567,6 +567,8 @@ function safeBase64Decode(str: string): any {
       youtube_url: catalogItem.youtube_url || '',
       director: catalogItem.director || '',
       cast: catalogItem.cast || '',
+      author: catalogItem.author || '',
+      isbn: catalogItem.isbn || '',
     };
     await api.createItem(payload);
     loadData();

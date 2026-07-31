@@ -284,7 +284,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 		return nil, nil
 	}
 
-	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5&fields=title,author_name,first_publish_year,cover_i,isbn", url.QueryEscape(query))
+	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5&fields=title,author_name,first_publish_year,cover_i,isbn,number_of_pages_median,number_of_pages", url.QueryEscape(query))
 	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
@@ -297,11 +297,13 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 
 	var data struct {
 		Docs []struct {
-			Title            string   `json:"title"`
-			AuthorName       []string `json:"author_name"`
-			FirstPublishYear int      `json:"first_publish_year"`
-			CoverI           int      `json:"cover_i"`
-			ISBN             []string `json:"isbn"`
+			Title               string   `json:"title"`
+			AuthorName          []string `json:"author_name"`
+			FirstPublishYear    int      `json:"first_publish_year"`
+			CoverI              int      `json:"cover_i"`
+			ISBN                []string `json:"isbn"`
+			NumberOfPagesMedian int      `json:"number_of_pages_median"`
+			NumberOfPages       int      `json:"number_of_pages"`
 		} `json:"docs"`
 	}
 
@@ -319,6 +321,13 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 		year := ""
 		if doc.FirstPublishYear > 0 {
 			year = strconv.Itoa(doc.FirstPublishYear)
+		}
+
+		pagesStr := ""
+		if doc.NumberOfPagesMedian > 0 {
+			pagesStr = strconv.Itoa(doc.NumberOfPagesMedian)
+		} else if doc.NumberOfPages > 0 {
+			pagesStr = strconv.Itoa(doc.NumberOfPages)
 		}
 
 		isbn := ""
@@ -345,6 +354,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			Category:    "book",
 			Author:      author,
 			ReleaseYear: year,
+			Duration:    pagesStr,
 			ISBN:        isbn,
 			PosterURL:   coverURL,
 			Source:      "online",
@@ -433,7 +443,7 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	defer timer.Stop()
 
 	var combined []models.CatalogSearchResult
-	seenTitles := make(map[string]bool)
+	seenTitles := make(map[string]int)
 	received := 0
 	total := 5
 
@@ -442,8 +452,30 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 		case res := <-ch:
 			for _, item := range res.items {
 				key := strings.ToLower(strings.TrimSpace(item.Title))
-				if key != "" && !seenTitles[key] {
-					seenTitles[key] = true
+				if key == "" {
+					continue
+				}
+				if idx, exists := seenTitles[key]; exists {
+					if combined[idx].Author == "" && item.Author != "" {
+						combined[idx].Author = item.Author
+					}
+					if combined[idx].ISBN == "" && item.ISBN != "" {
+						combined[idx].ISBN = item.ISBN
+					}
+					if combined[idx].Duration == "" && item.Duration != "" {
+						combined[idx].Duration = item.Duration
+					}
+					if combined[idx].Description == "" && item.Description != "" {
+						combined[idx].Description = item.Description
+					}
+					if combined[idx].PosterURL == "" && item.PosterURL != "" {
+						combined[idx].PosterURL = item.PosterURL
+					}
+					if combined[idx].ReleaseYear == "" && item.ReleaseYear != "" {
+						combined[idx].ReleaseYear = item.ReleaseYear
+					}
+				} else {
+					seenTitles[key] = len(combined)
 					combined = append(combined, item)
 				}
 			}

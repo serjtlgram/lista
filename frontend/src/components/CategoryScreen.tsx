@@ -235,6 +235,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     youtube_url: c.youtube_url || '',
     director: c.director || '',
     cast: c.cast || '',
+    author: c.author || '',
+    isbn: c.isbn || '',
     isSharedPreview: true,
   } as any);
 
