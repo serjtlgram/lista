@@ -31,7 +31,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 }) => {
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
   const isPlanned = item.status === 'planned' || item.status === 'в планах' || item.status === 'у планах' || item.status === 'отложено';
-  const hasRightElement = (!isPlanned && item.rating > 0) || !!onRemoveFromList;
+  const hasStar = !isPlanned && item.rating > 0;
+  const hasMinus = !!onRemoveFromList;
 
   const posterSrc = getItemPoster(item);
 
@@ -278,19 +279,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           />
           <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
             {/* Row 1: Title */}
-            <div className={`flex items-start justify-between gap-2 ${hasRightElement ? 'pr-9' : ''}`}>
+            <div className={`flex items-start justify-between gap-2 ${(hasStar || hasMinus) ? 'pr-[38px]' : ''}`}>
               <h3 className="text-sm font-bold text-white line-clamp-1 leading-tight">{item.title}</h3>
             </div>
             
             {/* Row 2: Subtitle */}
-            <div className={`text-[11px] text-gray-400 mt-0.5 ${hasRightElement ? 'pr-9' : ''}`}>
+            <div className={`text-[11px] text-gray-400 mt-0.5 ${hasMinus ? 'pr-[38px]' : ''}`}>
               <p className="line-clamp-1">{subtitleObj.line1}</p>
               {subtitleObj.line2 && <p className="line-clamp-1 mt-0.5">{subtitleObj.line2}</p>}
             </div>
 
             {/* Row 3: Lists */}
             {listsItemIsIn.length > 0 && (
-              <div className={`flex items-center gap-1 mt-1.5 text-[10px] font-medium text-accentViolet flex-wrap ${hasRightElement ? 'pr-9' : ''}`}>
+              <div className={`flex items-center gap-1 mt-1.5 text-[10px] font-medium text-accentViolet flex-wrap ${hasMinus ? 'pr-[38px]' : ''}`}>
                 <FolderCheck className="w-3 h-3" />
                 <span className="truncate">{listsItemIsIn.map(l => l.name).join(', ')}</span>
               </div>
