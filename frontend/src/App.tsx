@@ -39,7 +39,7 @@ export function App() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
-  const [theme, setTheme] = useState<'dark' | 'light'>(getStoredTheme());
+  const [theme, setTheme] = useState<string>(getStoredTheme());
   const [activeCategories, setActiveCategories] = useState<string[]>(getStoredActiveCategories());
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -111,8 +111,8 @@ export function App() {
         });
 
         tg.CloudStorage.getItem('lista_theme', (err: any, val: string) => {
-          if (!err && (val === 'light' || val === 'dark')) {
-            setTheme(val as 'light' | 'dark');
+          if (!err && val && ['dark', 'dark-black', 'dark-navy', 'light', 'light-powdery', 'light-mint'].includes(val)) {
+            setTheme(val);
             localStorage.setItem('lista_theme', val);
           }
         });
@@ -124,16 +124,28 @@ export function App() {
 
   // Handle theme changes
   useEffect(() => {
-    if (theme === 'light') {
+    // Clear all previous theme classes
+    document.body.classList.remove('light', 'light-powdery', 'light-mint', 'dark-black', 'dark-navy');
+
+    if (theme.startsWith('light')) {
       document.body.classList.add('light');
+      if (theme === 'light-powdery') document.body.classList.add('light-powdery');
+      if (theme === 'light-mint') document.body.classList.add('light-mint');
     } else {
-      document.body.classList.remove('light');
+      if (theme === 'dark-black') document.body.classList.add('dark-black');
+      if (theme === 'dark-navy') document.body.classList.add('dark-navy');
     }
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       try {
-        const bg = theme === 'light' ? '#F8FAFC' : '#0B0D14';
+        let bg = '#0B0D14'; // default dark
+        if (theme === 'dark-black') bg = '#000000';
+        if (theme === 'dark-navy') bg = '#020617';
+        if (theme === 'light') bg = '#F8FAFC';
+        if (theme === 'light-powdery') bg = '#FFF5F5';
+        if (theme === 'light-mint') bg = '#F8FAF8';
+        
         tg.setHeaderColor(bg);
         tg.setBackgroundColor(bg);
       } catch (e) {
@@ -149,7 +161,12 @@ export function App() {
       try {
         tgApp.ready();
         tgApp.expand();
-        const bg = theme === 'light' ? '#F8FAFC' : '#0B0D14';
+        let bg = '#0B0D14';
+        if (theme === 'dark-black') bg = '#000000';
+        if (theme === 'dark-navy') bg = '#020617';
+        if (theme === 'light') bg = '#F8FAFC';
+        if (theme === 'light-powdery') bg = '#FFF5F5';
+        if (theme === 'light-mint') bg = '#F8FAF8';
         tgApp.setHeaderColor(bg);
         tgApp.setBackgroundColor(bg);
       } catch (e) {
@@ -357,7 +374,7 @@ function safeBase64Decode(str: string): any {
     setStoredLanguage(newLang);
   };
 
-  const handleThemeChange = (newTheme: 'dark' | 'light') => {
+  const handleThemeChange = (newTheme: string) => {
     triggerHaptic();
     setTheme(newTheme);
     setStoredTheme(newTheme);

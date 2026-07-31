@@ -8,10 +8,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        bgDark: '#0B0D14',
-        cardDark: '#161922',
-        cardBorder: '#232734',
-        accentViolet: '#6C5CE7',
+        bgDark: 'var(--color-bgDark)',
+        cardDark: 'var(--color-cardDark)',
+        cardBorder: 'var(--color-cardBorder)',
+        accentViolet: 'rgb(var(--color-accentViolet) / <alpha-value>)',
         accentTeal: '#00CEC9',
         accentAmber: '#FDCB6E',
         accentBlue: '#0984E3',

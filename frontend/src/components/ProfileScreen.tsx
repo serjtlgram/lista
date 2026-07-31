@@ -7,8 +7,8 @@ interface ProfileScreenProps {
   profile: UserProfile | null;
   currentLanguage: Language;
   onLanguageChange: (lang: Language) => void;
-  currentTheme: 'dark' | 'light';
-  onThemeChange: (theme: 'dark' | 'light') => void;
+  currentTheme: string;
+  onThemeChange: (theme: string) => void;
   activeCategories: string[];
   onOpenCategoryConfig: () => void;
   onGoToStats?: () => void;
@@ -109,10 +109,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       <div className="glass-card rounded-3xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-bold text-white">
-            {currentTheme === 'dark' ? (
-              <Moon className="w-4 h-4 text-accentViolet" />
-            ) : (
+            {currentTheme.startsWith('light') ? (
               <Sun className="w-4 h-4 text-amber-500" />
+            ) : (
+              <Moon className="w-4 h-4 text-accentViolet" />
             )}
             <span>{t.profile.theme}</span>
           </div>
@@ -120,9 +120,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onThemeChange('dark')}
+            onClick={() => onThemeChange(currentTheme.startsWith('dark') ? currentTheme : 'dark')}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
-              currentTheme === 'dark'
+              currentTheme.startsWith('dark')
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                 : 'bg-bgDark border-cardBorder text-gray-300 hover:border-gray-600'
             }`}
@@ -132,9 +132,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </button>
 
           <button
-            onClick={() => onThemeChange('light')}
+            onClick={() => onThemeChange(currentTheme.startsWith('light') ? currentTheme : 'light')}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
-              currentTheme === 'light'
+              currentTheme.startsWith('light')
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
                 : 'bg-bgDark border-cardBorder text-gray-300 hover:border-gray-600'
             }`}
@@ -142,6 +142,65 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Sun className="w-4 h-4" />
             <span>{t.profile.theme_light}</span>
           </button>
+        </div>
+
+        {/* Color Theme Selector Circles */}
+        <div className="flex justify-between px-6 pt-1">
+          {/* Dark variants */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => onThemeChange('dark')}
+              className={`w-6 h-6 rounded-full bg-[#0B0D14] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark' ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('dark-black')}
+              className={`w-6 h-6 rounded-full bg-[#000000] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-black' ? 'border-[#10B981] scale-110 shadow-md shadow-[#10B981]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('dark-navy')}
+              className={`w-6 h-6 rounded-full bg-[#0f172a] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-navy' ? 'border-[#F59E0B] scale-110 shadow-md shadow-[#F59E0B]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
+            </button>
+          </div>
+          
+          {/* Light variants */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => onThemeChange('light')}
+              className={`w-6 h-6 rounded-full bg-[#F8FAFC] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light' ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-powdery')}
+              className={`w-6 h-6 rounded-full bg-[#FFF5F5] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-powdery' ? 'border-[#D63384] scale-110 shadow-md shadow-[#D63384]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#D63384]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-mint')}
+              className={`w-6 h-6 rounded-full bg-[#F0FDF4] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-mint' ? 'border-[#059669] scale-110 shadow-md shadow-[#059669]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#059669]"></div>
+            </button>
+          </div>
         </div>
       </div>
 

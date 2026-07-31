@@ -77,15 +77,16 @@ export const setStoredLanguage = (lang: Language): void => {
   }
 };
 
-export const getStoredTheme = (): 'dark' | 'light' => {
+export const getStoredTheme = (): string => {
   const stored = localStorage.getItem('lista_theme');
-  if (stored === 'light' || stored === 'dark') {
+  if (stored && ['dark', 'dark-black', 'dark-navy', 'light', 'light-powdery', 'light-mint'].includes(stored)) {
     return stored;
   }
+  if (stored === 'light') return 'light';
   return 'dark';
 };
 
-export const setStoredTheme = (theme: 'dark' | 'light'): void => {
+export const setStoredTheme = (theme: string): void => {
   localStorage.setItem('lista_theme', theme);
   try {
     const tg = (window as any).Telegram?.WebApp;
