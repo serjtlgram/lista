@@ -24,19 +24,22 @@ export const getGenreKey = (genreStr?: string | null): GenreKey | null => {
   }
 
   // Fallbacks for common variations not perfectly matching
-  if (lc.includes('non_fiction') || lc.includes('нон-фикшн') || lc.includes('нон-фікшн') || lc.includes('non-fiction')) return 'non_fiction';
-  if (lc.includes('romance') || lc.includes('любовный') || lc.includes('любовний') || lc.includes('мелодрама')) return 'novel';
-  if (lc.includes('historical') || lc.includes('исторический') || lc.includes('історичний') || lc.includes('история') || lc.includes('історія')) return 'other';
-  if (lc.includes('biography') || lc.includes('биография') || lc.includes('біографія') || lc.includes('мемуары')) return 'biography';
+  if (lc.includes('non_fiction') || lc.includes('нон-фикшн') || lc.includes('нон-фікшн') || lc.includes('non-fiction') || lc.includes('science') || lc.includes('history') || lc.includes('история') || lc.includes('історія') || lc.includes('наука')) return 'non_fiction';
+  if (lc.includes('business') || lc.includes('бизнес') || lc.includes('бізнес') || lc.includes('экономика') || lc.includes('финансы') || lc.includes('finance') || lc.includes('management')) return 'business';
+  if (lc.includes('self-development') || lc.includes('self-help') || lc.includes('саморазвитие') || lc.includes('саморозвиток') || lc.includes('psychology') || lc.includes('психология') || lc.includes('мотивация')) return 'self_dev';
+  if (lc.includes('biography') || lc.includes('autobiography') || lc.includes('memoir') || lc.includes('биография') || lc.includes('біографія') || lc.includes('мемуары')) return 'biography';
+  if (lc.includes('poetry') || lc.includes('poems') || lc.includes('verses') || lc.includes('поэзия') || lc.includes('поезія') || lc.includes('стихи')) return 'poetry';
+  if (lc.includes('romance') || lc.includes('novel') || lc.includes('fiction') || lc.includes('роман') || lc.includes('любовный') || lc.includes('любовний') || lc.includes('художественная') || lc.includes('мелодрама')) return 'novel';
+  if (lc.includes('historical') || lc.includes('исторический') || lc.includes('історичний')) return 'non_fiction';
   if (lc.includes('humor') || lc.includes('юмор') || lc.includes('гумор') || lc.includes('комедия')) return 'comedy';
   if (lc.includes('драма') || lc.includes('drama')) return 'drama';
-  if (lc.includes('детектив') || lc.includes('detective')) return 'detective';
+  if (lc.includes('детектив') || lc.includes('detective') || lc.includes('mystery') || lc.includes('crime')) return 'detective';
   if (lc.includes('боевик') || lc.includes('бойовик') || lc.includes('война') || lc.includes('війна') || lc.includes('action') || lc.includes('acción') || lc.includes('guerra')) return 'action';
-  if (lc.includes('триллер') || lc.includes('трилер') || lc.includes('thriller')) return 'thriller';
-  if (lc.includes('ужасы') || lc.includes('жахи') || lc.includes('horror') || lc.includes('terror')) return 'horror';
-  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('sci_fi') || lc.includes('научная фантастика') || lc.includes('ciencia')) return 'sci_fi';
+  if (lc.includes('триллер') || lc.includes('трилер') || lc.includes('thriller') || lc.includes('suspense')) return 'thriller';
+  if (lc.includes('ужасы') || lc.includes('жахи') || lc.includes('horror') || lc.includes('terror') || lc.includes('мистика')) return 'horror';
+  if (lc.includes('фантастика') || lc.includes('sci-fi') || lc.includes('science fiction') || lc.includes('sci_fi') || lc.includes('научная фантастика') || lc.includes('space') || lc.includes('ciencia')) return 'sci_fi';
   if (lc.includes('приключения') || lc.includes('пригоди') || lc.includes('adventure') || lc.includes('aventura')) return 'adventure';
-  if (lc.includes('фэнтези') || lc.includes('фентезі') || lc.includes('fantasy') || lc.includes('fantasía')) return 'fantasy';
+  if (lc.includes('фэнтези') || lc.includes('фентезі') || lc.includes('fantasy') || lc.includes('fantasía') || lc.includes('magic')) return 'fantasy';
   if (lc.includes('мультфильм') || lc.includes('мультфільм') || lc.includes('анимация') || lc.includes('анімація') || lc.includes('animation') || lc.includes('cartoons') || lc.includes('family')) return 'animation';
   if (lc.includes('ток-шоу') || lc.includes('шоу') || lc.includes('show') || lc.includes('music')) return 'show';
   if (lc.includes('документальный') || lc.includes('documentary') || lc.includes('другое') || lc.includes('other')) return 'other';
@@ -54,19 +57,24 @@ const getLangCode = (t: Translations): 'ru' | 'en' | 'uk' | 'es' => {
 };
 
 /**
- * Get full genre option string for dropdown in user's active language
+ * Get full genre option string for dropdown in user's active language.
+ * Strictly guarantees returning an official miniapp genre label.
  */
 export const getTranslatedGenreFull = (genreStr: string | null | undefined, t: Translations): string => {
+  const lang = getLangCode(t);
+  const allGenres = [...genresData.movies, ...genresData.books, ...genresData.games];
+  
   const key = getGenreKey(genreStr);
   if (key) {
-    const allGenres = [...genresData.movies, ...genresData.books, ...genresData.games];
     const match = allGenres.find(g => g.id === key);
     if (match) {
-      const lang = getLangCode(t);
       return match[lang];
     }
   }
-  return genreStr || 'Другое';
+
+  // Fallback strictly to official "Other" genre label from our miniapp
+  const otherMatch = allGenres.find(g => g.id === 'other');
+  return otherMatch ? otherMatch[lang] : 'Другое';
 };
 
 /**

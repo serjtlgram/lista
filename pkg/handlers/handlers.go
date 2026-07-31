@@ -1151,6 +1151,9 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 				if bookBucket[idx].Author == "" && item.Author != "" {
 					bookBucket[idx].Author = item.Author
 				}
+				if bookBucket[idx].Genre == "" && item.Genre != "" {
+					bookBucket[idx].Genre = item.Genre
+				}
 				if bookBucket[idx].ISBN == "" && item.ISBN != "" {
 					bookBucket[idx].ISBN = item.ISBN
 				}

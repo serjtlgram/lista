@@ -78,6 +78,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 				PublishedDate string   `json:"publishedDate"`
 				Description   string   `json:"description"`
 				PageCount     int      `json:"pageCount"`
+				Categories    []string `json:"categories"`
 				ImageLinks    struct {
 					Thumbnail      string `json:"thumbnail"`
 					SmallThumbnail string `json:"smallThumbnail"`
@@ -115,6 +116,8 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 			pagesStr = strconv.Itoa(info.PageCount)
 		}
 
+		genre := strings.Join(info.Categories, ", ")
+
 		isbn := ""
 		for _, id := range info.IndustryIdentifiers {
 			if id.Type == "ISBN_13" || id.Type == "ISBN_10" {
@@ -149,6 +152,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 			Title:       info.Title,
 			Category:    "book",
 			Author:      author,
+			Genre:       genre,
 			ReleaseYear: year,
 			Duration:    pagesStr,
 			ISBN:        isbn,
@@ -284,7 +288,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 		return nil, nil
 	}
 
-	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5&fields=title,author_name,first_publish_year,cover_i,isbn,number_of_pages_median,number_of_pages", url.QueryEscape(query))
+	apiURL := fmt.Sprintf("https://openlibrary.org/search.json?q=%s&limit=5&fields=title,author_name,first_publish_year,cover_i,isbn,number_of_pages_median,number_of_pages,subject", url.QueryEscape(query))
 	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
@@ -304,6 +308,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			ISBN                []string `json:"isbn"`
 			NumberOfPagesMedian int      `json:"number_of_pages_median"`
 			NumberOfPages       int      `json:"number_of_pages"`
+			Subject             []string `json:"subject"`
 		} `json:"docs"`
 	}
 
@@ -330,6 +335,11 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			pagesStr = strconv.Itoa(doc.NumberOfPages)
 		}
 
+		genre := ""
+		if len(doc.Subject) > 0 {
+			genre = strings.Join(doc.Subject, ", ")
+		}
+
 		isbn := ""
 		if len(doc.ISBN) > 0 {
 			isbn = doc.ISBN[0]
@@ -353,6 +363,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			Title:       doc.Title,
 			Category:    "book",
 			Author:      author,
+			Genre:       genre,
 			ReleaseYear: year,
 			Duration:    pagesStr,
 			ISBN:        isbn,
@@ -458,6 +469,9 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 				if idx, exists := seenTitles[key]; exists {
 					if combined[idx].Author == "" && item.Author != "" {
 						combined[idx].Author = item.Author
+					}
+					if combined[idx].Genre == "" && item.Genre != "" {
+						combined[idx].Genre = item.Genre
 					}
 					if combined[idx].ISBN == "" && item.ISBN != "" {
 						combined[idx].ISBN = item.ISBN
