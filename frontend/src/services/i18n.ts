@@ -79,7 +79,7 @@ export const setStoredLanguage = (lang: Language): void => {
 
 export const getStoredTheme = (): string => {
   const stored = localStorage.getItem('lista_theme');
-  if (stored && ['dark', 'dark-black', 'dark-navy', 'light', 'light-powdery', 'light-mint'].includes(stored)) {
+  if (stored && ['dark', 'dark-black', 'dark-navy', 'dark-neon', 'light', 'light-powdery', 'light-mint', 'light-neon'].includes(stored)) {
     return stored;
   }
   if (stored === 'light') return 'light';

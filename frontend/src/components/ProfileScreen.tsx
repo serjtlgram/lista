@@ -172,6 +172,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             >
               <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
             </button>
+            <button
+              onClick={() => onThemeChange('dark-neon')}
+              className={`w-6 h-6 rounded-full bg-[#050505] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-neon' ? 'border-[#EC4899] scale-110 shadow-md shadow-[#EC4899]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EC4899]"></div>
+            </button>
           </div>
           
           {/* Light variants */}
@@ -199,6 +207,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               }`}
             >
               <div className="w-2.5 h-2.5 rounded-full bg-[#059669]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-neon')}
+              className={`w-6 h-6 rounded-full bg-[#ECFEFF] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-neon' ? 'border-[#06B6D4] scale-110 shadow-md shadow-[#06B6D4]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#06B6D4]"></div>
             </button>
           </div>
         </div>

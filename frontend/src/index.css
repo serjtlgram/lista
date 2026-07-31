@@ -68,6 +68,23 @@
     --color-accentViolet: 245 158 11; /* #F59E0B */
     background-color: #020617;
   }
+
+  body.dark-neon {
+    --color-bgDark: #050505;
+    --color-cardDark: #101010;
+    --color-cardBorder: #222222;
+    --color-accentViolet: 236 72 153; /* #EC4899 - Neon Pink */
+    background-color: #050505;
+  }
+
+  body.light-neon {
+    --color-bgDark: #ECFEFF;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #CFFAFE;
+    --color-accentViolet: 6 182 212; /* #06B6D4 - Cyan */
+    background-color: #F8FAFC;
+    color: #164E63;
+  }
 }
 
 .hide-scrollbar::-webkit-scrollbar {
@@ -86,7 +103,8 @@
 
 body.light .glass-card,
 body.light-powdery .glass-card,
-body.light-mint .glass-card {
+body.light-mint .glass-card,
+body.light-neon .glass-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 1), 0 4px 16px -2px rgba(148, 163, 184, 0.2);
 }
@@ -101,6 +119,11 @@ body.dark-navy .glass-card {
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
 }
 
+body.dark-neon .glass-card {
+  background: linear-gradient(180deg, rgba(16, 16, 16, 0.8) 0%, rgba(5, 5, 5, 0.9) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(236, 72, 153, 0.15);
+}
+
 .nav-item.active {
   color: #6C5CE7;
 }
@@ -111,7 +134,8 @@ body.dark-navy .glass-card {
 /* Light Mode Overrides */
 body.light .bg-cardDark,
 body.light-powdery .bg-cardDark,
-body.light-mint .bg-cardDark {
+body.light-mint .bg-cardDark,
+body.light-neon .bg-cardDark {
   background-color: #FFFFFF !important;
 }
 
@@ -124,6 +148,9 @@ body.light-powdery .bg-bgDark {
 body.light-mint .bg-bgDark {
   background-color: #F0FDF4 !important;
 }
+body.light-neon .bg-bgDark {
+  background-color: #ECFEFF !important;
+}
 
 body.light .border-cardBorder {
   border-color: #E2E8F0 !important;
@@ -134,6 +161,9 @@ body.light-powdery .border-cardBorder {
 body.light-mint .border-cardBorder {
   border-color: #BBF7D0 !important;
 }
+body.light-neon .border-cardBorder {
+  border-color: #CFFAFE !important;
+}
 
 body.light .bg-cardBorder {
   background-color: #E2E8F0 !important;
@@ -143,6 +173,9 @@ body.light-powdery .bg-cardBorder {
 }
 body.light-mint .bg-cardBorder {
   background-color: #BBF7D0 !important;
+}
+body.light-neon .bg-cardBorder {
+  background-color: #CFFAFE !important;
 }
 
 body.light .text-white,
@@ -157,6 +190,10 @@ body.light-mint .text-white,
 body.light-mint .text-gray-100 {
   color: #064E3B !important;
 }
+body.light-neon .text-white,
+body.light-neon .text-gray-100 {
+  color: #164E63 !important;
+}
 
 body.light .text-gray-200 {
   color: #1E293B !important;
@@ -166,6 +203,9 @@ body.light-powdery .text-gray-200 {
 }
 body.light-mint .text-gray-200 {
   color: #065F46 !important;
+}
+body.light-neon .text-gray-200 {
+  color: #0F766E !important;
 }
 
 body.light .text-gray-300 {
@@ -177,6 +217,9 @@ body.light-powdery .text-gray-300 {
 body.light-mint .text-gray-300 {
   color: #047857 !important;
 }
+body.light-neon .text-gray-300 {
+  color: #0E7490 !important;
+}
 
 body.light .text-gray-400 {
   color: #64748B !important;
@@ -187,6 +230,9 @@ body.light-powdery .text-gray-400 {
 body.light-mint .text-gray-400 {
   color: #059669 !important;
 }
+body.light-neon .text-gray-400 {
+  color: #0891B2 !important;
+}
 
 body.light .text-gray-500 {
   color: #94A3B8 !important;
@@ -196,6 +242,9 @@ body.light-powdery .text-gray-500 {
 }
 body.light-mint .text-gray-500 {
   color: #10B981 !important;
+}
+body.light-neon .text-gray-500 {
+  color: #06B6D4 !important;
 }
 
 /* Ensure text and icons on active filled accent elements remain crisp white in Light Mode */
@@ -215,7 +264,11 @@ body.light-powdery button.bg-accentViolet *,
 body.light-mint .bg-accentViolet,
 body.light-mint .bg-accentViolet *,
 body.light-mint button.bg-accentViolet,
-body.light-mint button.bg-accentViolet * {
+body.light-mint button.bg-accentViolet *,
+body.light-neon .bg-accentViolet,
+body.light-neon .bg-accentViolet *,
+body.light-neon button.bg-accentViolet,
+body.light-neon button.bg-accentViolet * {
   color: #FFFFFF !important;
 }
 
@@ -234,7 +287,11 @@ body.light-powdery .status-pill-banner *,
 body.light-mint .banner-text-content,
 body.light-mint .banner-text-content *,
 body.light-mint .status-pill-banner,
-body.light-mint .status-pill-banner * {
+body.light-mint .status-pill-banner *,
+body.light-neon .banner-text-content,
+body.light-neon .banner-text-content *,
+body.light-neon .status-pill-banner,
+body.light-neon .status-pill-banner * {
   color: #FFFFFF !important;
 }
 
@@ -251,13 +308,19 @@ body.light-mint .hover\:bg-bgDark:hover,
 body.light-mint [class*="hover:bg-bgDark"]:hover {
   background-color: #F0FDF4 !important;
 }
+body.light-neon .hover\:bg-bgDark:hover,
+body.light-neon [class*="hover:bg-bgDark"]:hover {
+  background-color: #ECFEFF !important;
+}
 
 body.light .hover\:bg-cardDark:hover,
 body.light [class*="hover:bg-cardDark"]:hover,
 body.light-powdery .hover\:bg-cardDark:hover,
 body.light-powdery [class*="hover:bg-cardDark"]:hover,
 body.light-mint .hover\:bg-cardDark:hover,
-body.light-mint [class*="hover:bg-cardDark"]:hover {
+body.light-mint [class*="hover:bg-cardDark"]:hover,
+body.light-neon .hover\:bg-cardDark:hover,
+body.light-neon [class*="hover:bg-cardDark"]:hover {
   background-color: #FFFFFF !important;
 }
 
@@ -267,7 +330,9 @@ body.light .suggestion-popup-container,
 body.light-powdery .dropdown-menu-container,
 body.light-powdery .suggestion-popup-container,
 body.light-mint .dropdown-menu-container,
-body.light-mint .suggestion-popup-container {
+body.light-mint .suggestion-popup-container,
+body.light-neon .dropdown-menu-container,
+body.light-neon .suggestion-popup-container {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
@@ -275,7 +340,8 @@ body.light-mint .suggestion-popup-container {
 
 body.light .suggestion-item,
 body.light-powdery .suggestion-item,
-body.light-mint .suggestion-item {
+body.light-mint .suggestion-item,
+body.light-neon .suggestion-item {
   background-color: transparent !important;
 }
 
@@ -288,6 +354,9 @@ body.light-powdery .suggestion-item:hover {
 body.light-mint .suggestion-item:hover {
   background-color: #F0FDF4 !important;
 }
+body.light-neon .suggestion-item:hover {
+  background-color: #ECFEFF !important;
+}
 
 body.light .suggestion-item .suggestion-title {
   color: #0F172A !important;
@@ -297,6 +366,9 @@ body.light-powdery .suggestion-item .suggestion-title {
 }
 body.light-mint .suggestion-item .suggestion-title {
   color: #064E3B !important;
+}
+body.light-neon .suggestion-item .suggestion-title {
+  color: #164E63 !important;
 }
 
 body.light .suggestion-item .suggestion-sub {
@@ -308,10 +380,14 @@ body.light-powdery .suggestion-item .suggestion-sub {
 body.light-mint .suggestion-item .suggestion-sub {
   color: #059669 !important;
 }
+body.light-neon .suggestion-item .suggestion-sub {
+  color: #0891B2 !important;
+}
 
 body.light .dropdown-option-inactive,
 body.light-powdery .dropdown-option-inactive,
-body.light-mint .dropdown-option-inactive {
+body.light-mint .dropdown-option-inactive,
+body.light-neon .dropdown-option-inactive {
   background-color: transparent !important;
 }
 
@@ -323,6 +399,9 @@ body.light-powdery .dropdown-option-inactive {
 }
 body.light-mint .dropdown-option-inactive {
   color: #047857 !important;
+}
+body.light-neon .dropdown-option-inactive {
+  color: #0E7490 !important;
 }
 
 body.light .dropdown-option-inactive:hover {
@@ -337,6 +416,10 @@ body.light-mint .dropdown-option-inactive:hover {
   background-color: #F0FDF4 !important;
   color: #064E3B !important;
 }
+body.light-neon .dropdown-option-inactive:hover {
+  background-color: #ECFEFF !important;
+  color: #164E63 !important;
+}
 
 body.light .dropdown-option-active,
 body.light .dropdown-option-active *,
@@ -346,14 +429,18 @@ body.light-powdery .dropdown-option-active *,
 body.light-powdery .dropdown-option-active span,
 body.light-mint .dropdown-option-active,
 body.light-mint .dropdown-option-active *,
-body.light-mint .dropdown-option-active span {
+body.light-mint .dropdown-option-active span,
+body.light-neon .dropdown-option-active,
+body.light-neon .dropdown-option-active *,
+body.light-neon .dropdown-option-active span {
   background-color: rgb(var(--color-accentViolet)) !important;
   color: #FFFFFF !important;
 }
 
 body.light nav,
 body.light-powdery nav,
-body.light-mint nav {
+body.light-mint nav,
+body.light-neon nav {
   background-color: rgba(255, 255, 255, 0.92) !important;
   box-shadow: 0 -8px 30px rgba(148, 163, 184, 0.2) !important;
 }
@@ -366,7 +453,10 @@ body.light-powdery select,
 body.light-powdery textarea,
 body.light-mint input,
 body.light-mint select,
-body.light-mint textarea {
+body.light-mint textarea,
+body.light-neon input,
+body.light-neon select,
+body.light-neon textarea {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
 }
@@ -385,6 +475,11 @@ body.light-mint input,
 body.light-mint select,
 body.light-mint textarea {
   color: #064E3B !important;
+}
+body.light-neon input,
+body.light-neon select,
+body.light-neon textarea {
+  color: #164E63 !important;
 }
 
 @keyframes slideUp {

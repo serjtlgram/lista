@@ -125,15 +125,17 @@ export function App() {
   // Handle theme changes
   useEffect(() => {
     // Clear all previous theme classes
-    document.body.classList.remove('light', 'light-powdery', 'light-mint', 'dark-black', 'dark-navy');
-
+    document.body.classList.remove('light', 'light-powdery', 'light-mint', 'light-neon', 'dark-black', 'dark-navy', 'dark-neon');
+    
     if (theme.startsWith('light')) {
       document.body.classList.add('light');
       if (theme === 'light-powdery') document.body.classList.add('light-powdery');
       if (theme === 'light-mint') document.body.classList.add('light-mint');
+      if (theme === 'light-neon') document.body.classList.add('light-neon');
     } else {
       if (theme === 'dark-black') document.body.classList.add('dark-black');
       if (theme === 'dark-navy') document.body.classList.add('dark-navy');
+      if (theme === 'dark-neon') document.body.classList.add('dark-neon');
     }
 
     const tg = (window as any).Telegram?.WebApp;
@@ -142,9 +144,11 @@ export function App() {
         let bg = '#0B0D14'; // default dark
         if (theme === 'dark-black') bg = '#000000';
         if (theme === 'dark-navy') bg = '#020617';
+        if (theme === 'dark-neon') bg = '#050505';
         if (theme === 'light') bg = '#F8FAFC';
         if (theme === 'light-powdery') bg = '#FFF5F5';
         if (theme === 'light-mint') bg = '#F8FAF8';
+        if (theme === 'light-neon') bg = '#F8FAFC';
         
         tg.setHeaderColor(bg);
         tg.setBackgroundColor(bg);
@@ -164,9 +168,11 @@ export function App() {
         let bg = '#0B0D14';
         if (theme === 'dark-black') bg = '#000000';
         if (theme === 'dark-navy') bg = '#020617';
+        if (theme === 'dark-neon') bg = '#050505';
         if (theme === 'light') bg = '#F8FAFC';
         if (theme === 'light-powdery') bg = '#FFF5F5';
         if (theme === 'light-mint') bg = '#F8FAF8';
+        if (theme === 'light-neon') bg = '#F8FAFC';
         tgApp.setHeaderColor(bg);
         tgApp.setBackgroundColor(bg);
       } catch (e) {
