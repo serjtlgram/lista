@@ -285,8 +285,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             
             {/* Row 2: Subtitle */}
             <div className={`text-[11px] text-gray-400 mt-0.5 ${hasMinus ? 'pr-[38px]' : ''}`}>
-              <p className="line-clamp-1">{subtitleObj.line1}</p>
-              {subtitleObj.line2 && <p className="line-clamp-1 mt-0.5">{subtitleObj.line2}</p>}
+              <p className={(hasStar || hasMinus) ? 'line-clamp-1' : ''}>{subtitleObj.line1}</p>
+              {subtitleObj.line2 && <p className={(hasStar || hasMinus) ? 'line-clamp-1 mt-0.5' : 'mt-0.5'}>{subtitleObj.line2}</p>}
             </div>
 
             {/* Row 3: Lists */}
