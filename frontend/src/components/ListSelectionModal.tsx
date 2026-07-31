@@ -219,7 +219,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="flex-1 py-2 rounded-xl bg-cardBorder text-gray-300 font-semibold text-xs hover:text-white transition"
+                className="flex-1 py-2 rounded-xl bg-bgDark border border-cardBorder text-gray-300 font-semibold text-xs hover:border-gray-500 transition"
               >
                 {trans.lists.cancel_btn}
               </button>

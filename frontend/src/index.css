@@ -65,6 +65,10 @@ body.light .border-cardBorder {
   border-color: #E2E8F0 !important;
 }
 
+body.light .bg-cardBorder {
+  background-color: #E2E8F0 !important;
+}
+
 body.light .text-white {
   color: #0F172A !important;
 }
