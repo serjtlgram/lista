@@ -145,9 +145,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
 
         {/* Color Theme Selector Circles */}
-        <div className="flex justify-between px-6 pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Dark variants */}
-          <div className="flex gap-3">
+          <div className="flex justify-center gap-2 sm:gap-3">
             <button
               onClick={() => onThemeChange('dark')}
               className={`w-6 h-6 rounded-full bg-[#0B0D14] border-2 flex items-center justify-center transition-all ${
@@ -183,7 +183,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
           
           {/* Light variants */}
-          <div className="flex gap-3">
+          <div className="flex justify-center gap-2 sm:gap-3">
             <button
               onClick={() => onThemeChange('light')}
               className={`w-6 h-6 rounded-full bg-[#F8FAFC] border-2 flex items-center justify-center transition-all ${
