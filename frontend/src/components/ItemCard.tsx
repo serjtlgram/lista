@@ -76,10 +76,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     // 3. Director / Author
     let displayedAuthor = '';
     const rawAuthorOrDirector = item.director || item.author || '';
-    if (isSeries && rawAuthorOrDirector) {
-      const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
-      displayedAuthor = directors.slice(0, 2).join(', ');
-    } else if (isMovie && rawAuthorOrDirector) {
+    if ((isSeries || isMovie) && rawAuthorOrDirector) {
       const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
       displayedAuthor = directors[0] || '';
     } else if (item.author) {
