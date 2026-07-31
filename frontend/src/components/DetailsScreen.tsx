@@ -357,16 +357,25 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   let episodesDisplay = item.episodes ? String(item.episodes) : '';
   let durationDisplay = '-';
 
+  let seasonsDisplay = '';
+
   if (item.duration) {
     const raw = item.duration;
-    if (raw.includes('•')) {
-      const parts = raw.split('•');
-      if (!episodesDisplay) episodesDisplay = parts[0]?.replace(/\D/g, '') || '';
-      const durNum = parts[1]?.replace(/\D/g, '') || '';
-      durationDisplay = durNum ? `${durNum} ${isBook ? (t.details.pages_unit || 'стр.') : t.details.minutes_short}` : '-';
-    } else if (raw.includes('сер.') || raw.includes('ep.')) {
-      if (!episodesDisplay) episodesDisplay = raw.replace(/\D/g, '');
-      durationDisplay = '-';
+    if (raw.includes('•') || raw.includes('сер.') || raw.includes('сез.') || raw.includes('ep.') || raw.includes('s.') || raw.includes('t.')) {
+      const parts = raw.split('•').map(p => p.trim());
+      let s = '', e = '', m = '';
+      parts.forEach(p => {
+        if (p.includes('сез') || p.includes('s.') || p.includes('t.')) s = p.replace(/\D/g, '');
+        else if (p.includes('сер') || p.includes('ep')) e = p.replace(/\D/g, '');
+        else if (p.includes('мин') || p.includes('min')) m = p.replace(/\D/g, '');
+        else {
+          if (!e && !s) e = p.replace(/\D/g, '');
+          else if (!m) m = p.replace(/\D/g, '');
+        }
+      });
+      seasonsDisplay = s;
+      if (!episodesDisplay) episodesDisplay = e;
+      durationDisplay = m ? `${m} ${isBook ? (t.details.pages_unit || 'стр.') : t.details.minutes_short}` : '-';
     } else {
       const durNum = raw.replace(/\D/g, '');
       if (isBook) {
@@ -537,6 +546,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
                     {episodesDisplay || '-'}
+                  </span>
+                </div>
+              )}
+
+              {/* Seasons Row for Series (only if filled) */}
+              {!isBook && seasonsDisplay && (
+                <div className="flex items-center justify-between text-gray-300 gap-1">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Tv className="w-3.5 h-3.5 text-orange-400" />
+                    {t.details.seasons || 'Сезонов'}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
+                    {seasonsDisplay}
                   </span>
                 </div>
               )}

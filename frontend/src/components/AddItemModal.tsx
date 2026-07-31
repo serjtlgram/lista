@@ -90,6 +90,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [genre, setGenre] = useState(editingItem?.genre || '');
 
   const [episodesCount, setEpisodesCount] = useState('');
+  const [seasonsCount, setSeasonsCount] = useState('');
   const [durationMin, setDurationMin] = useState('');
 
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
@@ -155,13 +156,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setNote(editingItem.note || '');
 
       const durStr = editingItem.duration || '';
-      if (durStr.includes('•') || durStr.includes('сер.')) {
-        const parts = durStr.split('•');
-        setEpisodesCount(parts[0]?.replace(/\D/g, '') || '');
-        setDurationMin(parts[1]?.replace(/\D/g, '') || '');
+      if (durStr.includes('•') || durStr.includes('сер.') || durStr.includes('сез.') || durStr.includes('ep.') || durStr.includes('s.') || durStr.includes('t.')) {
+        const parts = durStr.split('•').map(p => p.trim());
+        let s = '', e = '', m = '';
+        parts.forEach(p => {
+          if (p.includes('сез') || p.includes('s.') || p.includes('t.')) s = p.replace(/\D/g, '');
+          else if (p.includes('сер') || p.includes('ep')) e = p.replace(/\D/g, '');
+          else if (p.includes('мин') || p.includes('min')) m = p.replace(/\D/g, '');
+          else {
+            if (!e && !s) e = p.replace(/\D/g, '');
+            else if (!m) m = p.replace(/\D/g, '');
+          }
+        });
+        setSeasonsCount(s);
+        setEpisodesCount(e);
+        setDurationMin(m);
       } else {
         setDurationMin(durStr.replace(/\D/g, ''));
         setEpisodesCount('');
+        setSeasonsCount('');
       }
 
       setShowAdvanced(true);
@@ -171,8 +184,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setStatus('completed');
       setRating(10);
       setGenre(getTranslatedGenreFull('drama', t));
-      setDurationMin('');
       setEpisodesCount('');
+      setSeasonsCount('');
+      setDurationMin('');
       setReleaseYear('');
       setPosterUrl('');
       setYoutubeUrl('');
@@ -273,10 +287,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
     let finalDuration = '';
     if (isSeries) {
-      const epStr = episodesCount ? `${episodesCount} ${t.modal.episodes_unit}` : '';
-      const minStr = durationMin ? `${durationMin} ${t.modal.minutes_unit}` : '';
-      if (epStr && minStr) finalDuration = `${epStr} • ${minStr}`;
-      else finalDuration = epStr || minStr;
+      const parts = [];
+      if (seasonsCount) parts.push(`${seasonsCount} ${t.modal.seasons_unit}`);
+      if (episodesCount) parts.push(`${episodesCount} ${t.modal.episodes_unit}`);
+      if (durationMin) parts.push(`${durationMin} ${t.modal.minutes_unit}`);
+      finalDuration = parts.join(' • ');
     } else if (isBook) {
       finalDuration = durationMin ? `${durationMin} ${t.details?.pages_unit || 'стр.'}` : '';
     } else {
@@ -536,7 +551,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
               {/* Episodes & Duration Inputs */}
               {isSeries ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.episodes_label}</label>
                     <input
@@ -554,6 +569,16 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       value={durationMin}
                       onChange={(e) => setDurationMin(e.target.value)}
                       placeholder={t.modal.duration_min_placeholder}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.seasons_label}</label>
+                    <input
+                      type="number"
+                      value={seasonsCount}
+                      onChange={(e) => setSeasonsCount(e.target.value)}
+                      placeholder={t.modal.seasons_placeholder}
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>

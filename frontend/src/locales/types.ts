@@ -76,6 +76,9 @@ export interface Translations {
     duration_min_placeholder: string;
     pages_label: string;
     pages_placeholder: string;
+    seasons_label: string;
+    seasons_placeholder: string;
+    seasons_unit: string;
     episodes_unit: string;
     minutes_unit: string;
     year_label: string;
@@ -107,6 +110,7 @@ export interface Translations {
     pages: string;
     pages_unit: string;
     episodes: string;
+    seasons: string;
     minutes_short: string;
     description: string;
     annotation: string;
