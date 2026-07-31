@@ -4,6 +4,7 @@ import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
 import { Translations } from '../services/i18n';
 import { api } from '../services/api';
+import { getAvailableGenres, getTranslatedGenreFull } from '../services/genres';
 
 interface CategoryScreenProps {
   title: string;
@@ -47,6 +48,11 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
 
   const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSelectedGenres([]);
+  }, [title]);
 
   const filters = [
     { key: 'all', label: t.recently_added.see_all },
@@ -145,6 +151,11 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
     if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
 
+    if (selectedGenres.length > 0) {
+      const itemGenre = getTranslatedGenreFull(item.genre, t);
+      if (!selectedGenres.includes(itemGenre)) return false;
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return item.title.toLowerCase().includes(q) || (item.genre && item.genre.toLowerCase().includes(q));
@@ -229,22 +240,10 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
 
   const isSearchActive = searchQuery.trim().length >= 2;
 
+  const availableGenres = getAvailableGenres(title, t);
+
   return (
     <div className="space-y-3.5 animate-slide-up">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button onClick={onBack} className="p-2 text-gray-300 hover:text-white">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-base font-bold text-white">{getTranslatedCategoryTitle(title)}</h1>
-        <div className="flex items-center gap-2">
-          <SearchIcon
-            onClick={() => setShowSearchInput(!showSearchInput)}
-            className="w-5 h-5 text-gray-300 cursor-pointer hover:text-white"
-          />
-        </div>
-      </div>
-
       {showSearchInput && (
         <div className="relative w-full">
           <input
@@ -309,6 +308,43 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                 }`}
               >
                 {getTranslatedCategoryTitle(catKey)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Row 3: Genres Filter (Scrollable Horizontally) */}
+      {availableGenres.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
+          <button
+            onClick={() => setSelectedGenres([])}
+            className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+              selectedGenres.length === 0
+                ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+            }`}
+          >
+            {t.recently_added.see_all}
+          </button>
+          {availableGenres.map((genreStr) => {
+            const isSelected = selectedGenres.includes(genreStr);
+            return (
+              <button
+                key={genreStr}
+                onClick={() => {
+                  setSelectedGenres(prev => {
+                    if (prev.includes(genreStr)) return prev.filter(g => g !== genreStr);
+                    return [...prev, genreStr];
+                  });
+                }}
+                className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  isSelected
+                    ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                }`}
+              >
+                {genreStr}
               </button>
             );
           })}
