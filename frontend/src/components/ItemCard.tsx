@@ -65,36 +65,40 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       parts.push(item.release_year);
     }
 
-    // 3b. Author
-    const authorName = item.author;
-    if (authorName) {
-      parts.push(authorName);
-    }
-
-    // 4. Duration & Episode count
+    // 3. Duration, Episodes, Seasons
     let durStr = '';
     let epStr = '';
+    let szStr = '';
 
     const rawDur = (item.duration || '').trim();
     const epUnit = t ? t.modal.episodes_unit : 'сер.';
+    const szUnit = t ? t.modal.seasons_unit : 'сез.';
     const minUnit = t ? t.details.minutes_short : 'мин';
     const pageUnit = t ? (t.details.pages_unit || 'стр.') : 'стр.';
     const catLc = (item.category || '').toLowerCase().trim();
     const isBook = catLc.includes('book') || catLc.includes('книг');
 
-    if (rawDur.includes('•')) {
-      const splitParts = rawDur.split('•');
-      const epNum = splitParts[0]?.replace(/\D/g, '') || '';
-      const durNum = splitParts[1]?.replace(/\D/g, '') || '';
-      if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
-      if (epNum) epStr = `${epNum} ${epUnit}`;
-    } else if (rawDur.includes('сер.') || rawDur.includes('ep.')) {
-      const epNum = rawDur.replace(/\D/g, '');
-      if (epNum) epStr = `${epNum} ${epUnit}`;
-    } else if (rawDur) {
-      const durNum = rawDur.replace(/\D/g, '');
-      if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
-      else durStr = isBook && !rawDur.includes('стр') ? `${rawDur} ${pageUnit}` : rawDur;
+    if (rawDur) {
+      if (rawDur.includes('•') || rawDur.includes('сер.') || rawDur.includes('сез.') || rawDur.includes('ep.') || rawDur.includes('s.') || rawDur.includes('t.')) {
+        const splitParts = rawDur.split('•').map(p => p.trim());
+        let s = '', e = '', m = '';
+        splitParts.forEach(p => {
+          if (p.includes('сез') || p.includes('s.') || p.includes('t.')) s = p.replace(/\D/g, '');
+          else if (p.includes('сер') || p.includes('ep')) e = p.replace(/\D/g, '');
+          else if (p.includes('мин') || p.includes('min')) m = p.replace(/\D/g, '');
+          else {
+            if (!e && !s) e = p.replace(/\D/g, '');
+            else if (!m) m = p.replace(/\D/g, '');
+          }
+        });
+        if (s) szStr = `${s} ${szUnit}`;
+        if (e) epStr = `${e} ${epUnit}`;
+        if (m) durStr = `${m} ${isBook ? pageUnit : minUnit}`;
+      } else {
+        const durNum = rawDur.replace(/\D/g, '');
+        if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
+        else durStr = isBook && !rawDur.includes('стр') ? `${rawDur} ${pageUnit}` : rawDur;
+      }
     }
 
     if (item.episodes && item.episodes > 0 && !epStr) {
@@ -103,6 +107,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
     if (durStr) parts.push(durStr);
     if (epStr) parts.push(epStr);
+    if (szStr) parts.push(szStr);
 
     return parts.length > 0 ? parts.join(' • ') : catLabel;
   };
