@@ -187,7 +187,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   };
 
   const rawGenre = (item.genre || '').trim();
-  const translatedGenre = t ? (t.genres[rawGenre as keyof typeof t.genres] || rawGenre) : rawGenre;
+  const translatedGenre = t ? getTranslatedGenreFull(rawGenre, t) : rawGenre;
 
   const catLc = (item.category || '').toLowerCase();
   const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(catLc);

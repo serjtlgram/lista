@@ -25,6 +25,7 @@ import (
 
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/db"
+	"lista-backend/pkg/genres"
 	"lista-backend/pkg/models"
 	"lista-backend/pkg/parser"
 	"lista-backend/pkg/youtube"
@@ -1326,41 +1327,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-var topGenres = []struct {
-	Label string
-	Val   string
-}{
-	{"Драма", "Драма"},
-	{"Комедия", "Комедия"},
-	{"Детектив", "Детектив"},
-	{"Боевик", "Боевик"},
-	{"Триллер", "Триллер"},
-	{"Ужасы", "Ужасы"},
-	{"Фантастика", "Фантастика"},
-	{"Приключения", "Приключения"},
-	{"Фэнтези", "Фэнтези"},
-	{"Мультфильмы", "Мультфильмы"},
-	{"Шоу", "Шоу"},
-	{"Другое", "Другое"},
-}
 
-var bookGenres = []struct {
-	Label string
-	Val   string
-}{
-	{"Sci-Fi", "Sci-Fi"},
-	{"Фэнтези", "Фэнтези"},
-	{"Приключения", "Приключения"},
-	{"Нон-фикшн", "Нон-фикшн"},
-	{"Любовный", "Любовный"},
-	{"Исторический", "Исторический"},
-	{"Биография", "Биография"},
-	{"Юмор", "Юмор"},
-	{"Драма", "Драма"},
-	{"Детектив", "Детектив"},
-	{"Триллер", "Триллер"},
-	{"Ужасы", "Ужасы"},
-}
 
 func mapStatusToRu(status string, category ...string) string {
 	cat := ""
@@ -1476,12 +1443,9 @@ func (h *Handler) handleCallbackQuery(cb *struct {
 			if h.DB != nil && h.DB.Pool != nil {
 				_ = h.DB.Pool.QueryRow(context.Background(), "SELECT category FROM items WHERE id = $1 AND user_id = $2 LIMIT 1", itemID, userID).Scan(&activeCategory)
 			}
-			isBook := mapCategoryToEn(activeCategory) == "book"
+			catEn := mapCategoryToEn(activeCategory)
 
-			targetGenresList := topGenres
-			if isBook {
-				targetGenresList = bookGenres
-			}
+			targetGenresList := genres.GetGenresList(catEn)
 
 			if err == nil && gIdx >= 0 && gIdx < len(targetGenresList) {
 				newGenre := targetGenresList[gIdx].Val
@@ -1688,11 +1652,8 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 		{"text": map[bool]string{true: "✓ " + labelCompleted, false: labelCompleted}[isCompleted], "callback_data": fmt.Sprintf("s:c:%s", itemID)},
 	}
 
-	// Genre Rows: bookGenres if book, else topGenres
-	targetGenresList := topGenres
-	if catCode == "book" {
-		targetGenresList = bookGenres
-	}
+	// Genre Rows dynamically based on category
+	targetGenresList := genres.GetGenresList(catEn)
 
 	firstGenre := ""
 	if currentGenre != "" {

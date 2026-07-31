@@ -1,0 +1,43 @@
+{
+  "movies": [
+    { "id": "drama", "ru": "Драма", "en": "Drama", "uk": "Драма", "es": "Drama" },
+    { "id": "comedy", "ru": "Комедия", "en": "Comedy", "uk": "Комедія", "es": "Comedia" },
+    { "id": "detective", "ru": "Детектив", "en": "Detective", "uk": "Детектив", "es": "Detective" },
+    { "id": "action", "ru": "Боевик", "en": "Action", "uk": "Бойовик", "es": "Acción" },
+    { "id": "thriller", "ru": "Триллер", "en": "Thriller", "uk": "Трилер", "es": "Thriller" },
+    { "id": "horror", "ru": "Ужасы", "en": "Horror", "uk": "Жахи", "es": "Terror" },
+    { "id": "sci_fi", "ru": "Фантастика", "en": "Sci-Fi", "uk": "Фантастика", "es": "Ciencia Ficción" },
+    { "id": "adventure", "ru": "Приключения", "en": "Adventure", "uk": "Пригоди", "es": "Aventura" },
+    { "id": "fantasy", "ru": "Фэнтези", "en": "Fantasy", "uk": "Фентезі", "es": "Fantasía" },
+    { "id": "animation", "ru": "Мультфильмы", "en": "Animation", "uk": "Мультфільми", "es": "Animación" },
+    { "id": "show", "ru": "Шоу", "en": "Show", "uk": "Шоу", "es": "Programa" },
+    { "id": "other", "ru": "Другое", "en": "Other", "uk": "Інше", "es": "Otro" }
+  ],
+  "books": [
+    { "id": "novel", "ru": "Роман", "en": "Novel", "uk": "Роман", "es": "Novela" },
+    { "id": "sci_fi", "ru": "Фантастика", "en": "Sci-Fi", "uk": "Фантастика", "es": "Ciencia Ficción" },
+    { "id": "fantasy", "ru": "Фэнтези", "en": "Fantasy", "uk": "Фентезі", "es": "Fantasía" },
+    { "id": "detective", "ru": "Детектив", "en": "Detective", "uk": "Детектив", "es": "Detective" },
+    { "id": "thriller", "ru": "Триллер", "en": "Thriller", "uk": "Трилер", "es": "Thriller" },
+    { "id": "horror", "ru": "Ужасы", "en": "Horror", "uk": "Жахи", "es": "Terror" },
+    { "id": "non_fiction", "ru": "Нон-фикшн", "en": "Non-fiction", "uk": "Нон-фікшн", "es": "No ficción" },
+    { "id": "business", "ru": "Бизнес", "en": "Business", "uk": "Бізнес", "es": "Negocios" },
+    { "id": "self_dev", "ru": "Саморазвитие", "en": "Self-development", "uk": "Саморозвиток", "es": "Autodesarrollo" },
+    { "id": "biography", "ru": "Биография", "en": "Biography", "uk": "Біографія", "es": "Biografía" },
+    { "id": "poetry", "ru": "Поэзия", "en": "Poetry", "uk": "Поезія", "es": "Poesía" },
+    { "id": "other", "ru": "Другое", "en": "Other", "uk": "Інше", "es": "Otro" }
+  ],
+  "games": [
+    { "id": "action", "ru": "Экшен", "en": "Action", "uk": "Екшен", "es": "Acción" },
+    { "id": "shooter", "ru": "Шутер", "en": "Shooter", "uk": "Шутер", "es": "Shooter" },
+    { "id": "rpg", "ru": "RPG", "en": "RPG", "uk": "RPG", "es": "RPG" },
+    { "id": "strategy", "ru": "Стратегия", "en": "Strategy", "uk": "Стратегія", "es": "Estrategia" },
+    { "id": "simulator", "ru": "Симулятор", "en": "Simulator", "uk": "Симулятор", "es": "Simulador" },
+    { "id": "sports", "ru": "Спорт", "en": "Sports", "uk": "Спорт", "es": "Deportes" },
+    { "id": "racing", "ru": "Гонки", "en": "Racing", "uk": "Перегони", "es": "Carreras" },
+    { "id": "puzzle", "ru": "Головоломка", "en": "Puzzle", "uk": "Головоломка", "es": "Rompecabezas" },
+    { "id": "indie", "ru": "Инди", "en": "Indie", "uk": "Інді", "es": "Indie" },
+    { "id": "adventure", "ru": "Приключение", "en": "Adventure", "uk": "Пригода", "es": "Aventura" },
+    { "id": "other", "ru": "Другое", "en": "Other", "uk": "Інше", "es": "Otro" }
+  ]
+}

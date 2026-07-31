@@ -97,55 +97,7 @@ export interface Translations {
     min_warning: string;
     save: string;
   };
-  genres: {
-    drama: string;
-    comedy: string;
-    detective: string;
-    action: string;
-    thriller: string;
-    horror: string;
-    sci_fi: string;
-    adventure: string;
-    fantasy: string;
-    animation: string;
-    show: string;
-    other: string;
-    non_fiction: string;
-    romance: string;
-    historical: string;
-    biography: string;
-    humor: string;
-  };
-  book_genres: {
-    novel: string;
-    sci_fi: string;
-    detective: string;
-    fantasy: string;
-    biography: string;
-    history: string;
-    romance: string;
-    thriller: string;
-    horror: string;
-    self_help: string;
-    poetry: string;
-    non_fiction: string;
-    other: string;
-  };
-  game_genres: {
-    action: string;
-    rpg: string;
-    shooter: string;
-    strategy: string;
-    puzzle: string;
-    adventure: string;
-    simulation: string;
-    sports: string;
-    racing: string;
-    fighting: string;
-    platformer: string;
-    survival: string;
-    other: string;
-  };
+
   details: {
     my_rating: string;
     watch_date: string;

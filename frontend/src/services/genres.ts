@@ -1,66 +1,34 @@
 import { Translations } from './i18n';
+import genresData from '../../../pkg/genres/genres.json';
 
-export type GenreKey =
-  | 'drama'
-  | 'comedy'
-  | 'detective'
-  | 'action'
-  | 'thriller'
-  | 'horror'
-  | 'sci_fi'
-  | 'adventure'
-  | 'fantasy'
-  | 'animation'
-  | 'show'
-  | 'other'
-  | 'non_fiction'
-  | 'romance'
-  | 'historical'
-  | 'biography'
-  | 'humor';
-
-export const GENRE_KEYS: GenreKey[] = [
-  'drama',
-  'comedy',
-  'detective',
-  'action',
-  'thriller',
-  'horror',
-  'sci_fi',
-  'adventure',
-  'fantasy',
-  'animation',
-  'show',
-  'other',
-];
-
-export const BOOK_GENRE_KEYS: GenreKey[] = [
-  'sci_fi',
-  'fantasy',
-  'adventure',
-  'non_fiction',
-  'romance',
-  'historical',
-  'biography',
-  'humor',
-  'drama',
-  'detective',
-  'thriller',
-  'horror',
-];
+type GenreKey = string; // We can use string directly since IDs are defined in JSON
 
 /**
  * Identify canonical genre key from any genre string (Russian, English, Ukrainian, Spanish or key)
+ * It loops through all genres in genres.json to find a matching localized string.
  */
 export const getGenreKey = (genreStr?: string | null): GenreKey | null => {
   if (!genreStr || !genreStr.trim()) return null;
   const lc = genreStr.toLowerCase().trim();
 
+  const allGenres = [...genresData.movies, ...genresData.books, ...genresData.games];
+  
+  for (const g of allGenres) {
+    if (g.id === lc || 
+        g.ru.toLowerCase() === lc || 
+        g.en.toLowerCase() === lc || 
+        g.uk.toLowerCase() === lc || 
+        g.es.toLowerCase() === lc) {
+      return g.id;
+    }
+  }
+
+  // Fallbacks for common variations not perfectly matching
   if (lc.includes('non_fiction') || lc.includes('нон-фикшн') || lc.includes('нон-фікшн') || lc.includes('non-fiction')) return 'non_fiction';
-  if (lc.includes('romance') || lc.includes('любовный') || lc.includes('любовний') || lc.includes('мелодрама')) return 'romance';
-  if (lc.includes('historical') || lc.includes('исторический') || lc.includes('історичний') || lc.includes('история') || lc.includes('історія')) return 'historical';
+  if (lc.includes('romance') || lc.includes('любовный') || lc.includes('любовний') || lc.includes('мелодрама')) return 'novel';
+  if (lc.includes('historical') || lc.includes('исторический') || lc.includes('історичний') || lc.includes('история') || lc.includes('історія')) return 'other';
   if (lc.includes('biography') || lc.includes('биография') || lc.includes('біографія') || lc.includes('мемуары')) return 'biography';
-  if (lc.includes('humor') || lc.includes('юмор') || lc.includes('гумор') || lc.includes('комедия')) return 'humor';
+  if (lc.includes('humor') || lc.includes('юмор') || lc.includes('гумор') || lc.includes('комедия')) return 'comedy';
   if (lc.includes('драма') || lc.includes('drama')) return 'drama';
   if (lc.includes('детектив') || lc.includes('detective')) return 'detective';
   if (lc.includes('боевик') || lc.includes('бойовик') || lc.includes('война') || lc.includes('війна') || lc.includes('action') || lc.includes('acción') || lc.includes('guerra')) return 'action';
@@ -76,15 +44,29 @@ export const getGenreKey = (genreStr?: string | null): GenreKey | null => {
   return null;
 };
 
+// Helper to get active language code from Translations object.
+// We infer it from a known translation, since Translations doesn't store lang code directly.
+const getLangCode = (t: Translations): 'ru' | 'en' | 'uk' | 'es' => {
+  if (t.nav_home === 'Головна') return 'uk';
+  if (t.nav_home === 'Home') return 'en';
+  if (t.nav_home === 'Inicio') return 'es';
+  return 'ru';
+};
+
 /**
  * Get full genre option string for dropdown in user's active language
  */
 export const getTranslatedGenreFull = (genreStr: string | null | undefined, t: Translations): string => {
   const key = getGenreKey(genreStr);
-  if (key && t.genres && t.genres[key]) {
-    return t.genres[key];
+  if (key) {
+    const allGenres = [...genresData.movies, ...genresData.books, ...genresData.games];
+    const match = allGenres.find(g => g.id === key);
+    if (match) {
+      const lang = getLangCode(t);
+      return match[lang];
+    }
   }
-  return genreStr || (t.genres ? t.genres.drama : 'Драма');
+  return genreStr || 'Другое';
 };
 
 /**
@@ -110,9 +92,10 @@ export const getAvailableGenres = (category: string, t?: Translations): string[]
   const isBook = ['book', 'books', 'книги', 'книга', 'книжка', 'книжки', 'libros'].includes(catLc);
   const isGame = ['game', 'games', 'игры', 'игра', 'ігри', 'гра', 'juegos'].includes(catLc);
 
-  if (isMovie || isShow) return Object.values(t.genres);
-  if (isBook) return t.book_genres ? Object.values(t.book_genres) : Object.values(t.genres);
-  if (isGame) return t.game_genres ? Object.values(t.game_genres) : Object.values(t.genres);
+  const lang = getLangCode(t);
+
+  if (isBook) return genresData.books.map(g => g[lang]);
+  if (isGame) return genresData.games.map(g => g[lang]);
   
-  return Object.values(t.genres);
+  return genresData.movies.map(g => g[lang]);
 };
