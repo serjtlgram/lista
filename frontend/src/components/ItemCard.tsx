@@ -53,19 +53,39 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     }
   };
 
-  const formatSubtitle = () => {
-    const parts: string[] = [];
+  const formatSubtitle = (): { line1: string, line2?: string } => {
+    const partsLine1: string[] = [];
+    const partsLine2: string[] = [];
+
+    const catLc = (item.category || '').toLowerCase().trim();
+    const isBook = ['book', 'books', 'книги', 'книга'].includes(catLc);
+    const isSeries = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(catLc);
+    const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(catLc);
 
     // 1. Category
     const catLabel = formatCategorySingle(item.category);
-    if (catLabel) parts.push(catLabel);
+    if (catLabel) partsLine1.push(catLabel);
 
     // 2. Release Year
     if (item.release_year) {
-      parts.push(item.release_year);
+      partsLine1.push(item.release_year);
     }
 
-    // 3. Duration, Episodes, Seasons
+    // 3. Director / Author
+    let displayedAuthor = '';
+    const rawAuthorOrDirector = item.director || item.author || '';
+    if (isSeries && rawAuthorOrDirector) {
+      const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
+      displayedAuthor = directors.slice(0, 2).join(', ');
+    } else if (isMovie && rawAuthorOrDirector) {
+      const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
+      displayedAuthor = directors[0] || '';
+    } else if (item.author) {
+      displayedAuthor = item.author;
+    }
+    if (displayedAuthor) partsLine1.push(displayedAuthor);
+
+    // 4. Duration, Episodes, Seasons
     let durStr = '';
     let epStr = '';
     let szStr = '';
@@ -75,8 +95,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     const szUnit = t ? t.modal.seasons_unit : 'сез.';
     const minUnit = t ? t.details.minutes_short : 'мин';
     const pageUnit = t ? (t.details.pages_unit || 'стр.') : 'стр.';
-    const catLc = (item.category || '').toLowerCase().trim();
-    const isBook = catLc.includes('book') || catLc.includes('книг');
 
     if (rawDur) {
       if (rawDur.includes('•') || rawDur.includes('сер.') || rawDur.includes('сез.') || rawDur.includes('ep.') || rawDur.includes('s.') || rawDur.includes('t.')) {
@@ -105,11 +123,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       epStr = `${item.episodes} ${epUnit}`;
     }
 
-    if (durStr) parts.push(durStr);
-    if (epStr) parts.push(epStr);
-    if (szStr) parts.push(szStr);
+    if (isSeries) {
+       if (durStr) partsLine2.push(durStr);
+       if (epStr) partsLine2.push(epStr);
+       if (szStr) partsLine2.push(szStr);
+    } else {
+       if (durStr) partsLine1.push(durStr);
+       if (epStr) partsLine1.push(epStr);
+       if (szStr) partsLine1.push(szStr);
+    }
 
-    return parts.length > 0 ? parts.join(' • ') : catLabel;
+    return {
+      line1: partsLine1.length > 0 ? partsLine1.join(' • ') : catLabel || '',
+      line2: partsLine2.length > 0 ? partsLine2.join(' • ') : undefined
+    };
   };
 
   const [listsItemIsIn, setListsItemIsIn] = useState<{id: string, name: string}[]>([]);
@@ -225,6 +252,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     }
   };
 
+  const subtitleObj = formatSubtitle();
+
   return (
     <>
       <div
@@ -253,9 +282,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             </div>
             
             {/* Row 2: Subtitle */}
-            <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 pr-9">
-              {formatSubtitle()}
-            </p>
+            <div className="text-[11px] text-gray-400 mt-0.5 pr-9">
+              <p className="line-clamp-1">{subtitleObj.line1}</p>
+              {subtitleObj.line2 && <p className="line-clamp-1 mt-0.5">{subtitleObj.line2}</p>}
+            </div>
 
             {/* Row 3: Lists */}
             {listsItemIsIn.length > 0 && (
