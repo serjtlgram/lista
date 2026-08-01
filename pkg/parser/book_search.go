@@ -3,6 +3,7 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -163,7 +164,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 			Duration:     pagesStr,
 			ISBN:         isbn,
 			PublicRating: pubRating,
-			Description:  info.Description,
+			Description:  stripHTMLTags(info.Description),
 			PosterURL:    cover, // Return raw URL directly — no OptimizePosterURL to avoid extra HTTP calls
 			Source:      "online",
 		})
@@ -279,7 +280,7 @@ func SearchFantLab(query string) ([]models.CatalogSearchResult, error) {
 			Category:    "book",
 			Author:      item.AutorName,
 			ReleaseYear: yearStr,
-			Description: desc,
+			Description: stripHTMLTags(desc),
 			PosterURL:   coverURL,
 			Source:      "online",
 		})
@@ -445,7 +446,7 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 			Author:       r.ArtistName,
 			Genre:        r.PrimaryGenreName,
 			ReleaseYear:  year,
-			Description:  r.Description,
+			Description:  stripHTMLTags(r.Description),
 			PublicRating: pubRating,
 			PosterURL:    poster,
 			Source:       "online",
@@ -472,22 +473,27 @@ func cleanBookSearchQuery(raw string) string {
 }
 
 func stripHTMLTags(s string) string {
+	if s == "" {
+		return ""
+	}
 	var builder strings.Builder
 	inTag := false
 	for _, r := range s {
 		if r == '<' {
 			inTag = true
+			builder.WriteRune(' ')
 		} else if r == '>' {
 			inTag = false
 		} else if !inTag {
 			builder.WriteRune(r)
 		}
 	}
-	out := strings.ReplaceAll(builder.String(), "&quot;", "\"")
-	out = strings.ReplaceAll(out, "&amp;", "&")
-	out = strings.ReplaceAll(out, "&lt;", "<")
-	out = strings.ReplaceAll(out, "&gt;", ">")
-	return strings.TrimSpace(out)
+	out := builder.String()
+	out = strings.ReplaceAll(out, "&#xa0;", " ")
+	out = strings.ReplaceAll(out, "&nbsp;", " ")
+	out = html.UnescapeString(out)
+	
+	return strings.Join(strings.Fields(out), " ")
 }
 
 // SearchWikiBooks queries Russian Wikipedia for book articles
