@@ -189,6 +189,11 @@ export const en: Translations = {
     days_short_unit: 'd',
     months_short_unit: 'm',
     years_short_unit: 'y',
+    books_stats_title: 'Books & Reading',
+    books_read: 'Books Read',
+    books_reading: 'Reading Now',
+    books_planned: 'Planned',
+    pages_read_approx: 'Pages Read',
   },
   favorites: {
     title: 'Favorites',

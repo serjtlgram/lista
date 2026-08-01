@@ -75,6 +75,22 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   const completedCount = completedItems.length;
   const completionRate = totalPeriodItems > 0 ? Math.round((completedCount / totalPeriodItems) * 100) : 0;
 
+  // Books stats calculation
+  const bookItems = filteredItems.filter((i) => normalizeCat(i.category) === 'Книги');
+  const completedBooks = bookItems.filter((i) =>
+    ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+  );
+  const readingBooks = bookItems.filter((i) =>
+    ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')
+  );
+  const plannedBooks = bookItems.filter((i) =>
+    ['planned', 'Планирую'].includes(i.status || '')
+  );
+  const totalBookPages = completedBooks.reduce(
+    (sum, i) => sum + (parseInt(i.duration || '0', 10) || 0),
+    0
+  );
+
   // Watch hours — computed from completed movies/shows only
   const displayHours = computeWatchHours(filteredItems);
 
@@ -262,6 +278,55 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           <div className="text-xl font-extrabold text-accentTeal leading-none">{completedCount}</div>
           <div className="text-[9px] text-accentTeal font-semibold">{t.stats.percent_completed.replace('%', completionRate + '%')}</div>
         </div>
+      </div>
+
+      {/* Dedicated Books & Reading Stats Card */}
+      <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <Book className="w-3.5 h-3.5 text-amber-400" />
+            {t.stats.books_stats_title || 'Книги и чтение'}
+          </span>
+          <span className="text-[10px] text-gray-400 font-medium">
+            {bookItems.length} {t.stats.records_count}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-400 truncate">{t.stats.books_read || 'Прочитано'}</span>
+              <CheckCircle2 className="w-3 h-3 text-amber-400" />
+            </div>
+            <div className="text-lg font-extrabold text-amber-400 leading-none">{completedBooks.length}</div>
+            <div className="text-[9px] text-gray-400">{t.stats.out_of_total.replace('{count}', bookItems.length.toString())}</div>
+          </div>
+
+          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-400 truncate">{t.stats.books_reading || 'Читаю'}</span>
+              <Book className="w-3 h-3 text-accentViolet" />
+            </div>
+            <div className="text-lg font-extrabold text-accentViolet leading-none">{readingBooks.length}</div>
+            <div className="text-[9px] text-gray-400">{t.stats.active_records}</div>
+          </div>
+
+          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-400 truncate">{t.stats.books_planned || 'В планах'}</span>
+              <Clock className="w-3 h-3 text-accentTeal" />
+            </div>
+            <div className="text-lg font-extrabold text-accentTeal leading-none">{plannedBooks.length}</div>
+            <div className="text-[9px] text-gray-400">{t.modal.status_planned}</div>
+          </div>
+        </div>
+
+        {totalBookPages > 0 && (
+          <div className="pt-2 border-t border-cardBorder/30 flex items-center justify-between text-xs">
+            <span className="text-gray-400 text-[10px]">{t.stats.pages_read_approx || 'Прочитано страниц'}:</span>
+            <span className="font-bold text-amber-400 text-xs">~{totalBookPages} {t.details.pages_unit || 'стр.'}</span>
+          </div>
+        )}
       </div>
 
       {/* Status breakdown bars */}

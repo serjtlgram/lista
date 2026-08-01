@@ -189,6 +189,11 @@ export interface Translations {
     days_short_unit: string;
     months_short_unit: string;
     years_short_unit: string;
+    books_stats_title?: string;
+    books_read?: string;
+    books_reading?: string;
+    books_planned?: string;
+    pages_read_approx?: string;
   };
   favorites: {
     title: string;

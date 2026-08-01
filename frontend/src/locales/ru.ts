@@ -189,6 +189,11 @@ export const ru: Translations = {
     days_short_unit: 'д',
     months_short_unit: 'м',
     years_short_unit: 'г',
+    books_stats_title: 'Книги и чтение',
+    books_read: 'Прочитано книг',
+    books_reading: 'Читаю сейчас',
+    books_planned: 'В планах',
+    pages_read_approx: 'Прочитано страниц',
   },
   favorites: {
     title: 'Избранное',
