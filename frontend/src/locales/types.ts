@@ -139,6 +139,7 @@ export interface Translations {
     show_less: string;
     watch_on_youtube: string;
     open_in_youtube: string;
+    public_rating: string;
     to_list_btn: string;
     lists_coming_soon: string;
     remove_from_list: string;

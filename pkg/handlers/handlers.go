@@ -413,7 +413,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -453,7 +453,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			items = append(items, item)
@@ -494,7 +494,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	// Check if user already has an item with the same title to prevent duplicates
 	if h.DB != nil && h.DB.Pool != nil {
 		checkQuery := `
-			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
 			LIMIT 1;
@@ -503,7 +503,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
-			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.PublicRating, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
 		)
 		if err == nil {
 			// Item already exists for this user, return existing item without creating duplicate
@@ -538,17 +538,18 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	durationVal := strings.TrimSpace(req.Duration)
 	releaseYearVal := strings.TrimSpace(req.ReleaseYear)
 	descVal := strings.TrimSpace(req.Description)
+	pubRatingVal := strings.TrimSpace(req.PublicRating)
 
-	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "") {
+	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
-			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc string
+			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating string
 			errScan := h.DB.Pool.QueryRow(r.Context(), `
-				SELECT director, cast_members, duration, genre, release_year, poster_url, description
+				SELECT director, cast_members, duration, genre, release_year, poster_url, description, public_rating
 				FROM items
-				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '')
-				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END) DESC
+				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '' OR public_rating != '')
+				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END + CASE WHEN public_rating != '' THEN 1 ELSE 0 END) DESC
 				LIMIT 1
-			`, titleTrimmed, cat).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc)
+			`, titleTrimmed, cat).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc, &dbRating)
 			if errScan == nil {
 				if directorVal == "" {
 					directorVal = dbDir
@@ -571,10 +572,13 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 				if descVal == "" {
 					descVal = dbDesc
 				}
+				if pubRatingVal == "" {
+					pubRatingVal = dbRating
+				}
 			}
 		}
 
-		if directorVal == "" || castVal == "" || durationVal == "" {
+		if directorVal == "" || castVal == "" || durationVal == "" || pubRatingVal == "" {
 			if h.KinopoiskAPIKey != "" {
 				kpResults := fetchKinopoiskInline(titleTrimmed, h.KinopoiskAPIKey, cat)
 				if len(kpResults) > 0 {
@@ -600,9 +604,12 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					if descVal == "" {
 						descVal = best.Description
 					}
+					if pubRatingVal == "" {
+						pubRatingVal = best.PublicRating
+					}
 				}
 			}
-			if (directorVal == "" || castVal == "") && h.TMDBAPIKey != "" {
+			if (directorVal == "" || castVal == "" || pubRatingVal == "") && h.TMDBAPIKey != "" {
 				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat)
 				if len(tmdbResults) > 0 {
 					best := tmdbResults[0]
@@ -627,6 +634,9 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					if descVal == "" {
 						descVal = best.Description
 					}
+					if pubRatingVal == "" {
+						pubRatingVal = best.PublicRating
+					}
 				}
 			}
 		}
@@ -637,8 +647,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, author, isbn, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, author, isbn, public_rating, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -661,12 +671,13 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Cast = castVal
 	createdItem.Author = req.Author
 	createdItem.ISBN = req.ISBN
+	createdItem.PublicRating = pubRatingVal
 	createdItem.CompletedAt = completedAt
 
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		genreVal, durationVal, releaseYearVal, posterURL, descVal, req.Note, req.RawInput, ytURL, directorVal, castVal, req.Author, req.ISBN, completedAt,
+		genreVal, durationVal, releaseYearVal, posterURL, descVal, req.Note, req.RawInput, ytURL, directorVal, castVal, req.Author, req.ISBN, pubRatingVal, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -785,6 +796,11 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.ISBN != nil {
 		query += fmt.Sprintf(", isbn = $%d", argIdx)
 		args = append(args, *req.ISBN)
+		argIdx++
+	}
+	if req.PublicRating != nil {
+		query += fmt.Sprintf(", public_rating = $%d", argIdx)
+		args = append(args, *req.PublicRating)
 		argIdx++
 	}
 
@@ -1066,7 +1082,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 	}
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn
+		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating
 		FROM items
 		WHERE 1=1
 	`
@@ -1099,7 +1115,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 		defer rows.Close()
 		for rows.Next() {
 			var res models.CatalogSearchResult
-			if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN); err == nil {
+			if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN, &res.PublicRating); err == nil {
 				res.Source = "db"
 				res.Category = mapCategoryToEn(res.Category)
 				results = append(results, res)
@@ -1113,11 +1129,11 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 			cat := results[i].Category
 			needsEnrichment := false
 			if cat == "movie" || cat == "show" {
-				if results[i].Director == "" || results[i].Cast == "" || results[i].Duration == "" {
+				if results[i].Director == "" || results[i].Cast == "" || results[i].Duration == "" || results[i].PublicRating == "" {
 					needsEnrichment = true
 				}
 			} else if cat == "book" {
-				if results[i].Author == "" || results[i].ISBN == "" {
+				if results[i].Author == "" || results[i].ISBN == "" || results[i].PublicRating == "" {
 					needsEnrichment = true
 				}
 			}
@@ -1145,7 +1161,7 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 	updated := false
 
 	if cat == "movie" || cat == "show" {
-		if item.Director == "" || item.Cast == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" {
+		if item.Director == "" || item.Cast == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" || item.PublicRating == "" {
 			if h.KinopoiskAPIKey != "" {
 				kp := fetchKinopoiskInline(title, h.KinopoiskAPIKey, cat)
 				if len(kp) > 0 {
@@ -1178,9 +1194,13 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 						item.Description = best.Description
 						updated = true
 					}
+					if item.PublicRating == "" && best.PublicRating != "" {
+						item.PublicRating = best.PublicRating
+						updated = true
+					}
 				}
 			}
-			if (item.Director == "" || item.Cast == "") && h.TMDBAPIKey != "" {
+			if (item.Director == "" || item.Cast == "" || item.PublicRating == "") && h.TMDBAPIKey != "" {
 				tmdb := fetchTMDbInline(title, h.TMDBAPIKey, cat)
 				if len(tmdb) > 0 {
 					best := tmdb[0]
@@ -1212,11 +1232,15 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 						item.Description = best.Description
 						updated = true
 					}
+					if item.PublicRating == "" && best.PublicRating != "" {
+						item.PublicRating = best.PublicRating
+						updated = true
+					}
 				}
 			}
 		}
 	} else if cat == "book" {
-		if item.Author == "" || item.ISBN == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" {
+		if item.Author == "" || item.ISBN == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" || item.PublicRating == "" {
 			books := parser.SearchBooksMultiSource(title)
 			if len(books) > 0 {
 				best := books[0]
@@ -1248,18 +1272,22 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 					item.Description = best.Description
 					updated = true
 				}
+				if item.PublicRating == "" && best.PublicRating != "" {
+					item.PublicRating = best.PublicRating
+					updated = true
+				}
 			}
 		}
 	}
 
 	if updated {
-		go h.updateItemMetadataInDB(item.Title, cat, item.Director, item.Cast, item.Duration, item.Genre, item.ReleaseYear, item.PosterURL, item.Description, item.Author, item.ISBN)
+		go h.updateItemMetadataInDB(item.Title, cat, item.Director, item.Cast, item.Duration, item.Genre, item.ReleaseYear, item.PosterURL, item.Description, item.Author, item.ISBN, item.PublicRating)
 	}
 
 	return updated
 }
 
-func (h *Handler) updateItemMetadataInDB(title string, cat string, director string, cast string, duration string, genre string, releaseYear string, posterURL string, description string, author string, isbn string) {
+func (h *Handler) updateItemMetadataInDB(title string, cat string, director string, cast string, duration string, genre string, releaseYear string, posterURL string, description string, author string, isbn string, publicRating string) {
 	if h.DB == nil || h.DB.Pool == nil {
 		return
 	}
@@ -1282,12 +1310,13 @@ func (h *Handler) updateItemMetadataInDB(title string, cat string, director stri
 			description = CASE WHEN description = '' THEN $7 ELSE description END,
 			author = CASE WHEN author = '' THEN $8 ELSE author END,
 			isbn = CASE WHEN isbn = '' THEN $9 ELSE isbn END,
+			public_rating = CASE WHEN public_rating = '' THEN $10 ELSE public_rating END,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE LOWER(TRIM(title)) = LOWER(TRIM($10))
-		  AND (category = $11 OR category = $12);
+		WHERE LOWER(TRIM(title)) = LOWER(TRIM($11))
+		  AND (category = $12 OR category = $13);
 	`
 	catEn := mapCategoryToEn(cat)
-	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, title, cat, catEn)
+	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, title, cat, catEn)
 	if err != nil {
 		log.Printf("[UpdateItemMetadata] Error updating DB item %s: %v", title, err)
 	}
@@ -1527,7 +1556,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
 		FROM items WHERE id = $1 LIMIT 1;
 	`
 
@@ -1535,7 +1564,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -2080,12 +2109,12 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			var dbItem parser.ExtractedMedia
 			ctx := context.Background()
 			query := `
-				SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+				SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating
 				FROM items WHERE id = $1 LIMIT 1
 			`
 			errScan := h.DB.Pool.QueryRow(ctx, query, startAppID).Scan(
 				&dbItem.Title, &dbItem.Category, &dbItem.Genre, &dbItem.Duration, &dbItem.ReleaseYear,
-				&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast,
+				&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating,
 			)
 			if errScan == nil && strings.TrimSpace(dbItem.Title) != "" {
 				dbItem.SourceURL = rawURL
@@ -2103,12 +2132,12 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					var dbItem parser.ExtractedMedia
 					ctx := context.Background()
 					query := `
-						SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members
+						SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating
 						FROM items WHERE LOWER(TRIM(title)) = LOWER($1) LIMIT 1
 					`
 					errScan := h.DB.Pool.QueryRow(ctx, query, cleanT).Scan(
 						&dbItem.Title, &dbItem.Category, &dbItem.Genre, &dbItem.Duration, &dbItem.ReleaseYear,
-						&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast,
+						&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating,
 					)
 					if errScan == nil && strings.TrimSpace(dbItem.Title) != "" {
 						dbItem.SourceURL = rawURL
@@ -2145,7 +2174,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) LIMIT 1", userID, titleTrimmed).Scan(&existingID)
 		if checkErr == nil && existingID != "" {
 			finalItemID = existingID
-			// Update missing fields if new data has director/cast/poster/duration
+			// Update missing fields if new data has director/cast/poster/duration/public_rating
 			_, _ = h.DB.Pool.Exec(ctx, `
 				UPDATE items SET
 					poster_url = CASE WHEN poster_url = '' OR poster_url IS NULL THEN $1 ELSE poster_url END,
@@ -2156,19 +2185,20 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					author = CASE WHEN author = '' OR author IS NULL THEN $6 ELSE author END,
 					isbn = CASE WHEN isbn = '' OR isbn IS NULL THEN $7 ELSE isbn END,
 					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
-					note = CASE WHEN note = '' OR note IS NULL THEN $9 ELSE note END,
+					public_rating = CASE WHEN public_rating = '' OR public_rating IS NULL THEN $9 ELSE public_rating END,
+					note = CASE WHEN note = '' OR note IS NULL THEN $10 ELSE note END,
 					updated_at = CURRENT_TIMESTAMP
-				WHERE id = $10 AND user_id = $11;
-			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, rawURL, finalItemID, userID)
+				WHERE id = $11 AND user_id = $12;
+			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, finalItemID, userID)
 		} else {
 			insertQuery := `
-				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, note)
-				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, note)
+				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 				RETURNING id;
 			`
 			_ = h.DB.Pool.QueryRow(ctx, insertQuery,
 				itemUUID, userID, titleTrimmed, catEn, media.Genre, media.Duration, media.ReleaseYear,
-				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN, rawURL,
+				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN, media.PublicRating, rawURL,
 			).Scan(&finalItemID)
 		}
 	}
@@ -3201,14 +3231,20 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 			rawID := fmt.Sprintf("tmdb_%s_%d", r.MediaType, r.ID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
+			pubRating := ""
+			if r.VoteAverage > 0 {
+				pubRating = fmt.Sprintf("%.1f", r.VoteAverage)
+			}
+
 			baseItem := models.CatalogSearchResult{
-				ID:          itemID,
-				Title:       title,
-				Category:    cat,
-				Genre:       genre,
-				ReleaseYear: year,
-				PosterURL:   poster,
-				Description: r.Overview,
+				ID:           itemID,
+				Title:        title,
+				Category:     cat,
+				Genre:        genre,
+				ReleaseYear:  year,
+				PosterURL:    poster,
+				Description:  r.Overview,
+				PublicRating: pubRating,
 			}
 
 			wg.Add(1)
@@ -3238,6 +3274,9 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 					}
 					if details.YoutubeURL != "" {
 						bItem.YoutubeURL = details.YoutubeURL
+					}
+					if details.PublicRating != "" {
+						bItem.PublicRating = details.PublicRating
 					}
 				}
 				resCh <- tmdbRes{idx: idx, item: bItem}
@@ -3279,11 +3318,11 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, created_at, updated_at)
-		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, created_at, updated_at)
+		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, itemID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN)
+	_, err := h.DB.Pool.Exec(ctx, query, itemID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN, item.PublicRating)
 	if err != nil {
 		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", itemID, item.Title, err)
 	}
@@ -3325,6 +3364,7 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 			Type        string `json:"type"`
 			Year        string `json:"year"`
 			FilmLength  string `json:"filmLength"`
+			Rating      string `json:"rating"`
 			Description string `json:"description"`
 			PosterUrl   string `json:"posterUrl"`
 			Genres      []struct {
@@ -3379,15 +3419,21 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 			rawID := fmt.Sprintf("kp_%d", film.FilmID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
+			pubRating := ""
+			if film.Rating != "" && film.Rating != "null" && !strings.Contains(film.Rating, "%") {
+				pubRating = film.Rating
+			}
+
 			baseItem := models.CatalogSearchResult{
-				ID:          itemID,
-				Title:       title,
-				Category:    cat,
-				Genre:       genre,
-				Duration:    duration,
-				ReleaseYear: film.Year,
-				PosterURL:   poster,
-				Description: film.Description,
+				ID:           itemID,
+				Title:        title,
+				Category:     cat,
+				Genre:        genre,
+				Duration:     duration,
+				ReleaseYear:  film.Year,
+				PosterURL:    poster,
+				Description:  film.Description,
+				PublicRating: pubRating,
 			}
 
 			wg.Add(1)
@@ -3396,6 +3442,11 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				dir, cast := parser.FetchKinopoiskStaff(client, kpKey, fID)
 				bItem.Director = dir
 				bItem.Cast = cast
+				if bItem.PublicRating == "" {
+					if kpMedia, err := parser.FetchKinopoiskFilmByID(client, kpKey, strconv.Itoa(fID)); err == nil && kpMedia != nil && kpMedia.PublicRating != "" {
+						bItem.PublicRating = kpMedia.PublicRating
+					}
+				}
 				resCh <- kpRes{idx: idx, item: bItem}
 			}(i, film.FilmID, baseItem)
 		}

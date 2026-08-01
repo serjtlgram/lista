@@ -78,6 +78,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 				PublishedDate string   `json:"publishedDate"`
 				Description   string   `json:"description"`
 				PageCount     int      `json:"pageCount"`
+				AverageRating float64  `json:"averageRating"`
 				Categories    []string `json:"categories"`
 				ImageLinks    struct {
 					Thumbnail      string `json:"thumbnail"`
@@ -116,6 +117,11 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 			pagesStr = strconv.Itoa(info.PageCount)
 		}
 
+		pubRating := ""
+		if info.AverageRating > 0 {
+			pubRating = fmt.Sprintf("%.1f", info.AverageRating)
+		}
+
 		genre := strings.Join(info.Categories, ", ")
 
 		isbn := ""
@@ -148,16 +154,17 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 		}
 
 		results = append(results, models.CatalogSearchResult{
-			ID:          idPrefix + item.ID,
-			Title:       info.Title,
-			Category:    "book",
-			Author:      author,
-			Genre:       genre,
-			ReleaseYear: year,
-			Duration:    pagesStr,
-			ISBN:        isbn,
-			Description: info.Description,
-			PosterURL:   cover, // Return raw URL directly — no OptimizePosterURL to avoid extra HTTP calls
+			ID:           idPrefix + item.ID,
+			Title:        info.Title,
+			Category:     "book",
+			Author:       author,
+			Genre:        genre,
+			ReleaseYear:  year,
+			Duration:     pagesStr,
+			ISBN:         isbn,
+			PublicRating: pubRating,
+			Description:  info.Description,
+			PosterURL:    cover, // Return raw URL directly — no OptimizePosterURL to avoid extra HTTP calls
 			Source:      "online",
 		})
 	}

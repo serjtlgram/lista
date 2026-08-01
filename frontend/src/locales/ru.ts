@@ -139,6 +139,7 @@ export const ru: Translations = {
     show_less: 'Скрыть',
     watch_on_youtube: 'Смотреть на YouTube',
     open_in_youtube: 'Открыть в YouTube',
+    public_rating: 'Рейтинг',
     to_list_btn: 'В список',
     lists_coming_soon: 'Списки категорий скоро будут доступны!',
     remove_from_list: 'Исключить из списка',

@@ -139,6 +139,7 @@ export const uk: Translations = {
     show_less: 'Приховати',
     watch_on_youtube: 'Дивитися на YouTube',
     open_in_youtube: 'Відкрити в YouTube',
+    public_rating: 'Рейтинг',
     to_list_btn: 'До списку',
     lists_coming_soon: 'Списки скоро з\'являться!',
     remove_from_list: 'Вилучити зі списку',

@@ -26,19 +26,20 @@ import (
 )
 
 type ExtractedMedia struct {
-	Title       string `json:"title"`
-	Category    string `json:"category"` // "movie" or "show"
-	Genre       string `json:"genre"`
-	Duration    string `json:"duration"`
-	ReleaseYear string `json:"release_year"`
-	PosterURL   string `json:"poster_url"`
-	Description string `json:"description"`
-	Director    string `json:"director"`
-	Cast        string `json:"cast"` // 1-4 main actors
-	Author      string `json:"author,omitempty"`
-	ISBN        string `json:"isbn,omitempty"`
-	YoutubeURL  string `json:"youtube_url"`
-	SourceURL   string `json:"source_url"`
+	Title        string `json:"title"`
+	Category     string `json:"category"` // "movie" or "show"
+	Genre        string `json:"genre"`
+	Duration     string `json:"duration"`
+	ReleaseYear  string `json:"release_year"`
+	PosterURL    string `json:"poster_url"`
+	Description  string `json:"description"`
+	Director     string `json:"director"`
+	Cast         string `json:"cast"` // 1-4 main actors
+	Author       string `json:"author,omitempty"`
+	ISBN         string `json:"isbn,omitempty"`
+	PublicRating string `json:"public_rating,omitempty"`
+	YoutubeURL   string `json:"youtube_url"`
+	SourceURL    string `json:"source_url"`
 }
 
 const defaultTMDbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
@@ -643,6 +644,21 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 			media.Author = extractPersonNames(brandObj, 3)
 		}
 	}
+
+	if aggRating, ok := data["aggregateRating"].(map[string]interface{}); ok {
+		if rVal, ok := aggRating["ratingValue"]; ok {
+			switch v := rVal.(type) {
+			case float64:
+				if v > 0 {
+					media.PublicRating = fmt.Sprintf("%.1f", v)
+				}
+			case string:
+				if v != "" {
+					media.PublicRating = strings.TrimSpace(v)
+				}
+			}
+		}
+	}
 }
 
 func extractPersonNames(obj interface{}, maxCount int) string {
@@ -744,14 +760,15 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 	}
 
 	var data struct {
-		Title        string `json:"title"`
-		Name         string `json:"name"`
-		Overview     string `json:"overview"`
-		PosterPath   string `json:"poster_path"`
-		ReleaseDate  string `json:"release_date"`
-		FirstAirDate string `json:"first_air_date"`
-		Runtime      int    `json:"runtime"`
-		EpisodeRun   []int  `json:"episode_run_time"`
+		Title        string  `json:"title"`
+		Name         string  `json:"name"`
+		Overview     string  `json:"overview"`
+		PosterPath   string  `json:"poster_path"`
+		ReleaseDate  string  `json:"release_date"`
+		FirstAirDate string  `json:"first_air_date"`
+		Runtime      int     `json:"runtime"`
+		VoteAverage  float64 `json:"vote_average"`
+		EpisodeRun   []int   `json:"episode_run_time"`
 		CreatedBy    []struct {
 			Name string `json:"name"`
 		} `json:"created_by"`
@@ -782,6 +799,9 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 
 	media := &ExtractedMedia{
 		Category: "movie",
+	}
+	if data.VoteAverage > 0 {
+		media.PublicRating = fmt.Sprintf("%.1f", data.VoteAverage)
 	}
 	if mediaType == "tv" {
 		media.Category = "show"
@@ -1045,15 +1065,17 @@ func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string)
 	defer resp.Body.Close()
 
 	var film struct {
-		NameRu       string `json:"nameRu"`
-		NameEn       string `json:"nameEn"`
-		NameOriginal string `json:"nameOriginal"`
-		Type         string `json:"type"`
-		Year         int    `json:"year"`
-		FilmLength   int    `json:"filmLength"`
-		Description  string `json:"description"`
-		PosterUrl    string `json:"posterUrl"`
-		Genres       []struct {
+		NameRu           string  `json:"nameRu"`
+		NameEn           string  `json:"nameEn"`
+		NameOriginal     string  `json:"nameOriginal"`
+		Type             string  `json:"type"`
+		Year             int     `json:"year"`
+		FilmLength       int     `json:"filmLength"`
+		RatingKinopoisk  float64 `json:"ratingKinopoisk"`
+		RatingImdb       float64 `json:"ratingImdb"`
+		Description      string  `json:"description"`
+		PosterUrl        string  `json:"posterUrl"`
+		Genres           []struct {
 			Genre string `json:"genre"`
 		} `json:"genres"`
 	}
@@ -1094,18 +1116,26 @@ func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string)
 		genreStr = strings.Title(film.Genres[0].Genre)
 	}
 
+	pubRating := ""
+	if film.RatingKinopoisk > 0 {
+		pubRating = fmt.Sprintf("%.1f", film.RatingKinopoisk)
+	} else if film.RatingImdb > 0 {
+		pubRating = fmt.Sprintf("%.1f", film.RatingImdb)
+	}
+
 	director, cast := FetchKinopoiskStaff(client, kpKey, filmID)
 
 	return &ExtractedMedia{
-		Title:       title,
-		Category:    cat,
-		ReleaseYear: yearStr,
-		Duration:    durationStr,
-		Genre:       genreStr,
-		PosterURL:   film.PosterUrl,
-		Description: film.Description,
-		Director:    director,
-		Cast:        cast,
+		Title:        title,
+		Category:     cat,
+		ReleaseYear:  yearStr,
+		Duration:     durationStr,
+		Genre:        genreStr,
+		PosterURL:    film.PosterUrl,
+		Description:  film.Description,
+		Director:     director,
+		Cast:         cast,
+		PublicRating: pubRating,
 	}, nil
 }
 

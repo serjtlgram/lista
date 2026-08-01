@@ -22,6 +22,7 @@ export interface Item {
   cast?: string;
   author?: string;
   isbn?: string;
+  public_rating?: string;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
@@ -42,6 +43,7 @@ export interface CatalogItem {
   cast?: string;
   author?: string;
   isbn?: string;
+  public_rating?: string;
   source?: string;
 }
 

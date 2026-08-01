@@ -23,7 +23,8 @@ import {
   Users,
   Video,
   FolderPlus,
-  Copy
+  Copy,
+  Popcorn
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -217,6 +218,23 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         });
     }
   }, [item.id, item.title, item.category, item.author, item.youtube_url]);
+
+  // Automatic public audience rating search fallback on details view if public_rating is missing
+  useEffect(() => {
+    if (!item.public_rating && onUpdateItem) {
+      api
+        .searchCatalog(item.title, item.category)
+        .then((results) => {
+          if (results && results.length > 0) {
+            const match = results.find(r => r.public_rating) || results[0];
+            if (match && match.public_rating) {
+              onUpdateItem(item.id, { public_rating: match.public_rating });
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [item.id, item.title, item.category, item.public_rating]);
 
   const [isListModalOpen, setIsListModalOpen] = useState(false);
 
@@ -534,6 +552,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     {isBook ? (t.details.pages || 'Страниц') : t.details.duration}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0">{durationDisplay}</span>
+                </div>
+              )}
+
+              {/* Public Audience Rating Row (Popcorn icon) */}
+              {item.public_rating && item.public_rating.trim() !== '' && (
+                <div className="flex items-center justify-between text-gray-300 gap-1">
+                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                    <Popcorn className="w-3.5 h-3.5 text-orange-400" />
+                    {t.details.public_rating || 'Рейтинг'}
+                  </span>
+                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0 font-mono text-[11px]">
+                    {item.public_rating}
+                  </span>
                 </div>
               )}
 

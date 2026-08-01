@@ -139,6 +139,7 @@ export const es: Translations = {
     show_less: 'Menos',
     watch_on_youtube: 'Ver en YouTube',
     open_in_youtube: 'Abrir en YouTube',
+    public_rating: 'Valoración',
     to_list_btn: 'A la lista',
     lists_coming_soon: '¡Las listas de categorías estarán disponibles pronto!',
     remove_from_list: 'Quitar de la lista',

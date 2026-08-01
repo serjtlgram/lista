@@ -20,84 +20,88 @@ type User struct {
 }
 
 type Item struct {
-	ID          string     `json:"id"`
-	UserID      int64      `json:"user_id"`
-	Title       string     `json:"title"`
-	Category    string     `json:"category"`    // 'movie', 'show', 'book', 'game'
-	Status      string     `json:"status"`      // 'watching', 'completed', 'planned', 'paused'
-	Rating      int        `json:"rating"`      // 0 to 10
-	Genre       string     `json:"genre"`
-	Duration    string     `json:"duration"`
-	ReleaseYear string     `json:"release_year"`
-	PosterURL   string     `json:"poster_url"`
-	Description string     `json:"description"`
-	Note        string     `json:"note"`
-	RawInput    string     `json:"raw_input"`   // For future AI context parsing
-	AIParsed    bool       `json:"ai_parsed"`
-	YoutubeURL  string     `json:"youtube_url,omitempty"`
-	Director    string     `json:"director,omitempty"`
-	Cast        string     `json:"cast,omitempty"`
-	Author      string     `json:"author,omitempty"`
-	ISBN        string     `json:"isbn,omitempty"`
-	StartedAt   *time.Time `json:"started_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           string     `json:"id"`
+	UserID       int64      `json:"user_id"`
+	Title        string     `json:"title"`
+	Category     string     `json:"category"`    // 'movie', 'show', 'book', 'game'
+	Status       string     `json:"status"`      // 'watching', 'completed', 'planned', 'paused'
+	Rating       int        `json:"rating"`      // 0 to 10
+	Genre        string     `json:"genre"`
+	Duration     string     `json:"duration"`
+	ReleaseYear  string     `json:"release_year"`
+	PosterURL    string     `json:"poster_url"`
+	Description  string     `json:"description"`
+	Note         string     `json:"note"`
+	RawInput     string     `json:"raw_input"`   // For future AI context parsing
+	AIParsed     bool       `json:"ai_parsed"`
+	YoutubeURL   string     `json:"youtube_url,omitempty"`
+	Director     string     `json:"director,omitempty"`
+	Cast         string     `json:"cast,omitempty"`
+	Author       string     `json:"author,omitempty"`
+	ISBN         string     `json:"isbn,omitempty"`
+	PublicRating string     `json:"public_rating,omitempty"`
+	StartedAt    *time.Time `json:"started_at,omitempty"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 type CreateItemRequest struct {
-	Title       string `json:"title"`
-	Category    string `json:"category"`
-	Status      string `json:"status"`
-	Rating      int    `json:"rating"`
-	Genre       string `json:"genre"`
-	Duration    string `json:"duration"`
-	ReleaseYear string `json:"release_year"`
-	PosterURL   string `json:"poster_url"`
-	Description string `json:"description"`
-	Note        string `json:"note"`
-	RawInput    string `json:"raw_input"`
-	YoutubeURL  string `json:"youtube_url,omitempty"`
-	Director    string `json:"director,omitempty"`
-	Cast        string `json:"cast,omitempty"`
-	Author      string `json:"author,omitempty"`
-	ISBN        string `json:"isbn,omitempty"`
+	Title        string `json:"title"`
+	Category     string `json:"category"`
+	Status       string `json:"status"`
+	Rating       int    `json:"rating"`
+	Genre        string `json:"genre"`
+	Duration     string `json:"duration"`
+	ReleaseYear  string `json:"release_year"`
+	PosterURL    string `json:"poster_url"`
+	Description  string `json:"description"`
+	Note         string `json:"note"`
+	RawInput     string `json:"raw_input"`
+	YoutubeURL   string `json:"youtube_url,omitempty"`
+	Director     string `json:"director,omitempty"`
+	Cast         string `json:"cast,omitempty"`
+	Author       string `json:"author,omitempty"`
+	ISBN         string `json:"isbn,omitempty"`
+	PublicRating string `json:"public_rating,omitempty"`
 }
 
 type UpdateItemRequest struct {
-	Title       *string `json:"title,omitempty"`
-	Category    *string `json:"category,omitempty"`
-	Status      *string `json:"status,omitempty"`
-	Rating      *int    `json:"rating,omitempty"`
-	Genre       *string `json:"genre,omitempty"`
-	Duration    *string `json:"duration,omitempty"`
-	ReleaseYear *string `json:"release_year,omitempty"`
-	PosterURL   *string `json:"poster_url,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Note        *string `json:"note,omitempty"`
-	RawInput    *string `json:"raw_input,omitempty"`
-	YoutubeURL  *string `json:"youtube_url,omitempty"`
-	Director    *string `json:"director,omitempty"`
-	Cast        *string `json:"cast,omitempty"`
-	Author      *string `json:"author,omitempty"`
-	ISBN        *string `json:"isbn,omitempty"`
+	Title        *string `json:"title,omitempty"`
+	Category     *string `json:"category,omitempty"`
+	Status       *string `json:"status,omitempty"`
+	Rating       *int    `json:"rating,omitempty"`
+	Genre        *string `json:"genre,omitempty"`
+	Duration     *string `json:"duration,omitempty"`
+	ReleaseYear  *string `json:"release_year,omitempty"`
+	PosterURL    *string `json:"poster_url,omitempty"`
+	Description  *string `json:"description,omitempty"`
+	Note         *string `json:"note,omitempty"`
+	RawInput     *string `json:"raw_input,omitempty"`
+	YoutubeURL   *string `json:"youtube_url,omitempty"`
+	Director     *string `json:"director,omitempty"`
+	Cast         *string `json:"cast,omitempty"`
+	Author       *string `json:"author,omitempty"`
+	ISBN         *string `json:"isbn,omitempty"`
+	PublicRating *string `json:"public_rating,omitempty"`
 }
 
 type CatalogSearchResult struct {
-	ID          string `json:"id,omitempty"`
-	Title       string `json:"title"`
-	Category    string `json:"category"`
-	Genre       string `json:"genre"`
-	Duration    string `json:"duration"`
-	ReleaseYear string `json:"release_year"`
-	PosterURL   string `json:"poster_url"`
-	Description string `json:"description"`
-	YoutubeURL  string `json:"youtube_url,omitempty"`
-	Director    string `json:"director,omitempty"`
-	Cast        string `json:"cast,omitempty"`
-	Author      string `json:"author,omitempty"`
-	ISBN        string `json:"isbn,omitempty"`
-	Source      string `json:"source,omitempty"`
+	ID           string `json:"id,omitempty"`
+	Title        string `json:"title"`
+	Category     string `json:"category"`
+	Genre        string `json:"genre"`
+	Duration     string `json:"duration"`
+	ReleaseYear  string `json:"release_year"`
+	PosterURL    string `json:"poster_url"`
+	Description  string `json:"description"`
+	YoutubeURL   string `json:"youtube_url,omitempty"`
+	Director     string `json:"director,omitempty"`
+	Cast         string `json:"cast,omitempty"`
+	Author       string `json:"author,omitempty"`
+	ISBN         string `json:"isbn,omitempty"`
+	PublicRating string `json:"public_rating,omitempty"`
+	Source       string `json:"source,omitempty"`
 }
 
 type CategoryCount struct {
