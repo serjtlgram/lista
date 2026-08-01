@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Flame, Plus, CheckCircle2, Info, ChevronRight } from 'lucide-react';
+import { Flame, Plus, CheckCircle2, Info, ChevronRight } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
@@ -244,22 +244,6 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
       {/* Sparkline — Catmull-Rom smooth curve, labels in accent color */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-accentViolet" />
-            {t.stats.weekly_activity}
-          </span>
-          {onShowStats && (
-            <button
-              onClick={onShowStats}
-              className="text-[10px] font-bold text-accentViolet hover:underline flex items-center gap-0.5 active:scale-[0.97] transition"
-            >
-              <span>{t.stats.show_more || 'показать больше'}</span>
-              <ChevronRight className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-
         <svg className="w-full overflow-visible" viewBox="0 0 290 42" preserveAspectRatio="none">
           <defs>
             <linearGradient id="acGradAct" x1="0" y1="0" x2="0" y2="1">

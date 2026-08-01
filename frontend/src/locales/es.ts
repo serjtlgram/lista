@@ -4,7 +4,7 @@ export const es: Translations = {
   greeting: 'Hola',
   what_to_add: '¿Qué vamos a añadir hoy?',
   nav_home: 'Inicio',
-  nav_search: 'Buscar',
+  nav_search: 'Catálogo',
   nav_stats: 'Estadísticas',
   nav_lists: 'Listas',
   nav_profile: 'Perfil',

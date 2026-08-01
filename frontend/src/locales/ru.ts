@@ -4,7 +4,7 @@ export const ru: Translations = {
   greeting: 'Привет',
   what_to_add: 'Что сегодня добавим?',
   nav_home: 'Главная',
-  nav_search: 'Поиск',
+  nav_search: 'Каталог',
   nav_stats: 'Статистика',
   nav_lists: 'Списки',
   nav_profile: 'Профиль',

@@ -4,7 +4,7 @@ export const uk: Translations = {
   greeting: 'Привіт',
   what_to_add: 'Що сьогодні додамо?',
   nav_home: 'Головна',
-  nav_search: 'Пошук',
+  nav_search: 'Каталог',
   nav_stats: 'Статистика',
   nav_lists: 'Списки',
   nav_profile: 'Профіль',
