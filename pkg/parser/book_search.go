@@ -458,6 +458,25 @@ func cleanBookSearchQuery(raw string) string {
 	return q
 }
 
+func stripHTMLTags(s string) string {
+	var builder strings.Builder
+	inTag := false
+	for _, r := range s {
+		if r == '<' {
+			inTag = true
+		} else if r == '>' {
+			inTag = false
+		} else if !inTag {
+			builder.WriteRune(r)
+		}
+	}
+	out := strings.ReplaceAll(builder.String(), "&quot;", "\"")
+	out = strings.ReplaceAll(out, "&amp;", "&")
+	out = strings.ReplaceAll(out, "&lt;", "<")
+	out = strings.ReplaceAll(out, "&gt;", ">")
+	return strings.TrimSpace(out)
+}
+
 // SearchWikiBooks queries Russian Wikipedia for book articles
 func SearchWikiBooks(query string) ([]models.CatalogSearchResult, error) {
 	query = strings.TrimSpace(query)
@@ -507,7 +526,7 @@ func SearchWikiBooks(query string) ([]models.CatalogSearchResult, error) {
 			ID:          "wiki_book_" + url.QueryEscape(cleanTitle),
 			Title:       cleanTitle,
 			Category:    "book",
-			Description: cleanHTMLSnippet(item.Snippet),
+			Description: stripHTMLTags(item.Snippet),
 			Source:      "online",
 		})
 		if len(results) >= 3 {
