@@ -34,6 +34,7 @@ import {
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details'>('home');
   const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile'>('home');
+  const [savedScrollPosition, setSavedScrollPosition] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -291,8 +292,9 @@ function safeBase64Decode(str: string): any {
             isSharedPreview: true,
           } as any);
         }
+        setPreviousTab('home');
+        setSavedScrollPosition(window.scrollY);
         setActiveTab('details');
-        window.scrollTo(0, 0);
         return true;
       } catch (e) {
         console.warn('Deep link error:', e);
@@ -395,7 +397,9 @@ function safeBase64Decode(str: string): any {
   const handleBackFromDetails = () => {
     triggerHaptic();
     setActiveTab(previousTab || 'home');
-    window.scrollTo(0, 0);
+    setTimeout(() => {
+      window.scrollTo({ top: savedScrollPosition, behavior: 'instant' });
+    }, 10);
   };
 
   useEffect(() => {
@@ -430,10 +434,10 @@ function safeBase64Decode(str: string): any {
     triggerHaptic();
     if (activeTab !== 'details') {
       setPreviousTab(activeTab as any);
+      setSavedScrollPosition(window.scrollY);
     }
     setSelectedItem(item);
     setActiveTab('details');
-    window.scrollTo(0, 0);
   };
 
   const handleToggleStatus = async (item: Item) => {
@@ -456,9 +460,12 @@ function safeBase64Decode(str: string): any {
     const existing = items.find((i) => norm(i.title) === norm(sharedItem.title));
 
     if (existing) {
+      if (activeTab !== 'details') {
+        setPreviousTab(activeTab as any);
+        setSavedScrollPosition(window.scrollY);
+      }
       setSelectedItem(existing);
       setActiveTab('details');
-      window.scrollTo(0, 0);
       return;
     }
 
@@ -548,9 +555,12 @@ function safeBase64Decode(str: string): any {
     const existing = items.find((i) => norm(i.title) === norm(catalogItem.title));
 
     if (existing) {
+      if (activeTab !== 'details') {
+        setPreviousTab(activeTab as any);
+        setSavedScrollPosition(window.scrollY);
+      }
       setSelectedItem(existing);
       setActiveTab('details');
-      window.scrollTo(0, 0);
       return;
     }
 
