@@ -28,7 +28,8 @@ import {
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
-import { getItemPoster } from '../services/posters';
+import { getItemPoster, getNextPlaceholderPoster } from '../services/posters';
+import { getTranslatedGenreFull } from '../services/genres';
 import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 import { isFavorite, toggleFavorite } from '../services/favorites';
@@ -219,22 +220,43 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   }, [item.id, item.title, item.category, item.author, item.youtube_url]);
 
-  // Automatic public audience rating search fallback on details view if public_rating is missing
+  // Automatic background metadata enrichment on opening details view
   useEffect(() => {
-    if (!item.public_rating && onUpdateItem) {
+    const isBook = ['book', 'books', 'книги', 'книга'].includes((item.category || '').toLowerCase().trim());
+    const isMissingData = !item.public_rating || !item.description || (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
+
+    if (isMissingData && onUpdateItem) {
       api
         .searchCatalog(item.title, item.category)
         .then((results) => {
           if (results && results.length > 0) {
-            const match = results.find(r => r.public_rating) || results[0];
-            if (match && match.public_rating) {
-              onUpdateItem(item.id, { public_rating: match.public_rating });
+            const match = results.find(r => r.public_rating || r.author || r.isbn) || results[0];
+            if (match) {
+              const updates: Partial<Item> = {};
+              if (!item.public_rating && match.public_rating) updates.public_rating = match.public_rating;
+              if (!item.description && match.description) updates.description = match.description;
+              if (!item.poster_url && match.poster_url) updates.poster_url = match.poster_url;
+              if (!item.genre && match.genre) updates.genre = getTranslatedGenreFull(match.genre, t, item.category);
+              if (!item.release_year && match.release_year) updates.release_year = match.release_year;
+
+              if (isBook) {
+                if (!item.author && match.author) updates.author = match.author;
+                if (!item.isbn && match.isbn) updates.isbn = match.isbn;
+                if (!item.duration && match.duration) {
+                  const digits = match.duration.replace(/\D/g, '');
+                  if (digits) updates.duration = `${digits} стр.`;
+                }
+              }
+
+              if (Object.keys(updates).length > 0) {
+                onUpdateItem(item.id, updates);
+              }
             }
           }
         })
         .catch(() => {});
     }
-  }, [item.id, item.title, item.category, item.public_rating]);
+  }, [item.id, item.title, item.category, item.public_rating, item.description, item.author, item.isbn, item.duration, item.genre]);
 
   const [isListModalOpen, setIsListModalOpen] = useState(false);
 
@@ -555,11 +577,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               )}
 
-              {/* Public Audience Rating Row (Popcorn icon) */}
+              {/* Public Audience Rating Row (Popcorn / Star icon) */}
               {item.public_rating && item.public_rating.trim() !== '' && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Popcorn className="w-3.5 h-3.5 text-orange-400" />
+                    {isBook ? <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400/20" /> : <Popcorn className="w-3.5 h-3.5 text-orange-400" />}
                     {t.details.public_rating || 'Рейтинг'}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0 font-mono text-[11px]">

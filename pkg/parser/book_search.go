@@ -119,7 +119,7 @@ func parseGoogleBooksResponse(body io.Reader, idPrefix string) ([]models.Catalog
 
 		pubRating := ""
 		if info.AverageRating > 0 {
-			pubRating = fmt.Sprintf("%.1f", info.AverageRating)
+			pubRating = fmt.Sprintf("%.1f", info.AverageRating*2.0)
 		}
 
 		genre := strings.Join(info.Categories, ", ")
@@ -316,6 +316,7 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			NumberOfPagesMedian int      `json:"number_of_pages_median"`
 			NumberOfPages       int      `json:"number_of_pages"`
 			Subject             []string `json:"subject"`
+			RatingsAverage      float64  `json:"ratings_average"`
 		} `json:"docs"`
 	}
 
@@ -352,6 +353,11 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 			isbn = doc.ISBN[0]
 		}
 
+		pubRating := ""
+		if doc.RatingsAverage > 0 {
+			pubRating = fmt.Sprintf("%.1f", doc.RatingsAverage*2.0)
+		}
+
 		// Use cover directly without OptimizePosterURL
 		coverURL := ""
 		if doc.CoverI > 0 {
@@ -366,16 +372,17 @@ func SearchOpenLibrary(query string) ([]models.CatalogSearchResult, error) {
 		}
 
 		results = append(results, models.CatalogSearchResult{
-			ID:          itemID,
-			Title:       doc.Title,
-			Category:    "book",
-			Author:      author,
-			Genre:       genre,
-			ReleaseYear: year,
-			Duration:    pagesStr,
-			ISBN:        isbn,
-			PosterURL:   coverURL,
-			Source:      "online",
+			ID:           itemID,
+			Title:        doc.Title,
+			Category:     "book",
+			Author:       author,
+			Genre:        genre,
+			ReleaseYear:  year,
+			Duration:     pagesStr,
+			ISBN:         isbn,
+			PublicRating: pubRating,
+			PosterURL:    coverURL,
+			Source:       "online",
 		})
 	}
 
@@ -401,12 +408,13 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 
 	var data struct {
 		Results []struct {
-			TrackName        string `json:"trackName"`
-			ArtistName       string `json:"artistName"`
-			ArtworkUrl100    string `json:"artworkUrl100"`
-			PrimaryGenreName string `json:"primaryGenreName"`
-			ReleaseDate      string `json:"releaseDate"`
-			Description      string `json:"description"`
+			TrackName         string  `json:"trackName"`
+			ArtistName        string  `json:"artistName"`
+			ArtworkUrl100     string  `json:"artworkUrl100"`
+			PrimaryGenreName  string  `json:"primaryGenreName"`
+			ReleaseDate       string  `json:"releaseDate"`
+			Description       string  `json:"description"`
+			AverageUserRating float64 `json:"averageUserRating"`
 		} `json:"results"`
 	}
 
@@ -423,19 +431,24 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 		if len(r.ReleaseDate) >= 4 {
 			year = r.ReleaseDate[:4]
 		}
+		pubRating := ""
+		if r.AverageUserRating > 0 {
+			pubRating = fmt.Sprintf("%.1f", r.AverageUserRating*2.0)
+		}
 		// Upgrade artwork resolution
 		poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
 
 		results = append(results, models.CatalogSearchResult{
-			ID:          "itunes_ebook_" + url.QueryEscape(r.TrackName),
-			Title:       r.TrackName,
-			Category:    "book",
-			Author:      r.ArtistName,
-			Genre:       r.PrimaryGenreName,
-			ReleaseYear: year,
-			Description: r.Description,
-			PosterURL:   poster,
-			Source:      "online",
+			ID:           "itunes_ebook_" + url.QueryEscape(r.TrackName),
+			Title:        r.TrackName,
+			Category:     "book",
+			Author:       r.ArtistName,
+			Genre:        r.PrimaryGenreName,
+			ReleaseYear:  year,
+			Description:  r.Description,
+			PublicRating: pubRating,
+			PosterURL:    poster,
+			Source:       "online",
 		})
 	}
 	return results, nil
@@ -606,6 +619,9 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 					}
 					if combined[idx].ReleaseYear == "" && item.ReleaseYear != "" {
 						combined[idx].ReleaseYear = item.ReleaseYear
+					}
+					if combined[idx].PublicRating == "" && item.PublicRating != "" {
+						combined[idx].PublicRating = item.PublicRating
 					}
 				} else {
 					seenTitles[key] = len(combined)
