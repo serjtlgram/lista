@@ -80,6 +80,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     }
   }, [selectedListIdProp]);
 
+  useEffect(() => {
+    const handleListsUpdate = () => refreshLists();
+    window.addEventListener('lista_lists_updated', handleListsUpdate);
+    return () => window.removeEventListener('lista_lists_updated', handleListsUpdate);
+  }, []);
+
   const handleSelectTab = (id: string) => {
     triggerHaptic();
     setSelectedListIdState(id);

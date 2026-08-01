@@ -1,5 +1,6 @@
 // lists.ts — Lists management service
 // Stores user-created lists in localStorage, syncs with Telegram CloudStorage
+import { saveToCloudStorage, loadFromCloudStorage } from './cloud';
 
 export interface UserList {
   id: string;
@@ -49,16 +50,7 @@ export function saveLists(lists: UserList[]): void {
   // Dispatch event for UI reactivity
   window.dispatchEvent(new Event('lista_lists_updated'));
 
-  const tg = (window as any).Telegram?.WebApp;
-  if (tg?.CloudStorage) {
-    try {
-      tg.CloudStorage.setItem(LISTS_KEY, JSON.stringify(lists), (err: any) => {
-        if (err) console.warn('CloudStorage setItem error:', err);
-      });
-    } catch (e) {
-      console.warn('CloudStorage lists sync error:', e);
-    }
-  }
+  saveToCloudStorage(LISTS_KEY, JSON.stringify(lists));
 }
 
 export function createList(name: string): UserList {
@@ -111,63 +103,50 @@ export function getFavoritesList(): UserList {
   return getLists().find((l) => l.id === FAVORITES_LIST_ID) || getDefaultFavoritesList();
 }
 
-export function syncListsFromCloud(): Promise<void> {
-  return new Promise((resolve) => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg?.CloudStorage) {
-      resolve();
-      return;
-    }
+export async function syncListsFromCloud(): Promise<void> {
+  const val = await loadFromCloudStorage(LISTS_KEY);
+  if (val) {
     try {
-      tg.CloudStorage.getItem(LISTS_KEY, (err: any, val: string) => {
-        if (!err && val) {
-          try {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed)) {
-              const local = getLists();
-              const cloudMap = new Map<string, UserList>();
-              parsed.forEach((l: UserList) => cloudMap.set(l.id, l));
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) {
+        const local = getLists();
+        const cloudMap = new Map<string, UserList>();
+        parsed.forEach((l: UserList) => cloudMap.set(l.id, l));
 
-              const merged: UserList[] = [];
+        const merged: UserList[] = [];
 
-              // Merge cloud lists with local items
-              cloudMap.forEach((cloudList, id) => {
-                const localList = local.find((l) => l.id === id);
-                if (localList) {
-                  const combinedItemIds = Array.from(
-                    new Set([...(cloudList.itemIds || []), ...(localList.itemIds || [])])
-                  );
-                  merged.push({
-                    ...cloudList,
-                    name: cloudList.name || localList.name,
-                    itemIds: combinedItemIds,
-                  });
-                } else {
-                  merged.push(cloudList);
-                }
-              });
-
-              // Keep local-only lists
-              local.forEach((localList) => {
-                if (!cloudMap.has(localList.id)) {
-                  merged.push(localList);
-                }
-              });
-
-              localStorage.setItem(LISTS_KEY, JSON.stringify(merged));
-              tg.CloudStorage.setItem(LISTS_KEY, JSON.stringify(merged), () => {});
-              window.dispatchEvent(new Event('lista_lists_updated'));
-            }
-          } catch (e) {
-            console.warn('Error parsing cloud lists:', e);
+        // Merge cloud lists with local items
+        cloudMap.forEach((cloudList, id) => {
+          const localList = local.find((l) => l.id === id);
+          if (localList) {
+            const combinedItemIds = Array.from(
+              new Set([...(cloudList.itemIds || []), ...(localList.itemIds || [])])
+            );
+            merged.push({
+              ...cloudList,
+              name: cloudList.name || localList.name,
+              itemIds: combinedItemIds,
+            });
+          } else {
+            merged.push(cloudList);
           }
-        }
-        resolve();
-      });
-    } catch {
-      resolve();
+        });
+
+        // Keep local-only lists
+        local.forEach((localList) => {
+          if (!cloudMap.has(localList.id)) {
+            merged.push(localList);
+          }
+        });
+
+        localStorage.setItem(LISTS_KEY, JSON.stringify(merged));
+        saveToCloudStorage(LISTS_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new Event('lista_lists_updated'));
+      }
+    } catch (e) {
+      console.warn('Error parsing cloud lists:', e);
     }
-  });
+  }
 }
 
 export const FAVORITES_ID = FAVORITES_LIST_ID;

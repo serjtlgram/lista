@@ -1,5 +1,6 @@
 // favorites.ts — Favorites management service
 // Stores favorite item IDs in localStorage, syncs with Telegram CloudStorage
+import { saveToCloudStorage, loadFromCloudStorage } from './cloud';
 
 const FAVORITES_KEY = 'lista_favorites';
 
@@ -25,16 +26,7 @@ export function setFavoriteIds(ids: string[]): void {
   window.dispatchEvent(new Event('lista_favorites_updated'));
 
   // Sync to Telegram CloudStorage
-  const tg = (window as any).Telegram?.WebApp;
-  if (tg?.CloudStorage) {
-    try {
-      tg.CloudStorage.setItem(FAVORITES_KEY, JSON.stringify(ids), (err: any) => {
-        if (err) console.warn('CloudStorage setFavoriteIds error:', err);
-      });
-    } catch (e) {
-      console.warn('CloudStorage favorites sync error:', e);
-    }
-  }
+  saveToCloudStorage(FAVORITES_KEY, JSON.stringify(ids));
 }
 
 export function isFavorite(itemId: string): boolean {
@@ -56,30 +48,17 @@ export function toggleFavorite(itemId: string): boolean {
 }
 
 export async function syncFavoritesFromCloud(): Promise<void> {
-  return new Promise((resolve) => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg?.CloudStorage) {
-      resolve();
-      return;
-    }
+  const val = await loadFromCloudStorage(FAVORITES_KEY);
+  if (val) {
     try {
-      tg.CloudStorage.getItem(FAVORITES_KEY, (err: any, val: string) => {
-        if (!err && val !== undefined && val !== null && val !== '') {
-          try {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed)) {
-              const localFavs = getFavoriteIds();
-              const mergedFavs = Array.from(new Set([...parsed, ...localFavs]));
-              localStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs));
-              tg.CloudStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs), () => {});
-              window.dispatchEvent(new Event('lista_favorites_updated'));
-            }
-          } catch {}
-        }
-        resolve();
-      });
-    } catch {
-      resolve();
-    }
-  });
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) {
+        const localFavs = getFavoriteIds();
+        const mergedFavs = Array.from(new Set([...parsed, ...localFavs]));
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs));
+        saveToCloudStorage(FAVORITES_KEY, JSON.stringify(mergedFavs));
+        window.dispatchEvent(new Event('lista_favorites_updated'));
+      }
+    } catch {}
+  }
 }
