@@ -17,6 +17,7 @@ import { AddItemModal } from './components/AddItemModal';
 import { Navbar } from './components/Navbar';
 
 import { api } from './services/api';
+import { getTranslatedGenreFull } from './services/genres';
 import { getFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
 import { syncListsFromCloud } from './services/lists';
 import { Item, UserProfile, StatsData } from './types';
@@ -564,13 +565,24 @@ function safeBase64Decode(str: string): any {
       return;
     }
 
+    const catLc = (catalogItem.category || '').toLowerCase().trim();
+    const isBook = ['book', 'books', 'книги', 'книга'].includes(catLc);
+
+    let finalDuration = catalogItem.duration || '';
+    if (isBook && finalDuration && !finalDuration.includes('стр')) {
+      const digits = finalDuration.replace(/\D/g, '');
+      if (digits) finalDuration = `${digits} стр.`;
+    }
+
+    const mappedGenre = isBook && catalogItem.genre ? getTranslatedGenreFull(catalogItem.genre, t, 'book') : (catalogItem.genre || '');
+
     const payload: Partial<Item> = {
       title: catalogItem.title,
       category: catalogItem.category || 'Фильмы',
       status: 'planned',
       rating: 10,
-      genre: catalogItem.genre || '',
-      duration: catalogItem.duration || '',
+      genre: mappedGenre,
+      duration: finalDuration,
       release_year: catalogItem.release_year || '',
       poster_url: catalogItem.poster_url || '',
       description: catalogItem.description || '',

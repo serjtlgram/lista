@@ -255,10 +255,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSelectSuggestion = (sug: CatalogItem) => {
     setTitle(sug.title);
+    const targetCat = sug.category || category;
     if (sug.category) {
       setCategory(sug.category);
     }
-    if (sug.genre) setGenre(getTranslatedGenreFull(sug.genre, t));
+    if (sug.genre) setGenre(getTranslatedGenreFull(sug.genre, t, targetCat));
     if (sug.release_year) setReleaseYear(sug.release_year);
     if (sug.poster_url) setPosterUrl(sug.poster_url);
     if (sug.youtube_url) setYoutubeUrl(sug.youtube_url);

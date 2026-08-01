@@ -60,20 +60,28 @@ const getLangCode = (t: Translations): 'ru' | 'en' | 'uk' | 'es' => {
  * Get full genre option string for dropdown in user's active language.
  * Strictly guarantees returning an official miniapp genre label.
  */
-export const getTranslatedGenreFull = (genreStr: string | null | undefined, t: Translations): string => {
+export const getTranslatedGenreFull = (genreStr: string | null | undefined, t: Translations, category?: string): string => {
   const lang = getLangCode(t);
+  const catLc = (category || '').toLowerCase().trim();
+  const isBook = ['book', 'books', 'книги', 'книга', 'книжка', 'книжки', 'libros'].includes(catLc);
+  const isGame = ['game', 'games', 'игры', 'игра', 'ігри', 'гра', 'juegos'].includes(catLc);
+
+  let categoryGenres = genresData.movies;
+  if (isBook) categoryGenres = genresData.books;
+  else if (isGame) categoryGenres = genresData.games;
+
   const allGenres = [...genresData.movies, ...genresData.books, ...genresData.games];
   
   const key = getGenreKey(genreStr);
   if (key) {
-    const match = allGenres.find(g => g.id === key);
+    const match = categoryGenres.find(g => g.id === key) || allGenres.find(g => g.id === key);
     if (match) {
       return match[lang];
     }
   }
 
-  // Fallback strictly to official "Other" genre label from our miniapp
-  const otherMatch = allGenres.find(g => g.id === 'other');
+  // Fallback strictly to official "Other" genre label from category's genre list
+  const otherMatch = categoryGenres.find(g => g.id === 'other') || allGenres.find(g => g.id === 'other');
   return otherMatch ? otherMatch[lang] : 'Другое';
 };
 

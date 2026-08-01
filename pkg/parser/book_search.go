@@ -441,20 +441,114 @@ func SearchITunesEBooks(query string) ([]models.CatalogSearchResult, error) {
 	return results, nil
 }
 
+// cleanBookSearchQuery removes common stop/noise words at the beginning of a search query
+func cleanBookSearchQuery(raw string) string {
+	q := strings.TrimSpace(raw)
+	lower := strings.ToLower(q)
+
+	prefixes := []string{
+		"вся ", "всё ", "все ", "книга ", "книги ", "роман ", "скачать ", "читать ", "купить ", "про ",
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(lower, p) {
+			q = strings.TrimSpace(q[len(p):])
+			lower = strings.ToLower(q)
+		}
+	}
+	return q
+}
+
+// SearchWikiBooks queries Russian Wikipedia for book articles
+func SearchWikiBooks(query string) ([]models.CatalogSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	apiURL := fmt.Sprintf("https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", url.QueryEscape(query))
+	resp, err := bookHTTPGet(apiURL, 4)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Query struct {
+			Search []struct {
+				Title   string `json:"title"`
+				Snippet string `json:"snippet"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	var results []models.CatalogSearchResult
+	for _, item := range data.Query.Search {
+		if strings.TrimSpace(item.Title) == "" {
+			continue
+		}
+		tLower := strings.ToLower(item.Title)
+		sLower := strings.ToLower(item.Snippet)
+		if !strings.Contains(sLower, "роман") && !strings.Contains(sLower, "книг") && !strings.Contains(sLower, "писател") && !strings.Contains(tLower, "роман") && !strings.Contains(tLower, "книг") {
+			continue
+		}
+
+		cleanTitle := strings.ReplaceAll(item.Title, " (роман)", "")
+		cleanTitle = strings.ReplaceAll(cleanTitle, " (повесть)", "")
+		cleanTitle = strings.ReplaceAll(cleanTitle, " (книга)", "")
+
+		results = append(results, models.CatalogSearchResult{
+			ID:          "wiki_book_" + url.QueryEscape(cleanTitle),
+			Title:       cleanTitle,
+			Category:    "book",
+			Description: cleanHTMLSnippet(item.Snippet),
+			Source:      "online",
+		})
+		if len(results) >= 3 {
+			break
+		}
+	}
+	return results, nil
+}
+
 // SearchBooksMultiSource queries ALL book sources CONCURRENTLY and returns combined results quickly
 func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	type resultSet struct {
 		items []models.CatalogSearchResult
 	}
 
-	ch := make(chan resultSet, 5)
+	cleanedQuery := cleanBookSearchQuery(query)
 
-	// Run all 5 sources in parallel goroutines
+	goroutineCount := 6
+	if cleanedQuery != query && len(cleanedQuery) >= 2 {
+		goroutineCount = 12
+	}
+
+	ch := make(chan resultSet, goroutineCount)
+
+	// Run primary query sources
 	go func() { items, _ := SearchGoogleBooks(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchGoogleBooksAny(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchFantLab(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchOpenLibrary(query); ch <- resultSet{items} }()
 	go func() { items, _ := SearchITunesEBooks(query); ch <- resultSet{items} }()
+	go func() { items, _ := SearchWikiBooks(query); ch <- resultSet{items} }()
+
+	// If cleaned query is different, run cleaned query sources as fallback
+	if cleanedQuery != query && len(cleanedQuery) >= 2 {
+		go func() { items, _ := SearchGoogleBooks(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchGoogleBooksAny(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchFantLab(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchOpenLibrary(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchITunesEBooks(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchWikiBooks(cleanedQuery); ch <- resultSet{items} }()
+	}
 
 	// Collect all results, wait max 6 seconds
 	timer := time.NewTimer(6 * time.Second)
@@ -463,9 +557,8 @@ func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
 	var combined []models.CatalogSearchResult
 	seenTitles := make(map[string]int)
 	received := 0
-	total := 5
 
-	for received < total {
+	for received < goroutineCount {
 		select {
 		case res := <-ch:
 			for _, item := range res.items {
