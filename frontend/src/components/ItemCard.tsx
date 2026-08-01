@@ -264,7 +264,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           <img
             src={posterSrc}
             referrerPolicy="no-referrer"
-            className="w-[52px] h-[78px] object-cover object-center rounded-xl bg-gray-200 dark:bg-cardDark shrink-0 self-center"
+            className="w-[60px] h-[90px] object-cover object-center rounded-xl bg-gray-200 dark:bg-cardDark shrink-0 self-center"
             alt={item.title}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
