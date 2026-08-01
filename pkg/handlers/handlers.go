@@ -531,6 +531,107 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	posterURL := strings.TrimSpace(req.PosterURL)
+
+	directorVal := strings.TrimSpace(req.Director)
+	castVal := strings.TrimSpace(req.Cast)
+	genreVal := strings.TrimSpace(req.Genre)
+	durationVal := strings.TrimSpace(req.Duration)
+	releaseYearVal := strings.TrimSpace(req.ReleaseYear)
+	descVal := strings.TrimSpace(req.Description)
+
+	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "") {
+		if h.DB != nil && h.DB.Pool != nil {
+			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc string
+			errScan := h.DB.Pool.QueryRow(r.Context(), `
+				SELECT director, cast_members, duration, genre, release_year, poster_url, description
+				FROM items
+				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '')
+				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END) DESC
+				LIMIT 1
+			`, titleTrimmed, cat).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc)
+			if errScan == nil {
+				if directorVal == "" {
+					directorVal = dbDir
+				}
+				if castVal == "" {
+					castVal = dbCast
+				}
+				if durationVal == "" {
+					durationVal = dbDur
+				}
+				if genreVal == "" {
+					genreVal = dbGenre
+				}
+				if releaseYearVal == "" {
+					releaseYearVal = dbYear
+				}
+				if posterURL == "" {
+					posterURL = dbPoster
+				}
+				if descVal == "" {
+					descVal = dbDesc
+				}
+			}
+		}
+
+		if directorVal == "" || castVal == "" || durationVal == "" {
+			if h.KinopoiskAPIKey != "" {
+				kpResults := fetchKinopoiskInline(titleTrimmed, h.KinopoiskAPIKey, cat)
+				if len(kpResults) > 0 {
+					best := kpResults[0]
+					if directorVal == "" {
+						directorVal = best.Director
+					}
+					if castVal == "" {
+						castVal = best.Cast
+					}
+					if durationVal == "" {
+						durationVal = best.Duration
+					}
+					if genreVal == "" {
+						genreVal = best.Genre
+					}
+					if releaseYearVal == "" {
+						releaseYearVal = best.ReleaseYear
+					}
+					if posterURL == "" {
+						posterURL = best.PosterURL
+					}
+					if descVal == "" {
+						descVal = best.Description
+					}
+				}
+			}
+			if (directorVal == "" || castVal == "") && h.TMDBAPIKey != "" {
+				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat)
+				if len(tmdbResults) > 0 {
+					best := tmdbResults[0]
+					if directorVal == "" {
+						directorVal = best.Director
+					}
+					if castVal == "" {
+						castVal = best.Cast
+					}
+					if durationVal == "" {
+						durationVal = best.Duration
+					}
+					if genreVal == "" {
+						genreVal = best.Genre
+					}
+					if releaseYearVal == "" {
+						releaseYearVal = best.ReleaseYear
+					}
+					if posterURL == "" {
+						posterURL = best.PosterURL
+					}
+					if descVal == "" {
+						descVal = best.Description
+					}
+				}
+			}
+		}
+	}
+
 	if posterURL != "" {
 		posterURL = parser.OptimizePosterURL(nil, posterURL)
 	}
@@ -548,16 +649,16 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Category = cat
 	createdItem.Status = status
 	createdItem.Rating = req.Rating
-	createdItem.Genre = req.Genre
-	createdItem.Duration = req.Duration
-	createdItem.ReleaseYear = req.ReleaseYear
-	createdItem.PosterURL = req.PosterURL
-	createdItem.Description = req.Description
+	createdItem.Genre = genreVal
+	createdItem.Duration = durationVal
+	createdItem.ReleaseYear = releaseYearVal
+	createdItem.PosterURL = posterURL
+	createdItem.Description = descVal
 	createdItem.Note = req.Note
 	createdItem.RawInput = req.RawInput
 	createdItem.YoutubeURL = ytURL
-	createdItem.Director = req.Director
-	createdItem.Cast = req.Cast
+	createdItem.Director = directorVal
+	createdItem.Cast = castVal
 	createdItem.Author = req.Author
 	createdItem.ISBN = req.ISBN
 	createdItem.CompletedAt = completedAt
@@ -565,7 +666,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		req.Genre, req.Duration, req.ReleaseYear, req.PosterURL, req.Description, req.Note, req.RawInput, ytURL, req.Director, req.Cast, req.Author, req.ISBN, completedAt,
+		genreVal, durationVal, releaseYearVal, posterURL, descVal, req.Note, req.RawInput, ytURL, directorVal, castVal, req.Author, req.ISBN, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -2568,11 +2669,13 @@ func fetchITunesInline(query string, targetCat string) []models.CatalogSearchRes
 		Results []struct {
 			TrackName        string `json:"trackName"`
 			CollectionName   string `json:"collectionName"`
+			ArtistName       string `json:"artistName"`
 			ArtworkUrl100    string `json:"artworkUrl100"`
 			Kind             string `json:"kind"`
 			WrapperType      string `json:"wrapperType"`
 			PrimaryGenreName string `json:"primaryGenreName"`
 			ReleaseDate      string `json:"releaseDate"`
+			TrackTimeMillis  int    `json:"trackTimeMillis"`
 			LongDescription  string `json:"longDescription"`
 		} `json:"results"`
 	}
@@ -2601,6 +2704,19 @@ func fetchITunesInline(query string, targetCat string) []models.CatalogSearchRes
 				year = r.ReleaseDate[:4]
 			}
 
+			duration := ""
+			if r.TrackTimeMillis > 0 {
+				totalMin := r.TrackTimeMillis / 60000
+				if totalMin > 0 {
+					duration = fmt.Sprintf("%d мин", totalMin)
+				}
+			}
+
+			director := ""
+			if cat == "movie" && r.ArtistName != "" {
+				director = r.ArtistName
+			}
+
 			poster := strings.ReplaceAll(r.ArtworkUrl100, "100x100bb", "600x600bb")
 			rawID := fmt.Sprintf("itunes_%s_%s", cat, title)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
@@ -2610,9 +2726,11 @@ func fetchITunesInline(query string, targetCat string) []models.CatalogSearchRes
 				Title:       title,
 				Category:    cat,
 				Genre:       r.PrimaryGenreName,
+				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
 				Description: r.LongDescription,
+				Director:    director,
 			})
 		}
 	}
@@ -2706,6 +2824,11 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 			}
 			cleanDesc := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(show.Summary, "")
 
+			duration := ""
+			if show.Runtime > 0 {
+				duration = fmt.Sprintf("%d мин", show.Runtime)
+			}
+
 			rawID := fmt.Sprintf("tvmaze_%d", show.ID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
@@ -2714,6 +2837,7 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 				Title:       show.Name,
 				Category:    "show",
 				Genre:       genre,
+				Duration:    duration,
 				ReleaseYear: year,
 				PosterURL:   poster,
 				Description: cleanDesc,
@@ -2836,8 +2960,16 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		type tmdbRes struct {
+			idx  int
+			item models.CatalogSearchResult
+		}
+		resCh := make(chan tmdbRes, len(data.Results))
+		var wg sync.WaitGroup
+
+		candidateCount := 0
 		for i, r := range data.Results {
-			if i >= 6 {
+			if candidateCount >= 6 {
 				break
 			}
 			title := r.Title
@@ -2859,6 +2991,8 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 			if targetCat == "show" && cat != "show" {
 				continue
 			}
+
+			candidateCount++
 
 			year := ""
 			if len(r.ReleaseDate) >= 4 {
@@ -2883,7 +3017,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 			rawID := fmt.Sprintf("tmdb_%s_%d", r.MediaType, r.ID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
-			list = append(list, models.CatalogSearchResult{
+			baseItem := models.CatalogSearchResult{
 				ID:          itemID,
 				Title:       title,
 				Category:    cat,
@@ -2891,7 +3025,52 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 				ReleaseYear: year,
 				PosterURL:   poster,
 				Description: r.Overview,
-			})
+			}
+
+			wg.Add(1)
+			go func(idx int, tmdbID int, mediaType string, bItem models.CatalogSearchResult) {
+				defer wg.Done()
+				if details, err := parser.FetchTMDbDetails(client, tmdbKey, strconv.Itoa(tmdbID), mediaType); err == nil && details != nil {
+					if details.Director != "" {
+						bItem.Director = details.Director
+					}
+					if details.Cast != "" {
+						bItem.Cast = details.Cast
+					}
+					if details.Duration != "" {
+						bItem.Duration = details.Duration
+					}
+					if details.Genre != "" {
+						bItem.Genre = details.Genre
+					}
+					if details.ReleaseYear != "" {
+						bItem.ReleaseYear = details.ReleaseYear
+					}
+					if details.PosterURL != "" {
+						bItem.PosterURL = details.PosterURL
+					}
+					if details.Description != "" {
+						bItem.Description = details.Description
+					}
+					if details.YoutubeURL != "" {
+						bItem.YoutubeURL = details.YoutubeURL
+					}
+				}
+				resCh <- tmdbRes{idx: idx, item: bItem}
+			}(i, r.ID, r.MediaType, baseItem)
+		}
+
+		wg.Wait()
+		close(resCh)
+
+		itemsMap := make(map[int]models.CatalogSearchResult)
+		for res := range resCh {
+			itemsMap[res.idx] = res.item
+		}
+		for i := 0; i < len(data.Results); i++ {
+			if item, ok := itemsMap[i]; ok {
+				list = append(list, item)
+			}
 		}
 	}
 
@@ -2971,8 +3150,16 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		type kpRes struct {
+			idx  int
+			item models.CatalogSearchResult
+		}
+		resCh := make(chan kpRes, len(data.Films))
+		var wg sync.WaitGroup
+
+		candidateCount := 0
 		for i, film := range data.Films {
-			if i >= 6 {
+			if candidateCount >= 6 {
 				break
 			}
 			title := film.NameRu
@@ -2996,6 +3183,8 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				continue
 			}
 
+			candidateCount++
+
 			genre := ""
 			if len(film.Genres) > 0 {
 				genre = strings.Title(film.Genres[0].Genre)
@@ -3006,7 +3195,7 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 			rawID := fmt.Sprintf("kp_%d", film.FilmID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
-			list = append(list, models.CatalogSearchResult{
+			baseItem := models.CatalogSearchResult{
 				ID:          itemID,
 				Title:       title,
 				Category:    cat,
@@ -3015,7 +3204,29 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				ReleaseYear: film.Year,
 				PosterURL:   poster,
 				Description: film.Description,
-			})
+			}
+
+			wg.Add(1)
+			go func(idx int, fID int, bItem models.CatalogSearchResult) {
+				defer wg.Done()
+				dir, cast := parser.FetchKinopoiskStaff(client, kpKey, fID)
+				bItem.Director = dir
+				bItem.Cast = cast
+				resCh <- kpRes{idx: idx, item: bItem}
+			}(i, film.FilmID, baseItem)
+		}
+
+		wg.Wait()
+		close(resCh)
+
+		itemsMap := make(map[int]models.CatalogSearchResult)
+		for res := range resCh {
+			itemsMap[res.idx] = res.item
+		}
+		for i := 0; i < len(data.Films); i++ {
+			if item, ok := itemsMap[i]; ok {
+				list = append(list, item)
+			}
 		}
 	}
 

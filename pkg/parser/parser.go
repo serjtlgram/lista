@@ -752,6 +752,9 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 		FirstAirDate string `json:"first_air_date"`
 		Runtime      int    `json:"runtime"`
 		EpisodeRun   []int  `json:"episode_run_time"`
+		CreatedBy    []struct {
+			Name string `json:"name"`
+		} `json:"created_by"`
 		Genres       []struct {
 			Name string `json:"name"`
 		} `json:"genres"`
@@ -809,12 +812,23 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 		media.Genre = cleanFirstGenre(data.Genres[0].Name)
 	}
 
-	// Director
+	// Director / Creator
 	for _, c := range data.Credits.Crew {
 		if c.Job == "Director" {
 			media.Director = c.Name
 			break
 		}
+	}
+	if media.Director == "" && mediaType == "tv" {
+		for _, c := range data.Credits.Crew {
+			if c.Job == "Creator" || c.Job == "Executive Producer" {
+				media.Director = c.Name
+				break
+			}
+		}
+	}
+	if media.Director == "" && len(data.CreatedBy) > 0 {
+		media.Director = data.CreatedBy[0].Name
 	}
 
 	// Cast (1-6 max)
