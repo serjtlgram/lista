@@ -91,7 +91,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       return (
         <>
           {d}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.days_short_unit || 'д'}</span>
-          {h > 0 && <>{h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span></>}
+          {h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span>
         </>
       );
     }
@@ -101,7 +101,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       return (
         <>
           {m}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.months_short_unit || 'м'}</span>
-          {remDays > 0 && <>{remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span></>}
+          {remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span>
         </>
       );
     }
@@ -111,7 +111,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     return (
       <>
         {y}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.years_short_unit || 'г'}</span>
-        {m > 0 && <>{m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span></>}
+        {m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span>
       </>
     );
   };

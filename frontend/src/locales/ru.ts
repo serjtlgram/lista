@@ -32,6 +32,7 @@ export const ru: Translations = {
   },
   activity: {
     this_month: 'В этом месяце',
+    all_time: 'Всего',
     added: 'Добавлено',
     spent: 'Потрачено',
     streak: 'Дней подряд',

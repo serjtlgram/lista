@@ -32,6 +32,7 @@ export const uk: Translations = {
   },
   activity: {
     this_month: 'У цьому місяці',
+    all_time: 'Всього',
     added: 'Додано',
     spent: 'Витрачено',
     streak: 'Днів поспіль',

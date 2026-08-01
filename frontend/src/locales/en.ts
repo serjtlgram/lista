@@ -32,6 +32,7 @@ export const en: Translations = {
   },
   activity: {
     this_month: 'This Month',
+    all_time: 'All time',
     added: 'Added',
     spent: 'Spent',
     streak: 'Day streak',

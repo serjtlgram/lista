@@ -26,6 +26,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   onUpdateItem,
   t,
 }) => {
+  const [viewMode, setViewMode] = useState<'month' | 'all'>('month');
+
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -38,18 +40,23 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  const displayCount = monthlyCount || monthItems.length || 0;
+  const monthDisplayCount = monthlyCount || monthItems.length || 0;
+  const allDisplayCount = items.length;
 
-  // Completed this month
+  // Completed items count
   const completedThisMonth = monthItems.filter(
     (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
   ).length;
 
+  const completedAllTime = items.filter(
+    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+  ).length;
+
   // Watch hours — only completed movies/shows, calculated from item durations
-  const watchHours = computeWatchHours(items); // all time total for context
+  const watchHours = computeWatchHours(items); // all time total
   const monthWatchHours = computeWatchHours(monthItems);
 
-  // Last 4 weeks of current month for sparkline
+  // Sparkline data for Month (4 weeks of current month)
   const weekCounts = [0, 0, 0, 0];
   monthItems.forEach((item) => {
     const dateStr = item.created_at || item.completed_at;
@@ -61,12 +68,33 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
     else weekCounts[3]++;
   });
 
-  const maxVal = Math.max(...weekCounts, 1);
-  const hasRealData = weekCounts.some((v) => v > 0);
-  const peakIdx = weekCounts.indexOf(Math.max(...weekCounts));
+  // Sparkline data for All Time (Last 4 Months)
+  const last4MonthsSlots = Array.from({ length: 4 }, (_, i) => {
+    return new Date(now.getFullYear(), now.getMonth() - (3 - i), 1);
+  });
+
+  const monthCountsAll = [0, 0, 0, 0];
+  items.forEach((item) => {
+    const dateStr = item.created_at || item.completed_at;
+    if (!dateStr) return;
+    const itemDate = new Date(dateStr);
+    for (let i = 0; i < last4MonthsSlots.length; i++) {
+      const slot = last4MonthsSlots[i];
+      const nextSlot = last4MonthsSlots[i + 1] ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      if (itemDate >= slot && itemDate < nextSlot) {
+        monthCountsAll[i]++;
+        break;
+      }
+    }
+  });
+
+  const activeSparklineCounts = viewMode === 'month' ? weekCounts : monthCountsAll;
+  const maxVal = Math.max(...activeSparklineCounts, 1);
+  const hasRealData = activeSparklineCounts.some((v) => v > 0);
+  const peakIdx = activeSparklineCounts.indexOf(Math.max(...activeSparklineCounts));
 
   // Build smooth SVG sparkline (Catmull-Rom → Cubic Bezier)
-  const pts = weekCounts.map((val, idx) => ({
+  const pts = activeSparklineCounts.map((val, idx) => ({
     x: 20 + idx * 85,
     y: hasRealData ? 30 - (val / maxVal) * 22 : 30,
     val,
@@ -91,7 +119,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   const linePath = buildPath();
   const fillPath = `${linePath} L ${pts[pts.length - 1].x},38 L ${pts[0].x},38 Z`;
-  const weekLabels = ['1–7', '8–14', '15–21', '22–31'];
+
+  const sparklineLabels = viewMode === 'month'
+    ? ['1–7 дн', '8–14 дн', '15–21 дн', '22–31 дн']
+    : last4MonthsSlots.map((d) => t.stats.short_months[d.getMonth()]);
+
+  const activeDisplayCount = viewMode === 'month' ? monthDisplayCount : allDisplayCount;
+  const activeHours = viewMode === 'month' ? monthWatchHours : watchHours;
+  const activeCompleted = viewMode === 'month' ? completedThisMonth : completedAllTime;
 
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
@@ -131,9 +166,31 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         t={t}
       />
       <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-4">
-      {/* Header */}
+      {/* Header with Mode Switcher */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-white">{t.activity.this_month}</span>
+        <div className="flex items-center gap-1 bg-cardBorder/40 p-0.5 rounded-lg text-xs font-semibold">
+          <button
+            onClick={() => setViewMode('month')}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              viewMode === 'month'
+                ? 'bg-accentViolet text-white shadow-sm font-bold'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t.activity.this_month}
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              viewMode === 'all'
+                ? 'bg-accentViolet text-white shadow-sm font-bold'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t.activity.all_time}
+          </button>
+        </div>
+
         <div className="flex items-center gap-2">
           {currentStreak > 0 && (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">
@@ -157,7 +214,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       <div className="flex items-stretch divide-x divide-cardBorder">
         <div className="flex-1 flex flex-col items-center gap-1 pr-4 text-center">
           <Plus className="w-3.5 h-3.5 text-accentViolet" />
-          <div className="text-2xl font-extrabold text-white leading-none">{displayCount}</div>
+          <div className="text-2xl font-extrabold text-white leading-none">{activeDisplayCount}</div>
           <div className="text-[10px] text-gray-400">{t.activity.added}</div>
         </div>
 
@@ -173,14 +230,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             </button>
           </div>
           <div className="text-2xl font-extrabold text-white leading-none">
-            {renderWatchTime(monthWatchHours > 0 ? monthWatchHours : watchHours)}
+            {renderWatchTime(activeHours)}
           </div>
           <div className="text-[10px] text-gray-500">{t.stats.approx_watch_time}</div>
         </div>
 
         <div className="flex-1 flex flex-col items-center gap-1 pl-4 text-center">
           <CheckCircle2 className="w-3.5 h-3.5 text-accentTeal" />
-          <div className="text-2xl font-extrabold text-accentTeal leading-none">{completedThisMonth}</div>
+          <div className="text-2xl font-extrabold text-accentTeal leading-none">{activeCompleted}</div>
           <div className="text-[10px] text-gray-400">{t.stats.completed_items}</div>
         </div>
       </div>
@@ -237,8 +294,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         </svg>
 
         <div className="flex justify-between text-[9px] text-gray-400 mt-1">
-          {weekLabels.map((lbl, i) => (
-            <span key={i} className="text-center" style={{ width: '25%' }}>{lbl} {t.stats.days_unit || 'дн'}</span>
+          {sparklineLabels.map((lbl, i) => (
+            <span key={i} className="text-center" style={{ width: '25%' }}>{lbl}</span>
           ))}
         </div>
       </div>

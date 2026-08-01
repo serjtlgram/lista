@@ -32,6 +32,7 @@ export const es: Translations = {
   },
   activity: {
     this_month: 'Este Mes',
+    all_time: 'Total',
     added: 'Añadidos',
     spent: 'Horas',
     streak: 'Días seguidos',

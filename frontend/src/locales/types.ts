@@ -32,6 +32,7 @@ export interface Translations {
   };
   activity: {
     this_month: string;
+    all_time: string;
     added: string;
     spent: string;
     streak: string;
