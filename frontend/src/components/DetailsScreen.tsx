@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MoreVertical,
@@ -220,12 +220,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   }, [item.id, item.title, item.category, item.author, item.youtube_url]);
 
+  const enrichedItemIds = useRef<Set<string>>(new Set());
+
   // Automatic background metadata enrichment on opening details view
   useEffect(() => {
     const isBook = ['book', 'books', 'книги', 'книга'].includes((item.category || '').toLowerCase().trim());
     const isMissingData = !item.public_rating || !item.description || (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
 
-    if (isMissingData && onUpdateItem) {
+    if (isMissingData && onUpdateItem && !enrichedItemIds.current.has(item.id)) {
+      enrichedItemIds.current.add(item.id);
       api
         .searchCatalog(item.title, item.category)
         .then((results) => {
