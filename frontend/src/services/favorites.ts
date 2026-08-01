@@ -15,12 +15,22 @@ export function getFavoriteIds(): string[] {
 }
 
 export function setFavoriteIds(ids: string[]): void {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+  } catch (e) {
+    console.warn('localStorage setFavoriteIds error:', e);
+  }
+
+  // Dispatch event for UI reactivity
+  window.dispatchEvent(new Event('lista_favorites_updated'));
+
   // Sync to Telegram CloudStorage
   const tg = (window as any).Telegram?.WebApp;
   if (tg?.CloudStorage) {
     try {
-      tg.CloudStorage.setItem(FAVORITES_KEY, JSON.stringify(ids), () => {});
+      tg.CloudStorage.setItem(FAVORITES_KEY, JSON.stringify(ids), (err: any) => {
+        if (err) console.warn('CloudStorage setFavoriteIds error:', err);
+      });
     } catch (e) {
       console.warn('CloudStorage favorites sync error:', e);
     }
@@ -58,7 +68,11 @@ export async function syncFavoritesFromCloud(): Promise<void> {
           try {
             const parsed = JSON.parse(val);
             if (Array.isArray(parsed)) {
-              localStorage.setItem(FAVORITES_KEY, JSON.stringify(parsed));
+              const localFavs = getFavoriteIds();
+              const mergedFavs = Array.from(new Set([...parsed, ...localFavs]));
+              localStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs));
+              tg.CloudStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs), () => {});
+              window.dispatchEvent(new Event('lista_favorites_updated'));
             }
           } catch {}
         }

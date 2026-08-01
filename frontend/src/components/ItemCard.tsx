@@ -163,6 +163,13 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
   useEffect(() => {
     recalculateLists();
+    const handleListsUpdate = () => recalculateLists();
+    window.addEventListener('lista_lists_updated', handleListsUpdate);
+    window.addEventListener('lista_favorites_updated', handleListsUpdate);
+    return () => {
+      window.removeEventListener('lista_lists_updated', handleListsUpdate);
+      window.removeEventListener('lista_favorites_updated', handleListsUpdate);
+    };
   }, [item.id, t]);
 
   const openListsModal = (e: React.MouseEvent) => {

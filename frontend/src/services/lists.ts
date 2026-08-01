@@ -40,11 +40,21 @@ export function getLists(): UserList[] {
 }
 
 export function saveLists(lists: UserList[]): void {
-  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  try {
+    localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  } catch (e) {
+    console.warn('localStorage saveLists error:', e);
+  }
+
+  // Dispatch event for UI reactivity
+  window.dispatchEvent(new Event('lista_lists_updated'));
+
   const tg = (window as any).Telegram?.WebApp;
   if (tg?.CloudStorage) {
     try {
-      tg.CloudStorage.setItem(LISTS_KEY, JSON.stringify(lists), () => {});
+      tg.CloudStorage.setItem(LISTS_KEY, JSON.stringify(lists), (err: any) => {
+        if (err) console.warn('CloudStorage setItem error:', err);
+      });
     } catch (e) {
       console.warn('CloudStorage lists sync error:', e);
     }
@@ -104,25 +114,59 @@ export function getFavoritesList(): UserList {
 export function syncListsFromCloud(): Promise<void> {
   return new Promise((resolve) => {
     const tg = (window as any).Telegram?.WebApp;
-    if (!tg?.CloudStorage) { resolve(); return; }
+    if (!tg?.CloudStorage) {
+      resolve();
+      return;
+    }
     try {
       tg.CloudStorage.getItem(LISTS_KEY, (err: any, val: string) => {
         if (!err && val) {
           try {
             const parsed = JSON.parse(val);
             if (Array.isArray(parsed)) {
-              // Merge: cloud has priority, but keep local-only lists
               const local = getLists();
-              const cloudIds = parsed.map((l: UserList) => l.id);
-              const localOnly = local.filter((l) => !cloudIds.includes(l.id));
-              const merged = [...parsed, ...localOnly];
+              const cloudMap = new Map<string, UserList>();
+              parsed.forEach((l: UserList) => cloudMap.set(l.id, l));
+
+              const merged: UserList[] = [];
+
+              // Merge cloud lists with local items
+              cloudMap.forEach((cloudList, id) => {
+                const localList = local.find((l) => l.id === id);
+                if (localList) {
+                  const combinedItemIds = Array.from(
+                    new Set([...(cloudList.itemIds || []), ...(localList.itemIds || [])])
+                  );
+                  merged.push({
+                    ...cloudList,
+                    name: cloudList.name || localList.name,
+                    itemIds: combinedItemIds,
+                  });
+                } else {
+                  merged.push(cloudList);
+                }
+              });
+
+              // Keep local-only lists
+              local.forEach((localList) => {
+                if (!cloudMap.has(localList.id)) {
+                  merged.push(localList);
+                }
+              });
+
               localStorage.setItem(LISTS_KEY, JSON.stringify(merged));
+              tg.CloudStorage.setItem(LISTS_KEY, JSON.stringify(merged), () => {});
+              window.dispatchEvent(new Event('lista_lists_updated'));
             }
-          } catch {}
+          } catch (e) {
+            console.warn('Error parsing cloud lists:', e);
+          }
         }
         resolve();
       });
-    } catch { resolve(); }
+    } catch {
+      resolve();
+    }
   });
 }
 
