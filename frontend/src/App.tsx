@@ -456,9 +456,18 @@ function safeBase64Decode(str: string): any {
   };
 
   const handleAddSharedItem = async (sharedItem: Item) => {
-    triggerHaptic();
     const norm = (s?: string) => (s || '').trim().toLowerCase();
-    const existing = items.find((i) => norm(i.title) === norm(sharedItem.title));
+    const normCat = (c?: string) => {
+      const lc = (c || '').toLowerCase().trim();
+      if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'movie';
+      if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'series';
+      if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'book';
+      if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
+      return lc;
+    };
+    const existing = items.find(
+      (i) => norm(i.title) === norm(sharedItem.title) && normCat(i.category) === normCat(sharedItem.category)
+    );
 
     if (existing) {
       if (activeTab !== 'details') {
@@ -553,7 +562,17 @@ function safeBase64Decode(str: string): any {
   const handleAddCatalogItem = async (catalogItem: any) => {
     triggerHaptic();
     const norm = (s?: string) => (s || '').trim().toLowerCase();
-    const existing = items.find((i) => norm(i.title) === norm(catalogItem.title));
+    const normCat = (c?: string) => {
+      const lc = (c || '').toLowerCase().trim();
+      if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'movie';
+      if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'series';
+      if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'book';
+      if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
+      return lc;
+    };
+    const existing = items.find(
+      (i) => norm(i.title) === norm(catalogItem.title) && normCat(i.category) === normCat(catalogItem.category)
+    );
 
     if (existing) {
       if (activeTab !== 'details') {

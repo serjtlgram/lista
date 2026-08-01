@@ -496,11 +496,11 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		checkQuery := `
 			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
 			FROM items
-			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2)
+			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))
 			LIMIT 1;
 		`
 		var existingItem models.Item
-		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed).Scan(
+		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed, req.Category, cat).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
 			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.PublicRating, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
@@ -2171,7 +2171,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	var finalItemID string = itemUUID
 	if h.DB != nil && h.DB.Pool != nil {
 		var existingID string
-		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) LIMIT 1", userID, titleTrimmed).Scan(&existingID)
+		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4)) LIMIT 1", userID, titleTrimmed, media.Category, catEn).Scan(&existingID)
 		if checkErr == nil && existingID != "" {
 			finalItemID = existingID
 			// Update missing fields if new data has director/cast/poster/duration/public_rating

@@ -112,9 +112,19 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     return () => clearTimeout(timer);
   }, [searchQuery, title]);
 
-  const userItemTitles = new Set(items.map((i) => (i.title || '').trim().toLowerCase()));
+  const normCatKey = (c?: string) => {
+    const lc = (c || '').toLowerCase().trim();
+    if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'movie';
+    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'series';
+    if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'book';
+    if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
+    return lc;
+  };
+  const userItemKeys = new Set(
+    items.map((i) => `${(i.title || '').trim().toLowerCase()}::${normCatKey(i.category)}`)
+  );
   const externalCatalogResults = catalogResults.filter(
-    (c) => !userItemTitles.has((c.title || '').trim().toLowerCase())
+    (c) => !userItemKeys.has(`${(c.title || '').trim().toLowerCase()}::${normCatKey(c.category)}`)
   );
   const isCategoryMatch = (itemCat: string, tabTitle: string): boolean => {
     const tLower = (tabTitle || '').toLowerCase().trim();
