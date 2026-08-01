@@ -347,17 +347,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         </div>
 
         {/* Absolute Star Rating / Public Rating (Top Right) */}
-        {!isPlanned && item.rating > 0 ? (
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-md shadow-sm z-10 backdrop-blur-md">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-            <span>{item.rating}</span>
+        {((!isPlanned && item.rating > 0) || (item.public_rating && item.public_rating.trim() !== '')) && (
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+            {item.public_rating && item.public_rating.trim() !== '' && (
+              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-md shadow-sm backdrop-blur-md">
+                {isBook ? <Star className="w-3 h-3 text-orange-400 fill-orange-400/20 shrink-0" /> : <Popcorn className="w-3 h-3 text-orange-400 shrink-0" />}
+                <span>{item.public_rating}</span>
+              </div>
+            )}
+            {!isPlanned && item.rating > 0 && (
+              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-md shadow-sm backdrop-blur-md">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                <span>{item.rating}</span>
+              </div>
+            )}
           </div>
-        ) : item.public_rating && item.public_rating.trim() !== '' ? (
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-md shadow-sm z-10 backdrop-blur-md">
-            {isBook ? <Star className="w-3 h-3 text-orange-400 fill-orange-400/20 shrink-0" /> : <Popcorn className="w-3 h-3 text-orange-400 shrink-0" />}
-            <span>{item.public_rating}</span>
-          </div>
-        ) : null}
+        )}
 
         {/* Absolute Minus Button (Centered vertically) */}
         {onRemoveFromList && (
