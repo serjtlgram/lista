@@ -81,15 +81,37 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   const renderWatchTime = (hours: number) => {
     if (hours < 24) {
       return (
-        <>{hours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span></>
+        <>{hours}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span></>
       );
     }
-    const d = Math.floor(hours / 24);
-    const h = hours % 24;
+    const days = hours / 24;
+    if (days < 30.5) {
+      const d = Math.floor(days);
+      const h = hours % 24;
+      return (
+        <>
+          {d}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.days_short_unit || 'д'}</span>
+          {h > 0 && <>{h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span></>}
+        </>
+      );
+    }
+    if (days < 365) {
+      const m = Math.floor(days / 30.5);
+      const remDays = Math.floor(days - m * 30.5);
+      return (
+        <>
+          {m}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.months_short_unit || 'м'}</span>
+          {remDays > 0 && <>{remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span></>}
+        </>
+      );
+    }
+    const y = Math.floor(days / 365);
+    const remDays = days - y * 365;
+    const m = Math.floor(remDays / 30.5);
     return (
       <>
-        {d}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.days_unit || 'дн'}</span>
-        {h > 0 && <>{h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_unit}</span></>}
+        {y}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.years_short_unit || 'г'}</span>
+        {m > 0 && <>{m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span></>}
       </>
     );
   };
@@ -226,7 +248,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
               <Info className="w-2.5 h-2.5" />
             </button>
           </div>
-          <div className="text-xl font-extrabold text-blue-400 leading-none">
+          <div className="text-xl font-extrabold text-blue-400 leading-none whitespace-nowrap">
             {renderWatchTime(displayHours)}
           </div>
           <div className="text-[9px] text-gray-400">{t.stats.movies_and_shows}</div>

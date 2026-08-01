@@ -181,6 +181,12 @@ export const uk: Translations = {
     approx_watch_time: '≈ перегляду',
     completed_items: 'завершено',
     weekly_activity: 'Активність за тижнями',
+    months_suffix: 'міс',
+    years_suffix: 'р',
+    hours_short_unit: 'ч',
+    days_short_unit: 'д',
+    months_short_unit: 'м',
+    years_short_unit: 'р',
   },
   favorites: {
     title: 'Улюблене',

@@ -181,6 +181,12 @@ export const es: Translations = {
     approx_watch_time: '≈ visualización',
     completed_items: 'completado',
     weekly_activity: 'Actividad Semanal',
+    months_suffix: 'm',
+    years_suffix: 'a',
+    hours_short_unit: 'h',
+    days_short_unit: 'd',
+    months_short_unit: 'm',
+    years_short_unit: 'a',
   },
   favorites: {
     title: 'Favoritos',

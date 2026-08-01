@@ -181,6 +181,12 @@ export const ru: Translations = {
     approx_watch_time: '≈ просмотра',
     completed_items: 'завершено',
     weekly_activity: 'Активность по неделям',
+    months_suffix: 'мес',
+    years_suffix: 'г',
+    hours_short_unit: 'ч',
+    days_short_unit: 'д',
+    months_short_unit: 'м',
+    years_short_unit: 'г',
   },
   favorites: {
     title: 'Избранное',

@@ -181,6 +181,12 @@ export interface Translations {
     approx_watch_time: string;
     completed_items: string;
     weekly_activity: string;
+    months_suffix: string;
+    years_suffix: string;
+    hours_short_unit: string;
+    days_short_unit: string;
+    months_short_unit: string;
+    years_short_unit: string;
   };
   favorites: {
     title: string;

@@ -101,13 +101,24 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         <>{hours}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span></>
       );
     }
-    const d = Math.floor(hours / 24);
-    const h = hours % 24;
+    const days = hours / 24;
+    if (days < 30.5) {
+      const d = Math.floor(days);
+      return (
+        <>{d}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.days_suffix}</span></>
+      );
+    }
+    const months = days / 30.5;
+    if (months < 12) {
+      const formatted = months.toFixed(1).replace(/\.0$/, '').replace('.', ',');
+      return (
+        <>{formatted}<span className="text-base font-normal text-gray-400 ml-0.5">{t.stats.months_suffix || 'мес'}</span></>
+      );
+    }
+    const years = days / 365;
+    const formatted = years.toFixed(1).replace(/\.0$/, '').replace('.', ',');
     return (
-      <>
-        {d}<span className="text-base font-normal text-gray-400 ml-0.5 mr-1.5">{t.activity.days_suffix}</span>
-        {h > 0 && <>{h}<span className="text-base font-normal text-gray-400 ml-0.5">{t.activity.hours_suffix}</span></>}
-      </>
+      <>{formatted}<span className="text-base font-normal text-gray-400 ml-0.5">{t.stats.years_suffix || 'г'}</span></>
     );
   };
 
