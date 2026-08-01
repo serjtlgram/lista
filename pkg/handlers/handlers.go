@@ -1106,7 +1106,191 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 			}
 		}
 	}
+
+	if len(results) > 0 {
+		var wg sync.WaitGroup
+		for i := range results {
+			cat := results[i].Category
+			needsEnrichment := false
+			if cat == "movie" || cat == "show" {
+				if results[i].Director == "" || results[i].Cast == "" || results[i].Duration == "" {
+					needsEnrichment = true
+				}
+			} else if cat == "book" {
+				if results[i].Author == "" || results[i].ISBN == "" {
+					needsEnrichment = true
+				}
+			}
+			if needsEnrichment {
+				wg.Add(1)
+				go func(idx int) {
+					defer wg.Done()
+					h.enrichDBCatalogResult(&results[idx])
+				}(i)
+			}
+		}
+		wg.Wait()
+	}
+
 	return results
+}
+
+func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
+	cat := mapCategoryToEn(item.Category)
+	title := strings.TrimSpace(item.Title)
+	if title == "" {
+		return false
+	}
+
+	updated := false
+
+	if cat == "movie" || cat == "show" {
+		if item.Director == "" || item.Cast == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" {
+			if h.KinopoiskAPIKey != "" {
+				kp := fetchKinopoiskInline(title, h.KinopoiskAPIKey, cat)
+				if len(kp) > 0 {
+					best := kp[0]
+					if item.Director == "" && best.Director != "" {
+						item.Director = best.Director
+						updated = true
+					}
+					if item.Cast == "" && best.Cast != "" {
+						item.Cast = best.Cast
+						updated = true
+					}
+					if item.Duration == "" && best.Duration != "" {
+						item.Duration = best.Duration
+						updated = true
+					}
+					if item.Genre == "" && best.Genre != "" {
+						item.Genre = best.Genre
+						updated = true
+					}
+					if item.ReleaseYear == "" && best.ReleaseYear != "" {
+						item.ReleaseYear = best.ReleaseYear
+						updated = true
+					}
+					if item.PosterURL == "" && best.PosterURL != "" {
+						item.PosterURL = best.PosterURL
+						updated = true
+					}
+					if item.Description == "" && best.Description != "" {
+						item.Description = best.Description
+						updated = true
+					}
+				}
+			}
+			if (item.Director == "" || item.Cast == "") && h.TMDBAPIKey != "" {
+				tmdb := fetchTMDbInline(title, h.TMDBAPIKey, cat)
+				if len(tmdb) > 0 {
+					best := tmdb[0]
+					if item.Director == "" && best.Director != "" {
+						item.Director = best.Director
+						updated = true
+					}
+					if item.Cast == "" && best.Cast != "" {
+						item.Cast = best.Cast
+						updated = true
+					}
+					if item.Duration == "" && best.Duration != "" {
+						item.Duration = best.Duration
+						updated = true
+					}
+					if item.Genre == "" && best.Genre != "" {
+						item.Genre = best.Genre
+						updated = true
+					}
+					if item.ReleaseYear == "" && best.ReleaseYear != "" {
+						item.ReleaseYear = best.ReleaseYear
+						updated = true
+					}
+					if item.PosterURL == "" && best.PosterURL != "" {
+						item.PosterURL = best.PosterURL
+						updated = true
+					}
+					if item.Description == "" && best.Description != "" {
+						item.Description = best.Description
+						updated = true
+					}
+				}
+			}
+		}
+	} else if cat == "book" {
+		if item.Author == "" || item.ISBN == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" {
+			books := parser.SearchBooksMultiSource(title)
+			if len(books) > 0 {
+				best := books[0]
+				if item.Author == "" && best.Author != "" {
+					item.Author = best.Author
+					updated = true
+				}
+				if item.ISBN == "" && best.ISBN != "" {
+					item.ISBN = best.ISBN
+					updated = true
+				}
+				if item.Duration == "" && best.Duration != "" {
+					item.Duration = best.Duration
+					updated = true
+				}
+				if item.Genre == "" && best.Genre != "" {
+					item.Genre = best.Genre
+					updated = true
+				}
+				if item.ReleaseYear == "" && best.ReleaseYear != "" {
+					item.ReleaseYear = best.ReleaseYear
+					updated = true
+				}
+				if item.PosterURL == "" && best.PosterURL != "" {
+					item.PosterURL = best.PosterURL
+					updated = true
+				}
+				if item.Description == "" && best.Description != "" {
+					item.Description = best.Description
+					updated = true
+				}
+			}
+		}
+	}
+
+	if updated {
+		go h.updateItemMetadataInDB(item.Title, cat, item.Director, item.Cast, item.Duration, item.Genre, item.ReleaseYear, item.PosterURL, item.Description, item.Author, item.ISBN)
+	}
+
+	return updated
+}
+
+func (h *Handler) updateItemMetadataInDB(title string, cat string, director string, cast string, duration string, genre string, releaseYear string, posterURL string, description string, author string, isbn string) {
+	if h.DB == nil || h.DB.Pool == nil {
+		return
+	}
+	ctx := context.Background()
+
+	posterURL = strings.TrimSpace(posterURL)
+	if posterURL != "" {
+		posterURL = parser.OptimizePosterURL(nil, posterURL)
+	}
+
+	query := `
+		UPDATE items
+		SET
+			director = CASE WHEN director = '' THEN $1 ELSE director END,
+			cast_members = CASE WHEN cast_members = '' THEN $2 ELSE cast_members END,
+			duration = CASE WHEN duration = '' THEN $3 ELSE duration END,
+			genre = CASE WHEN genre = '' THEN $4 ELSE genre END,
+			release_year = CASE WHEN release_year = '' THEN $5 ELSE release_year END,
+			poster_url = CASE WHEN poster_url = '' THEN $6 ELSE poster_url END,
+			description = CASE WHEN description = '' THEN $7 ELSE description END,
+			author = CASE WHEN author = '' THEN $8 ELSE author END,
+			isbn = CASE WHEN isbn = '' THEN $9 ELSE isbn END,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE LOWER(TRIM(title)) = LOWER(TRIM($10))
+		  AND (category = $11 OR category = $12);
+	`
+	catEn := mapCategoryToEn(cat)
+	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, title, cat, catEn)
+	if err != nil {
+		log.Printf("[UpdateItemMetadata] Error updating DB item %s: %v", title, err)
+	}
 }
 
 func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models.CatalogSearchResult) []models.CatalogSearchResult {
