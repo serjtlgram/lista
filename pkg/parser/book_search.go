@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,9 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 	}
 
 	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=%s&langRestrict=ru&maxResults=5", url.QueryEscape(query))
+	if apiKey := os.Getenv("GOOGLE_BOOKS_API_KEY"); apiKey != "" {
+		apiURL += "&key=" + apiKey
+	}
 	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
@@ -55,6 +59,9 @@ func SearchGoogleBooksAny(query string) ([]models.CatalogSearchResult, error) {
 
 	// Use intitle: prefix for better precision, no langRestrict
 	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=%s&maxResults=5", url.QueryEscape(query))
+	if apiKey := os.Getenv("GOOGLE_BOOKS_API_KEY"); apiKey != "" {
+		apiURL += "&key=" + apiKey
+	}
 	resp, err := bookHTTPGet(apiURL, 6)
 	if err != nil {
 		return nil, err
