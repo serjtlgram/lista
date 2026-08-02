@@ -895,13 +895,31 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 
 	var searchRes struct {
 		Results []struct {
-			ID        int    `json:"id"`
-			MediaType string `json:"media_type"`
+			ID           int    `json:"id"`
+			MediaType    string `json:"media_type"`
+			ReleaseDate  string `json:"release_date"`
+			FirstAirDate string `json:"first_air_date"`
 		} `json:"results"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&searchRes); err != nil {
 		return nil, err
+	}
+
+	if year != "" {
+		for _, item := range searchRes.Results {
+			if item.MediaType == "movie" || item.MediaType == "tv" {
+				itemYear := ""
+				if len(item.ReleaseDate) >= 4 {
+					itemYear = item.ReleaseDate[:4]
+				} else if len(item.FirstAirDate) >= 4 {
+					itemYear = item.FirstAirDate[:4]
+				}
+				if itemYear == year {
+					return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
+				}
+			}
+		}
 	}
 
 	for _, item := range searchRes.Results {

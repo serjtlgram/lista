@@ -3231,7 +3231,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 
 		candidateCount := 0
 		for i, r := range data.Results {
-			if candidateCount >= 6 {
+			if candidateCount >= 20 {
 				break
 			}
 			title := r.Title
