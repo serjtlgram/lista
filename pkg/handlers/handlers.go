@@ -1833,7 +1833,7 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 		return
 	}
 
-	updatedText := buildTelegramCardText(item.Title, item.Category, item.ReleaseYear, item.Duration, item.Genre, item.Director, item.Cast, item.Description, item.Status, item.Rating, item.Author, item.ISBN)
+	updatedText := buildTelegramCardText(item.Title, item.Category, item.ReleaseYear, item.Duration, item.Genre, item.Director, item.Cast, item.Description, item.Status, item.Rating, item.PublicRating, item.Author, item.ISBN)
 	replyMarkup := buildTelegramReplyMarkup(item.Category, item.Genre, item.Status, item.Rating, item.ID)
 
 	// Try updating caption first, if fails update message text
@@ -1856,7 +1856,7 @@ func (h *Handler) refreshTelegramMessageCard(chatID int64, messageID int, itemID
 	}
 }
 
-func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string, status string, rating int, extraAuthorISBN ...string) string {
+func buildTelegramCardText(title, category, releaseYear, duration, genre, director, cast, description string, status string, rating int, publicRating string, extraAuthorISBN ...string) string {
 	var authorVal, isbnVal string
 	if len(extraAuthorISBN) > 0 {
 		authorVal = extraAuthorISBN[0]
@@ -1893,6 +1893,14 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 	isPlanned := status == "" || status == "planned" || status == "в планах" || status == "у планах"
 	if !isPlanned && rating > 0 {
 		text += fmt.Sprintf("⭐ <b>Оценка:</b> %d/10\n", rating)
+	}
+
+	if publicRating != "" {
+		if catEn == "book" {
+			text += fmt.Sprintf("⭐ <b>Народный рейтинг:</b> %s\n", publicRating)
+		} else {
+			text += fmt.Sprintf("🍿 <b>Народный рейтинг:</b> %s\n", publicRating)
+		}
 	}
 
 	if cleanGenre != "" {
@@ -2165,6 +2173,45 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 
 	titleTrimmed := strings.TrimSpace(media.Title)
 	catEn := mapCategoryToEn(media.Category)
+
+	// Enrich missing data via catalog search (especially for PublicRating)
+	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" {
+		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil)
+		if len(onlineResults) > 0 {
+			best := onlineResults[0]
+			if media.PublicRating == "" && best.PublicRating != "" {
+				media.PublicRating = best.PublicRating
+			}
+			if media.Description == "" && best.Description != "" {
+				media.Description = best.Description
+			}
+			if media.PosterURL == "" && best.PosterURL != "" {
+				media.PosterURL = best.PosterURL
+			}
+			if media.ReleaseYear == "" && best.ReleaseYear != "" {
+				media.ReleaseYear = best.ReleaseYear
+			}
+			if media.Duration == "" && best.Duration != "" {
+				media.Duration = best.Duration
+			}
+			if media.Genre == "" && best.Genre != "" {
+				media.Genre = best.Genre
+			}
+			if media.Director == "" && best.Director != "" {
+				media.Director = best.Director
+			}
+			if media.Cast == "" && best.Cast != "" {
+				media.Cast = best.Cast
+			}
+			if media.Author == "" && best.Author != "" {
+				media.Author = best.Author
+			}
+			if media.ISBN == "" && best.ISBN != "" {
+				media.ISBN = best.ISBN
+			}
+		}
+	}
+
 	itemUUID := uuid.New().String()
 
 	ctx := context.Background()
@@ -2203,7 +2250,7 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		}
 	}
 
-	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description, "planned", 0, media.Author, media.ISBN)
+	captionText := buildTelegramCardText(titleTrimmed, catEn, media.ReleaseYear, media.Duration, media.Genre, media.Director, media.Cast, media.Description, "planned", 0, media.PublicRating, media.Author, media.ISBN)
 	replyMarkup := buildTelegramReplyMarkup(catEn, media.Genre, "planned", 0, finalItemID)
 
 	// 1. If poster is HTTP URL, send via sendPhoto
