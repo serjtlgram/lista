@@ -8,8 +8,29 @@ export function getFavoriteIds(): string[] {
   try {
     const raw = localStorage.getItem(FAVORITES_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    let parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    // Auto-repair from id_map
+    try {
+      const idMapStr = localStorage.getItem('lista_id_map');
+      if (idMapStr) {
+        const idMap = JSON.parse(idMapStr);
+        let changed = false;
+        parsed = parsed.map((id: string) => {
+          if (idMap[id]) {
+            changed = true;
+            return idMap[id];
+          }
+          return id;
+        });
+        if (changed) {
+          setTimeout(() => setFavoriteIds(parsed), 0);
+        }
+      }
+    } catch {}
+
+    return parsed;
   } catch {
     return [];
   }
@@ -61,4 +82,16 @@ export async function syncFavoritesFromCloud(): Promise<void> {
       }
     } catch {}
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('ListaItemCreated', (e: any) => {
+    const { tempId, realId } = e.detail;
+    const ids = getFavoriteIds();
+    const idx = ids.indexOf(tempId);
+    if (idx !== -1) {
+      ids[idx] = realId;
+      setFavoriteIds(ids);
+    }
+  });
 }

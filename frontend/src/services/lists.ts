@@ -27,8 +27,32 @@ export function getLists(): UserList[] {
   try {
     const raw = localStorage.getItem(LISTS_KEY);
     if (!raw) return [getDefaultFavoritesList()];
-    const parsed = JSON.parse(raw);
+    let parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [getDefaultFavoritesList()];
+    
+    // Auto-repair from id_map
+    try {
+      const idMapStr = localStorage.getItem('lista_id_map');
+      if (idMapStr) {
+        const idMap = JSON.parse(idMapStr);
+        let changed = false;
+        parsed = parsed.map((l: any) => {
+          if (!l.itemIds) return l;
+          const newIds = l.itemIds.map((id: string) => {
+            if (idMap[id]) {
+              changed = true;
+              return idMap[id];
+            }
+            return id;
+          });
+          return { ...l, itemIds: newIds };
+        });
+        if (changed) {
+          setTimeout(() => saveLists(parsed), 0);
+        }
+      }
+    } catch {}
+
     // Ensure favorites list always exists
     const hasFavorites = parsed.some((l: UserList) => l.id === FAVORITES_LIST_ID);
     if (!hasFavorites) {
@@ -150,3 +174,24 @@ export async function syncListsFromCloud(): Promise<void> {
 }
 
 export const FAVORITES_ID = FAVORITES_LIST_ID;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('ListaItemCreated', (e: any) => {
+    const { tempId, realId } = e.detail;
+    const lists = getLists();
+    let changed = false;
+    const updated = lists.map((l) => {
+      const idx = l.itemIds.indexOf(tempId);
+      if (idx !== -1) {
+        changed = true;
+        const newItemIds = [...l.itemIds];
+        newItemIds[idx] = realId;
+        return { ...l, itemIds: newItemIds };
+      }
+      return l;
+    });
+    if (changed) {
+      saveLists(updated);
+    }
+  });
+}
