@@ -26,6 +26,7 @@ func main() {
 		log.Printf("Warning: Failed to connect to DB: %v. Running in degraded mode.", err)
 	} else {
 		defer database.Close()
+		go database.StartCleanupJob()
 	}
 
 	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey)

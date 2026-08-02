@@ -61,3 +61,42 @@ func (db *DB) Close() {
 		db.Pool.Close()
 	}
 }
+
+func (db *DB) StartCleanupJob() {
+	go func() {
+		// Run once immediately on startup
+		db.cleanupOldCacheItems()
+
+		// Run every 24 hours
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			db.cleanupOldCacheItems()
+		}
+	}()
+}
+
+func (db *DB) cleanupOldCacheItems() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	// Delete items with user_id = 0 created more than 3 days ago
+	query := `
+		DELETE FROM items 
+		WHERE user_id = 0 
+		AND created_at < NOW() - INTERVAL '3 days'
+	`
+	tag, err := db.Pool.Exec(ctx, query)
+	if err != nil {
+		log.Printf("[CleanupJob] Error cleaning up old cache items: %v", err)
+		return
+	}
+	
+	rowsAffected := tag.RowsAffected()
+	if rowsAffected > 0 {
+		log.Printf("[CleanupJob] Successfully deleted %d old cache items", rowsAffected)
+	} else {
+		log.Printf("[CleanupJob] No old cache items to delete")
+	}
+}
