@@ -79,7 +79,7 @@ export const processSyncQueue = async (executor: FetchExecutor) => {
 
           // Dispatch event to update the UI
           window.dispatchEvent(new CustomEvent('ListaItemCreated', {
-            detail: { tempId: action.itemId, realId: response.id }
+            detail: { tempId: action.itemId, realId: response.id, serverItem: response }
           }));
         }
 

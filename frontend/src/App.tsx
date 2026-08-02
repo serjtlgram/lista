@@ -65,9 +65,9 @@ export function App() {
     syncListsFromCloud();
     
     const handleItemCreated = (e: any) => {
-      const { tempId, realId } = e.detail;
-      setItems((prev) => prev.map(i => i.id === tempId ? { ...i, id: realId } as Item : i));
-      setSelectedItem((prev) => prev?.id === tempId ? { ...prev, id: realId } as Item : prev);
+      const { tempId, realId, serverItem } = e.detail;
+      setItems((prev) => prev.map(i => i.id === tempId ? { ...i, ...serverItem, id: realId } as Item : i));
+      setSelectedItem((prev) => prev?.id === tempId ? { ...prev, ...serverItem, id: realId } as Item : prev);
     };
     window.addEventListener('ListaItemCreated', handleItemCreated);
     return () => window.removeEventListener('ListaItemCreated', handleItemCreated);
@@ -615,6 +615,7 @@ function safeBase64Decode(str: string): any {
       cast: catalogItem.cast || '',
       author: catalogItem.author || '',
       isbn: catalogItem.isbn || '',
+      public_rating: catalogItem.public_rating || '',
     };
     const createdItem = await api.createItem(payload);
     setItems((prev) => [createdItem, ...prev]);
