@@ -3,43 +3,59 @@
 
 const CHUNK_SIZE = 4000;
 
+const pendingSaves: Record<string, string> = {};
+const isSaving: Record<string, boolean> = {};
+
 export async function saveToCloudStorage(key: string, value: string): Promise<void> {
   const tg = (window as any).Telegram?.WebApp;
   if (!tg?.CloudStorage) return;
 
-  const chunks: string[] = [];
-  for (let i = 0; i < value.length; i += CHUNK_SIZE) {
-    chunks.push(value.slice(i, i + CHUNK_SIZE));
+  pendingSaves[key] = value;
+
+  if (isSaving[key]) {
+    return;
   }
 
-  return new Promise((resolve) => {
-    // 1. Save metadata (number of chunks)
-    tg.CloudStorage.setItem(`${key}_meta`, chunks.length.toString(), (err: any) => {
-      if (err) {
-        console.warn(`CloudStorage set ${key}_meta error:`, err);
-        return resolve();
-      }
+  isSaving[key] = true;
 
-      if (chunks.length === 0) {
-        return resolve();
-      }
+  while (pendingSaves[key] !== undefined) {
+    const valueToSave = pendingSaves[key];
+    delete pendingSaves[key];
 
-      // 2. Save all chunks
-      let completed = 0;
-      let hasError = false;
+    const chunks: string[] = [];
+    for (let i = 0; i < valueToSave.length; i += CHUNK_SIZE) {
+      chunks.push(valueToSave.slice(i, i + CHUNK_SIZE));
+    }
 
-      chunks.forEach((chunk, index) => {
-        tg.CloudStorage.setItem(`${key}_${index}`, chunk, (err2: any) => {
-          if (err2) hasError = true;
-          completed++;
-          if (completed === chunks.length) {
-            if (hasError) console.warn(`CloudStorage save chunk error for ${key}`);
-            resolve();
-          }
+    await new Promise<void>((resolve) => {
+      tg.CloudStorage.setItem(`${key}_meta`, chunks.length.toString(), (err: any) => {
+        if (err) {
+          console.warn(`CloudStorage set ${key}_meta error:`, err);
+          return resolve();
+        }
+
+        if (chunks.length === 0) {
+          return resolve();
+        }
+
+        let completed = 0;
+        let hasError = false;
+
+        chunks.forEach((chunk, index) => {
+          tg.CloudStorage.setItem(`${key}_${index}`, chunk, (err2: any) => {
+            if (err2) hasError = true;
+            completed++;
+            if (completed === chunks.length) {
+              if (hasError) console.warn(`CloudStorage save chunk error for ${key}`);
+              resolve();
+            }
+          });
         });
       });
     });
-  });
+  }
+
+  isSaving[key] = false;
 }
 
 export async function loadFromCloudStorage(key: string): Promise<string | null> {
