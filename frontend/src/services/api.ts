@@ -1,4 +1,5 @@
 import { Item, UserProfile, StatsData } from '../types';
+import { enqueueAction, SyncAction } from './syncQueue';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://129.151.217.58.nip.io';
 
@@ -60,27 +61,40 @@ export const api = {
   },
 
   async createItem(item: Partial<Item>): Promise<Item> {
-    const res = await fetch(`${API_BASE}/api/items`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(item),
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const mockedItem = { ...item, id: tempId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Item;
+    
+    enqueueAction('CREATE', tempId, item, async (action: SyncAction) => {
+      const res = await fetch(`${API_BASE}/api/items`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(action.payload),
+      });
+      if (!res.ok) throw new Error('Failed to create item');
+      return await res.json();
     });
-    if (!res.ok) throw new Error('Failed to create item');
-    return await res.json();
+
+    return mockedItem;
   },
 
   async updateItem(id: string, updates: Partial<Item>): Promise<void> {
-    await fetch(`${API_BASE}/api/items/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(updates),
+    enqueueAction('UPDATE', id, updates, async (action: SyncAction) => {
+      const res = await fetch(`${API_BASE}/api/items/${action.itemId}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(action.payload),
+      });
+      if (!res.ok) throw new Error('Failed to update item');
     });
   },
 
   async deleteItem(id: string): Promise<void> {
-    await fetch(`${API_BASE}/api/items/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
+    enqueueAction('DELETE', id, undefined, async (action: SyncAction) => {
+      const res = await fetch(`${API_BASE}/api/items/${action.itemId}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to delete item');
     });
   },
 

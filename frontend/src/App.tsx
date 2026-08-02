@@ -63,6 +63,14 @@ export function App() {
   useEffect(() => {
     syncFavoritesFromCloud();
     syncListsFromCloud();
+    
+    const handleItemCreated = (e: any) => {
+      const { tempId, realId } = e.detail;
+      setItems((prev) => prev.map(i => i.id === tempId ? { ...i, id: realId } as Item : i));
+      setSelectedItem((prev) => prev?.id === tempId ? { ...prev, id: realId } as Item : prev);
+    };
+    window.addEventListener('ListaItemCreated', handleItemCreated);
+    return () => window.removeEventListener('ListaItemCreated', handleItemCreated);
   }, []);
 
   useEffect(() => {
@@ -444,15 +452,16 @@ function safeBase64Decode(str: string): any {
   const handleToggleStatus = async (item: Item) => {
     triggerHaptic();
     const newStatus = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' ? 'planned' : 'completed';
-    await api.updateItem(item.id, { status: newStatus });
-    loadData();
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } as Item : i)));
+    setSelectedItem((prev) => (prev?.id === item.id ? { ...prev, status: newStatus } as Item : prev));
+    api.updateItem(item.id, { status: newStatus });
   };
 
   const handleUpdateItem = async (id: string, updates: Partial<Item>) => {
     triggerHaptic();
-    await api.updateItem(id, updates);
-    setSelectedItem((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev));
-    loadData();
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } as Item : i)));
+    setSelectedItem((prev) => (prev && prev.id === id ? { ...prev, ...updates } as Item : prev));
+    api.updateItem(id, updates);
   };
 
   const handleAddSharedItem = async (sharedItem: Item) => {
@@ -492,24 +501,22 @@ function safeBase64Decode(str: string): any {
       note: sharedItem.note,
     };
     const createdItem = await api.createItem(payload);
-    if (createdItem) {
-      setSelectedItem(createdItem as Item);
-      setActiveTab('details');
-    } else {
-      setActiveTab('home');
-    }
+    setItems((prev) => [createdItem, ...prev]);
+    setSelectedItem(createdItem);
+    setActiveTab('details');
     window.scrollTo(0, 0);
-    loadData();
   };
 
   const handleSaveItem = async (itemData: Partial<Item>) => {
     triggerHaptic();
     if (editingItem) {
-      await api.updateItem(editingItem.id, itemData);
-      setSelectedItem((prev) => (prev && prev.id === editingItem.id ? { ...prev, ...itemData } : prev));
+      setItems((prev) => prev.map((i) => (i.id === editingItem.id ? { ...i, ...itemData } as Item : i)));
+      setSelectedItem((prev) => (prev && prev.id === editingItem.id ? { ...prev, ...itemData } as Item : prev));
+      api.updateItem(editingItem.id, itemData);
       setEditingItem(null);
     } else {
-      await api.createItem(itemData);
+      const createdItem = await api.createItem(itemData);
+      setItems((prev) => [createdItem, ...prev]);
     }
 
     if (itemData.category) {
@@ -520,16 +527,14 @@ function safeBase64Decode(str: string): any {
         setStoredActiveCategories(updated);
       }
     }
-
-    loadData();
   };
 
   const handleDeleteItem = async (id: string) => {
     triggerHaptic();
-    await api.deleteItem(id);
+    setItems((prev) => prev.filter(i => i.id !== id));
     setSelectedItem(null);
     setActiveTab('home');
-    loadData();
+    api.deleteItem(id);
   };
 
   const userName =
@@ -611,8 +616,8 @@ function safeBase64Decode(str: string): any {
       author: catalogItem.author || '',
       isbn: catalogItem.isbn || '',
     };
-    await api.createItem(payload);
-    loadData();
+    const createdItem = await api.createItem(payload);
+    setItems((prev) => [createdItem, ...prev]);
   };
 
   return (
