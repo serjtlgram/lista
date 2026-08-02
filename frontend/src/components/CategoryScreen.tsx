@@ -43,7 +43,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (onSearchQueryChange) onSearchQueryChange(q);
   };
   const [showSearchInput, setShowSearchInput] = useState(true);
-  const [sortBy, setSortBy] = useState<'date' | 'year'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
@@ -223,6 +223,14 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         if (yearA === 0) return 1;
         if (yearB === 0) return -1;
         return sortOrder === 'desc' ? yearB - yearA : yearA - yearB;
+      }
+    }
+
+    if (sortBy === 'rating') {
+      const ratingA = parseFloat(a.public_rating || '0') || 0;
+      const ratingB = parseFloat(b.public_rating || '0') || 0;
+      if (ratingA !== ratingB) {
+        return sortOrder === 'desc' ? ratingB - ratingA : ratingA - ratingB;
       }
     }
 
@@ -412,6 +420,31 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${
                   sortBy === 'date'
+                    ? sortOrder === 'asc'
+                      ? 'rotate-180 text-accentViolet'
+                      : 'text-accentViolet'
+                    : 'text-gray-400'
+                }`}
+              />
+            </button>
+            <button
+              onClick={() => {
+                if (sortBy === 'rating') {
+                  setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setSortBy('rating');
+                  setSortOrder('desc');
+                }
+              }}
+              className={`flex items-center gap-1 font-medium transition active:scale-[0.97] ${
+                sortBy === 'rating' ? 'text-accentViolet font-semibold' : 'text-gray-300 hover:text-white'
+              }`}
+              title={t.details.public_rating || 'Рейтинг'}
+            >
+              <span>{t.details.public_rating || 'Рейтинг'}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  sortBy === 'rating'
                     ? sortOrder === 'asc'
                       ? 'rotate-180 text-accentViolet'
                       : 'text-accentViolet'

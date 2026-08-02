@@ -2178,36 +2178,37 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" {
 		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil)
 		if len(onlineResults) > 0 {
-			best := onlineResults[0]
-			if media.PublicRating == "" && best.PublicRating != "" {
-				media.PublicRating = best.PublicRating
-			}
-			if media.Description == "" && best.Description != "" {
-				media.Description = best.Description
-			}
-			if media.PosterURL == "" && best.PosterURL != "" {
-				media.PosterURL = best.PosterURL
-			}
-			if media.ReleaseYear == "" && best.ReleaseYear != "" {
-				media.ReleaseYear = best.ReleaseYear
-			}
-			if media.Duration == "" && best.Duration != "" {
-				media.Duration = best.Duration
-			}
-			if media.Genre == "" && best.Genre != "" {
-				media.Genre = best.Genre
-			}
-			if media.Director == "" && best.Director != "" {
-				media.Director = best.Director
-			}
-			if media.Cast == "" && best.Cast != "" {
-				media.Cast = best.Cast
-			}
-			if media.Author == "" && best.Author != "" {
-				media.Author = best.Author
-			}
-			if media.ISBN == "" && best.ISBN != "" {
-				media.ISBN = best.ISBN
+			for _, res := range onlineResults {
+				if media.PublicRating == "" && res.PublicRating != "" {
+					media.PublicRating = res.PublicRating
+				}
+				if media.Description == "" && res.Description != "" {
+					media.Description = res.Description
+				}
+				if media.PosterURL == "" && res.PosterURL != "" {
+					media.PosterURL = res.PosterURL
+				}
+				if media.ReleaseYear == "" && res.ReleaseYear != "" {
+					media.ReleaseYear = res.ReleaseYear
+				}
+				if media.Duration == "" && res.Duration != "" {
+					media.Duration = res.Duration
+				}
+				if media.Genre == "" && res.Genre != "" {
+					media.Genre = res.Genre
+				}
+				if media.Director == "" && res.Director != "" {
+					media.Director = res.Director
+				}
+				if media.Cast == "" && res.Cast != "" {
+					media.Cast = res.Cast
+				}
+				if media.Author == "" && res.Author != "" {
+					media.Author = res.Author
+				}
+				if media.ISBN == "" && res.ISBN != "" {
+					media.ISBN = res.ISBN
+				}
 			}
 		}
 	}
@@ -3195,7 +3196,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 		return list
 	}
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -3393,7 +3394,7 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 	req.Header.Set("X-API-KEY", kpKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
