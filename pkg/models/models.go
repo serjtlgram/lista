@@ -40,6 +40,7 @@ type Item struct {
 	Author       string     `json:"author,omitempty"`
 	ISBN         string     `json:"isbn,omitempty"`
 	PublicRating string     `json:"public_rating,omitempty"`
+	Country      string     `json:"country,omitempty"`
 	StartedAt    *time.Time `json:"started_at,omitempty"`
 	CompletedAt  *time.Time `json:"completed_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
@@ -64,6 +65,7 @@ type CreateItemRequest struct {
 	Author       string `json:"author,omitempty"`
 	ISBN         string `json:"isbn,omitempty"`
 	PublicRating string `json:"public_rating,omitempty"`
+	Country      string `json:"country,omitempty"`
 }
 
 type UpdateItemRequest struct {
@@ -84,6 +86,7 @@ type UpdateItemRequest struct {
 	Author       *string `json:"author,omitempty"`
 	ISBN         *string `json:"isbn,omitempty"`
 	PublicRating *string `json:"public_rating,omitempty"`
+	Country      *string `json:"country,omitempty"`
 }
 
 type CatalogSearchResult struct {
@@ -101,6 +104,7 @@ type CatalogSearchResult struct {
 	Author       string `json:"author,omitempty"`
 	ISBN         string `json:"isbn,omitempty"`
 	PublicRating string `json:"public_rating,omitempty"`
+	Country      string `json:"country,omitempty"`
 	Source       string `json:"source,omitempty"`
 }
 

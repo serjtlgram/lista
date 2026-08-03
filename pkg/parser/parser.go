@@ -38,6 +38,7 @@ type ExtractedMedia struct {
 	Author       string `json:"author,omitempty"`
 	ISBN         string `json:"isbn,omitempty"`
 	PublicRating string `json:"public_rating,omitempty"`
+	Country      string `json:"country,omitempty"`
 	YoutubeURL   string `json:"youtube_url"`
 	SourceURL    string `json:"source_url"`
 }
@@ -775,6 +776,10 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 		Genres       []struct {
 			Name string `json:"name"`
 		} `json:"genres"`
+		ProductionCountries []struct {
+			Name string `json:"name"`
+		} `json:"production_countries"`
+		OriginCountry []string `json:"origin_country"`
 		Credits struct {
 			Crew []struct {
 				Job  string `json:"job"`
@@ -830,6 +835,13 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 	// Genres
 	if len(data.Genres) > 0 {
 		media.Genre = cleanFirstGenre(data.Genres[0].Name)
+	}
+
+	// Country of production
+	if len(data.ProductionCountries) > 0 {
+		media.Country = data.ProductionCountries[0].Name
+	} else if len(data.OriginCountry) > 0 {
+		media.Country = data.OriginCountry[0]
 	}
 
 	// Director / Creator

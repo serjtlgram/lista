@@ -23,6 +23,7 @@ export interface Item {
   author?: string;
   isbn?: string;
   public_rating?: string;
+  country?: string;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
@@ -44,6 +45,7 @@ export interface CatalogItem {
   author?: string;
   isbn?: string;
   public_rating?: string;
+  country?: string;
   source?: string;
 }
 

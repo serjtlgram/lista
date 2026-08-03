@@ -225,7 +225,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   // Automatic background metadata enrichment on opening details view
   useEffect(() => {
     const isBook = ['book', 'books', 'книги', 'книга'].includes((item.category || '').toLowerCase().trim());
-    const isMissingData = !item.public_rating || !item.description || (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
+    const isMissingData = !item.public_rating || !item.description || !item.country || (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
 
     if (isMissingData && onUpdateItem && !enrichedItemIds.current.has(item.id)) {
       enrichedItemIds.current.add(item.id);
@@ -241,6 +241,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               if (!item.poster_url && match.poster_url) updates.poster_url = match.poster_url;
               if (!item.genre && match.genre) updates.genre = getTranslatedGenreFull(match.genre, t, item.category);
               if (!item.release_year && match.release_year) updates.release_year = match.release_year;
+              if (!item.country && (match as any).country) updates.country = (match as any).country;
 
               if (isBook) {
                 if (!item.author && match.author) updates.author = match.author;
@@ -259,7 +260,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         })
         .catch(() => {});
     }
-  }, [item.id, item.title, item.category, item.public_rating, item.description, item.author, item.isbn, item.duration, item.genre]);
+  }, [item.id, item.title, item.category, item.public_rating, item.description, item.author, item.isbn, item.duration, item.genre, item.country]);
 
   const [isListModalOpen, setIsListModalOpen] = useState(false);
 
@@ -529,7 +530,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
                 </span>
                 <span className="text-sm font-bold text-white">
-                  {item.release_year ? `${item.release_year}` : '2024'}
+                  {item.release_year ? item.release_year : '2024'}
+                  {item.country ? <span className="text-gray-400 font-normal"> • {item.country}</span> : null}
                 </span>
               </div>
 

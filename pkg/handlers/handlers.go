@@ -413,7 +413,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -453,7 +453,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			items = append(items, item)
@@ -494,7 +494,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	// Check if user already has an item with the same title to prevent duplicates
 	if h.DB != nil && h.DB.Pool != nil {
 		checkQuery := `
-			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))
 			LIMIT 1;
@@ -503,7 +503,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed, req.Category, cat).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
-			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.PublicRating, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
+			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.PublicRating, &existingItem.Country, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
 		)
 		if err == nil {
 			// Item already exists for this user, return existing item without creating duplicate
@@ -539,6 +539,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	releaseYearVal := strings.TrimSpace(req.ReleaseYear)
 	descVal := strings.TrimSpace(req.Description)
 	pubRatingVal := strings.TrimSpace(req.PublicRating)
+	countryVal := strings.TrimSpace(req.Country)
 
 	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
@@ -647,8 +648,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, author, isbn, public_rating, completed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, youtube_url, director, cast_members, author, isbn, public_rating, country, completed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 		RETURNING id, created_at, updated_at;
 	`
 
@@ -672,12 +673,13 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	createdItem.Author = req.Author
 	createdItem.ISBN = req.ISBN
 	createdItem.PublicRating = pubRatingVal
+	createdItem.Country = countryVal
 	createdItem.CompletedAt = completedAt
 
 	err := h.DB.Pool.QueryRow(
 		r.Context(), query,
 		itemUUID, user.ID, req.Title, cat, status, req.Rating,
-		genreVal, durationVal, releaseYearVal, posterURL, descVal, req.Note, req.RawInput, ytURL, directorVal, castVal, req.Author, req.ISBN, pubRatingVal, completedAt,
+		genreVal, durationVal, releaseYearVal, posterURL, descVal, req.Note, req.RawInput, ytURL, directorVal, castVal, req.Author, req.ISBN, pubRatingVal, countryVal, completedAt,
 	).Scan(&createdItem.ID, &createdItem.CreatedAt, &createdItem.UpdatedAt)
 
 	if err != nil {
@@ -801,6 +803,11 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	if req.PublicRating != nil {
 		query += fmt.Sprintf(", public_rating = $%d", argIdx)
 		args = append(args, *req.PublicRating)
+		argIdx++
+	}
+	if req.Country != nil {
+		query += fmt.Sprintf(", country = $%d", argIdx)
+		args = append(args, *req.Country)
 		argIdx++
 	}
 
@@ -1082,7 +1089,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 	}
 
 	query := `
-		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating
+		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country
 		FROM items
 		WHERE 1=1
 	`
@@ -1115,7 +1122,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 		defer rows.Close()
 		for rows.Next() {
 			var res models.CatalogSearchResult
-			if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN, &res.PublicRating); err == nil {
+			if err := rows.Scan(&res.ID, &res.Title, &res.Category, &res.Genre, &res.Duration, &res.ReleaseYear, &res.PosterURL, &res.Description, &res.YoutubeURL, &res.Director, &res.Cast, &res.Author, &res.ISBN, &res.PublicRating, &res.Country); err == nil {
 				res.Source = "db"
 				res.Category = mapCategoryToEn(res.Category)
 				results = append(results, res)
@@ -1556,7 +1563,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, started_at, completed_at, created_at, updated_at
 		FROM items WHERE id = $1 LIMIT 1;
 	`
 
@@ -1564,7 +1571,7 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Pool.QueryRow(r.Context(), query, itemID).Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 		&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+		&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -2240,13 +2247,13 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, finalItemID, userID)
 		} else {
 			insertQuery := `
-				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, note)
-				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country, note)
+				VALUES ($1, $2, $3, $4, 'planned', 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 				RETURNING id;
 			`
 			_ = h.DB.Pool.QueryRow(ctx, insertQuery,
 				itemUUID, userID, titleTrimmed, catEn, media.Genre, media.Duration, media.ReleaseYear,
-				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN, media.PublicRating, rawURL,
+				media.PosterURL, media.Description, media.YoutubeURL, media.Director, media.Cast, media.Author, media.ISBN, media.PublicRating, media.Country, rawURL,
 			).Scan(&finalItemID)
 		}
 	}
@@ -3326,6 +3333,9 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 					if details.PublicRating != "" {
 						bItem.PublicRating = details.PublicRating
 					}
+					if details.Country != "" {
+						bItem.Country = details.Country
+					}
 				}
 				resCh <- tmdbRes{idx: idx, item: bItem}
 			}(i, r.ID, r.MediaType, baseItem)
@@ -3366,11 +3376,11 @@ func (h *Handler) saveCatalogItemToDB(item models.CatalogSearchResult) {
 	}
 
 	query := `
-		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, created_at, updated_at)
-		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country, created_at, updated_at)
+		VALUES ($1, 0, $2, $3, 'planned', 0, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO NOTHING;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, itemID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN, item.PublicRating)
+	_, err := h.DB.Pool.Exec(ctx, query, itemID, item.Title, catEn, item.Genre, item.Duration, item.ReleaseYear, poster, item.Description, item.YoutubeURL, item.Director, item.Cast, item.Author, item.ISBN, item.PublicRating, item.Country)
 	if err != nil {
 		log.Printf("[SaveCatalogItem] Error saving catalog item %s (%s): %v", itemID, item.Title, err)
 	}
