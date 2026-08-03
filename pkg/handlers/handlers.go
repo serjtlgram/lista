@@ -814,7 +814,13 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	query += " WHERE id = $1 AND user_id = $2"
 
 	res, err := h.DB.Pool.Exec(r.Context(), query, args...)
-	if err != nil || res.RowsAffected() == 0 {
+	if err != nil {
+		log.Printf("UpdateItem SQL error: %v (query: %s)", err, query)
+		http.Error(w, `{"error":"item not found or update failed"}`, http.StatusNotFound)
+		return
+	}
+	if res.RowsAffected() == 0 {
+		log.Printf("UpdateItem returned 0 rows affected (query: %s)", query)
 		http.Error(w, `{"error":"item not found or update failed"}`, http.StatusNotFound)
 		return
 	}
