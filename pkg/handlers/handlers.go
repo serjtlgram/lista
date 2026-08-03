@@ -1439,10 +1439,10 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 	bookBucket := []models.CatalogSearchResult{}
 	gameBucket := []models.CatalogSearchResult{}
 
-	seenMovie := make(map[string]bool)
-	seenShow := make(map[string]bool)
+	seenMovie := make(map[string]int)
+	seenShow := make(map[string]int)
 	seenBook := make(map[string]int)
-	seenGame := make(map[string]bool)
+	seenGame := make(map[string]int)
 
 	allRaw := append(dbItems, onlineItems...)
 
@@ -1453,16 +1453,51 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 			continue
 		}
 
+		mergeItem := func(bucket []models.CatalogSearchResult, idx int) []models.CatalogSearchResult {
+			if bucket[idx].Country == "" && item.Country != "" {
+				bucket[idx].Country = item.Country
+			}
+			if bucket[idx].Description == "" && item.Description != "" {
+				bucket[idx].Description = item.Description
+			}
+			if bucket[idx].PosterURL == "" && item.PosterURL != "" {
+				bucket[idx].PosterURL = item.PosterURL
+			}
+			if bucket[idx].PublicRating == "" && item.PublicRating != "" {
+				bucket[idx].PublicRating = item.PublicRating
+			}
+			if bucket[idx].Director == "" && item.Director != "" {
+				bucket[idx].Director = item.Director
+			}
+			if bucket[idx].Cast == "" && item.Cast != "" {
+				bucket[idx].Cast = item.Cast
+			}
+			if bucket[idx].Duration == "" && item.Duration != "" {
+				bucket[idx].Duration = item.Duration
+			}
+			if bucket[idx].ReleaseYear == "" && item.ReleaseYear != "" {
+				bucket[idx].ReleaseYear = item.ReleaseYear
+			}
+			if bucket[idx].Genre == "" && item.Genre != "" {
+				bucket[idx].Genre = item.Genre
+			}
+			return bucket
+		}
+
 		switch normCat {
 		case "movie":
-			if !seenMovie[titleKey] {
-				seenMovie[titleKey] = true
+			if idx, ok := seenMovie[titleKey]; !ok {
+				seenMovie[titleKey] = len(movieBucket)
 				movieBucket = append(movieBucket, item)
+			} else {
+				movieBucket = mergeItem(movieBucket, idx)
 			}
 		case "show":
-			if !seenShow[titleKey] {
-				seenShow[titleKey] = true
+			if idx, ok := seenShow[titleKey]; !ok {
+				seenShow[titleKey] = len(showBucket)
 				showBucket = append(showBucket, item)
+			} else {
+				showBucket = mergeItem(showBucket, idx)
 			}
 		case "book":
 			if idx, ok := seenBook[titleKey]; !ok {
