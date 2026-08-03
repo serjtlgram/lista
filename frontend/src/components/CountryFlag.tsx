@@ -66,38 +66,12 @@ interface CountryFlagProps {
 export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className }) => {
   if (!country || !country.trim()) return null;
 
-  const raw = country.toLowerCase().trim();
-  const parts = raw.split(/[,/]/).map(p => p.trim());
+  const raw = country.trim();
 
-  // 1. Check priority matches across all parts
-  for (const item of countryPriority) {
-    for (const p of parts) {
-      if (item.keys.includes(p)) {
-        if (item.flag === 'USSR') {
-          return <USSRFlagSVG className={className} />;
-        }
-        return <span className="inline-block align-middle">{item.flag}</span>;
-      }
-    }
-  }
-
-  // 2. Substring match fallback for priority list
-  for (const item of countryPriority) {
-    for (const key of item.keys) {
-      if (key.length > 2 && raw.includes(key)) {
-        if (item.flag === 'USSR') {
-          return <USSRFlagSVG className={className} />;
-        }
-        return <span className="inline-block align-middle">{item.flag}</span>;
-      }
-    }
-  }
-
-  // 3. Fallback: if single 2-letter uppercase ISO code was passed (e.g. "RU", "US", "SU")
-  if (raw === 'su' || raw === 'sur') {
+  if (raw === 'USSR_FLAG') {
     return <USSRFlagSVG className={className} />;
   }
 
-  // If no flag found, return raw uppercase string (e.g., fallback short text)
-  return <span className="inline-block align-middle text-gray-400 font-semibold">{country.trim()}</span>;
+  // Ensure it's rendered inline
+  return <span className="inline-block align-middle">{raw}</span>;
 };
