@@ -1524,9 +1524,11 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 				}
 			}
 		case "game":
-			if !seenGame[titleKey] {
-				seenGame[titleKey] = true
+			if idx, ok := seenGame[titleKey]; !ok {
+				seenGame[titleKey] = len(gameBucket)
 				gameBucket = append(gameBucket, item)
+			} else {
+				gameBucket = mergeItem(gameBucket, idx)
 			}
 		}
 	}
