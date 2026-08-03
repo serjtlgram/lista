@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"bytes"
@@ -3700,47 +3700,132 @@ func mapCountryToFlag(country string) string {
 		return ""
 	}
 
-	countryPriority := []struct {
+	// Russian country names mapping
+	countryRU := []struct {
 		keys []string
-		flag string
+		code string
 	}{
-		{[]string{"ссср", "советский союз", "ussr", "soviet union", "su", "sur"}, "USSR_FLAG"},
-		{[]string{"сша", "соединенные штаты америки", "соединённые штаты америки", "us", "usa", "united states", "united states of america"}, "🇺🇸"},
-		{[]string{"великобритания", "соединенное королевство", "соединённое королевство", "gb", "uk", "united kingdom", "great britain"}, "🇬🇧"},
-		{[]string{"россия", "российская федерация", "ru", "rus", "russia"}, "🇷🇺"},
-		{[]string{"украина", "ua", "ukr", "ukraine"}, "🇺🇦"},
-		{[]string{"япония", "jp", "jpn", "japan"}, "🇯🇵"},
-		{[]string{"южная корея", "республика корея", "корея южная", "kr", "kor", "south korea", "korea"}, "🇰🇷"},
-		{[]string{"франция", "fr", "fra", "france"}, "🇫🇷"},
-		{[]string{"германия", "de", "deu", "germany"}, "🇩🇪"},
-		{[]string{"испания", "es", "esp", "spain"}, "🇪🇸"},
-		{[]string{"италия", "it", "ita", "italy"}, "🇮🇹"},
-		{[]string{"китай", "cn", "chn", "china"}, "🇨🇳"},
-		{[]string{"канада", "ca", "can", "canada"}, "🇨🇦"},
-		{[]string{"австралия", "au", "aus", "australia"}, "🇦🇺"},
-		{[]string{"индия", "in", "ind", "india"}, "🇮🇳"},
-		{[]string{"мексика", "mx", "mex", "mexico"}, "🇲🇽"},
-		{[]string{"бразилия", "br", "bra", "brazil"}, "🇧🇷"},
-		{[]string{"ирландия", "ie", "irl", "ireland"}, "🇮🇪"},
-		{[]string{"швеция", "se", "swe", "sweden"}, "🇸🇪"},
-		{[]string{"дания", "dk", "dnk", "denmark"}, "🇩🇰"},
-		{[]string{"норвегия", "no", "nor", "norway"}, "🇳🇴"},
-		{[]string{"финляндия", "fi", "fin", "finland"}, "🇫🇮"},
-		{[]string{"нидерланды", "nl", "nld", "netherlands"}, "🇳🇱"},
-		{[]string{"бельгия", "be", "bel", "belgium"}, "🇧🇪"},
-		{[]string{"швейцария", "ch", "che", "switzerland"}, "🇨🇭"},
-		{[]string{"австрия", "at", "aut", "austria"}, "🇦🇹"},
-		{[]string{"польша", "pl", "pol", "poland"}, "🇵🇱"},
-		{[]string{"чехия", "cz", "cze", "czech republic", "czechia"}, "🇨🇿"},
-		{[]string{"турция", "tr", "tur", "turkey"}, "🇹🇷"},
-		{[]string{"новая зеландия", "nz", "nzl", "new zealand"}, "🇳🇿"},
-		{[]string{"гонконг", "hk", "hkg", "hong kong"}, "🇭🇰"},
-		{[]string{"тайвань", "tw", "twn", "taiwan"}, "🇹🇼"},
-		{[]string{"аргентина", "ar", "arg", "argentina"}, "🇦🇷"},
-		{[]string{"оаэ", "объединенные арабские эмираты", "ae", "uae"}, "🇦🇪"},
-		{[]string{"юар", "южно-африканская республика", "za", "rsa", "south africa"}, "🇿🇦"},
-		{[]string{"беларусь", "by", "blr", "belarus"}, "🇧🇾"},
-		{[]string{"казахстан", "kz", "kaz", "kazakhstan"}, "🇰🇿"},
+		{[]string{"сша", "соединенные штаты", "соединённые штаты", "америка"}, "US"},
+		{[]string{"великобритания", "соединенное королевство", "соединённое королевство", "англия"}, "GB"},
+		{[]string{"россия", "российская федерация"}, "RU"},
+		{[]string{"украина"}, "UA"},
+		{[]string{"япония"}, "JP"},
+		{[]string{"южная корея", "республика корея", "корея"}, "KR"},
+		{[]string{"франция"}, "FR"},
+		{[]string{"германия"}, "DE"},
+		{[]string{"испания"}, "ES"},
+		{[]string{"италия"}, "IT"},
+		{[]string{"китай"}, "CN"},
+		{[]string{"канада"}, "CA"},
+		{[]string{"австралия"}, "AU"},
+		{[]string{"индия"}, "IN"},
+		{[]string{"мексика"}, "MX"},
+		{[]string{"бразилия"}, "BR"},
+		{[]string{"ирландия"}, "IE"},
+		{[]string{"швеция"}, "SE"},
+		{[]string{"дания"}, "DK"},
+		{[]string{"норвегия"}, "NO"},
+		{[]string{"финляндия"}, "FI"},
+		{[]string{"нидерланды", "голландия"}, "NL"},
+		{[]string{"бельгия"}, "BE"},
+		{[]string{"швейцария"}, "CH"},
+		{[]string{"австрия"}, "AT"},
+		{[]string{"польша"}, "PL"},
+		{[]string{"чехия", "чехословакия"}, "CZ"},
+		{[]string{"турция"}, "TR"},
+		{[]string{"новая зеландия"}, "NZ"},
+		{[]string{"гонконг"}, "HK"},
+		{[]string{"тайвань"}, "TW"},
+		{[]string{"аргентина"}, "AR"},
+		{[]string{"оаэ", "объединенные арабские эмираты"}, "AE"},
+		{[]string{"юар", "южно-африканская республика"}, "ZA"},
+		{[]string{"беларусь"}, "BY"},
+		{[]string{"казахстан"}, "KZ"},
+		{[]string{"португалия"}, "PT"},
+		{[]string{"румыния"}, "RO"},
+		{[]string{"венгрия"}, "HU"},
+		{[]string{"греция"}, "GR"},
+		{[]string{"израиль"}, "IL"},
+		{[]string{"таиланд"}, "TH"},
+		{[]string{"сингапур"}, "SG"},
+		{[]string{"индонезия"}, "ID"},
+		{[]string{"малайзия"}, "MY"},
+		{[]string{"вьетнам"}, "VN"},
+		{[]string{"колумбия"}, "CO"},
+		{[]string{"чили"}, "CL"},
+		{[]string{"перу"}, "PE"},
+		{[]string{"египет"}, "EG"},
+		{[]string{"нигерия"}, "NG"},
+		{[]string{"пакистан"}, "PK"},
+		{[]string{"иран"}, "IR"},
+		{[]string{"алжир"}, "DZ"},
+		{[]string{"марокко"}, "MA"},
+		{[]string{"эфиопия"}, "ET"},
+		{[]string{"ссср", "советский союз"}, "USSR"},
+	}
+
+	// English names / ISO codes mapping
+	countryEN := []struct {
+		keys []string
+		code string
+	}{
+		{[]string{"ussr", "ussr_flag", "soviet union"}, "USSR"},
+		{[]string{"usa", "us", "united states", "united states of america", "america"}, "US"},
+		{[]string{"gb", "uk", "united kingdom", "great britain", "england", "britain"}, "GB"},
+		{[]string{"ru", "rus", "russia", "russian federation"}, "RU"},
+		{[]string{"ua", "ukr", "ukraine"}, "UA"},
+		{[]string{"jp", "jpn", "japan"}, "JP"},
+		{[]string{"kr", "kor", "south korea", "korea"}, "KR"},
+		{[]string{"fr", "fra", "france"}, "FR"},
+		{[]string{"de", "deu", "germany"}, "DE"},
+		{[]string{"es", "esp", "spain"}, "ES"},
+		{[]string{"it", "ita", "italy"}, "IT"},
+		{[]string{"cn", "chn", "china"}, "CN"},
+		{[]string{"ca", "can", "canada"}, "CA"},
+		{[]string{"au", "aus", "australia"}, "AU"},
+		{[]string{"in", "ind", "india"}, "IN"},
+		{[]string{"mx", "mex", "mexico"}, "MX"},
+		{[]string{"br", "bra", "brazil"}, "BR"},
+		{[]string{"ie", "irl", "ireland"}, "IE"},
+		{[]string{"se", "swe", "sweden"}, "SE"},
+		{[]string{"dk", "dnk", "denmark"}, "DK"},
+		{[]string{"no", "nor", "norway"}, "NO"},
+		{[]string{"fi", "fin", "finland"}, "FI"},
+		{[]string{"nl", "nld", "netherlands", "holland"}, "NL"},
+		{[]string{"be", "bel", "belgium"}, "BE"},
+		{[]string{"ch", "che", "switzerland"}, "CH"},
+		{[]string{"at", "aut", "austria"}, "AT"},
+		{[]string{"pl", "pol", "poland"}, "PL"},
+		{[]string{"cz", "cze", "czech republic", "czechia"}, "CZ"},
+		{[]string{"tr", "tur", "turkey"}, "TR"},
+		{[]string{"nz", "nzl", "new zealand"}, "NZ"},
+		{[]string{"hk", "hkg", "hong kong"}, "HK"},
+		{[]string{"tw", "twn", "taiwan"}, "TW"},
+		{[]string{"ar", "arg", "argentina"}, "AR"},
+		{[]string{"ae", "uae", "united arab emirates"}, "AE"},
+		{[]string{"za", "rsa", "south africa"}, "ZA"},
+		{[]string{"by", "blr", "belarus"}, "BY"},
+		{[]string{"kz", "kaz", "kazakhstan"}, "KZ"},
+		{[]string{"pt", "prt", "portugal"}, "PT"},
+		{[]string{"ro", "rou", "romania"}, "RO"},
+		{[]string{"hu", "hun", "hungary"}, "HU"},
+		{[]string{"gr", "grc", "greece"}, "GR"},
+		{[]string{"il", "isr", "israel"}, "IL"},
+		{[]string{"th", "tha", "thailand"}, "TH"},
+		{[]string{"sg", "sgp", "singapore"}, "SG"},
+		{[]string{"id", "idn", "indonesia"}, "ID"},
+		{[]string{"my", "mys", "malaysia"}, "MY"},
+		{[]string{"vn", "vnm", "vietnam"}, "VN"},
+		{[]string{"co", "col", "colombia"}, "CO"},
+		{[]string{"cl", "chl", "chile"}, "CL"},
+		{[]string{"pe", "per", "peru"}, "PE"},
+		{[]string{"eg", "egy", "egypt"}, "EG"},
+		{[]string{"ng", "nga", "nigeria"}, "NG"},
+		{[]string{"pk", "pak", "pakistan"}, "PK"},
+		{[]string{"ir", "iri", "iran"}, "IR"},
+		{[]string{"dz", "dza", "algeria"}, "DZ"},
+		{[]string{"ma", "mar", "morocco"}, "MA"},
+		{[]string{"et", "eth", "ethiopia"}, "ET"},
 	}
 
 	parts := strings.FieldsFunc(raw, func(r rune) bool {
@@ -3750,26 +3835,33 @@ func mapCountryToFlag(country string) string {
 		parts[i] = strings.TrimSpace(p)
 	}
 
-	for _, item := range countryPriority {
+	// Check Russian names (substring match)
+	for _, item := range countryRU {
+		for _, key := range item.keys {
+			if strings.Contains(raw, key) {
+				return item.code
+			}
+		}
+	}
+
+	// Exact match English names/codes
+	for _, item := range countryEN {
 		for _, p := range parts {
 			for _, k := range item.keys {
 				if p == k {
-					return item.flag
+					return item.code
 				}
 			}
 		}
 	}
 
-	for _, item := range countryPriority {
+	// Substring match for longer English keys
+	for _, item := range countryEN {
 		for _, key := range item.keys {
 			if len(key) > 2 && strings.Contains(raw, key) {
-				return item.flag
+				return item.code
 			}
 		}
-	}
-
-	if raw == "su" || raw == "sur" {
-		return "USSR_FLAG"
 	}
 
 	return country

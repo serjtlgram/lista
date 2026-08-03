@@ -18,45 +18,18 @@ export const USSRFlagSVG: React.FC<{ className?: string }> = ({
   </svg>
 );
 
-const countryPriority: { keys: string[]; flag: string | 'USSR' }[] = [
-  { keys: ['ссср', 'советский союз', 'ussr', 'soviet union', 'su', 'sur'], flag: 'USSR' },
-  { keys: ['сша', 'соединенные штаты америки', 'соединённые штаты америки', 'us', 'usa', 'united states', 'united states of america'], flag: '🇺🇸' },
-  { keys: ['великобритания', 'соединенное королевство', 'соединённое королевство', 'gb', 'uk', 'united kingdom', 'great britain'], flag: '🇬🇧' },
-  { keys: ['россия', 'российская федерация', 'ru', 'rus', 'russia'], flag: '🇷🇺' },
-  { keys: ['украина', 'ua', 'ukr', 'ukraine'], flag: '🇺🇦' },
-  { keys: ['япония', 'jp', 'jpn', 'japan'], flag: '🇯🇵' },
-  { keys: ['южная корея', 'республика корея', 'корея южная', 'kr', 'kor', 'south korea', 'korea'], flag: '🇰🇷' },
-  { keys: ['франция', 'fr', 'fra', 'france'], flag: '🇫🇷' },
-  { keys: ['германия', 'de', 'deu', 'germany'], flag: '🇩🇪' },
-  { keys: ['испания', 'es', 'esp', 'spain'], flag: '🇪🇸' },
-  { keys: ['италия', 'it', 'ita', 'italy'], flag: '🇮🇹' },
-  { keys: ['китай', 'cn', 'chn', 'china'], flag: '🇨🇳' },
-  { keys: ['канада', 'ca', 'can', 'canada'], flag: '🇨🇦' },
-  { keys: ['австралия', 'au', 'aus', 'australia'], flag: '🇦🇺' },
-  { keys: ['индия', 'in', 'ind', 'india'], flag: '🇮🇳' },
-  { keys: ['мексика', 'mx', 'mex', 'mexico'], flag: '🇲🇽' },
-  { keys: ['бразилия', 'br', 'bra', 'brazil'], flag: '🇧🇷' },
-  { keys: ['ирландия', 'ie', 'irl', 'ireland'], flag: '🇮🇪' },
-  { keys: ['швеция', 'se', 'swe', 'sweden'], flag: '🇸🇪' },
-  { keys: ['дания', 'dk', 'dnk', 'denmark'], flag: '🇩🇰' },
-  { keys: ['норвегия', 'no', 'nor', 'norway'], flag: '🇳🇴' },
-  { keys: ['финляндия', 'fi', 'fin', 'finland'], flag: '🇫🇮' },
-  { keys: ['нидерланды', 'nl', 'nld', 'netherlands'], flag: '🇳🇱' },
-  { keys: ['бельгия', 'be', 'bel', 'belgium'], flag: '🇧🇪' },
-  { keys: ['швейцария', 'ch', 'che', 'switzerland'], flag: '🇨🇭' },
-  { keys: ['австрия', 'at', 'aut', 'austria'], flag: '🇦🇹' },
-  { keys: ['польша', 'pl', 'pol', 'poland'], flag: '🇵🇱' },
-  { keys: ['чехия', 'cz', 'cze', 'czech republic', 'czechia'], flag: '🇨🇿' },
-  { keys: ['турция', 'tr', 'tur', 'turkey'], flag: '🇹🇷' },
-  { keys: ['новая зеландия', 'nz', 'nzl', 'new zealand'], flag: '🇳🇿' },
-  { keys: ['гонконг', 'hk', 'hkg', 'hong kong'], flag: '🇭🇰' },
-  { keys: ['тайвань', 'tw', 'twn', 'taiwan'], flag: '🇹🇼' },
-  { keys: ['аргентина', 'ar', 'arg', 'argentina'], flag: '🇦🇷' },
-  { keys: ['оаэ', 'объединенные арабские эмираты', 'ae', 'uae'], flag: '🇦🇪' },
-  { keys: ['юар', 'южно-африканская республика', 'za', 'rsa', 'south africa'], flag: '🇿🇦' },
-  { keys: ['беларусь', 'by', 'blr', 'belarus'], flag: '🇧🇾' },
-  { keys: ['казахстан', 'kz', 'kaz', 'kazakhstan'], flag: '🇰🇿' },
-];
+/**
+ * Converts a 2-letter ISO country code to the corresponding flag emoji.
+ * Works by mapping each letter to its Regional Indicator Symbol equivalent.
+ * This is pure Unicode math — no emoji literals stored anywhere.
+ */
+function isoToFlagEmoji(code: string): string {
+  if (!code || code.length !== 2) return code;
+  const base = 0x1F1E6 - 65; // 'A'.charCodeAt(0) = 65
+  return Array.from(code.toUpperCase())
+    .map(c => String.fromCodePoint(c.charCodeAt(0) + base))
+    .join('');
+}
 
 interface CountryFlagProps {
   country?: string;
@@ -68,10 +41,17 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className }) 
 
   const raw = country.trim();
 
-  if (raw === 'USSR_FLAG') {
+  // USSR special case
+  if (raw === 'USSR' || raw === 'USSR_FLAG') {
     return <USSRFlagSVG className={className} />;
   }
 
-  // Ensure it's rendered inline
-  return <span className="inline-block align-middle">{raw}</span>;
+  // Standard 2-letter ISO code → flag emoji
+  if (/^[A-Z]{2}$/.test(raw)) {
+    const emoji = isoToFlagEmoji(raw);
+    return <span className="inline-block align-middle">{emoji}</span>;
+  }
+
+  // Fallback: show raw value (should rarely happen with backend normalization)
+  return <span className="inline-block align-middle text-gray-400 text-xs font-semibold">{raw}</span>;
 };
