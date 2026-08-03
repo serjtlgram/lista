@@ -34,8 +34,7 @@ import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 import { isFavorite, toggleFavorite } from '../services/favorites';
 import { ListSelectionModal } from './ListSelectionModal';
-import { getTranslatedCountry } from '../services/countries';
-import { Language } from '../locales/types';
+import { getCountryFlag } from '../services/countries';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -130,7 +129,6 @@ interface DetailsScreenProps {
   onAddSharedItem?: (item: Item) => void;
   isSharedPreview?: boolean;
   t: Translations;
-  language: Language;
 }
 
 export const DetailsScreen: React.FC<DetailsScreenProps> = ({
@@ -142,7 +140,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   onAddSharedItem,
   isSharedPreview = false,
   t,
-  language,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -533,9 +530,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
                   {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
                 </span>
-                <span className="text-sm font-bold text-white">
+                <span className="text-sm font-bold text-white flex items-center gap-1.5 inline-flex">
                   {item.release_year ? item.release_year : '2024'}
-                  {item.country ? <span className="text-gray-400 font-normal"> • {getTranslatedCountry(item.country, language)}</span> : null}
+                  {item.country && getCountryFlag(item.country) ? (
+                    <span className="font-normal text-base leading-none"> • {getCountryFlag(item.country)}</span>
+                  ) : null}
                 </span>
               </div>
 

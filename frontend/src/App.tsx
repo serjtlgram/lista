@@ -723,7 +723,6 @@ function safeBase64Decode(str: string): any {
               onAddSharedItem={handleAddSharedItem}
               isSharedPreview={(selectedItem as any).isSharedPreview}
               t={t}
-              language={language}
             />
           </section>
         )}
