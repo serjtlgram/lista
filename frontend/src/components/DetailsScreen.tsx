@@ -34,7 +34,7 @@ import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 import { isFavorite, toggleFavorite } from '../services/favorites';
 import { ListSelectionModal } from './ListSelectionModal';
-import { getCountryFlag } from '../services/countries';
+import { CountryFlag } from './CountryFlag';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -532,8 +532,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
                 <span className="text-sm font-bold text-white flex items-center gap-1.5 inline-flex">
                   {item.release_year ? item.release_year : '2024'}
-                  {item.country && getCountryFlag(item.country) ? (
-                    <span className="font-normal text-base leading-none"> • {getCountryFlag(item.country)}</span>
+                  {item.country ? (
+                    <span className="font-normal text-base leading-none flex items-center gap-1">
+                      <span className="text-gray-400"> • </span>
+                      <CountryFlag country={item.country} />
+                    </span>
                   ) : null}
                 </span>
               </div>

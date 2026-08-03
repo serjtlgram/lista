@@ -94,6 +94,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [durationMin, setDurationMin] = useState('');
 
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
+  const [country, setCountry] = useState(editingItem?.country || '');
   const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
   const [youtubeUrl, setYoutubeUrl] = useState(editingItem?.youtube_url || '');
   const [description, setDescription] = useState(editingItem?.description || '');
@@ -146,6 +147,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setRating(editingItem.rating || 10);
       setGenre(getTranslatedGenreFull(editingItem.genre, t));
       setReleaseYear(editingItem.release_year || '');
+      setCountry(editingItem.country || '');
       setPosterUrl(editingItem.poster_url || '');
       setYoutubeUrl(editingItem.youtube_url || '');
       setDescription(editingItem.description || '');
@@ -188,6 +190,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setSeasonsCount('');
       setDurationMin('');
       setReleaseYear('');
+      setCountry('');
       setPosterUrl('');
       setYoutubeUrl('');
       setDescription('');
@@ -313,6 +316,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       genre: genre.trim(),
       duration: finalDuration.trim(),
       release_year: releaseYear.trim(),
+      country: country.trim(),
       poster_url: finalPoster,
       youtube_url: youtubeUrl.trim(),
       description: description.trim(),
@@ -614,19 +618,41 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="США, СССР..."
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
                 </div>
               )}
 
               {isSeries && (
-                <div>
-                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Год</label>
-                  <input
-                    type="text"
-                    value={releaseYear}
-                    onChange={(e) => setReleaseYear(e.target.value)}
-                    placeholder={t.modal.placeholder_year}
-                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Год</label>
+                    <input
+                      type="text"
+                      value={releaseYear}
+                      onChange={(e) => setReleaseYear(e.target.value)}
+                      placeholder={t.modal.placeholder_year}
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="США, СССР, Россия"
+                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                    />
+                  </div>
                 </div>
               )}
 
