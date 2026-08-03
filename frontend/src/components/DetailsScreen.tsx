@@ -34,6 +34,8 @@ import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
 import { isFavorite, toggleFavorite } from '../services/favorites';
 import { ListSelectionModal } from './ListSelectionModal';
+import { getTranslatedCountry } from '../services/countries';
+import { Language } from '../locales/types';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -128,6 +130,7 @@ interface DetailsScreenProps {
   onAddSharedItem?: (item: Item) => void;
   isSharedPreview?: boolean;
   t: Translations;
+  language: Language;
 }
 
 export const DetailsScreen: React.FC<DetailsScreenProps> = ({
@@ -139,6 +142,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   onAddSharedItem,
   isSharedPreview = false,
   t,
+  language,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -531,7 +535,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </span>
                 <span className="text-sm font-bold text-white">
                   {item.release_year ? item.release_year : '2024'}
-                  {item.country ? <span className="text-gray-400 font-normal"> • {item.country}</span> : null}
+                  {item.country ? <span className="text-gray-400 font-normal"> • {getTranslatedCountry(item.country, language)}</span> : null}
                 </span>
               </div>
 
