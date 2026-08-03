@@ -1136,7 +1136,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 			cat := results[i].Category
 			needsEnrichment := false
 			if cat == "movie" || cat == "show" {
-				if results[i].Director == "" || results[i].Cast == "" || results[i].Duration == "" || results[i].PublicRating == "" {
+				if results[i].Director == "" || results[i].Cast == "" || results[i].Duration == "" || results[i].PublicRating == "" || results[i].Country == "" {
 					needsEnrichment = true
 				}
 			} else if cat == "book" {
@@ -1168,7 +1168,7 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 	updated := false
 
 	if cat == "movie" || cat == "show" {
-		if item.Director == "" || item.Cast == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" || item.PublicRating == "" {
+		if item.Director == "" || item.Cast == "" || item.Duration == "" || item.Genre == "" || item.ReleaseYear == "" || item.PublicRating == "" || item.Country == "" {
 			if h.KinopoiskAPIKey != "" {
 				kp := fetchKinopoiskInline(title, h.KinopoiskAPIKey, cat)
 				if len(kp) > 0 {
@@ -1205,9 +1205,13 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 						item.PublicRating = best.PublicRating
 						updated = true
 					}
+					if item.Country == "" && best.Country != "" {
+						item.Country = best.Country
+						updated = true
+					}
 				}
 			}
-			if (item.Director == "" || item.Cast == "" || item.PublicRating == "") && h.TMDBAPIKey != "" {
+			if (item.Director == "" || item.Cast == "" || item.PublicRating == "" || item.Country == "") && h.TMDBAPIKey != "" {
 				tmdb := fetchTMDbInline(title, h.TMDBAPIKey, cat)
 				if len(tmdb) > 0 {
 					best := tmdb[0]
@@ -1241,6 +1245,10 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 					}
 					if item.PublicRating == "" && best.PublicRating != "" {
 						item.PublicRating = best.PublicRating
+						updated = true
+					}
+					if item.Country == "" && best.Country != "" {
+						item.Country = best.Country
 						updated = true
 					}
 				}
@@ -1288,13 +1296,13 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 	}
 
 	if updated {
-		go h.updateItemMetadataInDB(item.Title, cat, item.Director, item.Cast, item.Duration, item.Genre, item.ReleaseYear, item.PosterURL, item.Description, item.Author, item.ISBN, item.PublicRating)
+		go h.updateItemMetadataInDB(item.Title, cat, item.Director, item.Cast, item.Duration, item.Genre, item.ReleaseYear, item.PosterURL, item.Description, item.Author, item.ISBN, item.PublicRating, item.Country)
 	}
 
 	return updated
 }
 
-func (h *Handler) updateItemMetadataInDB(title string, cat string, director string, cast string, duration string, genre string, releaseYear string, posterURL string, description string, author string, isbn string, publicRating string) {
+func (h *Handler) updateItemMetadataInDB(title string, cat string, director string, cast string, duration string, genre string, releaseYear string, posterURL string, description string, author string, isbn string, publicRating string, country string) {
 	if h.DB == nil || h.DB.Pool == nil {
 		return
 	}
@@ -1318,12 +1326,13 @@ func (h *Handler) updateItemMetadataInDB(title string, cat string, director stri
 			author = CASE WHEN author = '' THEN $8 ELSE author END,
 			isbn = CASE WHEN isbn = '' THEN $9 ELSE isbn END,
 			public_rating = CASE WHEN public_rating = '' THEN $10 ELSE public_rating END,
+			country = CASE WHEN country = '' THEN $11 ELSE country END,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE LOWER(TRIM(title)) = LOWER(TRIM($11))
-		  AND (category = $12 OR category = $13);
+		WHERE LOWER(TRIM(title)) = LOWER(TRIM($12))
+		  AND (category = $13 OR category = $14);
 	`
 	catEn := mapCategoryToEn(cat)
-	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, title, cat, catEn)
+	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, country, title, cat, catEn)
 	if err != nil {
 		log.Printf("[UpdateItemMetadata] Error updating DB item %s: %v", title, err)
 	}
@@ -3465,6 +3474,9 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 			Genres      []struct {
 				Genre string `json:"genre"`
 			} `json:"genres"`
+			Countries []struct {
+				Country string `json:"country"`
+			} `json:"countries"`
 		} `json:"films"`
 	}
 
@@ -3509,6 +3521,11 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				genre = strings.Title(film.Genres[0].Genre)
 			}
 
+			country := ""
+			if len(film.Countries) > 0 {
+				country = film.Countries[0].Country
+			}
+
 			duration := parseKinopoiskLength(film.FilmLength)
 			poster := film.PosterUrl
 			rawID := fmt.Sprintf("kp_%d", film.FilmID)
@@ -3529,6 +3546,7 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				PosterURL:    poster,
 				Description:  film.Description,
 				PublicRating: pubRating,
+				Country:      country,
 			}
 
 			wg.Add(1)
@@ -3537,9 +3555,14 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 				dir, cast := parser.FetchKinopoiskStaff(client, kpKey, fID)
 				bItem.Director = dir
 				bItem.Cast = cast
-				if bItem.PublicRating == "" {
-					if kpMedia, err := parser.FetchKinopoiskFilmByID(client, kpKey, strconv.Itoa(fID)); err == nil && kpMedia != nil && kpMedia.PublicRating != "" {
-						bItem.PublicRating = kpMedia.PublicRating
+				if bItem.PublicRating == "" || bItem.Country == "" {
+					if kpMedia, err := parser.FetchKinopoiskFilmByID(client, kpKey, strconv.Itoa(fID)); err == nil && kpMedia != nil {
+						if bItem.PublicRating == "" && kpMedia.PublicRating != "" {
+							bItem.PublicRating = kpMedia.PublicRating
+						}
+						if bItem.Country == "" && kpMedia.Country != "" {
+							bItem.Country = kpMedia.Country
+						}
 					}
 				}
 				resCh <- kpRes{idx: idx, item: bItem}

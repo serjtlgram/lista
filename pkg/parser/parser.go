@@ -1108,6 +1108,9 @@ func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string)
 		Genres           []struct {
 			Genre string `json:"genre"`
 		} `json:"genres"`
+		Countries []struct {
+			Country string `json:"country"`
+		} `json:"countries"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&film); err != nil {
@@ -1146,6 +1149,11 @@ func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string)
 		genreStr = strings.Title(film.Genres[0].Genre)
 	}
 
+	countryStr := ""
+	if len(film.Countries) > 0 {
+		countryStr = film.Countries[0].Country
+	}
+
 	pubRating := ""
 	if film.RatingKinopoisk > 0 {
 		pubRating = fmt.Sprintf("%.1f", film.RatingKinopoisk)
@@ -1161,6 +1169,7 @@ func FetchKinopoiskFilmByID(client *http.Client, kpKey string, filmIDStr string)
 		ReleaseYear:  yearStr,
 		Duration:     durationStr,
 		Genre:        genreStr,
+		Country:      countryStr,
 		PosterURL:    film.PosterUrl,
 		Description:  film.Description,
 		Director:     director,
