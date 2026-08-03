@@ -595,7 +595,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">
                       {isBook ? t.modal.pages_label : t.modal.duration_min_label}
@@ -631,30 +631,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 </div>
               )}
 
-              {isSeries && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Год</label>
-                    <input
-                      type="text"
-                      value={releaseYear}
-                      onChange={(e) => setReleaseYear(e.target.value)}
-                      placeholder={t.modal.placeholder_year}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
-                    <input
-                      type="text"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="США, СССР, Россия"
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                </div>
-              )}
+
 
               <div>
                 <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Постер (URL)</label>
