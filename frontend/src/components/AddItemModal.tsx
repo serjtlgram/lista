@@ -560,9 +560,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 </div>
               </div>
 
-              {/* Episodes & Duration Inputs */}
-              {isSeries ? (
-                <div className="grid grid-cols-3 gap-2">
+              {/* Episodes & Seasons Inputs (Series Only) */}
+              {isSeries && (
+                <div className="grid grid-cols-2 gap-2 pb-1">
                   <div>
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.episodes_label}</label>
                     <input
@@ -570,16 +570,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       value={episodesCount}
                       onChange={(e) => setEpisodesCount(e.target.value)}
                       placeholder={t.modal.episodes_placeholder}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.duration_min_label}</label>
-                    <input
-                      type="number"
-                      value={durationMin}
-                      onChange={(e) => setDurationMin(e.target.value)}
-                      placeholder={t.modal.duration_min_placeholder}
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
                   </div>
@@ -594,42 +584,43 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">
-                      {isBook ? t.modal.pages_label : t.modal.duration_min_label}
-                    </label>
-                    <input
-                      type="number"
-                      value={durationMin}
-                      onChange={(e) => setDurationMin(e.target.value)}
-                      placeholder={isBook ? t.modal.pages_placeholder : t.modal.duration_min_placeholder}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.year_label}</label>
-                    <input
-                      type="text"
-                      value={releaseYear}
-                      onChange={(e) => setReleaseYear(e.target.value)}
-                      placeholder={t.modal.placeholder_year}
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
-                    <input
-                      type="text"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="США, СССР..."
-                      className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-                    />
-                  </div>
-                </div>
               )}
+
+              {/* Duration/Pages, Year, Country (All Categories) */}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">
+                    {isBook ? t.modal.pages_label : t.modal.duration_min_label}
+                  </label>
+                  <input
+                    type="number"
+                    value={durationMin}
+                    onChange={(e) => setDurationMin(e.target.value)}
+                    placeholder={isBook ? t.modal.pages_placeholder : t.modal.duration_min_placeholder}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.year_label}</label>
+                  <input
+                    type="text"
+                    value={releaseYear}
+                    onChange={(e) => setReleaseYear(e.target.value)}
+                    placeholder={t.modal.placeholder_year}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
+                  <input
+                    type="text"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="США, СССР..."
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+              </div>
 
 
 
