@@ -1,21 +1,22 @@
-import { Item } from '../types';
-
 export type SyncActionType = 'CREATE' | 'UPDATE' | 'DELETE';
 
 export interface SyncAction {
-  id: string; // unique action ID
+  id: string;
   type: SyncActionType;
-  itemId: string; // target item ID
+  itemId: string;
   payload?: any;
   timestamp: number;
+  executor?: string; // not serializable, runtime-only
 }
 
 const SYNC_QUEUE_KEY = 'lista_sync_queue';
-const ID_MAP_KEY = 'lista_id_map'; // map temp IDs to real IDs
+const ID_MAP_KEY = 'lista_id_map';
+
+// Runtime executor registry: actionId -> executor fn
+const executorRegistry = new Map<string, (action: SyncAction) => Promise<any>>();
 
 let isProcessing = false;
 
-// Get queue
 export const getSyncQueue = (): SyncAction[] => {
   try {
     const data = localStorage.getItem(SYNC_QUEUE_KEY);
@@ -25,12 +26,10 @@ export const getSyncQueue = (): SyncAction[] => {
   }
 };
 
-// Save queue
 const saveSyncQueue = (queue: SyncAction[]) => {
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 };
 
-// Get ID map
 export const getIdMap = (): Record<string, string> => {
   try {
     const data = localStorage.getItem(ID_MAP_KEY);
@@ -40,12 +39,10 @@ export const getIdMap = (): Record<string, string> => {
   }
 };
 
-// Save ID map
 export const saveIdMap = (map: Record<string, string>) => {
   localStorage.setItem(ID_MAP_KEY, JSON.stringify(map));
 };
 
-// Replace temporary IDs with real IDs in the payload or itemId
 const resolveIds = (action: SyncAction, idMap: Record<string, string>): SyncAction => {
   const resolvedAction = { ...action };
   if (idMap[action.itemId]) {
@@ -54,11 +51,9 @@ const resolveIds = (action: SyncAction, idMap: Record<string, string>): SyncActi
   return resolvedAction;
 };
 
-// Define the fetch executor type
 export type FetchExecutor = (action: SyncAction) => Promise<any>;
 
-// Background processor
-export const processSyncQueue = async (executor: FetchExecutor) => {
+export const processSyncQueue = async () => {
   if (isProcessing) return;
   isProcessing = true;
 
@@ -67,31 +62,40 @@ export const processSyncQueue = async (executor: FetchExecutor) => {
     let idMap = getIdMap();
 
     while (queue.length > 0) {
-      const action = resolveIds(queue[0], idMap);
+      const rawAction = queue[0];
+      const executor = executorRegistry.get(rawAction.id);
+
+      // If no executor for this action (e.g. page was reloaded), skip it
+      if (!executor) {
+        queue.shift();
+        saveSyncQueue(queue);
+        queue = getSyncQueue();
+        continue;
+      }
+
+      const action = resolveIds(rawAction, idMap);
 
       try {
         const response = await executor(action);
 
-        // If it was a CREATE action, we must update the ID map
         if (action.type === 'CREATE' && response && response.id) {
           idMap[action.itemId] = response.id;
           saveIdMap(idMap);
 
-          // Dispatch event to update the UI
           window.dispatchEvent(new CustomEvent('ListaItemCreated', {
             detail: { tempId: action.itemId, realId: response.id, serverItem: response }
           }));
         }
 
-        // Remove the processed item from the queue
-        queue = getSyncQueue(); // re-fetch in case it changed
+        executorRegistry.delete(rawAction.id);
+        queue = getSyncQueue();
         queue.shift();
         saveSyncQueue(queue);
+        queue = getSyncQueue();
 
       } catch (error: any) {
-        // If it's a network error, stop processing and retry later
         console.warn('Sync queue network error, will retry later:', error);
-        break; 
+        break;
       }
     }
   } finally {
@@ -99,20 +103,35 @@ export const processSyncQueue = async (executor: FetchExecutor) => {
   }
 };
 
-// Enqueue action
-export const enqueueAction = (type: SyncActionType, itemId: string, payload?: any, executor?: FetchExecutor) => {
+export const enqueueAction = (
+  type: SyncActionType,
+  itemId: string,
+  payload?: any,
+  executor?: FetchExecutor
+) => {
+  const actionId = `action_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   const queue = getSyncQueue();
   queue.push({
-    id: `action_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+    id: actionId,
     type,
     itemId,
     payload,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
   saveSyncQueue(queue);
 
   if (executor) {
-    // Attempt processing immediately
-    processSyncQueue(executor);
+    executorRegistry.set(actionId, executor);
+    processSyncQueue();
+  }
+};
+
+// Purge orphaned UPDATE/DELETE actions from localStorage on startup
+// (they have no executor since page was reloaded and can't be retried)
+export const purgeOrphanedQueue = () => {
+  const queue = getSyncQueue();
+  const filtered = queue.filter(a => a.type === 'CREATE');
+  if (filtered.length !== queue.length) {
+    saveSyncQueue(filtered);
   }
 };

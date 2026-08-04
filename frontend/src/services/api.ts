@@ -1,5 +1,5 @@
 import { Item, UserProfile, StatsData } from '../types';
-import { enqueueAction, SyncAction } from './syncQueue';
+import { enqueueAction, SyncAction, purgeOrphanedQueue } from './syncQueue';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://129.151.217.58.nip.io';
 
@@ -61,6 +61,9 @@ export const api = {
   },
 
   async createItem(item: Partial<Item>): Promise<Item> {
+    // Purge orphaned UPDATE/DELETE from previous sessions first
+    purgeOrphanedQueue();
+
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2)}`;
     const mockedItem = { ...item, id: tempId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Item;
     
@@ -78,24 +81,34 @@ export const api = {
   },
 
   async updateItem(id: string, updates: Partial<Item>): Promise<void> {
-    enqueueAction('UPDATE', id, updates, async (action: SyncAction) => {
-      const res = await fetch(`${API_BASE}/api/items/${action.itemId}`, {
+    // Direct fetch for UPDATE - no queue needed (idempotent, real ID always known)
+    try {
+      const res = await fetch(`${API_BASE}/api/items/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify(action.payload),
+        body: JSON.stringify(updates),
       });
-      if (!res.ok) throw new Error('Failed to update item');
-    });
+      if (!res.ok) {
+        console.warn(`UpdateItem failed for ${id}:`, res.status, await res.text().catch(() => ''));
+      }
+    } catch (e) {
+      console.warn('UpdateItem network error:', e);
+    }
   },
 
   async deleteItem(id: string): Promise<void> {
-    enqueueAction('DELETE', id, undefined, async (action: SyncAction) => {
-      const res = await fetch(`${API_BASE}/api/items/${action.itemId}`, {
+    // Direct fetch for DELETE - no queue needed
+    try {
+      const res = await fetch(`${API_BASE}/api/items/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to delete item');
-    });
+      if (!res.ok) {
+        console.warn(`DeleteItem failed for ${id}:`, res.status);
+      }
+    } catch (e) {
+      console.warn('DeleteItem network error:', e);
+    }
   },
 
   async getStats(): Promise<StatsData> {
