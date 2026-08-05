@@ -11,9 +11,10 @@ type Config struct {
 	DatabaseURL     string
 	BotToken        string
 	Environment     string
-	YoutubeAPIKey   string
-	TMDBAPIKey      string
-	KinopoiskAPIKey string
+	YoutubeAPIKey       string
+	TMDBAPIKey          string
+	KinopoiskAPIKey     string
+	TelegramSecretToken string
 }
 
 func LoadConfig() *Config {
@@ -30,6 +31,7 @@ func LoadConfig() *Config {
 	}
 
 	botToken := os.Getenv("BOT_TOKEN")
+	tgSecretToken := os.Getenv("TELEGRAM_SECRET_TOKEN")
 
 	env := os.Getenv("ENV")
 	if env == "" {
@@ -41,12 +43,13 @@ func LoadConfig() *Config {
 	kinopoiskKey := os.Getenv("KINOPOISK_API_KEY")
 
 	return &Config{
-		Port:            port,
-		DatabaseURL:     dbURL,
-		BotToken:        botToken,
-		Environment:     env,
-		YoutubeAPIKey:   youtubeKey,
-		TMDBAPIKey:      tmdbKey,
-		KinopoiskAPIKey: kinopoiskKey,
+		Port:                port,
+		DatabaseURL:         dbURL,
+		BotToken:            botToken,
+		Environment:         env,
+		YoutubeAPIKey:       youtubeKey,
+		TMDBAPIKey:          tmdbKey,
+		KinopoiskAPIKey:     kinopoiskKey,
+		TelegramSecretToken: tgSecretToken,
 	}
 }

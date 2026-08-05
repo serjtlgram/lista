@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"testing"
+	"time"
+
+	"lista-backend/pkg/models"
 )
 
 func TestParseSearchQuery(t *testing.T) {
@@ -67,5 +70,27 @@ func TestParseSearchQuery(t *testing.T) {
 				t.Errorf("parseSearchQuery(%q) query = %q; want %q", tt.input, q, tt.expectedQ)
 			}
 		})
+	}
+}
+
+func TestSearchCache(t *testing.T) {
+	cache := NewSearchCache(1 * time.Minute)
+
+	key := "catalog:матрица:movie"
+	sampleData := []models.CatalogSearchResult{
+		{Title: "Матрица", Category: "movie"},
+	}
+
+	// 1. Initially empty
+	_, found := cache.GetCatalogResults(key)
+	if found {
+		t.Fatalf("expected cache miss for unstored key")
+	}
+
+	// 2. Set and retrieved
+	cache.Set(key, sampleData)
+	retrieved, found := cache.GetCatalogResults(key)
+	if !found || len(retrieved) != 1 || retrieved[0].Title != "Матрица" {
+		t.Fatalf("expected cache hit with correct data")
 	}
 }

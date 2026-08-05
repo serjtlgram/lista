@@ -255,6 +255,7 @@ function safeBase64Decode(str: string): any {
                 category: i.c || i.category || 'Фильмы',
                 status: 'planned',
                 rating: i.r || i.rating || 0,
+                public_rating: i.pr || i.public_rating || '',
                 release_year: i.y || i.release_year,
                 genre: i.g || i.genre,
                 poster_url: i.p || i.poster_url,

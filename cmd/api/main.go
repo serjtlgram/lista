@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"lista-backend/pkg/config"
 	"lista-backend/pkg/db"
 	"lista-backend/pkg/handlers"
+	"lista-backend/pkg/ratelimit"
 )
 
 func main() {
@@ -29,7 +31,9 @@ func main() {
 		go database.StartCleanupJob()
 	}
 
-	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey)
+	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey, cfg.TelegramSecretToken)
+
+	globalLimiter := ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute)
 
 	r := chi.NewRouter()
 
@@ -40,11 +44,37 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
+	// Global IP DDoS Protection Middleware (Max 30 req/sec per IP, burst 60)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := r.Header.Get("X-Real-IP")
+			if ip == "" {
+				ip = r.Header.Get("X-Forwarded-For")
+			}
+			if ip == "" {
+				ip = r.RemoteAddr
+			}
+
+			if !globalLimiter.AllowBurst(fmt.Sprintf("global_ip:%s", ip), 60, time.Second/30) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				w.Write([]byte(`{"error":"Too many requests to server"}`))
+				return
+			}
+
+			// Limit request body size to max 2MB to prevent RAM exhaustion attacks
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+
 	// CORS Setup for Telegram WebApp & GitHub Pages
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Telegram-Init-Data", "X-Test-User-ID"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Telegram-Init-Data", "X-Test-User-ID", "X-Telegram-Bot-Api-Secret-Token"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))

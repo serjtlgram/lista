@@ -392,6 +392,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         y: i.release_year,
         g: i.genre,
         r: i.rating,
+        pr: i.public_rating,
         p: i.poster_url,
       }));
       const encoded = safeBase64Encode({ title: listTitle, items: compactItems });
@@ -404,7 +405,11 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
     listItems.slice(0, 10).forEach((item, index) => {
       shareText += `${index + 1}. ${item.title}`;
-      if (item.rating && item.rating > 0) shareText += ` — ⭐️ ${item.rating}/10`;
+      if (item.public_rating && item.public_rating.trim() !== '') {
+        shareText += ` — 🍿 ${item.public_rating}`;
+      } else if (item.rating && item.rating > 0) {
+        shareText += ` — ⭐️ ${item.rating}/10`;
+      }
       shareText += '\n';
     });
 

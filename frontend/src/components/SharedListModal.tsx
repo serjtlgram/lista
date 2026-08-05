@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookMarked, Download, Check, X, Film, Tv, Book, Gamepad2 } from 'lucide-react';
+import { BookMarked, Download, Check, X, Film, Tv, Book, Gamepad2, Popcorn, Star } from 'lucide-react';
 import { Item } from '../types';
 import { createList, addItemToList } from '../services/lists';
 import { api } from '../services/api';
@@ -58,6 +58,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
             category: item.category || 'Фильмы',
             status: 'planned',
             rating: item.rating || 0,
+            public_rating: item.public_rating || '',
             genre: item.genre || '',
             duration: item.duration || '',
             release_year: item.release_year || '',
@@ -147,6 +148,11 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
           {sharedItems.map((item, idx) => {
             const posterSrc = getItemPoster(item);
             const categoryLabel = formatCategorySingle(item.category, t);
+            const catLower = (item.category || '').toLowerCase();
+            const isBook = catLower === 'книги' || catLower === 'книга' || catLower === 'book' || catLower === 'books';
+            const hasPublicRating = Boolean(item.public_rating && item.public_rating.trim() !== '');
+            const hasUserRating = Boolean(item.rating && item.rating > 0);
+
             return (
               <div
                 key={item.id || idx}
@@ -162,11 +168,21 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
                   <p className="text-[10px] text-gray-400">
                     {categoryLabel} {item.release_year ? `• ${item.release_year}` : ''} {item.genre ? `• ${item.genre}` : ''}
                   </p>
-                  {item.rating && item.rating > 0 && (
-                    <span className="text-[10px] text-amber-400 font-semibold">
-                      ⭐️ {item.rating}/10
-                    </span>
-                  )}
+                  {hasPublicRating ? (
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-orange-400 mt-0.5">
+                      {isBook ? (
+                        <Star className="w-3 h-3 text-orange-400 fill-orange-400/20 shrink-0" />
+                      ) : (
+                        <Popcorn className="w-3 h-3 text-orange-400 shrink-0" />
+                      )}
+                      <span>{item.public_rating}</span>
+                    </div>
+                  ) : hasUserRating ? (
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 mt-0.5">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                      <span>{item.rating}/10</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );

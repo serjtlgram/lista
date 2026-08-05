@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"bytes"
@@ -28,6 +28,7 @@ import (
 	"lista-backend/pkg/genres"
 	"lista-backend/pkg/models"
 	"lista-backend/pkg/parser"
+	"lista-backend/pkg/ratelimit"
 	"lista-backend/pkg/youtube"
 )
 
@@ -37,21 +38,46 @@ type Handler struct {
 	YoutubeAPIKey    string
 	TMDBAPIKey       string
 	KinopoiskAPIKey  string
+	BotSecretToken   string
+	RateLimiter      *ratelimit.RateLimiter
+	SearchCache      *SearchCache
 	sharedListsCache map[string][]byte
 	cacheMu          sync.RWMutex
+	outboundSem      chan struct{}
 }
 
-func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, botSecretToken string) *Handler {
 	h := &Handler{
 		DB:               database,
 		BotToken:         botToken,
 		YoutubeAPIKey:    youtubeAPIKey,
 		TMDBAPIKey:       tmdbAPIKey,
 		KinopoiskAPIKey:  kinopoiskAPIKey,
+		BotSecretToken:   botSecretToken,
+		RateLimiter:      ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
+		SearchCache:      NewSearchCache(3 * time.Minute),
 		sharedListsCache: make(map[string][]byte),
+		outboundSem:      make(chan struct{}, 25),
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
+}
+
+func getRateLimitKey(r *http.Request) string {
+	if user := auth.GetUserFromContext(r.Context()); user != nil && user.ID != 0 {
+		return fmt.Sprintf("user_%d", user.ID)
+	}
+	if testUserHeader := r.Header.Get("X-Test-User-ID"); testUserHeader != "" {
+		return fmt.Sprintf("user_%s", testUserHeader)
+	}
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip = r.Header.Get("X-Forwarded-For")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return fmt.Sprintf("ip_%s", ip)
 }
 
 func (h *Handler) InitBotCommandsAndMenu() {
@@ -1059,11 +1085,28 @@ func parseSearchQuery(input string) (string, string) {
 
 // GET /api/catalog/search?q=Title&category=Category
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
+	// 1. Rate limiting: 1 request per 2 seconds per user/IP
+	rateKey := getRateLimitKey(r)
+	if allowed, wait := h.RateLimiter.Allow("search:"+rateKey, 2*time.Second); !allowed {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "2")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":                "Слишком много запросов. Пожалуйста, подождите 2 секунды перед следующим поиском.",
+			"retry_after_seconds": 2,
+			"wait_ms":              wait.Milliseconds(),
+		})
+		return
+	}
+
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if len(q) < 2 {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]models.CatalogSearchResult{})
 		return
+	}
+	if len(q) > 150 {
+		q = q[:150]
 	}
 
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
@@ -1077,14 +1120,25 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 1. DB catalog search filtered by category
+	// 2. Check Search Cache
+	cacheKey := fmt.Sprintf("catalog:%s:%s", strings.ToLower(q), catEn)
+	if cachedResults, found := h.SearchCache.GetCatalogResults(cacheKey); found {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(cachedResults)
+		return
+	}
+
+	// 3. DB catalog search filtered by category
 	dbResults := h.searchDBCatalog(r.Context(), q, catEn)
 
-	// 2. Online search filtered by category
+	// 4. Online search filtered by category
 	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults)
 
-	// 3. Merge results adhering strictly to category order & limits
+	// 5. Merge results adhering strictly to category order & limits
 	finalResults := mergeSearchResults(dbResults, onlineResults, catEn)
+
+	// Cache final results
+	h.SearchCache.Set(cacheKey, finalResults)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(finalResults)
@@ -1641,16 +1695,49 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/youtube/search?q=...&category=...
 func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
+	// 1. Rate limiting: 1 request per 2 seconds per user/IP
+	rateKey := getRateLimitKey(r)
+	if allowed, wait := h.RateLimiter.Allow("yt_search:"+rateKey, 2*time.Second); !allowed {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "2")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":                "Слишком много запросов. Пожалуйста, подождите 2 секунды перед следующим поиском.",
+			"retry_after_seconds": 2,
+			"wait_ms":              wait.Milliseconds(),
+		})
+		return
+	}
+
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	cat := strings.TrimSpace(r.URL.Query().Get("category"))
 	if q == "" {
 		http.Error(w, `{"error":"q parameter is required"}`, http.StatusBadRequest)
 		return
 	}
+	if len(q) > 150 {
+		q = q[:150]
+	}
+
+	// 2. Check Cache
+	cacheKey := fmt.Sprintf("yt:%s:%s", strings.ToLower(q), strings.ToLower(cat))
+	if cachedVal, ok := h.SearchCache.Get(cacheKey); ok {
+		if ytURL, isStr := cachedVal.(string); isStr {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{
+				"youtube_url": ytURL,
+			})
+			return
+		}
+	}
 
 	ytURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, q, cat)
 	if err != nil {
 		log.Printf("YouTube search error: %v", err)
+	}
+
+	if ytURL != "" {
+		h.SearchCache.Set(cacheKey, ytURL)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1661,6 +1748,15 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/telegram/webhook
 func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
+	if h.BotSecretToken != "" {
+		providedToken := r.Header.Get("X-Telegram-Bot-Api-Secret-Token")
+		if providedToken != h.BotSecretToken {
+			log.Printf("[TelegramWebhook] Unauthorized webhook request from %s", r.RemoteAddr)
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+	}
+
 	var update models.TelegramUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		w.WriteHeader(http.StatusOK)
@@ -1673,7 +1769,18 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Inline Query rate limit (1 per 2 seconds)
 	if update.InlineQuery != nil && update.InlineQuery.ID != "" {
+		userID := update.InlineQuery.From.ID
+		if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_inline:%d", userID), 2*time.Second); !allowed {
+			h.sendBotAPIRequest("answerInlineQuery", map[string]interface{}{
+				"inline_query_id": update.InlineQuery.ID,
+				"results":         []interface{}{},
+				"cache_time":      5,
+			})
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		h.handleInlineQuery(update.InlineQuery)
 		w.WriteHeader(http.StatusOK)
 		return
@@ -1687,9 +1794,23 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
+
+		// Message rate limit (1 request per 2 seconds per user)
+		if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
+			log.Printf("[TelegramWebhook] Rate limit exceeded for user %d", userID)
+			if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
+				go h.sendTelegramTextMessage(userID, "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.")
+			}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		msgText := strings.TrimSpace(update.Message.Text)
 		if msgText == "" {
 			msgText = strings.TrimSpace(update.Message.Caption)
+		}
+		if len(msgText) > 300 {
+			msgText = msgText[:300]
 		}
 
 		log.Printf("[TelegramWebhook] Incoming message from %d: %q", userID, msgText)
@@ -2666,31 +2787,55 @@ func (h *Handler) sendAdminBotMessage(userID int64, text string) {
 }
 
 func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) error {
+	if h.BotToken == "" {
+		return nil
+	}
+
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", h.BotToken, method)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return err
+	if h.outboundSem != nil {
+		h.outboundSem <- struct{}{}
+		defer func() { <-h.outboundSem }()
 	}
-	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/%s", h.BotToken, method)
 
-	if resp.StatusCode != http.StatusOK {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonBytes))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(100*(attempt+1)) * time.Millisecond)
+			continue
+		}
+
 		respBody, _ := io.ReadAll(resp.Body)
-		log.Printf("[TelegramAPI] %s error %d: %s", method, resp.StatusCode, string(respBody))
-		return fmt.Errorf("telegram API status %d: %s", resp.StatusCode, string(respBody))
+		resp.Body.Close()
+
+		if resp.StatusCode == 429 { // Too Many Requests from Telegram API
+			log.Printf("[TelegramAPI] 429 Rate Limit for %s (attempt %d). Backing off...", method, attempt+1)
+			time.Sleep(time.Duration(1*(attempt+1)) * time.Second)
+			lastErr = fmt.Errorf("telegram API rate limit 429: %s", string(respBody))
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("[TelegramAPI] %s error %d: %s", method, resp.StatusCode, string(respBody))
+			return fmt.Errorf("telegram API status %d: %s", resp.StatusCode, string(respBody))
+		}
+		return nil
 	}
-	return nil
+	return lastErr
 }
 
 func formatCategorySingle(cat string) string {
