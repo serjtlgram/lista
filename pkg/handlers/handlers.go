@@ -63,7 +63,7 @@ func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIK
 	return h
 }
 
-func truncateString(s string, maxLen int) string {
+func limitStrLen(s string, maxLen int) string {
 	runes := []rune(s)
 	if len(runes) > maxLen {
 		return string(runes[:maxLen])
@@ -687,19 +687,19 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		RETURNING id, created_at, updated_at;
 	`
 
-	req.Title = truncateString(req.Title, 200)
-	descVal = truncateString(descVal, 1000)
-	req.Note = truncateString(req.Note, 1000)
-	directorVal = truncateString(directorVal, 150)
-	castVal = truncateString(castVal, 300)
-	req.Author = truncateString(req.Author, 150)
-	req.ISBN = truncateString(req.ISBN, 50)
-	genreVal = truncateString(genreVal, 100)
-	durationVal = truncateString(durationVal, 60)
-	releaseYearVal = truncateString(releaseYearVal, 20)
-	posterURL = truncateString(posterURL, 500)
-	ytURL = truncateString(ytURL, 500)
-	countryVal = truncateString(countryVal, 100)
+	req.Title = limitStrLen(req.Title, 200)
+	descVal = limitStrLen(descVal, 1000)
+	req.Note = limitStrLen(req.Note, 1000)
+	directorVal = limitStrLen(directorVal, 150)
+	castVal = limitStrLen(castVal, 300)
+	req.Author = limitStrLen(req.Author, 150)
+	req.ISBN = limitStrLen(req.ISBN, 50)
+	genreVal = limitStrLen(genreVal, 100)
+	durationVal = limitStrLen(durationVal, 60)
+	releaseYearVal = limitStrLen(releaseYearVal, 20)
+	posterURL = limitStrLen(posterURL, 500)
+	ytURL = limitStrLen(ytURL, 500)
+	countryVal = limitStrLen(countryVal, 100)
 
 	var createdItem models.Item
 	createdItem.ID = itemUUID
@@ -765,7 +765,7 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	argIdx := 3
 
 	if req.Title != nil {
-		*req.Title = truncateString(*req.Title, 200)
+		*req.Title = limitStrLen(*req.Title, 200)
 		query += fmt.Sprintf(", title = $%d", argIdx)
 		args = append(args, *req.Title)
 		argIdx++
@@ -786,19 +786,19 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	if req.Genre != nil {
-		*req.Genre = truncateString(*req.Genre, 100)
+		*req.Genre = limitStrLen(*req.Genre, 100)
 		query += fmt.Sprintf(", genre = $%d", argIdx)
 		args = append(args, *req.Genre)
 		argIdx++
 	}
 	if req.Duration != nil {
-		*req.Duration = truncateString(*req.Duration, 60)
+		*req.Duration = limitStrLen(*req.Duration, 60)
 		query += fmt.Sprintf(", duration = $%d", argIdx)
 		args = append(args, *req.Duration)
 		argIdx++
 	}
 	if req.ReleaseYear != nil {
-		*req.ReleaseYear = truncateString(*req.ReleaseYear, 20)
+		*req.ReleaseYear = limitStrLen(*req.ReleaseYear, 20)
 		query += fmt.Sprintf(", release_year = $%d", argIdx)
 		args = append(args, *req.ReleaseYear)
 		argIdx++
@@ -808,19 +808,19 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		if pURL != "" {
 			pURL = parser.OptimizePosterURL(nil, pURL)
 		}
-		pURL = truncateString(pURL, 500)
+		pURL = limitStrLen(pURL, 500)
 		query += fmt.Sprintf(", poster_url = $%d", argIdx)
 		args = append(args, pURL)
 		argIdx++
 	}
 	if req.Description != nil {
-		*req.Description = truncateString(*req.Description, 1000)
+		*req.Description = limitStrLen(*req.Description, 1000)
 		query += fmt.Sprintf(", description = $%d", argIdx)
 		args = append(args, *req.Description)
 		argIdx++
 	}
 	if req.Note != nil {
-		*req.Note = truncateString(*req.Note, 1000)
+		*req.Note = limitStrLen(*req.Note, 1000)
 		query += fmt.Sprintf(", note = $%d", argIdx)
 		args = append(args, *req.Note)
 		argIdx++
@@ -831,31 +831,31 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	if req.YoutubeURL != nil {
-		*req.YoutubeURL = truncateString(*req.YoutubeURL, 500)
+		*req.YoutubeURL = limitStrLen(*req.YoutubeURL, 500)
 		query += fmt.Sprintf(", youtube_url = $%d", argIdx)
 		args = append(args, *req.YoutubeURL)
 		argIdx++
 	}
 	if req.Director != nil {
-		*req.Director = truncateString(*req.Director, 150)
+		*req.Director = limitStrLen(*req.Director, 150)
 		query += fmt.Sprintf(", director = $%d", argIdx)
 		args = append(args, *req.Director)
 		argIdx++
 	}
 	if req.Cast != nil {
-		*req.Cast = truncateString(*req.Cast, 300)
+		*req.Cast = limitStrLen(*req.Cast, 300)
 		query += fmt.Sprintf(", cast_members = $%d", argIdx)
 		args = append(args, *req.Cast)
 		argIdx++
 	}
 	if req.Author != nil {
-		*req.Author = truncateString(*req.Author, 150)
+		*req.Author = limitStrLen(*req.Author, 150)
 		query += fmt.Sprintf(", author = $%d", argIdx)
 		args = append(args, *req.Author)
 		argIdx++
 	}
 	if req.ISBN != nil {
-		*req.ISBN = truncateString(*req.ISBN, 50)
+		*req.ISBN = limitStrLen(*req.ISBN, 50)
 		query += fmt.Sprintf(", isbn = $%d", argIdx)
 		args = append(args, *req.ISBN)
 		argIdx++
@@ -866,7 +866,7 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	if req.Country != nil {
-		*req.Country = truncateString(*req.Country, 100)
+		*req.Country = limitStrLen(*req.Country, 100)
 		query += fmt.Sprintf(", country = $%d", argIdx)
 		mappedCountry := mapCountryToFlag(*req.Country)
 		args = append(args, mappedCountry)
