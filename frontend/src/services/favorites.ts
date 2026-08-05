@@ -3,6 +3,7 @@
 import { saveToCloudStorage, loadFromCloudStorage } from './cloud';
 
 const FAVORITES_KEY = 'lista_favorites';
+const FAVORITES_TS_KEY = 'lista_favorites_ts';
 
 export function getFavoriteIds(): string[] {
   try {
@@ -37,8 +38,10 @@ export function getFavoriteIds(): string[] {
 }
 
 export function setFavoriteIds(ids: string[]): void {
+  const timestamp = Date.now().toString();
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+    localStorage.setItem(FAVORITES_TS_KEY, timestamp);
   } catch (e) {
     console.warn('localStorage setFavoriteIds error:', e);
   }
@@ -48,6 +51,7 @@ export function setFavoriteIds(ids: string[]): void {
 
   // Sync to Telegram CloudStorage
   saveToCloudStorage(FAVORITES_KEY, JSON.stringify(ids));
+  saveToCloudStorage(FAVORITES_TS_KEY, timestamp);
 }
 
 export function isFavorite(itemId: string): boolean {
@@ -70,17 +74,36 @@ export function toggleFavorite(itemId: string): boolean {
 
 export async function syncFavoritesFromCloud(): Promise<void> {
   const val = await loadFromCloudStorage(FAVORITES_KEY);
-  if (val) {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) {
-        const localFavs = getFavoriteIds();
-        const mergedFavs = Array.from(new Set([...parsed, ...localFavs]));
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavs));
-        saveToCloudStorage(FAVORITES_KEY, JSON.stringify(mergedFavs));
+  if (!val) {
+    const localFavs = getFavoriteIds();
+    if (localFavs.length > 0) {
+      const localTs = localStorage.getItem(FAVORITES_TS_KEY) || Date.now().toString();
+      saveToCloudStorage(FAVORITES_KEY, JSON.stringify(localFavs));
+      saveToCloudStorage(FAVORITES_TS_KEY, localTs);
+    }
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(val);
+    if (Array.isArray(parsed)) {
+      const cloudTsStr = await loadFromCloudStorage(FAVORITES_TS_KEY);
+      const cloudTs = cloudTsStr ? parseInt(cloudTsStr, 10) : 0;
+      const localTsStr = localStorage.getItem(FAVORITES_TS_KEY);
+      const localTs = localTsStr ? parseInt(localTsStr, 10) : 0;
+
+      if (cloudTs > localTs) {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(parsed));
+        localStorage.setItem(FAVORITES_TS_KEY, cloudTs.toString());
         window.dispatchEvent(new Event('lista_favorites_updated'));
+      } else {
+        const localFavs = getFavoriteIds();
+        saveToCloudStorage(FAVORITES_KEY, JSON.stringify(localFavs));
+        saveToCloudStorage(FAVORITES_TS_KEY, (localTs || Date.now()).toString());
       }
-    } catch {}
+    }
+  } catch (e) {
+    console.warn('syncFavoritesFromCloud error:', e);
   }
 }
 

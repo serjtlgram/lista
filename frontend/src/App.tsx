@@ -18,8 +18,8 @@ import { Navbar } from './components/Navbar';
 
 import { api } from './services/api';
 import { getTranslatedGenreFull } from './services/genres';
-import { getFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
-import { syncListsFromCloud } from './services/lists';
+import { getFavoriteIds, setFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
+import { getLists, saveLists, syncListsFromCloud, UserList } from './services/lists';
 import { Item, UserProfile, StatsData } from './types';
 import {
   Language,
@@ -535,6 +535,19 @@ function safeBase64Decode(str: string): any {
     setItems((prev) => prev.filter(i => i.id !== id));
     setSelectedItem(null);
     setActiveTab('home');
+
+    // Clean up favorites and user lists
+    const favs = getFavoriteIds();
+    if (favs.includes(id)) {
+      setFavoriteIds(favs.filter((fId) => fId !== id));
+    }
+    const allLists = getLists();
+    const updatedLists = allLists.map((l: UserList) => ({
+      ...l,
+      itemIds: l.itemIds.filter((itemId: string) => itemId !== id),
+    }));
+    saveLists(updatedLists);
+
     api.deleteItem(id);
   };
 

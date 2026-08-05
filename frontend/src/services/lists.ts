@@ -11,6 +11,7 @@ export interface UserList {
 }
 
 const LISTS_KEY = 'lista_user_lists';
+const LISTS_TS_KEY = 'lista_user_lists_ts';
 const FAVORITES_LIST_ID = 'favorites';
 
 function getDefaultFavoritesList(): UserList {
@@ -65,8 +66,10 @@ export function getLists(): UserList[] {
 }
 
 export function saveLists(lists: UserList[]): void {
+  const timestamp = Date.now().toString();
   try {
     localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+    localStorage.setItem(LISTS_TS_KEY, timestamp);
   } catch (e) {
     console.warn('localStorage saveLists error:', e);
   }
@@ -75,6 +78,7 @@ export function saveLists(lists: UserList[]): void {
   window.dispatchEvent(new Event('lista_lists_updated'));
 
   saveToCloudStorage(LISTS_KEY, JSON.stringify(lists));
+  saveToCloudStorage(LISTS_TS_KEY, timestamp);
 }
 
 export function createList(name: string): UserList {
@@ -129,47 +133,36 @@ export function getFavoritesList(): UserList {
 
 export async function syncListsFromCloud(): Promise<void> {
   const val = await loadFromCloudStorage(LISTS_KEY);
-  if (val) {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) {
-        const local = getLists();
-        const cloudMap = new Map<string, UserList>();
-        parsed.forEach((l: UserList) => cloudMap.set(l.id, l));
-
-        const merged: UserList[] = [];
-
-        // Merge cloud lists with local items
-        cloudMap.forEach((cloudList, id) => {
-          const localList = local.find((l) => l.id === id);
-          if (localList) {
-            const combinedItemIds = Array.from(
-              new Set([...(cloudList.itemIds || []), ...(localList.itemIds || [])])
-            );
-            merged.push({
-              ...cloudList,
-              name: cloudList.name || localList.name,
-              itemIds: combinedItemIds,
-            });
-          } else {
-            merged.push(cloudList);
-          }
-        });
-
-        // Keep local-only lists
-        local.forEach((localList) => {
-          if (!cloudMap.has(localList.id)) {
-            merged.push(localList);
-          }
-        });
-
-        localStorage.setItem(LISTS_KEY, JSON.stringify(merged));
-        saveToCloudStorage(LISTS_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new Event('lista_lists_updated'));
-      }
-    } catch (e) {
-      console.warn('Error parsing cloud lists:', e);
+  if (!val) {
+    const local = getLists();
+    if (local.length > 0) {
+      const localTs = localStorage.getItem(LISTS_TS_KEY) || Date.now().toString();
+      saveToCloudStorage(LISTS_KEY, JSON.stringify(local));
+      saveToCloudStorage(LISTS_TS_KEY, localTs);
     }
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(val);
+    if (Array.isArray(parsed)) {
+      const cloudTsStr = await loadFromCloudStorage(LISTS_TS_KEY);
+      const cloudTs = cloudTsStr ? parseInt(cloudTsStr, 10) : 0;
+      const localTsStr = localStorage.getItem(LISTS_TS_KEY);
+      const localTs = localTsStr ? parseInt(localTsStr, 10) : 0;
+
+      if (cloudTs > localTs) {
+        localStorage.setItem(LISTS_KEY, JSON.stringify(parsed));
+        localStorage.setItem(LISTS_TS_KEY, cloudTs.toString());
+        window.dispatchEvent(new Event('lista_lists_updated'));
+      } else {
+        const local = getLists();
+        saveToCloudStorage(LISTS_KEY, JSON.stringify(local));
+        saveToCloudStorage(LISTS_TS_KEY, (localTs || Date.now()).toString());
+      }
+    }
+  } catch (e) {
+    console.warn('Error syncing cloud lists:', e);
   }
 }
 
