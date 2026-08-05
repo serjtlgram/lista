@@ -60,15 +60,6 @@ func (sc *SearchCache) GetCatalogResults(key string) ([]models.CatalogSearchResu
 	return res, ok
 }
 
-func (sc *SearchCache) GetYouTubeResults(key string) ([]models.YouTubeVideoItem, bool) {
-	val, ok := sc.Get(key)
-	if !ok {
-		return nil, false
-	}
-	res, ok := val.([]models.YouTubeVideoItem)
-	return res, ok
-}
-
 func (sc *SearchCache) startCleanup() {
 	ticker := time.NewTicker(2 * time.Minute)
 	for range ticker.C {

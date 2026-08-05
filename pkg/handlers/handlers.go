@@ -64,7 +64,7 @@ func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIK
 }
 
 func getRateLimitKey(r *http.Request) string {
-	if user := auth.GetUserFromContext(r.Context()); user != nil && user.ID != 0 {
+	if user, ok := auth.GetUserFromContext(r); ok && user != nil && user.ID != 0 {
 		return fmt.Sprintf("user_%d", user.ID)
 	}
 	if testUserHeader := r.Header.Get("X-Test-User-ID"); testUserHeader != "" {
@@ -1799,7 +1799,10 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
 			log.Printf("[TelegramWebhook] Rate limit exceeded for user %d", userID)
 			if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
-				go h.sendTelegramTextMessage(userID, "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.")
+				go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+					"chat_id": userID,
+					"text":    "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.",
+				})
 			}
 			w.WriteHeader(http.StatusOK)
 			return
