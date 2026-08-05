@@ -814,6 +814,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   type="text"
                   autoFocus
                   required
+                  maxLength={50}
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder={t.lists.create_name_placeholder}
@@ -858,6 +859,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   type="text"
                   autoFocus
                   required
+                  maxLength={50}
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
                   placeholder={t.lists.rename_placeholder}
@@ -902,6 +904,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 <input
                   type="text"
+                  maxLength={100}
                   value={itemsSearchQuery}
                   onChange={(e) => setItemsSearchQuery(e.target.value)}
                   placeholder={t.details.search_placeholder}

@@ -914,6 +914,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               rows={3}
+              maxLength={1000}
               placeholder={t.modal.placeholder_note}
               className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
             />

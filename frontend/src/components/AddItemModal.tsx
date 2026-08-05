@@ -402,6 +402,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <input
               type="text"
               required
+              maxLength={200}
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               onFocus={() => {
@@ -467,6 +468,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+              maxLength={1000}
               placeholder={t.modal.placeholder_description}
               className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
             />
@@ -568,7 +570,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <input
                       type="number"
                       value={episodesCount}
-                      onChange={(e) => setEpisodesCount(e.target.value)}
+                      onChange={(e) => setEpisodesCount(e.target.value.slice(0, 6))}
                       placeholder={t.modal.episodes_placeholder}
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
@@ -578,7 +580,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <input
                       type="number"
                       value={seasonsCount}
-                      onChange={(e) => setSeasonsCount(e.target.value)}
+                      onChange={(e) => setSeasonsCount(e.target.value.slice(0, 6))}
                       placeholder={t.modal.seasons_placeholder}
                       className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                     />
@@ -595,7 +597,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   <input
                     type="number"
                     value={durationMin}
-                    onChange={(e) => setDurationMin(e.target.value)}
+                    onChange={(e) => setDurationMin(e.target.value.slice(0, 6))}
                     placeholder={isBook ? t.modal.pages_placeholder : t.modal.duration_min_placeholder}
                     className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                   />
@@ -604,6 +606,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.year_label}</label>
                   <input
                     type="text"
+                    maxLength={20}
                     value={releaseYear}
                     onChange={(e) => setReleaseYear(e.target.value)}
                     placeholder={t.modal.placeholder_year}
@@ -614,6 +617,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Страна</label>
                   <input
                     type="text"
+                    maxLength={100}
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     placeholder="США, СССР..."
@@ -628,6 +632,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Постер (URL)</label>
                 <input
                   type="text"
+                  maxLength={500}
                   value={posterUrl}
                   onChange={(e) => setPosterUrl(e.target.value)}
                   placeholder={t.modal.placeholder_poster}
@@ -641,6 +646,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.director}</label>
                     <input
                       type="text"
+                      maxLength={150}
                       value={director}
                       onChange={(e) => setDirector(e.target.value)}
                       placeholder="Кристофер Нолан"
@@ -651,6 +657,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.details.cast}</label>
                     <input
                       type="text"
+                      maxLength={300}
                       value={cast}
                       onChange={(e) => setCast(e.target.value)}
                       placeholder="Мэттью Макконахи, Энн Хэтэуэй"
@@ -664,6 +671,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.author_label || 'Автор'}</label>
                     <input
                       type="text"
+                      maxLength={150}
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
                       placeholder={t.modal.author_placeholder || 'Уильям Гибсон'}
@@ -674,6 +682,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.isbn_label || 'ISBN'}</label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={isbn}
                       onChange={(e) => setIsbn(e.target.value)}
                       placeholder={t.modal.isbn_placeholder || '978-5-17-123456-7'}
@@ -687,6 +696,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.youtube_url_label}</label>
                 <input
                   type="text"
+                  maxLength={500}
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   placeholder={t.modal.placeholder_youtube_url}
@@ -700,6 +710,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
+                  maxLength={1000}
                   placeholder={t.modal.placeholder_note}
                   className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
                 />

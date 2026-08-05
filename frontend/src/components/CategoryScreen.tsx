@@ -268,6 +268,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         <div className="relative w-full">
           <input
             type="text"
+            maxLength={100}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.details.search_placeholder}
