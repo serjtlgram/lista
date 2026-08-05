@@ -151,10 +151,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isFav, setIsFav] = useState<boolean>(() => isFavorite(item.id));
+  const [showSharedPreviewModal, setShowSharedPreviewModal] = useState(false);
 
   useEffect(() => {
     setIsFav(isFavorite(item.id));
   }, [item.id]);
+
+  const handleProtectedAction = (action: () => void) => {
+    if (isSharedPreview) {
+      setShowSharedPreviewModal(true);
+      return;
+    }
+    action();
+  };
 
   const handleToggleFav = () => {
     const updated = toggleFavorite(item.id);
@@ -319,12 +328,20 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleSelectStatus = (newStatusVal: string) => {
     setIsStatusDropdownOpen(false);
+    if (isSharedPreview) {
+      setShowSharedPreviewModal(true);
+      return;
+    }
     if (onUpdateItem) {
       onUpdateItem(item.id, { status: newStatusVal });
     }
   };
 
   const handleSelectRating = (newRating: number) => {
+    if (isSharedPreview) {
+      setShowSharedPreviewModal(true);
+      return;
+    }
     if (isPlanned) {
       setToastMessage(t.details.rating_planned_warning);
       return;
@@ -478,7 +495,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   <button
                     onClick={() => {
                       setIsHeaderMenuOpen(false);
-                      onEdit(item);
+                      handleProtectedAction(() => onEdit(item));
                     }}
                     className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
                   >
@@ -491,7 +508,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   <button
                     onClick={() => {
                       setIsHeaderMenuOpen(false);
-                      onDelete(item.id);
+                      handleProtectedAction(() => onDelete(item.id));
                     }}
                     className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
                   >
@@ -632,7 +649,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             {/* Interactive Status Pill Button */}
             <div className="relative pt-1.5">
               <button
-                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                onClick={() => handleProtectedAction(() => setIsStatusDropdownOpen(!isStatusDropdownOpen))}
                 className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
               >
                 <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
@@ -882,7 +899,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <span className="text-xs text-gray-400 font-semibold">{t.details.notes}</span>
           {!isEditingNote && (
             <button
-              onClick={() => setIsEditingNote(true)}
+              onClick={() => handleProtectedAction(() => setIsEditingNote(true))}
               className="p-1 text-gray-400 hover:text-accentViolet transition"
               title={t.details.edit}
             >
@@ -1032,6 +1049,35 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         item={item}
         t={t}
       />
+
+      {/* Modal warning when user tries to edit shared preview item before adding to library */}
+      {showSharedPreviewModal && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-6 space-y-4 animate-slide-up shadow-2xl text-center flex flex-col items-center">
+            <div className="w-14 h-14 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shadow-inner">
+              <PlusCircle className="w-7 h-7 text-accentTeal" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-base font-bold text-white">
+                {t.details.add_first_title || 'Добавьте в свою библиотеку'}
+              </h3>
+              <p className="text-xs text-gray-300 leading-relaxed px-1">
+                {t.details.add_first_desc || 'Чтобы внести изменения — сначала добавьте элемент к себе в библиотеку. Пролистайте вниз и нажмите кнопку «В список».'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowSharedPreviewModal(false);
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+              }}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-xs shadow-lg hover:opacity-95 active:scale-[0.97] transition"
+            >
+              {t.details.add_first_btn || 'Понятно'}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

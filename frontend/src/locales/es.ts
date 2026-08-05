@@ -143,6 +143,9 @@ export const es: Translations = {
     to_list_btn: 'A la lista',
     lists_coming_soon: '¡Las listas de categorías estarán disponibles pronto!',
     remove_from_list: 'Quitar de la lista',
+    add_first_title: 'Añade a tu biblioteca',
+    add_first_desc: 'Para hacer cambios — primero añade este elemento a tu biblioteca. Desplázate hacia abajo y pulsa el botón "Añadir a la lista".',
+    add_first_btn: 'Entendido',
   },
   stats: {
     title: 'Estadísticas',

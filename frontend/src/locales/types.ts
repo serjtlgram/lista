@@ -143,6 +143,9 @@ export interface Translations {
     to_list_btn: string;
     lists_coming_soon: string;
     remove_from_list: string;
+    add_first_title: string;
+    add_first_desc: string;
+    add_first_btn: string;
   };
   stats: {
     title: string;
