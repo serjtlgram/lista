@@ -1,0 +1,8 @@
+{
+  "name": "lista",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build && cd .. && npm run copy-dist",
+    "copy-dist": "node -e \"const fs = require('fs'); fs.cpSync('frontend/dist', 'dist', {recursive:true});\""
+  }
+}
