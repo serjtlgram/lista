@@ -496,7 +496,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
-			if strings.HasPrefix(item.PosterURL, "data:image/") {
+			if strings.HasPrefix(item.PosterURL, "data:image/") || len(item.PosterURL) > 300 {
 				item.PosterURL = fmt.Sprintf("%s/api/poster/%s", baseURL, item.ID)
 			}
 			item.RawInput = ""
@@ -4085,42 +4085,27 @@ func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.HasPrefix(posterURL, "data:image/jpeg;base64,") {
-		b64 := strings.TrimPrefix(posterURL, "data:image/jpeg;base64,")
-		data, err := base64.StdEncoding.DecodeString(b64)
-		if err != nil {
-			http.Error(w, "Bad image data", http.StatusInternalServerError)
-			return
+	if strings.HasPrefix(posterURL, "data:image/") {
+		parts := strings.SplitN(posterURL, ",", 2)
+		if len(parts) == 2 {
+			contentType := "image/jpeg"
+			if strings.Contains(parts[0], "png") {
+				contentType = "image/png"
+			} else if strings.Contains(parts[0], "webp") {
+				contentType = "image/webp"
+			}
+
+			data, err := base64.StdEncoding.DecodeString(parts[1])
+			if err == nil && len(data) > 0 {
+				w.Header().Set("Content-Type", contentType)
+				w.Header().Set("Cache-Control", "public, max-age=31536000")
+				w.Write(data)
+				return
+			}
 		}
-		w.Header().Set("Content-Type", "image/jpeg")
-		w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
-		w.Write(data)
-		return
-	} else if strings.HasPrefix(posterURL, "data:image/png;base64,") {
-		b64 := strings.TrimPrefix(posterURL, "data:image/png;base64,")
-		data, err := base64.StdEncoding.DecodeString(b64)
-		if err != nil {
-			http.Error(w, "Bad image data", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "public, max-age=31536000")
-		w.Write(data)
-		return
-	} else if strings.HasPrefix(posterURL, "data:image/webp;base64,") {
-		b64 := strings.TrimPrefix(posterURL, "data:image/webp;base64,")
-		data, err := base64.StdEncoding.DecodeString(b64)
-		if err != nil {
-			http.Error(w, "Bad image data", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "image/webp")
-		w.Header().Set("Cache-Control", "public, max-age=31536000")
-		w.Write(data)
-		return
 	}
 
-	if posterURL != "" {
+	if posterURL != "" && strings.HasPrefix(posterURL, "http") {
 		http.Redirect(w, r, posterURL, http.StatusFound)
 		return
 	}
