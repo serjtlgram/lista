@@ -752,7 +752,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           } ${!isMoreExpanded ? 'max-h-[42px] overflow-hidden' : ''}`}
         >
           {/* Tab 1: Favorites (Always accessible only in ALL folder) */}
-          {selectedFolderId === 'ALL' && (
+          {selectedFolderId === 'all' && (
             <button
               onClick={() => handleSelectTab(FAVORITES_ID)}
               className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
