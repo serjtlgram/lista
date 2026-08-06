@@ -140,6 +140,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const [isManageFolderModalOpen, setIsManageFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ListFolder | null>(null);
   const [folderRenameValue, setFolderRenameValue] = useState('');
+  const [listsSearchQuery, setListsSearchQuery] = useState('');
 
   const [isChangeListFolderModalOpen, setIsChangeListFolderModalOpen] = useState(false);
   const [isSortFoldersModalOpen, setIsSortFoldersModalOpen] = useState(false);
@@ -373,6 +374,10 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const handleCreateFolder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
+    if (folders.length >= 200) {
+      showToast('Достигнут лимит в 200 папок');
+      return;
+    }
     triggerHaptic();
     const created = createFolder(newFolderName.trim());
     refreshFolders();
@@ -557,11 +562,15 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   const userListsOnly = lists.filter((l) => l.id !== FAVORITES_ID);
 
-  // Filter user lists by currently selected folder
-  const filteredUserLists = userListsOnly.filter((list) => {
-    if (selectedFolderId === 'all') return true;
-    return list.folderId === selectedFolderId;
-  });
+  // Filter user lists by search query or currently selected folder
+  const filteredUserLists = listsSearchQuery
+    ? userListsOnly.filter((list) =>
+        list.name.toLowerCase().includes(listsSearchQuery.toLowerCase())
+      )
+    : userListsOnly.filter((list) => {
+        if (selectedFolderId === 'all') return true;
+        return list.folderId === selectedFolderId;
+      });
 
   return (
     <div className="space-y-4 pb-8 animate-slide-up">
@@ -585,8 +594,34 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </button>
       </div>
 
+      {/* Lists Search Bar */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="w-4 h-4 text-gray-500" />
+        </div>
+        <input
+          type="text"
+          value={listsSearchQuery}
+          onChange={(e) => setListsSearchQuery(e.target.value)}
+          placeholder={(t as any).lists?.search_lists_placeholder || 'Поиск списков...'}
+          className="w-full bg-cardDark border border-cardBorder rounded-xl pl-9 pr-10 py-2 text-sm text-white focus:outline-none focus:border-accentViolet transition-colors placeholder:text-gray-500"
+        />
+        {listsSearchQuery && (
+          <button
+            onClick={() => {
+              setListsSearchQuery('');
+              triggerHaptic();
+            }}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-white transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Horizontal Scrolling Theme Folders Bar */}
-      <div className="space-y-1.5 pt-0.5">
+      {!listsSearchQuery && (
+        <div className="space-y-1.5 pt-0.5">
         <div className="flex items-center justify-between px-1">
           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
             <Folder className="w-3.5 h-3.5 text-accentViolet" />
@@ -685,11 +720,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           })}
         </div>
       </div>
+      )}
 
-      {/* All Lists Layout (Filtered by Folder) */}
+      {/* All Lists Layout (Filtered by Folder or Search) */}
       <div className="flex items-center justify-between px-1 mt-4 mb-2">
         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pl-1">
-          Списки в папках
+          {listsSearchQuery ? 'Результаты поиска' : 'Списки в папках'}
         </span>
       </div>
       <div className="relative w-full">
@@ -715,33 +751,35 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             filteredUserLists.length > 1 ? 'pr-7' : ''
           } ${!isMoreExpanded ? 'max-h-[42px] overflow-hidden' : ''}`}
         >
-          {/* Tab 1: Favorites (Always accessible) */}
-          <button
-            onClick={() => handleSelectTab(FAVORITES_ID)}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-              activeSelectedListId === FAVORITES_ID
-                ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
-                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-            }`}
-            title={t.lists.favorites}
-          >
-            <Star
-              className={`w-4 h-4 ${
+          {/* Tab 1: Favorites (Always accessible only in ALL folder) */}
+          {selectedFolderId === 'ALL' && (
+            <button
+              onClick={() => handleSelectTab(FAVORITES_ID)}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
                 activeSelectedListId === FAVORITES_ID
-                  ? 'fill-white text-white'
-                  : 'fill-amber-400 text-amber-400'
+                  ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                  : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
               }`}
-            />
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                activeSelectedListId === FAVORITES_ID
-                  ? 'bg-white/20 text-white'
-                  : 'bg-bgDark text-gray-400'
-              }`}
+              title={t.lists.favorites}
             >
-              {favoriteIds.filter(id => items.some(item => item.id === id)).length}
-            </span>
-          </button>
+              <Star
+                className={`w-4 h-4 ${
+                  activeSelectedListId === FAVORITES_ID
+                    ? 'fill-white text-white'
+                    : 'fill-amber-400 text-amber-400'
+                }`}
+              />
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  activeSelectedListId === FAVORITES_ID
+                    ? 'bg-white/20 text-white'
+                    : 'bg-bgDark text-gray-400'
+                }`}
+              >
+                {favoriteIds.filter(id => items.some(item => item.id === id)).length}
+              </span>
+            </button>
+          )}
 
           {filteredUserLists.length === 0 && (
             <div className="text-xs text-gray-400 py-1.5 px-2 flex items-center gap-2">
@@ -1166,7 +1204,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
                   <input
                     type="text"
-                    maxLength={40}
+                    maxLength={100}
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     placeholder={(t as any).lists?.folder_name_placeholder || 'Название папки...'}
@@ -1222,7 +1260,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
                   <input
                     type="text"
-                    maxLength={40}
+                    maxLength={100}
                     value={folderRenameValue}
                     onChange={(e) => setFolderRenameValue(e.target.value)}
                     className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
