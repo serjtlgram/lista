@@ -68,6 +68,8 @@ export function safeBase64Encode(data: any): string {
   }
 }
 
+const FOLDER_ICONS = ['📁', '📂', '🗂️', '💼', '📌', '💎', '🔥', '⭐️', '🏠', '🌍', '🟣', '🔵', '🟢', '🟡', '🔴'];
+
 export const ListsScreen: React.FC<ListsScreenProps> = ({
   items,
   onSelectItem,
@@ -131,10 +133,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   // Folder Modals State
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderIcon, setNewFolderIcon] = useState('📁');
 
   const [isManageFolderModalOpen, setIsManageFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ListFolder | null>(null);
   const [folderRenameValue, setFolderRenameValue] = useState('');
+  const [folderEditIcon, setFolderEditIcon] = useState('📁');
 
   const [isChangeListFolderModalOpen, setIsChangeListFolderModalOpen] = useState(false);
 
@@ -368,28 +372,30 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     e.preventDefault();
     if (!newFolderName.trim()) return;
     triggerHaptic();
-    const created = createFolder(newFolderName.trim());
+    const created = createFolder(newFolderName.trim(), newFolderIcon);
     refreshFolders();
     setSelectedFolderId(created.id);
     setNewFolderName('');
+    setNewFolderIcon('📁');
     setIsCreateFolderModalOpen(false);
-    showToast(`Папка «${created.name}» создана`);
+    showToast(`Папка создана`);
   };
 
   const handleRenameFolder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingFolder || !folderRenameValue.trim()) return;
+    if (!editingFolder) return;
     triggerHaptic();
-    renameFolder(editingFolder.id, folderRenameValue.trim());
+    renameFolder(editingFolder.id, folderRenameValue.trim(), folderEditIcon);
     refreshFolders();
     setIsManageFolderModalOpen(false);
     setEditingFolder(null);
-    showToast('Название папки обновлено');
+    showToast('Настройки папки обновлены');
   };
 
   const handleDeleteFolder = () => {
-    if (!editingFolder || editingFolder.isDefault) return;
-    if (window.confirm(`Удалить папку «${editingFolder.name}»? Списки будут перенесены в Разное.`)) {
+    if (!editingFolder) return;
+    const name = editingFolder.name || 'Эту папку';
+    if (window.confirm(`Удалить «${name}»? Списки будут перенесены в раздел «Все».`)) {
       triggerHaptic();
       deleteFolder(editingFolder.id);
       refreshFolders();
@@ -399,7 +405,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       }
       setIsManageFolderModalOpen(false);
       setEditingFolder(null);
-      showToast('Папка удалена, списки перенесены в Разное');
+      showToast('Папка удалена, списки перенесены в раздел «Все»');
     }
   };
 
@@ -628,10 +634,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               (l) => l.folderId === folder.id
             ).length;
 
-            let icon = '📁';
-            if (folder.id === 'svoe') icon = '🏠';
-            if (folder.id === 'foreign') icon = '🌍';
-            if (folder.id === 'misc') icon = '📂';
+            let icon = folder.icon || '📁';
 
             return (
               <div key={folder.id} className="relative shrink-0 flex items-center">
@@ -642,6 +645,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       triggerHaptic('medium');
                       setEditingFolder(folder);
                       setFolderRenameValue(folder.name);
+                      setFolderEditIcon(folder.icon || '📁');
                       setIsManageFolderModalOpen(true);
                     }, 400);
                   }}
@@ -1150,16 +1154,32 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               </div>
 
               <form onSubmit={handleCreateFolder} className="space-y-4">
-                <input
-                  type="text"
-                  autoFocus
-                  required
-                  maxLength={40}
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder={(t as any).lists?.folder_name_placeholder || 'Название папки...'}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
-                />
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold mb-2 block">Выберите иконку</label>
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {FOLDER_ICONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setNewFolderIcon(icon)}
+                        className={`text-2xl p-2 rounded-xl transition ${
+                          newFolderIcon === icon ? 'bg-accentViolet/20 border border-accentViolet' : 'bg-bgDark border border-cardBorder hover:border-gray-500'
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название (необязательно)</label>
+                  <input
+                    type="text"
+                    maxLength={40}
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder={(t as any).lists?.folder_name_placeholder || 'Название папки...'}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
 
                 <div className="flex justify-end gap-2 pt-1">
                   <button
@@ -1205,11 +1225,24 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <form onSubmit={handleRenameFolder} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
+                  <label className="text-xs text-gray-400 font-semibold mb-2 block">Выберите иконку</label>
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {FOLDER_ICONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setFolderEditIcon(icon)}
+                        className={`text-2xl p-2 rounded-xl transition ${
+                          folderEditIcon === icon ? 'bg-accentViolet/20 border border-accentViolet' : 'bg-bgDark border border-cardBorder hover:border-gray-500'
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название (необязательно)</label>
                   <input
                     type="text"
-                    autoFocus
-                    required
                     maxLength={40}
                     value={folderRenameValue}
                     onChange={(e) => setFolderRenameValue(e.target.value)}
@@ -1218,16 +1251,14 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
-                  {!editingFolder.isDefault ? (
-                    <button
-                      type="button"
-                      onClick={handleDeleteFolder}
-                      className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>{(t as any).lists?.delete_folder || 'Удалить'}</span>
-                    </button>
-                  ) : <div />}
+                  <button
+                    type="button"
+                    onClick={handleDeleteFolder}
+                    className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Удалить</span>
+                  </button>
 
                   <div className="flex gap-2">
                     <button
@@ -1279,10 +1310,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 <div className="space-y-2 max-h-60 overflow-y-auto hide-scrollbar pt-1">
                   {folders.map((f) => {
                     const isCurrentFolder = (currentList.folderId || DEFAULT_FOLDER_ID) === f.id;
-                    let icon = '📁';
-                    if (f.id === 'svoe') icon = '🏠';
-                    if (f.id === 'foreign') icon = '🌍';
-                    if (f.id === 'misc') icon = '📂';
+                    let icon = f.icon || '📁';
 
                     return (
                       <div

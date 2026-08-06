@@ -5,6 +5,7 @@ import { saveToCloudStorage, loadFromCloudStorage } from './cloud';
 export interface ListFolder {
   id: string;
   name: string;
+  icon?: string;
   isDefault?: boolean;
   createdAt?: string;
 }
@@ -27,9 +28,9 @@ const FAVORITES_LIST_ID = 'favorites';
 export const DEFAULT_FOLDER_ID = 'misc';
 
 export const DEFAULT_FOLDERS: ListFolder[] = [
-  { id: 'svoe', name: 'Своё', isDefault: true },
-  { id: 'foreign', name: 'Зарубежное', isDefault: true },
-  { id: 'misc', name: 'Разное', isDefault: true },
+  { id: 'svoe', name: 'Своё', isDefault: true, icon: '🏠' },
+  { id: 'foreign', name: 'Зарубежное', isDefault: true, icon: '🌍' },
+  { id: 'misc', name: 'Разное', isDefault: true, icon: '📂' },
 ];
 
 function getDefaultFavoritesList(): UserList {
@@ -71,21 +72,27 @@ export function saveFolders(folders: ListFolder[]): void {
   saveToCloudStorage(FOLDERS_TS_KEY, timestamp);
 }
 
-export function createFolder(name: string): ListFolder {
+export function createFolder(name: string, icon?: string): ListFolder {
   const folders = getFolders();
   const newFolder: ListFolder = {
-    id: crypto.randomUUID ? crypto.randomUUID() : `folder_${Date.now()}`,
-    name,
-    isDefault: false,
+    id: 'folder_' + Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+    name: name.trim(),
+    icon: icon || '📁',
     createdAt: new Date().toISOString(),
   };
-  saveFolders([...folders, newFolder]);
+  folders.push(newFolder);
+  saveFolders(folders);
   return newFolder;
 }
 
-export function renameFolder(folderId: string, newName: string): void {
+export function renameFolder(folderId: string, newName: string, newIcon?: string): void {
   const folders = getFolders();
-  const updated = folders.map((f) => (f.id === folderId ? { ...f, name: newName } : f));
+  const updated = folders.map((f) => {
+    if (f.id === folderId) {
+      return { ...f, name: newName.trim(), icon: newIcon || f.icon || '📁' };
+    }
+    return f;
+  });
   saveFolders(updated);
 }
 
