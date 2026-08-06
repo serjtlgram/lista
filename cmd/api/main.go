@@ -96,6 +96,7 @@ func main() {
 
 		r.Get("/api/user/profile", h.GetProfile)
 		r.Get("/api/items", h.GetItems)
+		r.Get("/api/poster/{id}", h.GetPoster)
 		r.Post("/api/items", h.CreateItem)
 		r.Put("/api/items/{id}", h.UpdateItem)
 		r.Delete("/api/items/{id}", h.DeleteItem)

@@ -490,6 +490,10 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
+			if strings.HasPrefix(item.PosterURL, "data:image/") {
+				item.PosterURL = "/api/poster/" + item.ID
+			}
+			item.RawInput = ""
 			items = append(items, item)
 		}
 	}
@@ -697,7 +701,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	genreVal = limitStrLen(genreVal, 100)
 	durationVal = limitStrLen(durationVal, 60)
 	releaseYearVal = limitStrLen(releaseYearVal, 20)
-	posterURL = limitStrLen(posterURL, 500)
+	posterURL = limitStrLen(posterURL, 100000)
 	ytURL = limitStrLen(ytURL, 500)
 	countryVal = limitStrLen(countryVal, 100)
 
@@ -808,7 +812,7 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		if pURL != "" {
 			pURL = parser.OptimizePosterURL(nil, pURL)
 		}
-		pURL = limitStrLen(pURL, 500)
+		pURL = limitStrLen(pURL, 100000)
 		query += fmt.Sprintf(", poster_url = $%d", argIdx)
 		args = append(args, pURL)
 		argIdx++
@@ -4048,4 +4052,61 @@ func mapCountryToFlag(country string) string {
 	}
 
 	return country
+}
+
+func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "id")
+	if itemID == "" {
+		http.Error(w, "Missing id", http.StatusBadRequest)
+		return
+	}
+
+	var posterURL string
+	err := h.DB.Pool.QueryRow(r.Context(), "SELECT poster_url FROM items WHERE id = $1", itemID).Scan(&posterURL)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	if strings.HasPrefix(posterURL, "data:image/jpeg;base64,") {
+		b64 := strings.TrimPrefix(posterURL, "data:image/jpeg;base64,")
+		data, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil {
+			http.Error(w, "Bad image data", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
+		w.Write(data)
+		return
+	} else if strings.HasPrefix(posterURL, "data:image/png;base64,") {
+		b64 := strings.TrimPrefix(posterURL, "data:image/png;base64,")
+		data, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil {
+			http.Error(w, "Bad image data", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		w.Write(data)
+		return
+	} else if strings.HasPrefix(posterURL, "data:image/webp;base64,") {
+		b64 := strings.TrimPrefix(posterURL, "data:image/webp;base64,")
+		data, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil {
+			http.Error(w, "Bad image data", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "image/webp")
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		w.Write(data)
+		return
+	}
+
+	if posterURL != "" {
+		http.Redirect(w, r, posterURL, http.StatusFound)
+		return
+	}
+
+	http.Error(w, "No poster", http.StatusNotFound)
 }
