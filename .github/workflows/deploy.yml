@@ -30,6 +30,7 @@ jobs:
         run: |
           cd frontend
           npm run build
+          touch dist/.nojekyll
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
