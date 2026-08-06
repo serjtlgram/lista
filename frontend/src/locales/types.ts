@@ -226,7 +226,17 @@ export interface Translations {
     open_lista_app: string;
     list_shared: string;
     cannot_delete_default: string;
-    cannot_rename_default: string;
+    cannot_rename_default?: string;
     go_to_stats: string;
+    all_folders?: string;
+    folders_title?: string;
+    new_folder?: string;
+    create_folder?: string;
+    rename_folder?: string;
+    delete_folder?: string;
+    folder_name_placeholder?: string;
+    select_folder?: string;
+    change_folder?: string;
+    folder_label?: string;
   };
 }

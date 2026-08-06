@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Check, Plus, FolderPlus, Star } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
-import { getLists, saveLists, createList, FAVORITES_ID, UserList } from '../services/lists';
+import { getLists, saveLists, createList, getFolders, DEFAULT_FOLDER_ID, FAVORITES_ID, UserList, ListFolder } from '../services/lists';
 import { getFavoriteIds, setFavoriteIds } from '../services/favorites';
 
 import { ru } from '../locales/ru';
@@ -25,6 +25,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
 }) => {
   const trans = t || ru;
   const [userLists, setUserLists] = useState<UserList[]>([]);
+  const [folders, setFolders] = useState<ListFolder[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -41,6 +42,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
 
     const allLists = getLists();
     setUserLists(allLists);
+    setFolders(getFolders());
 
     const initialSelected: string[] = [];
     const favs = getFavoriteIds();
@@ -177,6 +179,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
             .filter((l) => !l.isDefault)
             .map((list) => {
               const isSelected = selectedListIds.includes(list.id);
+              const folderName = folders.find((f) => f.id === (list.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное';
               return (
                 <div
                   key={list.id}
@@ -187,9 +190,14 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                       : 'bg-bgDark border-cardBorder hover:border-gray-600'
                   }`}
                 >
-                  <span className="text-sm font-bold text-white truncate max-w-[180px]">
-                    {list.name}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <span className="text-sm font-bold text-white truncate max-w-[150px]">
+                      {list.name}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold truncate shrink-0">
+                      📁 {folderName}
+                    </span>
+                  </div>
                   <div
                     className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
                       isSelected

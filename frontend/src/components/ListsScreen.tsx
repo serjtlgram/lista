@@ -11,17 +11,28 @@ import {
   X,
   Search,
   ChevronDown,
+  Folder,
+  FolderPlus,
+  FolderOpen,
+  Settings2,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
   UserList,
+  ListFolder,
   getLists,
   saveLists,
   createList,
   renameList,
   deleteList,
+  updateListFolder,
+  getFolders,
+  createFolder,
+  renameFolder,
+  deleteFolder,
   removeItemFromList,
   FAVORITES_ID,
+  DEFAULT_FOLDER_ID,
 } from '../services/lists';
 import { getFavoriteIds, setFavoriteIds, toggleFavorite } from '../services/favorites';
 import { ItemCard } from './ItemCard';
@@ -68,6 +79,11 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   t,
 }) => {
   const [lists, setLists] = useState<UserList[]>(() => getLists());
+  const [folders, setFolders] = useState<ListFolder[]>(() => getFolders());
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(() => {
+    return localStorage.getItem('lista_selected_folder') || 'all';
+  });
+
   const [selectedListIdState, setSelectedListIdState] = useState<string>(
     selectedListIdProp || initialListId || FAVORITES_ID
   );
@@ -81,9 +97,22 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   }, [selectedListIdProp]);
 
   useEffect(() => {
+    localStorage.setItem('lista_selected_folder', selectedFolderId);
+  }, [selectedFolderId]);
+
+  const refreshFolders = () => {
+    setFolders(getFolders());
+  };
+
+  useEffect(() => {
     const handleListsUpdate = () => refreshLists();
+    const handleFoldersUpdate = () => refreshFolders();
     window.addEventListener('lista_lists_updated', handleListsUpdate);
-    return () => window.removeEventListener('lista_lists_updated', handleListsUpdate);
+    window.addEventListener('lista_folders_updated', handleFoldersUpdate);
+    return () => {
+      window.removeEventListener('lista_lists_updated', handleListsUpdate);
+      window.removeEventListener('lista_folders_updated', handleFoldersUpdate);
+    };
   }, []);
 
   const handleSelectTab = (id: string) => {
@@ -97,6 +126,17 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [newListFolderId, setNewListFolderId] = useState<string>(DEFAULT_FOLDER_ID);
+
+  // Folder Modals State
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+
+  const [isManageFolderModalOpen, setIsManageFolderModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<ListFolder | null>(null);
+  const [folderRenameValue, setFolderRenameValue] = useState('');
+
+  const [isChangeListFolderModalOpen, setIsChangeListFolderModalOpen] = useState(false);
 
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -317,11 +357,60 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     e.preventDefault();
     if (!newListName.trim()) return;
     triggerHaptic();
-    const created = createList(newListName.trim());
+    const created = createList(newListName.trim(), newListFolderId || DEFAULT_FOLDER_ID);
     refreshLists();
     handleSelectTab(created.id);
     setNewListName('');
     setIsCreateModalOpen(false);
+  };
+
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+    triggerHaptic();
+    const created = createFolder(newFolderName.trim());
+    refreshFolders();
+    setSelectedFolderId(created.id);
+    setNewFolderName('');
+    setIsCreateFolderModalOpen(false);
+    showToast(`Папка «${created.name}» создана`);
+  };
+
+  const handleRenameFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFolder || !folderRenameValue.trim()) return;
+    triggerHaptic();
+    renameFolder(editingFolder.id, folderRenameValue.trim());
+    refreshFolders();
+    setIsManageFolderModalOpen(false);
+    setEditingFolder(null);
+    showToast('Название папки обновлено');
+  };
+
+  const handleDeleteFolder = () => {
+    if (!editingFolder || editingFolder.isDefault) return;
+    if (window.confirm(`Удалить папку «${editingFolder.name}»? Списки будут перенесены в Разное.`)) {
+      triggerHaptic();
+      deleteFolder(editingFolder.id);
+      refreshFolders();
+      refreshLists();
+      if (selectedFolderId === editingFolder.id) {
+        setSelectedFolderId('all');
+      }
+      setIsManageFolderModalOpen(false);
+      setEditingFolder(null);
+      showToast('Папка удалена, списки перенесены в Разное');
+    }
+  };
+
+  const handleChangeListFolder = (targetFolderId: string) => {
+    if (currentList.isDefault) return;
+    triggerHaptic();
+    updateListFolder(currentList.id, targetFolderId);
+    refreshLists();
+    setIsChangeListFolderModalOpen(false);
+    const targetFolderObj = folders.find((f) => f.id === targetFolderId);
+    showToast(`Список перенесён в папку «${targetFolderObj?.name || 'Разное'}»`);
   };
 
   const handleRenameList = (e: React.FormEvent) => {
@@ -460,7 +549,13 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   };
 
   const userListsOnly = lists.filter((l) => l.id !== FAVORITES_ID);
-  const secondList = userListsOnly[0]; // Always stays as first custom list in custom user order
+
+  // Filter user lists by currently selected folder
+  const filteredUserLists = userListsOnly.filter((list) => {
+    if (selectedFolderId === 'all') return true;
+    const listFolder = list.folderId || DEFAULT_FOLDER_ID;
+    return listFolder === selectedFolderId;
+  });
 
   return (
     <div className="space-y-4 pb-8 animate-slide-up">
@@ -474,18 +569,119 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           onClick={() => {
             triggerHaptic();
             setNewListName('');
+            setNewListFolderId(selectedFolderId !== 'all' ? selectedFolderId : DEFAULT_FOLDER_ID);
             setIsCreateModalOpen(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accentViolet/20 border border-accentViolet/40 text-accentViolet hover:bg-accentViolet text-xs font-bold transition active:scale-[0.97] shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accentViolet/20 border border-accentViolet/40 text-accentViolet hover:bg-accentViolet hover:text-white text-xs font-bold transition active:scale-[0.97] shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>{t.lists.new_list}</span>
         </button>
       </div>
 
-      {/* All Lists Layout (Top row & Wrapped Expanded row) */}
+      {/* Horizontal Scrolling Theme Folders Bar */}
+      <div className="space-y-1.5 pt-0.5">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Folder className="w-3.5 h-3.5 text-accentViolet" />
+            <span>{(t as any).lists?.folders_title || 'Тематические папки'}</span>
+          </span>
+          <button
+            onClick={() => {
+              triggerHaptic();
+              setNewFolderName('');
+              setIsCreateFolderModalOpen(true);
+            }}
+            className="text-[11px] font-bold text-accentViolet hover:underline flex items-center gap-1 active:scale-95 transition"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{(t as any).lists?.new_folder || 'Папка'}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-1 px-1 select-none">
+          {/* "Все" Folder Tab */}
+          <button
+            onClick={() => {
+              triggerHaptic();
+              setSelectedFolderId('all');
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+              selectedFolderId === 'all'
+                ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+            }`}
+          >
+            <span>🌐 {(t as any).lists?.all_folders || 'Все'}</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                selectedFolderId === 'all' ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
+              }`}
+            >
+              {userListsOnly.length}
+            </span>
+          </button>
+
+          {/* Theme Folders */}
+          {folders.map((folder) => {
+            const isSelected = selectedFolderId === folder.id;
+            const folderListsCount = userListsOnly.filter(
+              (l) => (l.folderId || DEFAULT_FOLDER_ID) === folder.id
+            ).length;
+
+            let icon = '📁';
+            if (folder.id === 'svoe') icon = '🏠';
+            if (folder.id === 'foreign') icon = '🌍';
+            if (folder.id === 'misc') icon = '📂';
+
+            return (
+              <div key={folder.id} className="relative shrink-0 flex items-center">
+                <button
+                  onClick={() => {
+                    triggerHaptic();
+                    setSelectedFolderId(folder.id);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border ${
+                    isSelected
+                      ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                      : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+                  }`}
+                >
+                  <span>{icon} {folder.name}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
+                    }`}
+                  >
+                    {folderListsCount}
+                  </span>
+                </button>
+
+                {/* Edit Icon for custom folder */}
+                {!folder.isDefault && isSelected && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic();
+                      setEditingFolder(folder);
+                      setFolderRenameValue(folder.name);
+                      setIsManageFolderModalOpen(true);
+                    }}
+                    className="ml-1 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+                    title="Редактировать папку"
+                  >
+                    <Edit2 className="w-3 h-3 text-accentViolet" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* All Lists Layout (Filtered by Folder) */}
       <div className="relative w-full">
-        {userListsOnly.length > 1 && (
+        {filteredUserLists.length > 1 && (
           <button
             onClick={() => {
               triggerHaptic();
@@ -504,10 +700,10 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
         <div
           className={`flex flex-wrap items-center gap-[6px] w-full py-0.5 transition-all duration-300 ${
-            userListsOnly.length > 1 ? 'pr-7' : ''
+            filteredUserLists.length > 1 ? 'pr-7' : ''
           } ${!isMoreExpanded ? 'max-h-[42px] overflow-hidden' : ''}`}
         >
-          {/* Tab 1: Favorites (Compact: [ ⭐ count ]) */}
+          {/* Tab 1: Favorites (Always accessible) */}
           <button
             onClick={() => handleSelectTab(FAVORITES_ID)}
             className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
@@ -535,10 +731,25 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             </span>
           </button>
 
-          {userListsOnly.length === 0 && <div className="flex-1" />}
+          {filteredUserLists.length === 0 && (
+            <div className="text-xs text-gray-400 py-1.5 px-2 flex items-center gap-2">
+              <span>В этой папке пока нет списков</span>
+              <button
+                onClick={() => {
+                  triggerHaptic();
+                  setNewListName('');
+                  setNewListFolderId(selectedFolderId !== 'all' ? selectedFolderId : DEFAULT_FOLDER_ID);
+                  setIsCreateModalOpen(true);
+                }}
+                className="text-accentViolet font-bold hover:underline"
+              >
+                + Создать
+              </button>
+            </div>
+          )}
 
-          {/* Custom Lists */}
-          {userListsOnly.map((list) => {
+          {/* Filtered Custom Lists */}
+          {filteredUserLists.map((list) => {
             const isSelected = list.id === activeSelectedListId;
             const isDragging = list.id === dragState?.list.id;
             const validCount = list.itemIds.filter(id => items.some(item => item.id === id)).length;
@@ -606,20 +817,40 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {/* Current List Action Header Card */}
       <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
         {/* Top Row: List Title & Item Count */}
-        <div className="flex items-center gap-2.5">
-          {currentList.isDefault ? (
-            <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
-          ) : (
-            <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-bold text-white truncate">
-              {currentList.isDefault ? t.lists.favorites : currentList.name}
-            </h2>
-            <p className="text-[11px] text-gray-400">
-              {listItems.length} {t.lists.items_count}
-            </p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            {currentList.isDefault ? (
+              <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
+            ) : (
+              <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-bold text-white truncate">
+                {currentList.isDefault ? t.lists.favorites : currentList.name}
+              </h2>
+              <p className="text-[11px] text-gray-400">
+                {listItems.length} {t.lists.items_count}
+              </p>
+            </div>
           </div>
+
+          {/* Folder pill badge for custom list */}
+          {!currentList.isDefault && (
+            <button
+              onClick={() => {
+                triggerHaptic();
+                setIsChangeListFolderModalOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-cardDark border border-cardBorder hover:border-accentViolet/50 text-[11px] font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 shrink-0 transition active:scale-95 shadow-sm"
+              title={(t as any).lists?.change_folder || 'Сменить папку'}
+            >
+              <Folder className="w-3.5 h-3.5 text-accentViolet" />
+              <span>
+                {folders.find((f) => f.id === (currentList.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            </button>
+          )}
         </div>
 
         {/* Bottom Row: Action Buttons (Share, Edit, Delete, "+ Добавить") */}
@@ -813,7 +1044,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </div>
       )}
 
-      {/* Modal: Create List (ITEM 5 FIX: Rendered via createPortal to document.body to prevent layout/scroll jumping) */}
+      {/* Modal: Create List */}
       {isCreateModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -826,16 +1057,66 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               </div>
 
               <form onSubmit={handleCreateList} className="space-y-4">
-                <input
-                  type="text"
-                  autoFocus
-                  required
-                  maxLength={50}
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  placeholder={t.lists.create_name_placeholder}
-                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
-                />
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">
+                    {t.modal.title_label}
+                  </label>
+                  <input
+                    type="text"
+                    autoFocus
+                    required
+                    maxLength={50}
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder={t.lists.create_name_placeholder}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold mb-1.5 flex items-center justify-between">
+                    <span>{(t as any).lists?.select_folder || 'Папка для списка'}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreateModalOpen(false);
+                        setNewFolderName('');
+                        setIsCreateFolderModalOpen(true);
+                      }}
+                      className="text-accentViolet hover:underline font-bold text-[11px]"
+                    >
+                      + {(t as any).lists?.new_folder || 'Новая папка'}
+                    </button>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto hide-scrollbar p-0.5">
+                    {folders.map((f) => {
+                      const isSelected = (newListFolderId || DEFAULT_FOLDER_ID) === f.id;
+                      let icon = '📁';
+                      if (f.id === 'svoe') icon = '🏠';
+                      if (f.id === 'foreign') icon = '🌍';
+                      if (f.id === 'misc') icon = '📂';
+
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic();
+                            setNewListFolderId(f.id);
+                          }}
+                          className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition text-left ${
+                            isSelected
+                              ? 'bg-accentViolet/20 border-accentViolet text-white font-bold'
+                              : 'bg-bgDark border-cardBorder text-gray-300 hover:border-gray-600'
+                          }`}
+                        >
+                          <span className="shrink-0">{icon}</span>
+                          <span className="truncate">{f.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-2 pt-1">
                   <button
@@ -847,12 +1128,215 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90"
+                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
                   >
                     {t.lists.create_btn}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal: Create Folder */}
+      {isCreateFolderModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <FolderPlus className="w-5 h-5 text-accentViolet" />
+                  <span>{(t as any).lists?.create_folder || 'Создать папку'}</span>
+                </h3>
+                <button onClick={() => setIsCreateFolderModalOpen(false)} className="text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateFolder} className="space-y-4">
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  maxLength={40}
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder={(t as any).lists?.folder_name_placeholder || 'Название папки...'}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                />
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateFolderModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                  >
+                    {t.lists.cancel_btn}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+                  >
+                    {t.lists.create_btn}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal: Manage / Edit Folder */}
+      {isManageFolderModalOpen && editingFolder &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Folder className="w-5 h-5 text-accentViolet" />
+                  <span>{(t as any).lists?.rename_folder || 'Настройки папки'}</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsManageFolderModalOpen(false);
+                    setEditingFolder(null);
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRenameFolder} className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
+                  <input
+                    type="text"
+                    autoFocus
+                    required
+                    maxLength={40}
+                    value={folderRenameValue}
+                    onChange={(e) => setFolderRenameValue(e.target.value)}
+                    className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentViolet"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  {!editingFolder.isDefault ? (
+                    <button
+                      type="button"
+                      onClick={handleDeleteFolder}
+                      className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{(t as any).lists?.delete_folder || 'Удалить'}</span>
+                    </button>
+                  ) : <div />}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManageFolderModalOpen(false);
+                        setEditingFolder(null);
+                      }}
+                      className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                    >
+                      {t.lists.cancel_btn}
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+                    >
+                      {t.modal.save}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal: Change List Folder */}
+      {isChangeListFolderModalOpen && !currentList.isDefault &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <FolderOpen className="w-5 h-5 text-accentViolet" />
+                  <span>{(t as any).lists?.change_folder || 'Сменить папку'}</span>
+                </h3>
+                <button
+                  onClick={() => setIsChangeListFolderModalOpen(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-gray-300">
+                  Выберите папку для списка «<span className="font-bold text-white">{currentList.name}</span>»:
+                </p>
+                <div className="space-y-2 max-h-60 overflow-y-auto hide-scrollbar pt-1">
+                  {folders.map((f) => {
+                    const isCurrentFolder = (currentList.folderId || DEFAULT_FOLDER_ID) === f.id;
+                    let icon = '📁';
+                    if (f.id === 'svoe') icon = '🏠';
+                    if (f.id === 'foreign') icon = '🌍';
+                    if (f.id === 'misc') icon = '📂';
+
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => handleChangeListFolder(f.id)}
+                        className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition select-none ${
+                          isCurrentFolder
+                            ? 'bg-accentViolet/20 border-accentViolet shadow-sm'
+                            : 'bg-bgDark border-cardBorder hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base">{icon}</span>
+                          <span className="text-sm font-bold text-white">{f.name}</span>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
+                            isCurrentFolder
+                              ? 'bg-accentViolet border-accentViolet text-white'
+                              : 'border-cardBorder bg-bgDark text-transparent'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-cardBorder/60 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setIsChangeListFolderModalOpen(false);
+                    setNewFolderName('');
+                    setIsCreateFolderModalOpen(true);
+                  }}
+                  className="text-xs font-bold text-accentViolet hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{(t as any).lists?.new_folder || 'Новая папка'}</span>
+                </button>
+                <button
+                  onClick={() => setIsChangeListFolderModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium"
+                >
+                  {t.lists.cancel_btn}
+                </button>
+              </div>
             </div>
           </div>,
           document.body
