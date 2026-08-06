@@ -120,14 +120,14 @@ func (h *Handler) InitBotCommandsAndMenu() {
 			"type": "web_app",
 			"text": "LISTA",
 			"web_app": map[string]interface{}{
-				"url": "https://serjtlgram.github.io/lista/",
+				"url": "https://lista-kappa-six.vercel.app",
 			},
 		},
 	}
 	if err := h.sendBotAPIRequestWithErr("setChatMenuButton", menuPayload); err != nil {
 		log.Printf("[BotMenuInit] Error setting chat menu button: %v", err)
 	} else {
-		log.Printf("[BotMenuInit] Chat menu button set successfully to https://serjtlgram.github.io/lista/")
+		log.Printf("[BotMenuInit] Chat menu button set successfully to https://lista-kappa-six.vercel.app")
 	}
 
 	// 2. Set default /start command

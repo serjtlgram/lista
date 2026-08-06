@@ -70,7 +70,7 @@ func main() {
 		})
 	})
 
-	// CORS Setup for Telegram WebApp & GitHub Pages
+	// CORS Setup for Telegram WebApp & Vercel
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
