@@ -29,6 +29,7 @@ import {
   deleteList,
   updateListFolder,
   getFolders,
+  saveFolders,
   createFolder,
   renameFolder,
   deleteFolder,
