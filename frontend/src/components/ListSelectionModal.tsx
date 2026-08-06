@@ -190,22 +190,24 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                       : 'bg-bgDark border-cardBorder hover:border-gray-600'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0 pr-2">
-                    <span className="text-sm font-bold text-white truncate max-w-[150px]">
+                  <div className="flex items-center min-w-0 pr-2">
+                    <span className="text-sm font-bold text-white truncate max-w-[170px]">
                       {list.name}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold truncate shrink-0">
-                      📁 {folderName}
-                    </span>
                   </div>
-                  <div
-                    className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
-                      isSelected
-                        ? 'bg-accentViolet border-accentViolet text-white'
-                        : 'border-cardBorder bg-bgDark text-transparent'
-                    }`}
-                  >
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold max-w-[100px] truncate">
+                      {folderName}
+                    </span>
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
+                        isSelected
+                          ? 'bg-accentViolet border-accentViolet text-white'
+                          : 'border-cardBorder bg-bgDark text-transparent'
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    </div>
                   </div>
                 </div>
               );

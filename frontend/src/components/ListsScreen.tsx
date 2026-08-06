@@ -71,7 +71,7 @@ export function safeBase64Encode(data: any): string {
   }
 }
 
-const FOLDER_ICONS = ['📁', '📂', '🗂️', '💼', '📌', '💎', '🔥', '⭐️', '🏠', '🌍', '🟣', '🔵', '🟢', '🟡', '🔴', '📚', '📖', '🎮', '🎲', '🎬', '🍿', '🎧', '🎭', '🎨'];
+
 
 export const ListsScreen: React.FC<ListsScreenProps> = ({
   items,
@@ -136,12 +136,10 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   // Folder Modals State
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderIcon, setNewFolderIcon] = useState('📁');
 
   const [isManageFolderModalOpen, setIsManageFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ListFolder | null>(null);
   const [folderRenameValue, setFolderRenameValue] = useState('');
-  const [folderEditIcon, setFolderEditIcon] = useState('📁');
 
   const [isChangeListFolderModalOpen, setIsChangeListFolderModalOpen] = useState(false);
   const [isSortFoldersModalOpen, setIsSortFoldersModalOpen] = useState(false);
@@ -376,20 +374,19 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     e.preventDefault();
     if (!newFolderName.trim()) return;
     triggerHaptic();
-    const created = createFolder(newFolderName.trim(), newFolderIcon);
+    const created = createFolder(newFolderName.trim());
     refreshFolders();
     setSelectedFolderId(created.id);
     setNewFolderName('');
-    setNewFolderIcon('📁');
     setIsCreateFolderModalOpen(false);
     showToast(`Папка создана`);
   };
 
   const handleRenameFolder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingFolder) return;
+    if (!editingFolder || !folderRenameValue.trim()) return;
     triggerHaptic();
-    renameFolder(editingFolder.id, folderRenameValue.trim(), folderEditIcon);
+    renameFolder(editingFolder.id, folderRenameValue.trim());
     refreshFolders();
     setIsManageFolderModalOpen(false);
     setEditingFolder(null);
@@ -648,8 +645,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               (l) => l.folderId === folder.id
             ).length;
 
-            let icon = folder.icon || '📁';
-
             return (
               <div key={folder.id} className="relative shrink-0 flex items-center">
                 <button
@@ -659,7 +654,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       triggerHaptic('medium');
                       setEditingFolder(folder);
                       setFolderRenameValue(folder.name);
-                      setFolderEditIcon(folder.icon || '📁');
                       setIsManageFolderModalOpen(true);
                     }, 400);
                   }}
@@ -677,7 +671,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
                   }`}
                 >
-                  <span>{icon} {folder.name}</span>
+                  <span>{folder.name}</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
@@ -1109,10 +1103,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto hide-scrollbar p-0.5">
                     {folders.map((f) => {
                       const isSelected = (newListFolderId || DEFAULT_FOLDER_ID) === f.id;
-                      let icon = '📁';
-                      if (f.id === 'svoe') icon = '🏠';
-                      if (f.id === 'foreign') icon = '🌍';
-                      if (f.id === 'misc') icon = '📂';
 
                       return (
                         <button
@@ -1128,7 +1118,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                               : 'bg-bgDark border-cardBorder text-gray-300 hover:border-gray-600'
                           }`}
                         >
-                          <span className="shrink-0">{icon}</span>
                           <span className="truncate">{f.name}</span>
                         </button>
                       );
@@ -1174,22 +1163,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <form onSubmit={handleCreateFolder} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-400 font-semibold mb-2 block">Выберите иконку</label>
-                  <div className="grid grid-cols-5 gap-2 mb-4">
-                    {FOLDER_ICONS.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        onClick={() => setNewFolderIcon(icon)}
-                        className={`text-2xl p-2 rounded-xl transition ${
-                          newFolderIcon === icon ? 'bg-accentViolet/20 border border-accentViolet' : 'bg-bgDark border border-cardBorder hover:border-gray-500'
-                        }`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название (необязательно)</label>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
                   <input
                     type="text"
                     maxLength={40}
@@ -1210,7 +1184,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+                    disabled={!newFolderName.trim()}
+                    className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t.lists.create_btn}
                   </button>
@@ -1244,22 +1219,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <form onSubmit={handleRenameFolder} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-400 font-semibold mb-2 block">Выберите иконку</label>
-                  <div className="grid grid-cols-5 gap-2 mb-4">
-                    {FOLDER_ICONS.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        onClick={() => setFolderEditIcon(icon)}
-                        className={`text-2xl p-2 rounded-xl transition ${
-                          folderEditIcon === icon ? 'bg-accentViolet/20 border border-accentViolet' : 'bg-bgDark border border-cardBorder hover:border-gray-500'
-                        }`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название (необязательно)</label>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
                   <input
                     type="text"
                     maxLength={40}
@@ -1292,7 +1252,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition"
+                      disabled={!folderRenameValue.trim()}
+                      className="px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t.modal.save}
                     </button>
@@ -1329,7 +1290,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 <div className="space-y-2 max-h-60 overflow-y-auto hide-scrollbar pt-1">
                   {folders.map((f) => {
                     const isCurrentFolder = (currentList.folderId || DEFAULT_FOLDER_ID) === f.id;
-                    let icon = f.icon || '📁';
 
                     return (
                       <div
@@ -1342,7 +1302,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="text-base">{icon}</span>
                           <span className="text-sm font-bold text-white">{f.name}</span>
                         </div>
                         <div
