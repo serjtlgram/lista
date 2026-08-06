@@ -481,6 +481,12 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
+
 	items := []models.Item{}
 	for rows.Next() {
 		var item models.Item
@@ -491,7 +497,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		)
 		if err == nil {
 			if strings.HasPrefix(item.PosterURL, "data:image/") {
-				item.PosterURL = "/api/poster/" + item.ID
+				item.PosterURL = fmt.Sprintf("%s/api/poster/%s", baseURL, item.ID)
 			}
 			item.RawInput = ""
 			items = append(items, item)
@@ -738,6 +744,17 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"failed to insert item"}`, http.StatusInternalServerError)
 		return
 	}
+
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
+
+	if strings.HasPrefix(createdItem.PosterURL, "data:image/") {
+		createdItem.PosterURL = fmt.Sprintf("%s/api/poster/%s", baseURL, createdItem.ID)
+	}
+	createdItem.RawInput = ""
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
