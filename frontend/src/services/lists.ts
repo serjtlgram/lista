@@ -48,16 +48,9 @@ export function getFolders(): ListFolder[] {
     const raw = localStorage.getItem(FOLDERS_KEY);
     if (!raw) return DEFAULT_FOLDERS;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_FOLDERS;
+    if (!Array.isArray(parsed)) return DEFAULT_FOLDERS;
 
-    // Ensure all default folders are present
-    const result: ListFolder[] = [...parsed];
-    DEFAULT_FOLDERS.forEach((def) => {
-      if (!result.some((f) => f.id === def.id)) {
-        result.push(def);
-      }
-    });
-    return result;
+    return parsed;
   } catch {
     return DEFAULT_FOLDERS;
   }
@@ -98,13 +91,12 @@ export function renameFolder(folderId: string, newName: string): void {
 
 export function deleteFolder(folderId: string): void {
   const folders = getFolders();
-  if (DEFAULT_FOLDERS.some((d) => d.id === folderId)) return;
   const updated = folders.filter((f) => f.id !== folderId);
   saveFolders(updated);
 
-  // Move lists inside deleted folder to DEFAULT_FOLDER_ID ('misc')
+  // Move lists inside deleted folder to 'all' (remove folderId)
   const lists = getLists();
-  const updatedLists = lists.map((l) => (l.folderId === folderId ? { ...l, folderId: DEFAULT_FOLDER_ID } : l));
+  const updatedLists = lists.map((l) => (l.folderId === folderId ? { ...l, folderId: undefined } : l));
   saveLists(updatedLists);
 }
 
@@ -137,14 +129,6 @@ export function getLists(): UserList[] {
         }
       }
     } catch {}
-
-    // Ensure all custom non-favorite lists have a folderId (defaults to 'misc')
-    parsed = parsed.map((l: UserList) => {
-      if (!l.isDefault && !l.folderId) {
-        return { ...l, folderId: DEFAULT_FOLDER_ID };
-      }
-      return l;
-    });
 
     // Ensure favorites list always exists
     const hasFavorites = parsed.some((l: UserList) => l.id === FAVORITES_LIST_ID);

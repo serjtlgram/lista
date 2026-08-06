@@ -553,8 +553,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   // Filter user lists by currently selected folder
   const filteredUserLists = userListsOnly.filter((list) => {
     if (selectedFolderId === 'all') return true;
-    const listFolder = list.folderId || DEFAULT_FOLDER_ID;
-    return listFolder === selectedFolderId;
+    return list.folderId === selectedFolderId;
   });
 
   return (
@@ -626,7 +625,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           {folders.map((folder) => {
             const isSelected = selectedFolderId === folder.id;
             const folderListsCount = userListsOnly.filter(
-              (l) => (l.folderId || DEFAULT_FOLDER_ID) === folder.id
+              (l) => l.folderId === folder.id
             ).length;
 
             let icon = '📁';
@@ -637,10 +636,23 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             return (
               <div key={folder.id} className="relative shrink-0 flex items-center">
                 <button
+                  onPointerDown={() => {
+                    longPressTimerRef.current = setTimeout(() => {
+                      longPressTimerRef.current = null;
+                      triggerHaptic('medium');
+                      setEditingFolder(folder);
+                      setFolderRenameValue(folder.name);
+                      setIsManageFolderModalOpen(true);
+                    }, 400);
+                  }}
+                  onPointerUp={handlePressEnd}
+                  onPointerCancel={handlePressEnd}
+                  onContextMenu={(e) => e.preventDefault()}
                   onClick={() => {
                     triggerHaptic();
                     setSelectedFolderId(folder.id);
                   }}
+                  style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border ${
                     isSelected
                       ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
@@ -656,23 +668,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     {folderListsCount}
                   </span>
                 </button>
-
-                {/* Edit Icon for custom folder */}
-                {!folder.isDefault && isSelected && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerHaptic();
-                      setEditingFolder(folder);
-                      setFolderRenameValue(folder.name);
-                      setIsManageFolderModalOpen(true);
-                    }}
-                    className="ml-1 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
-                    title="Редактировать папку"
-                  >
-                    <Edit2 className="w-3 h-3 text-accentViolet" />
-                  </button>
-                )}
               </div>
             );
           })}
