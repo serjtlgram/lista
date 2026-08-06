@@ -15,6 +15,8 @@ import {
   FolderPlus,
   FolderOpen,
   Settings2,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
@@ -68,7 +70,7 @@ export function safeBase64Encode(data: any): string {
   }
 }
 
-const FOLDER_ICONS = ['📁', '📂', '🗂️', '💼', '📌', '💎', '🔥', '⭐️', '🏠', '🌍', '🟣', '🔵', '🟢', '🟡', '🔴'];
+const FOLDER_ICONS = ['📁', '📂', '🗂️', '💼', '📌', '💎', '🔥', '⭐️', '🏠', '🌍', '🟣', '🔵', '🟢', '🟡', '🔴', '📚', '📖', '🎮', '🎲', '🎬', '🍿', '🎧', '🎭', '🎨'];
 
 export const ListsScreen: React.FC<ListsScreenProps> = ({
   items,
@@ -141,6 +143,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   const [folderEditIcon, setFolderEditIcon] = useState('📁');
 
   const [isChangeListFolderModalOpen, setIsChangeListFolderModalOpen] = useState(false);
+  const [isSortFoldersModalOpen, setIsSortFoldersModalOpen] = useState(false);
 
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -590,6 +593,16 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
             <Folder className="w-3.5 h-3.5 text-accentViolet" />
             <span>{(t as any).lists?.folders_title || 'Тематические папки'}</span>
+            <button
+              onClick={() => {
+                triggerHaptic();
+                setIsSortFoldersModalOpen(true);
+              }}
+              className="ml-2 p-1 text-gray-400 hover:text-white transition active:scale-95"
+              title="Настроить папки"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
           </span>
           <button
             onClick={() => {
@@ -679,6 +692,11 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       </div>
 
       {/* All Lists Layout (Filtered by Folder) */}
+      <div className="flex items-center justify-between px-1 mt-4 mb-2">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pl-1">
+          Списки в папках
+        </span>
+      </div>
       <div className="relative w-full">
         {filteredUserLists.length > 1 && (
           <button
@@ -1496,6 +1514,76 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition shrink-0"
               >
                 {t.modal.save}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Sort Folders Modal */}
+      {isSortFoldersModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+            <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
+                <h3 className="text-base font-bold text-white">Порядок папок</h3>
+                <button onClick={() => setIsSortFoldersModalOpen(false)} className="text-gray-400 hover:text-white transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 max-h-[50vh] hide-scrollbar pr-1">
+                {folders.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">Нет папок для сортировки</p>
+                ) : (
+                  folders.map((folder, index) => (
+                    <div key={folder.id} className="flex items-center justify-between p-3 rounded-2xl bg-bgDark border border-cardBorder">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{folder.icon || '📁'}</span>
+                        <span className="text-xs font-bold text-white">{folder.name}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            if (index > 0) {
+                              triggerHaptic();
+                              const newF = [...folders];
+                              [newF[index - 1], newF[index]] = [newF[index], newF[index - 1]];
+                              setFolders(newF);
+                              saveFolders(newF);
+                            }
+                          }}
+                          disabled={index === 0}
+                          className={`p-1 rounded-md transition ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-cardBorder text-gray-400 hover:text-white'}`}
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (index < folders.length - 1) {
+                              triggerHaptic();
+                              const newF = [...folders];
+                              [newF[index + 1], newF[index]] = [newF[index], newF[index + 1]];
+                              setFolders(newF);
+                              saveFolders(newF);
+                            }
+                          }}
+                          disabled={index === folders.length - 1}
+                          className={`p-1 rounded-md transition ${index === folders.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-cardBorder text-gray-400 hover:text-white'}`}
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <button
+                onClick={() => setIsSortFoldersModalOpen(false)}
+                className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition mt-2"
+              >
+                Готово
               </button>
             </div>
           </div>,
