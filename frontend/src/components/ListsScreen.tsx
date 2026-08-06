@@ -253,8 +253,24 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   const currentList = lists.find((l) => l.id === activeSelectedListId) || lists[0];
 
-  const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>('date');
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>(() => {
+    const saved = localStorage.getItem('lista_lists_sort_by');
+    if (saved === 'year' || saved === 'rating' || saved === 'date') return saved;
+    return 'date';
+  });
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>(() => {
+    const saved = localStorage.getItem('lista_lists_sort_order');
+    if (saved === 'asc' || saved === 'desc') return saved;
+    return 'desc';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lista_lists_sort_by', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('lista_lists_sort_order', sortOrder);
+  }, [sortOrder]);
 
   // Get items belonging to selected list
   const favoriteIds = getFavoriteIds();
