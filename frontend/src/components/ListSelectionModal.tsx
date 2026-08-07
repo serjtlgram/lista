@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Plus, FolderPlus, Star, Search } from 'lucide-react';
+import { X, Check, Plus, FolderPlus, Star, Search, ChevronDown } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { getLists, saveLists, createList, getFolders, DEFAULT_FOLDER_ID, FAVORITES_ID, UserList, ListFolder } from '../services/lists';
@@ -29,6 +29,8 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(DEFAULT_FOLDER_ID);
+  const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const triggerHaptic = () => {
@@ -59,6 +61,8 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     setSelectedListIds(initialSelected);
     setIsCreating(false);
     setNewListName('');
+    setSelectedFolderId(DEFAULT_FOLDER_ID);
+    setIsFolderDropdownOpen(false);
     setSearchQuery('');
   }, [isOpen, item]);
 
@@ -75,11 +79,13 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     e.preventDefault();
     if (!newListName.trim()) return;
     triggerHaptic();
-    const created = createList(newListName.trim());
+    const created = createList(newListName.trim(), selectedFolderId || DEFAULT_FOLDER_ID);
     const updatedLists = getLists();
     setUserLists(updatedLists);
     setSelectedListIds((prev) => [...prev, created.id]);
     setNewListName('');
+    setSelectedFolderId(DEFAULT_FOLDER_ID);
+    setIsFolderDropdownOpen(false);
     setIsCreating(false);
   };
 
@@ -264,7 +270,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
 
         {/* Create New List Inline */}
         {isCreating ? (
-          <form onSubmit={handleCreateNewList} className="space-y-2 pt-1">
+          <form onSubmit={handleCreateNewList} className="space-y-2 pt-1 animate-fade-in">
             <input
               type="text"
               value={newListName}
@@ -273,10 +279,65 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
               autoFocus
               className="w-full bg-bgDark border border-cardBorder rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-accentViolet"
             />
-            <div className="flex gap-2">
+
+            {/* Folder Dropdown Selector */}
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsCreating(false)}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsFolderDropdownOpen(!isFolderDropdownOpen);
+                }}
+                className="w-full bg-bgDark border border-cardBorder rounded-xl px-3 py-2 text-xs text-white flex items-center justify-between hover:border-gray-500 transition select-none"
+              >
+                <span className="flex items-center gap-2 truncate font-medium text-gray-200">
+                  <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                    {trans.lists.folder_label || 'Папка'}:
+                  </span>
+                  <span>{folders.find((f) => f.id === selectedFolderId)?.icon || '📁'}</span>
+                  <span className="truncate">{folders.find((f) => f.id === selectedFolderId)?.name || 'Разное'}</span>
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 shrink-0 ${isFolderDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isFolderDropdownOpen && (
+                <div className="absolute left-0 right-0 bottom-full mb-1 z-30 bg-cardDark/95 backdrop-blur-md border border-cardBorder rounded-xl shadow-2xl p-1 max-h-36 overflow-y-auto space-y-0.5 animate-fade-in hide-scrollbar">
+                  {folders.map((f) => {
+                    const isSelected = selectedFolderId === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic();
+                          setSelectedFolderId(f.id);
+                          setIsFolderDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition ${
+                          isSelected
+                            ? 'bg-accentViolet/20 text-accentViolet font-bold'
+                            : 'text-gray-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <span>{f.icon || '📁'}</span>
+                          <span className="truncate">{f.name}</span>
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreating(false);
+                  setIsFolderDropdownOpen(false);
+                }}
                 className="flex-1 py-2 rounded-xl bg-bgDark border border-cardBorder text-gray-300 font-semibold text-xs hover:border-gray-500 transition"
               >
                 {trans.lists.cancel_btn}
@@ -291,7 +352,10 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           </form>
         ) : (
           <button
-            onClick={() => setIsCreating(true)}
+            onClick={() => {
+              triggerHaptic();
+              setIsCreating(true);
+            }}
             className="w-full py-2.5 rounded-xl border border-dashed border-cardBorder text-gray-400 hover:text-white hover:border-accentViolet transition text-xs font-semibold flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4 text-accentViolet" />
