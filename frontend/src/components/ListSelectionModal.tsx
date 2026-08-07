@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Plus, FolderPlus, Star } from 'lucide-react';
+import { X, Check, Plus, FolderPlus, Star, Search } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
 import { getLists, saveLists, createList, getFolders, DEFAULT_FOLDER_ID, FAVORITES_ID, UserList, ListFolder } from '../services/lists';
@@ -29,6 +29,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const triggerHaptic = () => {
     const tg = (window as any).Telegram?.WebApp;
@@ -58,6 +59,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     setSelectedListIds(initialSelected);
     setIsCreating(false);
     setNewListName('');
+    setSearchQuery('');
   }, [isOpen, item]);
 
   if (!isOpen) return null;
@@ -137,9 +139,39 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           </button>
         </div>
 
+        {/* Lists Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-gray-500" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={trans.lists.search_lists_placeholder || 'Поиск списков...'}
+            className="w-full bg-bgDark border border-cardBorder rounded-xl pl-9 pr-9 py-2 text-xs text-white focus:outline-none focus:border-accentViolet transition-colors placeholder:text-gray-500"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                triggerHaptic();
+              }}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-white transition"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         <div className="max-h-[50vh] overflow-y-auto space-y-2 hide-scrollbar">
           {/* Favorites List Item */}
           {(() => {
+            const favTitle = trans.lists.favorites || 'Избранное';
+            const isFavMatch = !searchQuery.trim() || favTitle.toLowerCase().includes(searchQuery.trim().toLowerCase());
+            if (!isFavMatch) return null;
+
             const isFavSelected = selectedListIds.includes(FAVORITES_ID);
             return (
               <div
@@ -177,6 +209,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           {/* Custom Lists */}
           {userLists
             .filter((l) => !l.isDefault)
+            .filter((l) => !searchQuery.trim() || l.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
             .map((list) => {
               const isSelected = selectedListIds.includes(list.id);
               const folderName = folders.find((f) => f.id === (list.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное';
@@ -212,6 +245,21 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                 </div>
               );
             })}
+
+          {/* Empty state when searching */}
+          {(() => {
+            const favTitle = trans.lists.favorites || 'Избранное';
+            const isFavMatch = !searchQuery.trim() || favTitle.toLowerCase().includes(searchQuery.trim().toLowerCase());
+            const matchedLists = userLists.filter((l) => !l.isDefault && (!searchQuery.trim() || l.name.toLowerCase().includes(searchQuery.trim().toLowerCase())));
+            if (searchQuery.trim() && !isFavMatch && matchedLists.length === 0) {
+              return (
+                <div className="py-4 text-center text-xs text-gray-400">
+                  {trans.lists.empty_list || 'Ничего не найдено'}
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {/* Create New List Inline */}

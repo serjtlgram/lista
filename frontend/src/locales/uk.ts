@@ -217,6 +217,7 @@ export const uk: Translations = {
     show_more: 'Ще',
     empty_list: 'Список порожній',
     empty_favorites: 'Позначте зірочкою для додавання',
+    search_lists_placeholder: 'Пошук списків...',
     create_name_placeholder: 'Назва списку...',
     rename_placeholder: 'Нова назва...',
     create_btn: 'Створити',

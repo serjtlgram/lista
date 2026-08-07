@@ -217,6 +217,7 @@ export interface Translations {
     show_more: string;
     empty_list: string;
     empty_favorites: string;
+    search_lists_placeholder?: string;
     create_name_placeholder: string;
     rename_placeholder: string;
     create_btn: string;

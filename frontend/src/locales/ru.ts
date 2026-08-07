@@ -217,6 +217,7 @@ export const ru: Translations = {
     show_more: 'Ещё',
     empty_list: 'Список пуст',
     empty_favorites: 'Помечайте звёздочкой для добавления',
+    search_lists_placeholder: 'Поиск списков...',
     create_name_placeholder: 'Название списка...',
     rename_placeholder: 'Новое название...',
     create_btn: 'Создать',

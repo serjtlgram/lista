@@ -217,6 +217,7 @@ export const en: Translations = {
     show_more: 'More',
     empty_list: 'List is empty',
     empty_favorites: 'Star items to add them here',
+    search_lists_placeholder: 'Search lists...',
     create_name_placeholder: 'List name...',
     rename_placeholder: 'New name...',
     create_btn: 'Create',
