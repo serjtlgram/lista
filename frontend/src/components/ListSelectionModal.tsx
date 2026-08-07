@@ -301,7 +301,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
               </button>
 
               {isFolderDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-cardDark border-2 border-accentViolet/50 rounded-xl shadow-2xl p-1.5 max-h-40 overflow-y-auto space-y-1 animate-fade-in hide-scrollbar">
+                <div className="absolute left-0 right-0 bottom-full mb-1 z-50 bg-cardDark border-2 border-accentViolet/50 rounded-xl shadow-2xl p-1.5 max-h-40 overflow-y-auto space-y-1 animate-fade-in hide-scrollbar">
                   {folders.map((f) => {
                     const isSelected = selectedFolderId === f.id;
                     return (
