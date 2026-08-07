@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, Check, Plus, Minus, ChevronDown, X, FolderCheck, Popcorn } from 'lucide-react';
+import { Star, Check, Plus, Minus, ChevronDown, X, FolderCheck, Popcorn, Share2 } from 'lucide-react';
 import { Item } from '../types';
 import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
@@ -8,6 +8,7 @@ import { getLists, saveLists, FAVORITES_ID } from '../services/lists';
 import { getTranslatedGenreShort, getTranslatedGenreFull, getAvailableGenres } from '../services/genres';
 import { getFavoriteIds, toggleFavorite } from '../services/favorites';
 import { ListSelectionModal } from './ListSelectionModal';
+import { shareItem } from '../services/share';
 
 interface ItemCardProps {
   item: Item;
@@ -249,6 +250,87 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
 
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const longPressTimerRef = useRef<any>(null);
+  const isLongPressRef = useRef<boolean>(false);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const startLongPress = (clientX: number, clientY: number) => {
+    isLongPressRef.current = false;
+    touchStartPosRef.current = { x: clientX, y: clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      shareItem(item, t, showToast);
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const checkMoveCancel = (clientX: number, clientY: number) => {
+    const dx = Math.abs(clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(clientY - touchStartPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      cancelLongPress();
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (e.touches.length === 1) {
+      startLongPress(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      checkMoveCancel(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    cancelLongPress();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (e.button === 0) {
+      startLongPress(e.clientX, e.clientY);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    checkMoveCancel(e.clientX, e.clientY);
+  };
+
+  const handleMouseUp = () => {
+    cancelLongPress();
+  };
+
+  const handleMouseLeave = () => {
+    cancelLongPress();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isLongPressRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPressRef.current = false;
+      return;
+    }
+    onSelect(item);
+  };
+
   const availableGenres = getAvailableGenres(item.category, t);
 
   const triggerHaptic = () => {
@@ -263,8 +345,21 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   return (
     <>
       <div
-        onClick={() => onSelect(item)}
-        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-[0.97] transition card-hover relative overflow-hidden"
+        onClick={handleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={(e) => {
+          if (isLongPressRef.current) {
+            e.preventDefault();
+          }
+        }}
+        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-[0.97] transition card-hover relative overflow-hidden select-none"
       >
         <div className="flex items-stretch gap-3 w-full">
           {/* Rectangular poster image */}
@@ -434,6 +529,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         t={t}
         onSave={() => recalculateLists()}
       />
+
+      {toastMessage && createPortal(
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10000] bg-cardDark border border-cardBorder text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md animate-fade-in flex items-center gap-2 pointer-events-none">
+          <Share2 className="w-4 h-4 text-accentTeal" />
+          <span>{toastMessage}</span>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
