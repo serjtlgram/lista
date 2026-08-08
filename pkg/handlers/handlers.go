@@ -4444,8 +4444,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 		var resp *http.Response
 		err = func() error {
-			// Each model gets 90s max
-			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 90*time.Second)
+			// Each model gets up to 180s (3 minutes) to respond
+			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 180*time.Second)
 			defer cancelModel()
 
 			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
@@ -4464,7 +4464,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		if err != nil {
 			log.Printf("[FireworksAI] Model %s chat completions error: %v", modelName, err)
 			if ctxTotal.Err() != nil {
-				log.Printf("[FireworksAI] Total 35s timeout reached, aborting further model queries.")
+				log.Printf("[FireworksAI] Total timeout reached (%v), aborting further model queries.", ctxTotal.Err())
 				break
 			}
 			continue
