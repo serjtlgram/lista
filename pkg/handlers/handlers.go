@@ -4394,8 +4394,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
-		"accounts/fireworks/models/deepseek-v3",
-		"accounts/fireworks/models/deepseek-r1",
+		"accounts/fireworks/models/deepseek-v4-pro",
+		"accounts/fireworks/models/deepseek-v4-flash",
 		"accounts/fireworks/models/qwen2p5-72b-instruct",
 		"accounts/fireworks/models/llama-v3p1-70b-instruct",
 	}
@@ -4410,7 +4410,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				{"role": "user", "content": prompt},
 			},
 			"temperature": 0.5,
-			"max_tokens":  2048,
+			"max_tokens":  8192,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
@@ -4454,6 +4454,10 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				}
 				if rawContent == "" {
 					rawContent = strings.TrimSpace(fireworksResp.Choices[0].Message.ReasoningContent)
+				}
+				
+				if rawContent == "" {
+				    log.Printf("[FireworksAI] Warning: Model %s returned empty content (possibly hit max_tokens limit). Raw response: %s", modelName, string(respBody))
 				}
 
 				if idx := strings.Index(rawContent, "["); idx != -1 {
