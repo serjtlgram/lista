@@ -4073,6 +4073,48 @@ func mapCountryToFlag(country string) string {
 	return country
 }
 
+func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "id")
+	if itemID == "" {
+		http.Error(w, "Missing id", http.StatusBadRequest)
+		return
+	}
+
+	var posterURL string
+	err := h.DB.Pool.QueryRow(r.Context(), "SELECT poster_url FROM items WHERE id = $1", itemID).Scan(&posterURL)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	if strings.HasPrefix(posterURL, "data:image/") {
+		parts := strings.SplitN(posterURL, ",", 2)
+		if len(parts) == 2 {
+			contentType := "image/jpeg"
+			if strings.Contains(parts[0], "png") {
+				contentType = "image/png"
+			} else if strings.Contains(parts[0], "webp") {
+				contentType = "image/webp"
+			}
+
+			data, err := base64.StdEncoding.DecodeString(parts[1])
+			if err == nil && len(data) > 0 {
+				w.Header().Set("Content-Type", contentType)
+				w.Header().Set("Cache-Control", "public, max-age=31536000")
+				w.Write(data)
+				return
+			}
+		}
+	}
+
+	if posterURL != "" && strings.HasPrefix(posterURL, "http") {
+		http.Redirect(w, r, posterURL, http.StatusFound)
+		return
+	}
+
+	http.Error(w, "No poster", http.StatusNotFound)
+}
+
 func parseTitlesFromAIResponse(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
