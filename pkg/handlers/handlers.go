@@ -4353,8 +4353,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	modelsToTry := []string{
-		"accounts/fireworks/models/deepseek-v4-flash-0731",
-		"accounts/fireworks/models/deepseek-v4-flash",
 		"accounts/fireworks/models/gpt-oss-120b",
 	}
 
@@ -4433,23 +4431,21 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				if rawContent == "" {
 					rawContent = strings.TrimSpace(fireworksResp.Choices[0].Message.ReasoningContent)
 				}
-				
-				if rawContent == "" {
-				    log.Printf("[FireworksAI] Warning: Model %s returned empty content (possibly hit max_tokens limit). Raw response: %s", modelName, string(respBody))
-				}
 
-				if idx := strings.Index(rawContent, "["); idx != -1 {
-					if endIdx := strings.LastIndex(rawContent, "]"); endIdx != -1 && endIdx > idx {
-						rawContent = rawContent[idx : endIdx+1]
+				if rawContent == "" {
+					log.Printf("[FireworksAI] Warning: Model %s returned empty content. Raw response: %s", modelName, string(respBody))
+				} else {
+					parsedTitles := parseTitlesFromAIResponse(rawContent)
+					if len(parsedTitles) > 0 {
+						recommendedTitles = parsedTitles
+						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s", len(recommendedTitles), modelName)
+						break
+					} else {
+						log.Printf("[FireworksAI] Could not parse JSON array from model %s response. rawContent: %s", modelName, rawContent)
 					}
 				}
-
-				var parsed []string
-				if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil && len(parsed) > 0 {
-					recommendedTitles = parsed
-					log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s", len(recommendedTitles), modelName)
-					break
-				}
+			} else {
+				log.Printf("[FireworksAI] Error unmarshaling Fireworks response from %s: %v. Raw body: %s", modelName, err, string(respBody))
 			}
 		} else {
 			log.Printf("[FireworksAI] Model %s chat status %d: %s", modelName, resp.StatusCode, string(respBody))
