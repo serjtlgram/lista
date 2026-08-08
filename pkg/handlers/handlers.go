@@ -4396,14 +4396,13 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
 		"accounts/fireworks/models/deepseek-v4-flash",
-		"accounts/fireworks/models/deepseek-v3",
-		"accounts/fireworks/models/deepseek-r1",
+		"accounts/fireworks/models/qwen2p5-72b-instruct",
 	}
 
 	var recommendedTitles []string
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			ResponseHeaderTimeout: 5 * time.Second, // Max 5s to receive initial response headers (first sign of life)
+			ResponseHeaderTimeout: 15 * time.Second, // 15s to allow Fireworks server to send response headers
 		},
 	}
 
