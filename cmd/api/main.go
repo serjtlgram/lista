@@ -31,7 +31,7 @@ func main() {
 		go database.StartCleanupJob()
 	}
 
-	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey, cfg.TelegramSecretToken)
+	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey, cfg.OpenRouterAPIKey, cfg.TelegramSecretToken)
 
 	globalLimiter := ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute)
 
@@ -103,6 +103,7 @@ func main() {
 		r.Get("/api/stats", h.GetStats)
 		r.Get("/api/catalog/search", h.SearchCatalog)
 		r.Get("/api/youtube/search", h.SearchYouTube)
+		r.Get("/api/lists/{id}/recommendations", h.GetListRecommendations)
 	})
 
 	server := &http.Server{

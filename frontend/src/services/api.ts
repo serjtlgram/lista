@@ -1,4 +1,4 @@
-import { Item, UserProfile, StatsData } from '../types';
+import { Item, UserProfile, StatsData, CatalogItem } from '../types';
 import { enqueueAction, SyncAction, purgeOrphanedQueue } from './syncQueue';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://129.151.217.58.nip.io';
@@ -196,6 +196,31 @@ export const api = {
     } catch (e) {
       console.warn('API getSharedList error:', e);
       return null;
+    }
+  },
+
+  async getRecommendations(
+    listId: string,
+    itemIds?: string[],
+    itemTitles?: string[],
+    category?: string,
+    title?: string
+  ): Promise<CatalogItem[]> {
+    try {
+      const params = new URLSearchParams();
+      if (itemIds && itemIds.length > 0) params.append('item_ids', itemIds.join(','));
+      if (itemTitles && itemTitles.length > 0) params.append('item_titles', itemTitles.join('|'));
+      if (category) params.append('category', category);
+      if (title) params.append('title', title);
+
+      const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations?${params.toString()}`, {
+        headers: getHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to fetch recommendations');
+      return await res.json();
+    } catch (e) {
+      console.warn('API getRecommendations error:', e);
+      return [];
     }
   },
 };

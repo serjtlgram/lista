@@ -7,13 +7,14 @@ import (
 )
 
 type Config struct {
-	Port            string
-	DatabaseURL     string
-	BotToken        string
-	Environment     string
+	Port                string
+	DatabaseURL         string
+	BotToken            string
+	Environment         string
 	YoutubeAPIKey       string
 	TMDBAPIKey          string
 	KinopoiskAPIKey     string
+	OpenRouterAPIKey    string
 	TelegramSecretToken string
 }
 
@@ -41,6 +42,7 @@ func LoadConfig() *Config {
 	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
 	tmdbKey := os.Getenv("TMDB_API_KEY")
 	kinopoiskKey := os.Getenv("KINOPOISK_API_KEY")
+	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
 
 	return &Config{
 		Port:                port,
@@ -50,6 +52,7 @@ func LoadConfig() *Config {
 		YoutubeAPIKey:       youtubeKey,
 		TMDBAPIKey:          tmdbKey,
 		KinopoiskAPIKey:     kinopoiskKey,
+		OpenRouterAPIKey:    openRouterKey,
 		TelegramSecretToken: tgSecretToken,
 	}
 }

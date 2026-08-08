@@ -38,6 +38,7 @@ type Handler struct {
 	YoutubeAPIKey    string
 	TMDBAPIKey       string
 	KinopoiskAPIKey  string
+	OpenRouterAPIKey string
 	BotSecretToken   string
 	RateLimiter      *ratelimit.RateLimiter
 	SearchCache      *SearchCache
@@ -46,13 +47,14 @@ type Handler struct {
 	outboundSem      chan struct{}
 }
 
-func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, botSecretToken string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, openRouterAPIKey string, botSecretToken string) *Handler {
 	h := &Handler{
 		DB:               database,
 		BotToken:         botToken,
 		YoutubeAPIKey:    youtubeAPIKey,
 		TMDBAPIKey:       tmdbAPIKey,
 		KinopoiskAPIKey:  kinopoiskAPIKey,
+		OpenRouterAPIKey: openRouterAPIKey,
 		BotSecretToken:   botSecretToken,
 		RateLimiter:      ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
 		SearchCache:      NewSearchCache(3 * time.Minute),
@@ -4111,4 +4113,297 @@ func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "No poster", http.StatusNotFound)
+}
+
+// GET /api/lists/{id}/recommendations
+func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request) {
+	rateKey := getRateLimitKey(r)
+	if allowed, wait := h.RateLimiter.Allow("recommend:"+rateKey, 5*time.Second); !allowed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":   "Слишком много запросов. Подождите пару секунд.",
+			"wait_ms": wait.Milliseconds(),
+		})
+		return
+	}
+
+	user, _ := auth.GetUserFromContext(r)
+	var userID int64
+	if user != nil {
+		userID = user.ID
+	}
+
+	_ = chi.URLParam(r, "id")
+	itemIDsParam := strings.TrimSpace(r.URL.Query().Get("item_ids"))
+	itemTitlesParam := strings.TrimSpace(r.URL.Query().Get("item_titles"))
+	categoryParam := strings.TrimSpace(r.URL.Query().Get("category"))
+	titleParam := strings.TrimSpace(r.URL.Query().Get("title"))
+
+	var itemDescriptions []string
+	var categoriesFound []string
+
+	// 1. Fetch user items context
+	if itemIDsParam != "" {
+		ids := strings.Split(itemIDsParam, ",")
+		if len(ids) > 20 {
+			ids = ids[:20]
+		}
+		var cleanIDs []string
+		for _, id := range ids {
+			trimmed := strings.TrimSpace(id)
+			if trimmed != "" {
+				cleanIDs = append(cleanIDs, trimmed)
+			}
+		}
+		if len(cleanIDs) > 0 && h.DB != nil && h.DB.Pool != nil {
+			query := `SELECT title, category, release_year, genre FROM items WHERE id = ANY($1)`
+			rows, err := h.DB.Pool.Query(r.Context(), query, cleanIDs)
+			if err == nil && rows != nil {
+				defer rows.Close()
+				for rows.Next() {
+					var t, c, y, g string
+					if err := rows.Scan(&t, &c, &y, &g); err == nil && t != "" {
+						desc := t
+						if y != "" {
+							desc += fmt.Sprintf(" (%s)", y)
+						}
+						itemDescriptions = append(itemDescriptions, desc)
+						categoriesFound = append(categoriesFound, mapCategoryToEn(c))
+					}
+				}
+			}
+		}
+	}
+
+	if len(itemDescriptions) == 0 && itemTitlesParam != "" {
+		rawTitles := strings.Split(itemTitlesParam, "|")
+		if len(rawTitles) == 1 {
+			rawTitles = strings.Split(itemTitlesParam, ",")
+		}
+		for _, t := range rawTitles {
+			trimmed := strings.TrimSpace(t)
+			if trimmed != "" {
+				itemDescriptions = append(itemDescriptions, trimmed)
+				if len(itemDescriptions) >= 20 {
+					break
+				}
+			}
+		}
+	}
+
+	if len(itemDescriptions) == 0 && userID != 0 && h.DB != nil && h.DB.Pool != nil {
+		query := `SELECT title, category, release_year, genre FROM items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`
+		rows, err := h.DB.Pool.Query(r.Context(), query, userID)
+		if err == nil && rows != nil {
+			defer rows.Close()
+			for rows.Next() {
+				var t, c, y, g string
+				if err := rows.Scan(&t, &c, &y, &g); err == nil && t != "" {
+					desc := t
+					if y != "" {
+						desc += fmt.Sprintf(" (%s)", y)
+					}
+					itemDescriptions = append(itemDescriptions, desc)
+					categoriesFound = append(categoriesFound, mapCategoryToEn(c))
+				}
+			}
+		}
+	}
+
+	// 2. Determine primary category
+	catEn := mapCategoryToEn(categoryParam)
+	if catEn == "" || catEn == "all" {
+		if len(categoriesFound) > 0 {
+			catEn = categoriesFound[0]
+		} else {
+			catEn = "movie"
+		}
+	}
+
+	catRuName := "фильмы/сериалы/книги/игры"
+	switch catEn {
+	case "movie":
+		catRuName = "фильмы"
+	case "show":
+		catRuName = "сериалы"
+	case "book":
+		catRuName = "книги"
+	case "game":
+		catRuName = "игры"
+	}
+
+	// 3. Construct prompt
+	var prompt string
+	if len(itemDescriptions) > 0 {
+		titlesListStr := strings.Join(itemDescriptions, ", ")
+		prompt = fmt.Sprintf(`Проанализируй этот список [Тип: %s]. Названия: %s. Посоветуй 10 похожих тайтлов, которых нет в этом списке. Верни ответ СТРОГО в формате валидного JSON массива строк с оригинальными названиями: ["Название 1", "Название 2"].`, catRuName, titlesListStr)
+	} else {
+		if titleParam != "" {
+			prompt = fmt.Sprintf(`Проанализируй тему списка "%s" [Тип: %s]. Посоветуй 10 подходящих популярных и высокооцененных тайтлов. Верни ответ СТРОГО в формате валидного JSON массива строк с оригинальными названиями: ["Название 1", "Название 2"].`, titleParam, catRuName)
+		} else {
+			prompt = fmt.Sprintf(`Посоветуй 10 популярных и культовых тайтлов [Тип: %s]. Верни ответ СТРОГО в формате валидного JSON массива строк с оригинальными названиями: ["Название 1", "Название 2"].`, catRuName)
+		}
+	}
+
+	// 4. Query OpenRouter API with fallback models
+	modelsToTry := []string{
+		"google/gemini-2.0-flash-lite-preview-02-05:free",
+		"google/gemini-2.0-flash-exp:free",
+		"meta-llama/llama-3-8b-instruct:free",
+		"deepseek/deepseek-r1:free",
+	}
+
+	var recommendedTitles []string
+	apiKey := strings.TrimSpace(h.OpenRouterAPIKey)
+
+	httpClient := &http.Client{Timeout: 18 * time.Second}
+
+	for _, modelName := range modelsToTry {
+		reqBodyMap := map[string]interface{}{
+			"model": modelName,
+			"messages": []map[string]string{
+				{"role": "user", "content": prompt},
+			},
+			"temperature": 0.7,
+		}
+
+		bodyBytes, err := json.Marshal(reqBodyMap)
+		if err != nil {
+			continue
+		}
+
+		req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			continue
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("HTTP-Referer", "https://lista-app.com")
+		req.Header.Set("X-Title", "Lista App")
+		if apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+		}
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			log.Printf("[OpenRouter] Model %s error: %v", modelName, err)
+			continue
+		}
+
+		respBody, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK || readErr != nil {
+			log.Printf("[OpenRouter] Model %s status %d: %s", modelName, resp.StatusCode, string(respBody))
+			continue
+		}
+
+		var openRouterResp struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+
+		if err := json.Unmarshal(respBody, &openRouterResp); err != nil || len(openRouterResp.Choices) == 0 {
+			continue
+		}
+
+		rawContent := strings.TrimSpace(openRouterResp.Choices[0].Message.Content)
+		if idx := strings.Index(rawContent, "["); idx != -1 {
+			if endIdx := strings.LastIndex(rawContent, "]"); endIdx != -1 && endIdx > idx {
+				rawContent = rawContent[idx : endIdx+1]
+			}
+		}
+
+		var parsed []string
+		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil && len(parsed) > 0 {
+			recommendedTitles = parsed
+			log.Printf("[OpenRouter] Successfully generated %d recommendations using model %s", len(recommendedTitles), modelName)
+			break
+		}
+	}
+
+	// 5. Fallback if AI call failed
+	if len(recommendedTitles) == 0 {
+		log.Printf("[OpenRouter] All models failed or no key set, using catalog fallback for category %s", catEn)
+		dbItems := h.searchDBCatalog(r.Context(), "", catEn)
+		for _, d := range dbItems {
+			recommendedTitles = append(recommendedTitles, d.Title)
+			if len(recommendedTitles) >= 10 {
+				break
+			}
+		}
+	}
+
+	// 6. Enrich recommended titles with external search (TMDb, Kinopoisk, Google Books, Steam, etc.)
+	if len(recommendedTitles) > 10 {
+		recommendedTitles = recommendedTitles[:10]
+	}
+
+	type enrichedResult struct {
+		index int
+		card  models.CatalogSearchResult
+	}
+
+	resultChan := make(chan enrichedResult, len(recommendedTitles))
+	var wg sync.WaitGroup
+
+	for i, title := range recommendedTitles {
+		tClean := strings.TrimSpace(title)
+		if tClean == "" {
+			continue
+		}
+		wg.Add(1)
+		go func(idx int, tName string) {
+			defer wg.Done()
+			onlineRes := h.searchOnlineCatalog(tName, catEn, nil)
+			if len(onlineRes) > 0 {
+				resultChan <- enrichedResult{index: idx, card: onlineRes[0]}
+				return
+			}
+			dbRes := h.searchDBCatalog(r.Context(), tName, catEn)
+			if len(dbRes) > 0 {
+				resultChan <- enrichedResult{index: idx, card: dbRes[0]}
+				return
+			}
+			// Fallback card if online search has no match
+			resultChan <- enrichedResult{
+				index: idx,
+				card: models.CatalogSearchResult{
+					Title:       tName,
+					Category:    catEn,
+					Source:      "ai",
+					ReleaseYear: "",
+				},
+			}
+		}(i, tClean)
+	}
+
+	wg.Wait()
+	close(resultChan)
+
+	cardsMap := make(map[int]models.CatalogSearchResult)
+	for res := range resultChan {
+		cardsMap[res.index] = res.card
+	}
+
+	var finalCards []models.CatalogSearchResult
+	for i := 0; i < len(recommendedTitles); i++ {
+		if card, ok := cardsMap[i]; ok {
+			if card.Category == "" {
+				card.Category = catEn
+			}
+			finalCards = append(finalCards, card)
+		}
+	}
+
+	if finalCards == nil {
+		finalCards = []models.CatalogSearchResult{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(finalCards)
 }

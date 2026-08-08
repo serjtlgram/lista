@@ -9,6 +9,7 @@ import { FavoritesSection } from './components/FavoritesSection';
 import { CategoryScreen } from './components/CategoryScreen';
 import { DetailsScreen } from './components/DetailsScreen';
 import { ListsScreen } from './components/ListsScreen';
+import { ListRecommendations } from './components/ListRecommendations';
 import { SharedListModal } from './components/SharedListModal';
 import { StatsScreen } from './components/StatsScreen';
 import { ProfileScreen } from './components/ProfileScreen';
@@ -33,12 +34,13 @@ import {
 } from './services/i18n';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details' | 'recommendations'>('home');
   const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile'>('home');
   const [savedScrollPosition, setSavedScrollPosition] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[] } | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
   const [theme, setTheme] = useState<string>(getStoredTheme());
@@ -209,9 +211,20 @@ function safeBase64Decode(str: string): any {
   }
 }
 
-    // Deep link: read Telegram startapp param
+    // Deep link: read Telegram startapp param or URL path
     const attemptDeepLink = async (): Promise<boolean> => {
       try {
+        const recMatch = window.location.pathname.match(/\/lists\/([^/]+)\/recommendations/);
+        if (recMatch) {
+          const recListId = recMatch[1];
+          const allLists = getLists();
+          const targetList = allLists.find((l) => l.id === recListId);
+          const listTitle = targetList ? targetList.name : (recListId === 'favorites' ? 'Избранное' : 'Список');
+          setRecommendationListInfo({ id: recListId, title: listTitle, items: [] });
+          setActiveTab('recommendations');
+          return true;
+        }
+
         const tgWA = (window as any).Telegram?.WebApp;
         const urlParams = new URLSearchParams(window.location.search);
         const startParam: string | null =
@@ -412,14 +425,43 @@ function safeBase64Decode(str: string): any {
     }, 10);
   };
 
+  const handleOpenRecommendations = (listId: string, listTitle: string, listItems: Item[]) => {
+    triggerHaptic();
+    setRecommendationListInfo({ id: listId, title: listTitle, items: listItems });
+    if (activeTab !== 'details' && activeTab !== 'recommendations') {
+      setPreviousTab(activeTab as any);
+      setSavedScrollPosition(window.scrollY);
+    }
+    setActiveTab('recommendations');
+    try {
+      window.history.pushState(null, '', `/lists/${listId}/recommendations`);
+    } catch (e) {}
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  const handleBackFromRecommendations = () => {
+    triggerHaptic();
+    setActiveTab('lists');
+    try {
+      window.history.pushState(null, '', '/');
+    } catch (e) {}
+    setTimeout(() => {
+      window.scrollTo({ top: savedScrollPosition, behavior: 'instant' });
+    }, 10);
+  };
+
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg?.BackButton) return;
 
-    if (activeTab === 'details') {
+    if (activeTab === 'details' || activeTab === 'recommendations') {
       tg.BackButton.show();
       const onBackClick = () => {
-        handleBackFromDetails();
+        if (activeTab === 'recommendations') {
+          handleBackFromRecommendations();
+        } else {
+          handleBackFromDetails();
+        }
       };
       tg.BackButton.onClick(onBackClick);
       return () => {
@@ -749,9 +791,25 @@ function safeBase64Decode(str: string): any {
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
+              onOpenRecommendations={handleOpenRecommendations}
               selectedListId={selectedListId}
               onSelectList={setSelectedListId}
               initialListId={targetListIdToOpen}
+              t={t}
+            />
+          </section>
+        )}
+
+        {/* SCREEN 4.5: LIST RECOMMENDATIONS */}
+        {activeTab === 'recommendations' && recommendationListInfo && (
+          <section>
+            <ListRecommendations
+              listId={recommendationListInfo.id}
+              listTitle={recommendationListInfo.title}
+              listItems={recommendationListInfo.items.length > 0 ? recommendationListInfo.items : items}
+              onBack={handleBackFromRecommendations}
+              onSelectItem={handleSelectItem}
+              onAddCatalogItem={handleAddCatalogItem}
               t={t}
             />
           </section>

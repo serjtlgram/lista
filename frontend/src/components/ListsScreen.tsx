@@ -17,6 +17,7 @@ import {
   Settings2,
   ArrowUp,
   ArrowDown,
+  Wand2,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
@@ -47,6 +48,7 @@ interface ListsScreenProps {
   onSelectItem: (item: Item) => void;
   onToggleStatus: (item: Item, e: React.MouseEvent) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
+  onOpenRecommendations?: (listId: string, listTitle: string, listItems: Item[]) => void;
   selectedListId?: string;
   onSelectList?: (id: string) => void;
   initialListId?: string;
@@ -78,6 +80,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   onSelectItem,
   onToggleStatus,
   onUpdateItem,
+  onOpenRecommendations,
   selectedListId: selectedListIdProp,
   onSelectList,
   initialListId,
@@ -327,6 +330,45 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     }
     return currentList.itemIds.includes(item.id);
   });
+
+  const [cooldownLeft, setCooldownLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const checkCooldown = () => {
+      const key = `lista_recommend_cooldown_${currentList.id}`;
+      const expiresAtStr = localStorage.getItem(key);
+      if (expiresAtStr) {
+        const expiresAt = parseInt(expiresAtStr, 10);
+        const now = Date.now();
+        if (expiresAt > now) {
+          setCooldownLeft(Math.ceil((expiresAt - now) / 1000));
+          return;
+        }
+      }
+      setCooldownLeft(0);
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [currentList.id]);
+
+  const handleGetRecommendations = () => {
+    if (cooldownLeft > 0) return;
+    triggerHaptic('medium');
+
+    const cooldownExpiresAt = Date.now() + 60000;
+    localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());
+    setCooldownLeft(60);
+
+    if (onOpenRecommendations) {
+      onOpenRecommendations(
+        currentList.id,
+        currentList.isDefault ? t.lists.favorites : currentList.name,
+        listItems
+      );
+    }
+  };
 
   const sortedListItems = [...listItems].sort((a, b) => {
     if (sortBy === 'year') {
@@ -938,14 +980,31 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             )}
           </div>
 
-          {/* Add items button (icon-only) */}
-          <button
-            onClick={handleOpenAddItemsModal}
-            className="p-2 rounded-xl bg-accentViolet text-white shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0 flex items-center justify-center"
-            title={t.lists.add_items}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* AI Recommendations Button (Magic Wand) */}
+            <button
+              onClick={handleGetRecommendations}
+              disabled={cooldownLeft > 0}
+              className={`p-2 rounded-xl border transition active:scale-[0.97] shrink-0 flex items-center justify-center gap-1 font-bold text-xs ${
+                cooldownLeft > 0
+                  ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
+                  : 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
+              }`}
+              title={cooldownLeft > 0 ? `Повтор через ${cooldownLeft}с` : 'ИИ-рекомендации'}
+            >
+              <Wand2 className={`w-4 h-4 ${cooldownLeft > 0 ? 'opacity-50 animate-pulse' : 'text-amber-400'}`} />
+              {cooldownLeft > 0 && <span className="text-[10px] font-mono font-bold text-amber-400/90">{cooldownLeft}s</span>}
+            </button>
+
+            {/* Add items button (icon-only) */}
+            <button
+              onClick={handleOpenAddItemsModal}
+              className="p-2 rounded-xl bg-accentViolet text-white shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0 flex items-center justify-center"
+              title={t.lists.add_items}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
