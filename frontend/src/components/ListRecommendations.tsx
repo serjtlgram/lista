@@ -47,7 +47,17 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
 
     try {
       const itemIds = listItems.map((i) => i.id).filter(Boolean);
-      const itemTitles = listItems.map((i) => i.title).filter(Boolean);
+      const itemTitles = listItems.map((i) => {
+        let desc = i.title;
+        const details: string[] = [];
+        if (i.release_year) details.push(i.release_year);
+        if (i.genre) details.push(i.genre);
+        if (i.country) details.push(`Страна: ${i.country}`);
+        if (i.director) details.push(`Режиссер: ${i.director}`);
+        if (i.author) details.push(`Автор: ${i.author}`);
+        if (details.length > 0) desc += ` [${details.join(', ')}]`;
+        return desc;
+      }).filter(Boolean);
 
       // Determine main category
       const catCountMap: Record<string, number> = {};

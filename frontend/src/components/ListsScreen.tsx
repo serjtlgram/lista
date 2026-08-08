@@ -353,13 +353,30 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     return () => clearInterval(interval);
   }, [currentList.id]);
 
+  const isNeznacaUser = (): boolean => {
+    try {
+      const tg = (window as any).Telegram?.WebApp;
+      const username = tg?.initDataUnsafe?.user?.username || '';
+      if (username.toLowerCase().replace(/^@/, '') === 'neznaca') return true;
+    } catch {}
+    try {
+      const stored = localStorage.getItem('lista_user_profile');
+      if (stored && stored.toLowerCase().includes('neznaca')) return true;
+    } catch {}
+    return false;
+  };
+
   const handleGetRecommendations = () => {
     if (cooldownLeft > 0) return;
     triggerHaptic('medium');
 
-    const cooldownExpiresAt = Date.now() + 60000;
+    const isNeznaca = isNeznacaUser();
+    const cooldownMs = isNeznaca ? 2000 : 60000;
+    const cooldownSec = isNeznaca ? 2 : 60;
+
+    const cooldownExpiresAt = Date.now() + cooldownMs;
     localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());
-    setCooldownLeft(60);
+    setCooldownLeft(cooldownSec);
 
     if (onOpenRecommendations) {
       onOpenRecommendations(

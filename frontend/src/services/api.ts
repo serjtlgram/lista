@@ -229,25 +229,38 @@ export const api = {
     // Smart fallback if backend endpoint returns 404 or is updating
     try {
       let searchQuery = title && !['избранное', 'список', 'favorites', 'list'].includes(title.toLowerCase().trim())
-        ? title
+        ? title.replace(/сериалы|фильмы|книги|игры|топ|лучшие/gi, '').trim()
         : (category || 'Фильмы');
 
-      if (itemTitles && itemTitles.length > 0) {
-        // Use first item title to find similar recommendations in catalog
-        searchQuery = itemTitles[0];
+      if (!searchQuery && itemTitles && itemTitles.length > 0) {
+        searchQuery = itemTitles[0].split('[')[0].trim();
       }
 
-      const catalogResults = await api.searchCatalog(searchQuery, category);
+      const catalogResults = await api.searchCatalog(searchQuery || 'Фильмы', category);
       if (catalogResults && catalogResults.length > 0) {
-        const existingSet = new Set((itemTitles || []).map((t) => t.toLowerCase().trim()));
-        const filtered = catalogResults.filter((c) => !existingSet.has((c.title || '').toLowerCase().trim()));
-        if (filtered.length > 0) {
-          return filtered.slice(0, 10);
+        const existingSet = new Set((itemTitles || []).map((t) => t.toLowerCase().split('[')[0].trim()));
+        const seenRoots = new Set<string>();
+        const filtered: CatalogItem[] = [];
+
+        for (const c of catalogResults) {
+          const tNorm = (c.title || '').toLowerCase().trim();
+          if (existingSet.has(tNorm)) continue;
+          
+          // Deduplicate spin-offs (e.g. "Выжившие: Блоггер", "Выжившие: Иона")
+          const rootName = tNorm.split(':')[0].split('-')[0].trim();
+          if (rootName.length > 3 && seenRoots.has(rootName)) continue;
+          seenRoots.add(rootName);
+
+          filtered.push(c);
+          if (filtered.length >= 10) break;
         }
-        return catalogResults.slice(0, 10);
+
+        if (filtered.length > 0) {
+          return filtered;
+        }
       }
 
-      // If specific search had no matches, try general category search
+      // General category fallback
       const genResults = await api.searchCatalog(category || 'Фильмы');
       if (genResults && genResults.length > 0) {
         return genResults.slice(0, 10);
