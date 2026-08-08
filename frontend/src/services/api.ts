@@ -207,14 +207,20 @@ export const api = {
     title?: string
   ): Promise<CatalogItem[]> {
     try {
-      const params = new URLSearchParams();
-      if (itemIds && itemIds.length > 0) params.append('item_ids', itemIds.join(','));
-      if (itemTitles && itemTitles.length > 0) params.append('item_titles', itemTitles.join('|'));
-      if (category) params.append('category', category);
-      if (title) params.append('title', title);
+      const body = {
+        item_ids: itemIds && itemIds.length > 0 ? itemIds.join(',') : '',
+        item_titles: itemTitles && itemTitles.length > 0 ? itemTitles.join('|') : '',
+        category: category || '',
+        title: title || ''
+      };
 
-      const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations?${params.toString()}`, {
-        headers: getHeaders(),
+      const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations`, {
+        method: 'POST',
+        headers: {
+          ...getHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
       });
       if (res.ok) {
         const data = await res.json();

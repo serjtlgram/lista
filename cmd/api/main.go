@@ -104,6 +104,7 @@ func main() {
 		r.Get("/api/catalog/search", h.SearchCatalog)
 		r.Get("/api/youtube/search", h.SearchYouTube)
 		r.Get("/api/lists/{id}/recommendations", h.GetListRecommendations)
+		r.Post("/api/lists/{id}/recommendations", h.GetListRecommendations)
 	})
 
 	server := &http.Server{
