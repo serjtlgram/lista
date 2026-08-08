@@ -676,12 +676,14 @@ function safeBase64Decode(str: string): any {
     const createdItem = await api.createItem(payload);
     setItems((prev) => [createdItem, ...prev]);
 
-    if (activeTab !== 'details') {
-      setPreviousTab(activeTab as any);
-      setSavedScrollPosition(window.scrollY);
+    if (activeTab !== 'recommendations') {
+      if (activeTab !== 'details') {
+        setPreviousTab(activeTab as any);
+        setSavedScrollPosition(window.scrollY);
+      }
+      setSelectedItem(createdItem);
+      setActiveTab('details');
     }
-    setSelectedItem(createdItem);
-    setActiveTab('details');
   };
 
   return (
@@ -821,6 +823,8 @@ function safeBase64Decode(str: string): any {
               onBack={handleBackFromRecommendations}
               onSelectItem={handleSelectItem}
               onAddCatalogItem={handleAddCatalogItem}
+              onToggleStatus={handleToggleStatus}
+              onUpdateItem={handleUpdateItem}
               t={t}
             />
           </section>

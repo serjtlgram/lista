@@ -12,6 +12,8 @@ interface ListRecommendationsProps {
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onAddCatalogItem: (catalogItem: CatalogItem) => void;
+  onToggleStatus: (item: Item, e: React.MouseEvent) => void;
+  onUpdateItem: (id: string, updates: Partial<Item>) => void;
   cachedResults?: CatalogItem[];
   onUpdateCachedResults: (results: CatalogItem[]) => void;
   t: Translations;
@@ -24,11 +26,14 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   onBack,
   onSelectItem,
   onAddCatalogItem,
+  onToggleStatus,
+  onUpdateItem,
   cachedResults,
   onUpdateCachedResults,
   t,
 }) => {
   const [recommendations, setRecommendations] = useState<CatalogItem[]>(cachedResults || []);
+  const [addedItems, setAddedItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(!cachedResults || cachedResults.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -132,6 +137,11 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     e.stopPropagation();
     triggerHaptic();
     onAddCatalogItem(catItem);
+    
+    // Add to our local addedItems list for display
+    const mapped = mapCatalogToItem(catItem);
+    setAddedItems((prev) => [mapped, ...prev]);
+
     setRecommendations((prev) => {
       const updated = prev.filter((item) => item.id !== catItem.id);
       onUpdateCachedResults(updated);
@@ -207,6 +217,24 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         </div>
       ) : (
         <div className="space-y-3 pt-1">
+          {addedItems.length > 0 && (
+            <div className="space-y-2.5 mb-6">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">
+                В вашем списке
+              </h2>
+              {addedItems.map((item) => (
+                <ItemCard
+                  key={`added_${item.id}`}
+                  item={item}
+                  onSelect={onSelectItem}
+                  onToggleStatus={onToggleStatus}
+                  onUpdateItem={onUpdateItem}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between px-1 text-xs text-gray-400">
             <span>Найдено {recommendations.length} новых рекомендаций</span>
             <button
