@@ -427,7 +427,7 @@ function safeBase64Decode(str: string): any {
 
   const handleOpenRecommendations = (listId: string, listTitle: string, listItems: Item[]) => {
     triggerHaptic();
-    setRecommendationListInfo({ id: listId, title: listTitle, items: listItems });
+    setRecommendationListInfo({ id: listId, title: listTitle, items: listItems, cachedResults: undefined });
     if (activeTab !== 'details' && activeTab !== 'recommendations') {
       setPreviousTab(activeTab as any);
       setSavedScrollPosition(window.scrollY);
