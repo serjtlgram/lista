@@ -38,7 +38,7 @@ type Handler struct {
 	YoutubeAPIKey    string
 	TMDBAPIKey       string
 	KinopoiskAPIKey  string
-	OpenRouterAPIKey string
+	FireworksAPIKey  string
 	BotSecretToken   string
 	RateLimiter      *ratelimit.RateLimiter
 	SearchCache      *SearchCache
@@ -47,14 +47,14 @@ type Handler struct {
 	outboundSem      chan struct{}
 }
 
-func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, openRouterAPIKey string, botSecretToken string) *Handler {
+func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, fireworksAPIKey string, botSecretToken string) *Handler {
 	h := &Handler{
 		DB:               database,
 		BotToken:         botToken,
 		YoutubeAPIKey:    youtubeAPIKey,
 		TMDBAPIKey:       tmdbAPIKey,
 		KinopoiskAPIKey:  kinopoiskAPIKey,
-		OpenRouterAPIKey: openRouterAPIKey,
+		FireworksAPIKey:  fireworksAPIKey,
 		BotSecretToken:   botSecretToken,
 		RateLimiter:      ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
 		SearchCache:      NewSearchCache(3 * time.Minute),
@@ -4246,26 +4246,30 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// 4. Query OpenRouter API with fallback models
+	// 4. Query Fireworks AI API
+	apiKey := strings.TrimSpace(h.FireworksAPIKey)
+	if apiKey == "" {
+		apiKey = "fw_R9nn6yvzVv8txadL2FLqC2"
+	}
+
 	modelsToTry := []string{
-		"google/gemini-2.0-flash-lite-preview-02-05:free",
-		"google/gemini-2.0-flash-exp:free",
-		"meta-llama/llama-3-8b-instruct:free",
-		"deepseek/deepseek-r1:free",
+		"accounts/fireworks/models/gpt-oss-20b",
+		"accounts/fireworks/models/llama-v3p1-8b-instruct",
+		"accounts/fireworks/models/deepseek-v3",
 	}
 
 	var recommendedTitles []string
-	apiKey := strings.TrimSpace(h.OpenRouterAPIKey)
-
-	httpClient := &http.Client{Timeout: 18 * time.Second}
+	httpClient := &http.Client{Timeout: 20 * time.Second}
 
 	for _, modelName := range modelsToTry {
+		// Try Chat Completions API
 		reqBodyMap := map[string]interface{}{
 			"model": modelName,
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
 			"temperature": 0.7,
+			"max_tokens":  1024,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
@@ -4273,62 +4277,101 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-		req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+		req, err := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
 		if err != nil {
 			continue
 		}
 
+		req.Header.Set("Accept", "application/json")
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://lista-app.com")
-		req.Header.Set("X-Title", "Lista App")
-		if apiKey != "" {
-			req.Header.Set("Authorization", "Bearer "+apiKey)
-		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 
 		resp, err := httpClient.Do(req)
 		if err != nil {
-			log.Printf("[OpenRouter] Model %s error: %v", modelName, err)
-			continue
-		}
+			log.Printf("[FireworksAI] Model %s chat completions error: %v", modelName, err)
+		} else {
+			respBody, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
 
-		respBody, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
+			if resp.StatusCode == http.StatusOK && readErr == nil {
+				var fireworksResp struct {
+					Choices []struct {
+						Text    string `json:"text"`
+						Message struct {
+							Content string `json:"content"`
+						} `json:"message"`
+					} `json:"choices"`
+				}
 
-		if resp.StatusCode != http.StatusOK || readErr != nil {
-			log.Printf("[OpenRouter] Model %s status %d: %s", modelName, resp.StatusCode, string(respBody))
-			continue
-		}
+				if err := json.Unmarshal(respBody, &fireworksResp); err == nil && len(fireworksResp.Choices) > 0 {
+					rawContent := strings.TrimSpace(fireworksResp.Choices[0].Message.Content)
+					if rawContent == "" {
+						rawContent = strings.TrimSpace(fireworksResp.Choices[0].Text)
+					}
 
-		var openRouterResp struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-		}
+					if idx := strings.Index(rawContent, "["); idx != -1 {
+						if endIdx := strings.LastIndex(rawContent, "]"); endIdx != -1 && endIdx > idx {
+							rawContent = rawContent[idx : endIdx+1]
+						}
+					}
 
-		if err := json.Unmarshal(respBody, &openRouterResp); err != nil || len(openRouterResp.Choices) == 0 {
-			continue
-		}
-
-		rawContent := strings.TrimSpace(openRouterResp.Choices[0].Message.Content)
-		if idx := strings.Index(rawContent, "["); idx != -1 {
-			if endIdx := strings.LastIndex(rawContent, "]"); endIdx != -1 && endIdx > idx {
-				rawContent = rawContent[idx : endIdx+1]
+					var parsed []string
+					if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil && len(parsed) > 0 {
+						recommendedTitles = parsed
+						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s (chat)", len(recommendedTitles), modelName)
+						break
+					}
+				}
+			} else {
+				log.Printf("[FireworksAI] Model %s chat status %d: %s", modelName, resp.StatusCode, string(respBody))
 			}
 		}
 
-		var parsed []string
-		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil && len(parsed) > 0 {
-			recommendedTitles = parsed
-			log.Printf("[OpenRouter] Successfully generated %d recommendations using model %s", len(recommendedTitles), modelName)
-			break
+		// Fallback: standard completions endpoint
+		compBodyMap := map[string]interface{}{
+			"model":       modelName,
+			"prompt":      prompt,
+			"max_tokens":  1024,
+			"temperature": 0.7,
+		}
+		compBodyBytes, _ := json.Marshal(compBodyMap)
+		reqComp, errComp := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/completions", bytes.NewBuffer(compBodyBytes))
+		if errComp == nil {
+			reqComp.Header.Set("Accept", "application/json")
+			reqComp.Header.Set("Content-Type", "application/json")
+			reqComp.Header.Set("Authorization", "Bearer "+apiKey)
+			respComp, errDo := httpClient.Do(reqComp)
+			if errDo == nil {
+				compRespBody, readErr := io.ReadAll(respComp.Body)
+				respComp.Body.Close()
+				if respComp.StatusCode == http.StatusOK && readErr == nil {
+					var compResp struct {
+						Choices []struct {
+							Text string `json:"text"`
+						} `json:"choices"`
+					}
+					if err := json.Unmarshal(compRespBody, &compResp); err == nil && len(compResp.Choices) > 0 {
+						rawContent := strings.TrimSpace(compResp.Choices[0].Text)
+						if idx := strings.Index(rawContent, "["); idx != -1 {
+							if endIdx := strings.LastIndex(rawContent, "]"); endIdx != -1 && endIdx > idx {
+								rawContent = rawContent[idx : endIdx+1]
+							}
+						}
+						var parsed []string
+						if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil && len(parsed) > 0 {
+							recommendedTitles = parsed
+							log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s (completions)", len(recommendedTitles), modelName)
+							break
+						}
+					}
+				}
+			}
 		}
 	}
 
 	// 5. Fallback if AI call failed
 	if len(recommendedTitles) == 0 {
-		log.Printf("[OpenRouter] All models failed or no key set, using catalog fallback for category %s", catEn)
+		log.Printf("[FireworksAI] All models failed or no key set, using catalog fallback for category %s", catEn)
 		dbItems := h.searchDBCatalog(r.Context(), "", catEn)
 		for _, d := range dbItems {
 			recommendedTitles = append(recommendedTitles, d.Title)

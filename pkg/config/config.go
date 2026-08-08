@@ -14,7 +14,7 @@ type Config struct {
 	YoutubeAPIKey       string
 	TMDBAPIKey          string
 	KinopoiskAPIKey     string
-	OpenRouterAPIKey    string
+	FireworksAPIKey     string
 	TelegramSecretToken string
 }
 
@@ -42,7 +42,10 @@ func LoadConfig() *Config {
 	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
 	tmdbKey := os.Getenv("TMDB_API_KEY")
 	kinopoiskKey := os.Getenv("KINOPOISK_API_KEY")
-	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
+	fireworksKey := os.Getenv("FIREWORKS_API_KEY")
+	if fireworksKey == "" {
+		fireworksKey = "fw_R9nn6yvzVv8txadL2FLqC2"
+	}
 
 	return &Config{
 		Port:                port,
@@ -52,7 +55,7 @@ func LoadConfig() *Config {
 		YoutubeAPIKey:       youtubeKey,
 		TMDBAPIKey:          tmdbKey,
 		KinopoiskAPIKey:     kinopoiskKey,
-		OpenRouterAPIKey:    openRouterKey,
+		FireworksAPIKey:     fireworksKey,
 		TelegramSecretToken: tgSecretToken,
 	}
 }

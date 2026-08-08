@@ -31,7 +31,7 @@ func main() {
 		go database.StartCleanupJob()
 	}
 
-	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey, cfg.OpenRouterAPIKey, cfg.TelegramSecretToken)
+	h := handlers.NewHandler(database, cfg.BotToken, cfg.YoutubeAPIKey, cfg.TMDBAPIKey, cfg.KinopoiskAPIKey, cfg.FireworksAPIKey, cfg.TelegramSecretToken)
 
 	globalLimiter := ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute)
 
