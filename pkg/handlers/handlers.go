@@ -4407,7 +4407,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 35*time.Second)
+	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancelTotal()
 
 	for _, modelName := range modelsToTry {
@@ -4427,7 +4427,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 		var resp *http.Response
 		err = func() error {
-			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 30*time.Second)
+			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 60*time.Second)
 			defer cancelModel()
 
 			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
