@@ -4129,10 +4129,8 @@ func cleanTitlesList(titles []string) []string {
 func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request) {
 	user, _ := auth.GetUserFromContext(r)
 	var userID int64
-	var username string
 	if user != nil {
 		userID = user.ID
-		username = strings.ToLower(strings.TrimPrefix(user.Username, "@"))
 	}
 
 	// Try reading from JSON body first (for POST requests)
@@ -4149,6 +4147,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	if bodyParams.ItemIDs != "" {
 		itemIDsParam = bodyParams.ItemIDs
 	}
+	_ = itemIDsParam
 
 	itemTitlesParam := r.URL.Query().Get("item_titles")
 	if bodyParams.ItemTitles != "" {
@@ -4248,8 +4247,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	uniqGenres := cleanUniqStrings(genresFound)
-	uniqCountries := cleanUniqStrings(countriesFound)
+	uniqGenres := cleanTitlesList(genresFound)
+	uniqCountries := cleanTitlesList(countriesFound)
 
 	metaStr := ""
 	metaParts := []string{}
@@ -4265,6 +4264,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	if len(metaParts) > 0 {
 		metaStr = "\nАналитика по входящему списку (" + strings.Join(metaParts, "; ") + ")."
 	}
+	_ = metaStr
 
 	// Build exact user prompt
 	itemsListStr := strings.Join(itemDescriptions, "\n- ")
