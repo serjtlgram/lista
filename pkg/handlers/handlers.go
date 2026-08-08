@@ -4396,9 +4396,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
 		"accounts/fireworks/models/deepseek-v4-flash",
-		"accounts/fireworks/models/gpt-oss-120b",
-		"accounts/fireworks/models/minimax-m3",
-		"accounts/fireworks/models/minimax-m2p7",
+		"accounts/fireworks/models/deepseek-v3",
+		"accounts/fireworks/models/deepseek-r1",
 	}
 
 	var recommendedTitles []string
@@ -4424,7 +4423,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 		var resp *http.Response
 		err = func() error {
-			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 6*time.Second)
+			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 12*time.Second)
 			defer cancelModel()
 
 			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))

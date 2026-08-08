@@ -228,15 +228,8 @@ export const api = {
 
     // Smart fallback if backend endpoint returns 404 or is updating
     try {
-      let searchQuery = title && !['избранное', 'список', 'favorites', 'list'].includes(title.toLowerCase().trim())
-        ? title.replace(/сериалы|фильмы|книги|игры|топ|лучшие/gi, '').trim()
-        : (category || 'Фильмы');
-
-      if (!searchQuery && itemTitles && itemTitles.length > 0) {
-        searchQuery = itemTitles[0].split('[')[0].trim();
-      }
-
-      const catalogResults = await api.searchCatalog(searchQuery || 'Фильмы', category);
+      const searchQuery = category || 'Фильмы';
+      const catalogResults = await api.searchCatalog(searchQuery, category);
       if (catalogResults && catalogResults.length > 0) {
         const existingSet = new Set((itemTitles || []).map((t) => t.toLowerCase().split('[')[0].trim()));
         const seenRoots = new Set<string>();
