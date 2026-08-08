@@ -12,6 +12,8 @@ interface ListRecommendationsProps {
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onAddCatalogItem: (catalogItem: CatalogItem) => void;
+  cachedResults?: CatalogItem[];
+  onUpdateCachedResults: (results: CatalogItem[]) => void;
   t: Translations;
 }
 
@@ -22,10 +24,12 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   onBack,
   onSelectItem,
   onAddCatalogItem,
+  cachedResults,
+  onUpdateCachedResults,
   t,
 }) => {
-  const [recommendations, setRecommendations] = useState<CatalogItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [recommendations, setRecommendations] = useState<CatalogItem[]>(cachedResults || []);
+  const [isLoading, setIsLoading] = useState<boolean>(!cachedResults || cachedResults.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -41,7 +45,11 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = async (force: boolean = false) => {
+    if (!force && cachedResults && cachedResults.length > 0) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -84,6 +92,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
 
       if (results && results.length > 0) {
         setRecommendations(results);
+        onUpdateCachedResults(results);
       } else {
         setError('Не удалось загрузить рекомендации. Попробуйте еще раз.');
       }
@@ -123,7 +132,11 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     e.stopPropagation();
     triggerHaptic();
     onAddCatalogItem(catItem);
-    setRecommendations((prev) => prev.filter((item) => item.id !== catItem.id));
+    setRecommendations((prev) => {
+      const updated = prev.filter((item) => item.id !== catItem.id);
+      onUpdateCachedResults(updated);
+      return updated;
+    });
     showToast(`«${catItem.title}» добавлено в вашу коллекцию!`);
   };
 
@@ -184,7 +197,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           <button
             onClick={() => {
               triggerHaptic();
-              fetchRecommendations();
+              fetchRecommendations(true);
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95"
           >
@@ -199,7 +212,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
             <button
               onClick={() => {
                 triggerHaptic();
-                fetchRecommendations();
+                fetchRecommendations(true);
               }}
               className="flex items-center gap-1 text-accentViolet font-semibold hover:underline active:scale-95 transition"
             >

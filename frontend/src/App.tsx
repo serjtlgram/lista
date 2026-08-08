@@ -21,7 +21,7 @@ import { api } from './services/api';
 import { getTranslatedGenreFull } from './services/genres';
 import { getFavoriteIds, setFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
 import { getLists, saveLists, syncListsFromCloud, UserList } from './services/lists';
-import { Item, UserProfile, StatsData } from './types';
+import { Item, UserProfile, StatsData, CatalogItem } from './types';
 import {
   Language,
   translations,
@@ -40,7 +40,7 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[] } | null>(null);
+  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; cachedResults?: CatalogItem[] } | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
   const [theme, setTheme] = useState<string>(getStoredTheme());
@@ -814,6 +814,10 @@ function safeBase64Decode(str: string): any {
               listId={recommendationListInfo.id}
               listTitle={recommendationListInfo.title}
               listItems={recommendationListInfo.items.length > 0 ? recommendationListInfo.items : items}
+              cachedResults={recommendationListInfo.cachedResults}
+              onUpdateCachedResults={(results) => {
+                setRecommendationListInfo((prev) => prev ? { ...prev, cachedResults: results } : prev);
+              }}
               onBack={handleBackFromRecommendations}
               onSelectItem={handleSelectItem}
               onAddCatalogItem={handleAddCatalogItem}
