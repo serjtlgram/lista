@@ -4401,7 +4401,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 3. Разнообразие: все 10 элементов должны быть самостоятельными произведениями из разных франшиз (без сиквелов, приквелов и спин-оффов).
 4. Элементы из поля "Исключить" использовать нельзя.
 5. Формат ответа: только сырой JSON-массив строк с официальными русскими названиями. Пример: ["Название 1", "Название 2"]. 
-6. Без markdown-разметки (без ```json) и без сопроводительного текста.`,
+6. Без markdown-разметки и без сопроводительного текста.`,
 		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, listItemsFormatted)
 
 	// 4. Query Fireworks AI API
