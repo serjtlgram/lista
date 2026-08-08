@@ -4396,10 +4396,16 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
 		"accounts/fireworks/models/deepseek-v4-flash",
+		"accounts/fireworks/models/gpt-oss-120b",
+		"accounts/fireworks/models/minimax-m3",
+		"accounts/fireworks/models/minimax-m2p7",
 	}
 
 	var recommendedTitles []string
-	httpClient := &http.Client{Timeout: 90 * time.Second}
+	httpClient := &http.Client{}
+
+	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 35*time.Second)
+	defer cancelTotal()
 
 	for _, modelName := range modelsToTry {
 		reqBodyMap := map[string]interface{}{
@@ -4416,18 +4422,30 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-		req, err := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
-		if err != nil {
-			continue
-		}
+		var resp *http.Response
+		err = func() error {
+			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 6*time.Second)
+			defer cancelModel()
 
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+			if err != nil {
+				return err
+			}
 
-		resp, err := httpClient.Do(req)
+			req.Header.Set("Accept", "application/json")
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+
+			resp, err = httpClient.Do(req)
+			return err
+		}()
+
 		if err != nil {
 			log.Printf("[FireworksAI] Model %s chat completions error: %v", modelName, err)
+			if ctxTotal.Err() != nil {
+				log.Printf("[FireworksAI] Total 35s timeout reached, aborting further model queries.")
+				break
+			}
 			continue
 		}
 
