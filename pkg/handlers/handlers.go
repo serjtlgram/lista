@@ -4418,16 +4418,16 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	var recommendedTitles []string
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: 15 * time.Second, // 15s to allow Fireworks server to send response headers
-		},
-	}
+	httpClient := &http.Client{}
 
-	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 90*time.Second)
+	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 130*time.Second)
 	defer cancelTotal()
 
 	for _, modelName := range modelsToTry {
+		if ctxTotal.Err() != nil {
+			break
+		}
+
 		reqBodyMap := map[string]interface{}{
 			"model": modelName,
 			"messages": []map[string]string{
@@ -4444,7 +4444,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 		var resp *http.Response
 		err = func() error {
-			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 60*time.Second)
+			// Each model gets 45s max
+			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 45*time.Second)
 			defer cancelModel()
 
 			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
