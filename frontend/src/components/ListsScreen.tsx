@@ -938,14 +938,13 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             )}
           </div>
 
-          {/* ITEM 3 FIX: "+ Добавить" button is ALWAYS present, even for Favorites! */}
-          {/* ITEM 2 FIX: Button text is "+ Добавить" (without "элементы") */}
+          {/* Add items button (icon-only) */}
           <button
             onClick={handleOpenAddItemsModal}
-            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0"
+            className="p-2 rounded-xl bg-accentViolet text-white shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0 flex items-center justify-center"
+            title={t.lists.add_items}
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t.lists.add_items}</span>
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
