@@ -223,43 +223,7 @@ export const api = {
         }
       }
     } catch (e) {
-      console.warn('API getRecommendations backend fetch error, falling back:', e);
-    }
-
-    // Smart fallback if backend endpoint returns 404 or is updating
-    try {
-      const searchQuery = category || 'Фильмы';
-      const catalogResults = await api.searchCatalog(searchQuery, category);
-      if (catalogResults && catalogResults.length > 0) {
-        const existingSet = new Set((itemTitles || []).map((t) => t.toLowerCase().split('[')[0].trim()));
-        const seenRoots = new Set<string>();
-        const filtered: CatalogItem[] = [];
-
-        for (const c of catalogResults) {
-          const tNorm = (c.title || '').toLowerCase().trim();
-          if (existingSet.has(tNorm)) continue;
-          
-          // Deduplicate spin-offs (e.g. "Выжившие: Блоггер", "Выжившие: Иона")
-          const rootName = tNorm.split(':')[0].split('-')[0].trim();
-          if (rootName.length > 3 && seenRoots.has(rootName)) continue;
-          seenRoots.add(rootName);
-
-          filtered.push(c);
-          if (filtered.length >= 10) break;
-        }
-
-        if (filtered.length > 0) {
-          return filtered;
-        }
-      }
-
-      // General category fallback
-      const genResults = await api.searchCatalog(category || 'Фильмы');
-      if (genResults && genResults.length > 0) {
-        return genResults.slice(0, 10);
-      }
-    } catch (e) {
-      console.warn('Fallback catalog recommendations error:', e);
+      console.warn('API getRecommendations backend fetch error:', e);
     }
 
     return [];

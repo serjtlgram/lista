@@ -4515,16 +4515,11 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// 5. Fallback if AI call failed
+	// 5. Fallback if AI call failed (REMOVED per user request)
 	if len(recommendedTitles) == 0 {
-		log.Printf("[FireworksAI] All models failed or no key set, using catalog fallback for category %s", catEn)
-		dbItems := h.searchDBCatalog(r.Context(), "", catEn)
-		for _, d := range dbItems {
-			recommendedTitles = append(recommendedTitles, d.Title)
-			if len(recommendedTitles) >= 10 {
-				break
-			}
-		}
+		log.Printf("[FireworksAI] All models failed or no key set, returning error to client instead of fallback")
+		http.Error(w, "Не удалось получить рекомендации от нейросети. Пожалуйста, попробуйте еще раз.", http.StatusInternalServerError)
+		return
 	}
 
 	// 6. Enrich recommended titles with external search (TMDb, Kinopoisk, Google Books, Steam, etc.)
