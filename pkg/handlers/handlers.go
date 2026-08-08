@@ -4073,46 +4073,56 @@ func mapCountryToFlag(country string) string {
 	return country
 }
 
-func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
-	itemID := chi.URLParam(r, "id")
-	if itemID == "" {
-		http.Error(w, "Missing id", http.StatusBadRequest)
-		return
+func parseTitlesFromAIResponse(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
 	}
 
-	var posterURL string
-	err := h.DB.Pool.QueryRow(r.Context(), "SELECT poster_url FROM items WHERE id = $1", itemID).Scan(&posterURL)
-	if err != nil {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
+	// Extract JSON array slice if surrounded by text or code blocks
+	if idx := strings.Index(raw, "["); idx != -1 {
+		if endIdx := strings.LastIndex(raw, "]"); endIdx != -1 && endIdx > idx {
+			raw = raw[idx : endIdx+1]
+		}
 	}
 
-	if strings.HasPrefix(posterURL, "data:image/") {
-		parts := strings.SplitN(posterURL, ",", 2)
-		if len(parts) == 2 {
-			contentType := "image/jpeg"
-			if strings.Contains(parts[0], "png") {
-				contentType = "image/png"
-			} else if strings.Contains(parts[0], "webp") {
-				contentType = "image/webp"
-			}
+	var titles []string
+	if err := json.Unmarshal([]byte(raw), &titles); err == nil && len(titles) > 0 {
+		return cleanTitlesList(titles)
+	}
 
-			data, err := base64.StdEncoding.DecodeString(parts[1])
-			if err == nil && len(data) > 0 {
-				w.Header().Set("Content-Type", contentType)
-				w.Header().Set("Cache-Control", "public, max-age=31536000")
-				w.Write(data)
-				return
+	// Retry after replacing literal newlines
+	cleaned := strings.ReplaceAll(raw, "\n", " ")
+	if err := json.Unmarshal([]byte(cleaned), &titles); err == nil && len(titles) > 0 {
+		return cleanTitlesList(titles)
+	}
+
+	// Fallback regex to extract quoted strings
+	re := regexp.MustCompile(`"([^"]+)"`)
+	matches := re.FindAllStringSubmatch(raw, -1)
+	for _, m := range matches {
+		if len(m) > 1 {
+			t := strings.TrimSpace(m[1])
+			if t != "" && t != "[" && t != "]" {
+				titles = append(titles, t)
 			}
 		}
 	}
 
-	if posterURL != "" && strings.HasPrefix(posterURL, "http") {
-		http.Redirect(w, r, posterURL, http.StatusFound)
-		return
-	}
+	return cleanTitlesList(titles)
+}
 
-	http.Error(w, "No poster", http.StatusNotFound)
+func cleanTitlesList(titles []string) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, t := range titles {
+		trimmed := strings.TrimSpace(t)
+		if trimmed != "" && !seen[trimmed] {
+			seen[trimmed] = true
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // GET /api/lists/{id}/recommendations
@@ -4124,129 +4134,40 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		userID = user.ID
 		username = strings.ToLower(strings.TrimPrefix(user.Username, "@"))
 	}
-	if username == "" {
-		if testUser := r.Header.Get("X-Test-User-ID"); testUser != "" {
-			username = strings.ToLower(strings.TrimPrefix(testUser, "@"))
-		}
+
+	// Try reading from JSON body first (for POST requests)
+	var bodyParams struct {
+		ItemIDs    string `json:"item_ids"`
+		ItemTitles string `json:"item_titles"`
+		Category   string `json:"category"`
+	}
+	if r.Method == "POST" {
+		_ = json.NewDecoder(r.Body).Decode(&bodyParams)
 	}
 
-	fastUsers := map[string]bool{"neznayca": true, "znayca": true}
-	cooldownDuration := 60 * time.Second
-	if fastUsers[username] {
-		cooldownDuration = 2 * time.Second
+	itemIDsParam := r.URL.Query().Get("item_ids")
+	if bodyParams.ItemIDs != "" {
+		itemIDsParam = bodyParams.ItemIDs
 	}
 
-	rateKey := getRateLimitKey(r)
-	if allowed, wait := h.RateLimiter.Allow("recommend:"+rateKey, cooldownDuration); !allowed {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error":   "Слишком много запросов. Подождите пару секунд.",
-			"wait_ms": wait.Milliseconds(),
-		})
-		return
+	itemTitlesParam := r.URL.Query().Get("item_titles")
+	if bodyParams.ItemTitles != "" {
+		itemTitlesParam = bodyParams.ItemTitles
 	}
 
-	_ = chi.URLParam(r, "id")
-	itemIDsParam := strings.TrimSpace(r.URL.Query().Get("item_ids"))
-	itemTitlesParam := strings.TrimSpace(r.URL.Query().Get("item_titles"))
-	categoryParam := strings.TrimSpace(r.URL.Query().Get("category"))
-	titleParam := strings.TrimSpace(r.URL.Query().Get("title"))
-
-	var itemDescriptions []string
-	var categoriesFound []string
-	var countriesFound []string
-	var genresFound []string
-	var yearsFound []int
-
-	reYear := regexp.MustCompile(`\b(19\d\d|20\d\d)\b`)
-
-	// 1. Fetch user items context
-	if itemIDsParam != "" {
-		ids := strings.Split(itemIDsParam, ",")
-		if len(ids) > 20 {
-			ids = ids[:20]
-		}
-		var cleanIDs []string
-		for _, id := range ids {
-			trimmed := strings.TrimSpace(id)
-			if trimmed != "" {
-				cleanIDs = append(cleanIDs, trimmed)
-			}
-		}
-		if len(cleanIDs) > 0 && h.DB != nil && h.DB.Pool != nil {
-			query := `SELECT title, category, release_year, genre, country, director, author FROM items WHERE id = ANY($1)`
-			rows, err := h.DB.Pool.Query(r.Context(), query, cleanIDs)
-			if err == nil && rows != nil {
-				defer rows.Close()
-				for rows.Next() {
-					var t, c, y, g, cnt, dir, aut string
-					if err := rows.Scan(&t, &c, &y, &g, &cnt, &dir, &aut); err == nil && t != "" {
-						desc := t
-						meta := []string{}
-						if y != "" {
-							meta = append(meta, y)
-							if yVal, e := strconv.Atoi(y); e == nil {
-								yearsFound = append(yearsFound, yVal)
-							}
-						}
-						if g != "" {
-							meta = append(meta, g)
-							genresFound = append(genresFound, g)
-						}
-						if cnt != "" {
-							meta = append(meta, "Страна: "+cnt)
-							countriesFound = append(countriesFound, cnt)
-						}
-						if dir != "" {
-							meta = append(meta, "Режиссер: "+dir)
-						}
-						if aut != "" {
-							meta = append(meta, "Автор: "+aut)
-						}
-						if len(meta) > 0 {
-							desc += fmt.Sprintf(" [%s]", strings.Join(meta, ", "))
-						}
-						itemDescriptions = append(itemDescriptions, desc)
-						categoriesFound = append(categoriesFound, mapCategoryToEn(c))
-					}
-				}
-			}
-		}
+	categoryParam := r.URL.Query().Get("category")
+	if bodyParams.Category != "" {
+		categoryParam = bodyParams.Category
 	}
 
-	if len(itemDescriptions) == 0 && itemTitlesParam != "" {
-		rawTitles := strings.Split(itemTitlesParam, "|")
-		if len(rawTitles) == 1 {
-			rawTitles = strings.Split(itemTitlesParam, ",")
-		}
-		for _, t := range rawTitles {
-			trimmed := strings.TrimSpace(t)
-			if trimmed != "" {
-				itemDescriptions = append(itemDescriptions, trimmed)
-				matches := reYear.FindAllString(trimmed, -1)
-				for _, m := range matches {
-					if yVal, e := strconv.Atoi(m); e == nil {
-						yearsFound = append(yearsFound, yVal)
-					}
-				}
-				if strings.Contains(strings.ToLower(trimmed), "страна:") {
-					parts := strings.Split(trimmed, "Страна:")
-					if len(parts) > 1 {
-						cntPart := strings.Trim(strings.Split(parts[1], "]")[0], " ,")
-						if cntPart != "" {
-							countriesFound = append(countriesFound, cntPart)
-						}
-					}
-				}
-				if len(itemDescriptions) >= 20 {
-					break
-				}
-			}
-		}
-	}
+	// 1. Gather existing item descriptions for contextual analysis
+	itemDescriptions := []string{}
+	categoriesFound := []string{}
+	yearsFound := []int{}
+	genresFound := []string{}
+	countriesFound := []string{}
 
-	if len(itemDescriptions) == 0 && userID != 0 && h.DB != nil && h.DB.Pool != nil {
+	if userID != 0 && h.DB != nil && h.DB.Pool != nil {
 		query := `SELECT title, category, release_year, genre, country, director, author FROM items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`
 		rows, err := h.DB.Pool.Query(r.Context(), query, userID)
 		if err == nil && rows != nil {
@@ -4300,7 +4221,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	switch catEn {
 	case "movie":
 		catRuName = "фильмы"
-	case "show":
+	case "tv":
 		catRuName = "сериалы"
 	case "book":
 		catRuName = "книги"
@@ -4308,35 +4229,10 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		catRuName = "игры"
 	}
 
-	// Helper for unique slice elements
-	uniqueSliceStr := func(arr []string) []string {
-		seen := make(map[string]bool)
-		var res []string
-		for _, v := range arr {
-			vClean := strings.TrimSpace(v)
-			if vClean != "" && !seen[vClean] {
-				seen[vClean] = true
-				res = append(res, vClean)
-			}
-		}
-		return res
-	}
-
-	countriesStr := "Учитывай название и тему списка"
-	if uCnt := uniqueSliceStr(countriesFound); len(uCnt) > 0 {
-		countriesStr = strings.Join(uCnt, ", ")
-	}
-
-	genresStr := "Учитывай название и тему списка"
-	if uGen := uniqueSliceStr(genresFound); len(uGen) > 0 {
-		genresStr = strings.Join(uGen, ", ")
-	}
-
-	// Calculate Era / Year constraints
-	yearsStr := "Не указаны"
+	// Deduplicate found metadata for prompt
+	uniqYears := []string{}
 	if len(yearsFound) > 0 {
-		minY := yearsFound[0]
-		maxY := yearsFound[0]
+		minY, maxY := yearsFound[0], yearsFound[0]
 		for _, y := range yearsFound {
 			if y < minY {
 				minY = y
@@ -4345,55 +4241,58 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				maxY = y
 			}
 		}
-		titleLower := strings.ToLower(titleParam)
 		if minY == maxY {
-			yearsStr = fmt.Sprintf("%d", minY)
+			uniqYears = append(uniqYears, strconv.Itoa(minY))
 		} else {
-			yearsStr = fmt.Sprintf("%d-%d", minY, maxY)
+			uniqYears = append(uniqYears, fmt.Sprintf("%d-%d", minY, maxY))
 		}
-		if maxY <= 1991 || strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
-			yearsStr += " (до 1991 г., СССР)"
-		}
+	}
+
+	uniqGenres := cleanUniqStrings(genresFound)
+	uniqCountries := cleanUniqStrings(countriesFound)
+
+	metaStr := ""
+	metaParts := []string{}
+	if len(uniqYears) > 0 {
+		metaParts = append(metaParts, "Годы: "+strings.Join(uniqYears, ", "))
+	}
+	if len(uniqCountries) > 0 {
+		metaParts = append(metaParts, "Страны: "+strings.Join(uniqCountries, ", "))
+	}
+	if len(uniqGenres) > 0 {
+		metaParts = append(metaParts, "Жанры: "+strings.Join(uniqGenres, ", "))
+	}
+	if len(metaParts) > 0 {
+		metaStr = "\nАналитика по входящему списку (" + strings.Join(metaParts, "; ") + ")."
+	}
+
+	// Build exact user prompt
+	itemsListStr := strings.Join(itemDescriptions, "\n- ")
+	if itemsListStr != "" {
+		itemsListStr = "- " + itemsListStr
 	} else {
-		titleLower := strings.ToLower(titleParam)
-		if strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
-			yearsStr = "До 1991 г. (СССР)"
-		}
+		itemsListStr = "- (список пуст, дай общие рекомендации)"
 	}
 
-	// Format list_items as JSON array of quoted titles
-	var itemTitlesOnly []string
-	for _, it := range itemDescriptions {
-		tClean := strings.TrimSpace(strings.Split(it, "[")[0])
-		if tClean != "" {
-			itemTitlesOnly = append(itemTitlesOnly, tClean)
-		}
-	}
-	itemTitlesOnly = uniqueSliceStr(itemTitlesOnly)
-	listItemsFormatted := ""
-	for i, t := range itemTitlesOnly {
-		if i > 0 {
-			listItemsFormatted += ", "
-		}
-		listItemsFormatted += fmt.Sprintf("%q", t)
+	yearsStr := strings.Join(uniqYears, ", ")
+	countriesStr := strings.Join(uniqCountries, ", ")
+	genresStr := strings.Join(uniqGenres, ", ")
+	listTitleDisplay := "Мои рекомендации"
+	listItemsFormatted := itemTitlesParam
+	if listItemsFormatted == "" {
+		listItemsFormatted = "пусто"
 	}
 
-	listTitleDisplay := titleParam
-	if listTitleDisplay == "" {
-		listTitleDisplay = "Мой список"
-	}
-
-	// 3. Construct prompt
-	prompt := fmt.Sprintf(`ВХОДНЫЕ ДАННЫЕ:
-Тема/Настроение списка: "%s"
-Категория: %s
+	prompt := fmt.Sprintf(`Ты - эксперт в подборе произведений. Твоя задача: проанализировать контекст пользователя и сгенерировать 10 новых рекомендаций.
+Тема списка: "%s"
+Категория: %s%s
 Годы: %s
 Страны: %s
 Жанры: %s
-Текущие элементы в списке (подбери похожие по стилю): [%s]
-Исключить (уже в списке, не предлагать повторно): [%s]
+Текущий список пользователя:
+%s
+Элементы для учета (дополнительно): %s
 
-ЗАДАЧА:
 Сгенерируй 10 рекомендаций, которые идеально подходят по духу, эпохе и жанру к "Теме списка" и похожи на текущие элементы из входных данных. 
 
 ПРАВИЛА:
