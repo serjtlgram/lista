@@ -216,11 +216,46 @@ export const api = {
       const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations?${params.toString()}`, {
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to fetch recommendations');
-      return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
     } catch (e) {
-      console.warn('API getRecommendations error:', e);
-      return [];
+      console.warn('API getRecommendations backend fetch error, falling back:', e);
     }
+
+    // Smart fallback if backend endpoint returns 404 or is updating
+    try {
+      let searchQuery = title && !['избранное', 'список', 'favorites', 'list'].includes(title.toLowerCase().trim())
+        ? title
+        : (category || 'Фильмы');
+
+      if (itemTitles && itemTitles.length > 0) {
+        // Use first item title to find similar recommendations in catalog
+        searchQuery = itemTitles[0];
+      }
+
+      const catalogResults = await api.searchCatalog(searchQuery, category);
+      if (catalogResults && catalogResults.length > 0) {
+        const existingSet = new Set((itemTitles || []).map((t) => t.toLowerCase().trim()));
+        const filtered = catalogResults.filter((c) => !existingSet.has((c.title || '').toLowerCase().trim()));
+        if (filtered.length > 0) {
+          return filtered.slice(0, 10);
+        }
+        return catalogResults.slice(0, 10);
+      }
+
+      // If specific search had no matches, try general category search
+      const genResults = await api.searchCatalog(category || 'Фильмы');
+      if (genResults && genResults.length > 0) {
+        return genResults.slice(0, 10);
+      }
+    } catch (e) {
+      console.warn('Fallback catalog recommendations error:', e);
+    }
+
+    return [];
   },
 };
