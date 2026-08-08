@@ -123,6 +123,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     e.stopPropagation();
     triggerHaptic();
     onAddCatalogItem(catItem);
+    setRecommendations((prev) => prev.filter((item) => item.id !== catItem.id));
     showToast(`«${catItem.title}» добавлено в вашу коллекцию!`);
   };
 

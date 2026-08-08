@@ -4377,14 +4377,15 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 %s
 
 СТРОГИЕ ИНСТРУКЦИИ ДЛЯ РЕКОМЕНДАЦИЙ:
-1. АНАЛИЗ НАЗВАНИЯ И ТЕМАТИКИ: Название списка "%s" — главный ориентир!
+1. АНАЛИЗ НАЗВАНИЯ И ТЕМАТИКИ: Название списка "%s" — это ТЕМАТИКА (жанр/настроение/эпоха), а не буквальное слово для поиска!
+   - Не ищи фильмы, в названии которых есть слово "%s" (например, если список "Апокалипсис", нужны фильмы про конец света, а не фильмы со словом "Апокалипсис" в названии).
    - Если список называется "Фильмы СССР", советуй ТОЛЬКО фильмы производства СССР (до 1991 года).
    - Если список про культуру, искусство, конкретного режиссера, актера или узкий жанр (например документалки об искусстве) — рекомендуй СТРОГО аналогичные тайтлы по этой же теме!
 2. УЧЕТ ЭПОХИ И СТРАНЫ: Не рекомендуй современные фильмы, если список про прошлые века или СССР, и наоборот!
 3. РАЗНООБРАЗИЕ И ИСКЛЮЧЕНИЕ СПИН-ОФФОВ: Категорически ЗАПРЕЩЕНО выдавать части, сезоны или спин-оффы одного франшизного произведения. Все 10 рекомендаций должны быть 10 РАЗНЫМИ популярными культовыми произведениями!
 4. ИСКЛЮЧЕНИЕ ПОВТОРОВ: Не рекомендуй тайтлы, уже находящиеся в списке выше.
 5. ФОРМАТ ОТВЕТА: Верни СТРОГО валидный JSON-массив из 10 оригинальных официальных названий на русском языке: ["Название 1", "Название 2", ...]. Никакого текста до или после JSON.`,
-		listTitleDisplay, catRuName, eraContextStr, countriesStr, genresStr, itemsBlock, listTitleDisplay)
+		listTitleDisplay, catRuName, eraContextStr, countriesStr, genresStr, itemsBlock, listTitleDisplay, listTitleDisplay)
 
 	// 4. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
@@ -4394,14 +4395,11 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
-		"accounts/fireworks/models/deepseek-v4-pro",
 		"accounts/fireworks/models/deepseek-v4-flash",
-		"accounts/fireworks/models/qwen2p5-72b-instruct",
-		"accounts/fireworks/models/llama-v3p1-70b-instruct",
 	}
 
 	var recommendedTitles []string
-	httpClient := &http.Client{Timeout: 25 * time.Second}
+	httpClient := &http.Client{Timeout: 90 * time.Second}
 
 	for _, modelName := range modelsToTry {
 		reqBodyMap := map[string]interface{}{
