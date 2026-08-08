@@ -353,15 +353,18 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     return () => clearInterval(interval);
   }, [currentList.id]);
 
-  const isNeznacaUser = (): boolean => {
+  const isFastUser = (): boolean => {
     try {
       const tg = (window as any).Telegram?.WebApp;
-      const username = tg?.initDataUnsafe?.user?.username || '';
-      if (username.toLowerCase().replace(/^@/, '') === 'neznaca') return true;
+      const username = (tg?.initDataUnsafe?.user?.username || '').toLowerCase().replace(/^@/, '');
+      if (['neznayca', 'znayca'].includes(username)) return true;
     } catch {}
     try {
       const stored = localStorage.getItem('lista_user_profile');
-      if (stored && stored.toLowerCase().includes('neznaca')) return true;
+      if (stored) {
+        const lower = stored.toLowerCase();
+        if (lower.includes('neznayca') || lower.includes('znayca')) return true;
+      }
     } catch {}
     return false;
   };
@@ -370,9 +373,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     if (cooldownLeft > 0) return;
     triggerHaptic('medium');
 
-    const isNeznaca = isNeznacaUser();
-    const cooldownMs = isNeznaca ? 2000 : 60000;
-    const cooldownSec = isNeznaca ? 2 : 60;
+    const isFast = isFastUser();
+    const cooldownMs = isFast ? 2000 : 60000;
+    const cooldownSec = isFast ? 2 : 60;
 
     const cooldownExpiresAt = Date.now() + cooldownMs;
     localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());

@@ -4130,8 +4130,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	fastUsers := map[string]bool{"neznayca": true, "znayca": true}
 	cooldownDuration := 60 * time.Second
-	if username == "neznaca" {
+	if fastUsers[username] {
 		cooldownDuration = 2 * time.Second
 	}
 
@@ -4156,6 +4157,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	var categoriesFound []string
 	var countriesFound []string
 	var genresFound []string
+	var yearsFound []int
+
+	reYear := regexp.MustCompile(`\b(19\d\d|20\d\d)\b`)
 
 	// 1. Fetch user items context
 	if itemIDsParam != "" {
@@ -4182,6 +4186,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 						meta := []string{}
 						if y != "" {
 							meta = append(meta, y)
+							if yVal, e := strconv.Atoi(y); e == nil {
+								yearsFound = append(yearsFound, yVal)
+							}
 						}
 						if g != "" {
 							meta = append(meta, g)
@@ -4217,6 +4224,12 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			trimmed := strings.TrimSpace(t)
 			if trimmed != "" {
 				itemDescriptions = append(itemDescriptions, trimmed)
+				matches := reYear.FindAllString(trimmed, -1)
+				for _, m := range matches {
+					if yVal, e := strconv.Atoi(m); e == nil {
+						yearsFound = append(yearsFound, yVal)
+					}
+				}
 				if strings.Contains(strings.ToLower(trimmed), "страна:") {
 					parts := strings.Split(trimmed, "Страна:")
 					if len(parts) > 1 {
@@ -4245,6 +4258,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 					meta := []string{}
 					if y != "" {
 						meta = append(meta, y)
+						if yVal, e := strconv.Atoi(y); e == nil {
+							yearsFound = append(yearsFound, yVal)
+						}
 					}
 					if g != "" {
 						meta = append(meta, g)
@@ -4306,14 +4322,35 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		return res
 	}
 
-	countriesStr := "Не указаны"
+	countriesStr := "Учитывай название и тему списка"
 	if uCnt := uniqueSliceStr(countriesFound); len(uCnt) > 0 {
 		countriesStr = strings.Join(uCnt, ", ")
 	}
 
-	genresStr := "Не указаны"
+	genresStr := "Учитывай название и тему списка"
 	if uGen := uniqueSliceStr(genresFound); len(uGen) > 0 {
 		genresStr = strings.Join(uGen, ", ")
+	}
+
+	// Calculate Era / Year constraints
+	eraContextStr := "Учитывай тему названия списка"
+	if len(yearsFound) > 0 {
+		minY := yearsFound[0]
+		maxY := yearsFound[0]
+		for _, y := range yearsFound {
+			if y < minY {
+				minY = y
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+		titleLower := strings.ToLower(titleParam)
+		if maxY <= 1991 || strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
+			eraContextStr = fmt.Sprintf("СССР / Советский период (до 1991 г., %d-%d гг.). Рекомендуй ИСКЛЮЧИТЕЛЬНО фильмы/произведения производства СССР до 1991 года!", minY, maxY)
+		} else {
+			eraContextStr = fmt.Sprintf("Период %d-%d гг. Рекомендуй тайтлы той же временной эпохи!", minY, maxY)
+		}
 	}
 
 	itemsBlock := strings.Join(itemDescriptions, "\n- ")
@@ -4327,23 +4364,27 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. Construct prompt
-	prompt := fmt.Sprintf(`Ты — эксперт по кино, сериалам, книгам и играм.
-Проанализируй список пользователя и подбери 10 УНИКАЛЬНЫХ И РАЗНООБРАЗНЫХ рекомендаций.
+	prompt := fmt.Sprintf(`Ты — эксперт высшего уровня по мировому и отечественному кино, сериалам, литературе и видеоиграм.
+Проанализируй список пользователя и подбери 10 САМЫХ ТОЧНЫХ, УНИКАЛЬНЫХ И ПОДХОДЯЩИХ рекомендаций.
 
 КОНТЕКСТ СПИСКА ПОЛЬЗОВАТЕЛЯ:
 - Название списка: "%s"
 - Категория: %s
-- Основные страны элементов: %s
-- Жанры: %s
+- Эпоха / Временной период: %s
+- Основные страны: %s
+- Жанры / Направление: %s
 - Элементы списка:
 %s
 
-ОБЯЗАТЕЛЬНЫЕ ТРЕБОВАНИЯ:
-1. ТЕМАТИКА И СТРАНА: Рекомендации должны СТРОГО подходить под тему названия списка "%s" и учитывать страны производства (если в списке российские сериалы/фильмы или фильмы определенного направления/актера, обязательно рекомендуй аналогичные качественные тайтлы той же страны и направления!).
-2. СТРОГОЕ РАЗНООБРАЗИЕ: ЗАПРЕЩЕНО рекомендовать несколько частей, сезонов, эпизодов или спин-оффов одного и того же сериала/франшизы (например, не давай несколько раз сериалы вроде "Выжившие: ..."). Все 10 рекомендаций должны быть РАЗНЫМИ самостоятельными произведениями!
-3. ИСКЛЮЧЕНИЯ: Не предлагай тайтлы, уже присутствующие в списке выше.
-4. ФОРМАТ ОТВЕТА: Верни СТРОГО валидный JSON-массив ровно из 10 оригинальных названий на русском языке: ["Название 1", "Название 2", ...]. Никаких пояснений, только JSON массив.`,
-		listTitleDisplay, catRuName, countriesStr, genresStr, itemsBlock, listTitleDisplay)
+СТРОГИЕ ИНСТРУКЦИИ ДЛЯ РЕКОМЕНДАЦИЙ:
+1. АНАЛИЗ НАЗВАНИЯ И ТЕМАТИКИ: Название списка "%s" — главный ориентир!
+   - Если список называется "Фильмы СССР", советуй ТОЛЬКО фильмы производства СССР (до 1991 года).
+   - Если список про культуру, искусство, конкретного режиссера, актера или узкий жанр (например документалки об искусстве) — рекомендуй СТРОГО аналогичные тайтлы по этой же теме!
+2. УЧЕТ ЭПОХИ И СТРАНЫ: Не рекомендуй современные фильмы, если список про прошлые века или СССР, и наоборот!
+3. РАЗНООБРАЗИЕ И ИСКЛЮЧЕНИЕ СПИН-ОФФОВ: Категорически ЗАПРЕЩЕНО выдавать части, сезоны или спин-оффы одного франшизного произведения. Все 10 рекомендаций должны быть 10 РАЗНЫМИ популярными культовыми произведениями!
+4. ИСКЛЮЧЕНИЕ ПОВТОРОВ: Не рекомендуй тайтлы, уже находящиеся в списке выше.
+5. ФОРМАТ ОТВЕТА: Верни СТРОГО валидный JSON-массив из 10 оригинальных официальных названий на русском языке: ["Название 1", "Название 2", ...]. Никакого текста до или после JSON.`,
+		listTitleDisplay, catRuName, eraContextStr, countriesStr, genresStr, itemsBlock, listTitleDisplay)
 
 	// 4. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
@@ -4352,14 +4393,15 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	modelsToTry := []string{
-		"accounts/fireworks/models/gpt-oss-20b",
-		"accounts/fireworks/models/llama-v3p1-70b-instruct",
-		"accounts/fireworks/models/qwen2p5-72b-instruct",
+		"accounts/fireworks/models/deepseek-v4-flash-0731",
 		"accounts/fireworks/models/deepseek-v3",
+		"accounts/fireworks/models/deepseek-r1",
+		"accounts/fireworks/models/qwen2p5-72b-instruct",
+		"accounts/fireworks/models/llama-v3p1-70b-instruct",
 	}
 
 	var recommendedTitles []string
-	httpClient := &http.Client{Timeout: 20 * time.Second}
+	httpClient := &http.Client{Timeout: 25 * time.Second}
 
 	for _, modelName := range modelsToTry {
 		reqBodyMap := map[string]interface{}{
