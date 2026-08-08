@@ -4333,7 +4333,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Calculate Era / Year constraints
-	eraContextStr := "Учитывай тему названия списка"
+	yearsStr := "Не указаны"
 	if len(yearsFound) > 0 {
 		minY := yearsFound[0]
 		maxY := yearsFound[0]
@@ -4346,16 +4346,36 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		titleLower := strings.ToLower(titleParam)
-		if maxY <= 1991 || strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
-			eraContextStr = fmt.Sprintf("СССР / Советский период (до 1991 г., %d-%d гг.). Рекомендуй ИСКЛЮЧИТЕЛЬНО фильмы/произведения производства СССР до 1991 года!", minY, maxY)
+		if minY == maxY {
+			yearsStr = fmt.Sprintf("%d", minY)
 		} else {
-			eraContextStr = fmt.Sprintf("Период %d-%d гг. Рекомендуй тайтлы той же временной эпохи!", minY, maxY)
+			yearsStr = fmt.Sprintf("%d-%d", minY, maxY)
+		}
+		if maxY <= 1991 || strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
+			yearsStr += " (до 1991 г., СССР)"
+		}
+	} else {
+		titleLower := strings.ToLower(titleParam)
+		if strings.Contains(titleLower, "ссср") || strings.Contains(titleLower, "советск") {
+			yearsStr = "До 1991 г. (СССР)"
 		}
 	}
 
-	itemsBlock := strings.Join(itemDescriptions, "\n- ")
-	if itemsBlock != "" {
-		itemsBlock = "- " + itemsBlock
+	// Format list_items as JSON array of quoted titles
+	var itemTitlesOnly []string
+	for _, it := range itemDescriptions {
+		tClean := strings.TrimSpace(strings.Split(it, "[")[0])
+		if tClean != "" {
+			itemTitlesOnly = append(itemTitlesOnly, tClean)
+		}
+	}
+	itemTitlesOnly = uniqueSliceStr(itemTitlesOnly)
+	listItemsFormatted := ""
+	for i, t := range itemTitlesOnly {
+		if i > 0 {
+			listItemsFormatted += ", "
+		}
+		listItemsFormatted += fmt.Sprintf("%q", t)
 	}
 
 	listTitleDisplay := titleParam
@@ -4364,28 +4384,25 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. Construct prompt
-	prompt := fmt.Sprintf(`Ты — эксперт высшего уровня по мировому и отечественному кино, сериалам, литературе и видеоиграм.
-Проанализируй список пользователя и подбери 10 САМЫХ ТОЧНЫХ, УНИКАЛЬНЫХ И ПОДХОДЯЩИХ рекомендаций.
+	prompt := fmt.Sprintf(`ВХОДНЫЕ ДАННЫЕ:
+Тема/Настроение списка: "%s"
+Категория: %s
+Годы: %s
+Страны: %s
+Жанры: %s
+Исключить (уже в списке): [%s]
 
-КОНТЕКСТ СПИСКА ПОЛЬЗОВАТЕЛЯ:
-- Название списка: "%s"
-- Категория: %s
-- Эпоха / Временной период: %s
-- Основные страны: %s
-- Жанры / Направление: %s
-- Элементы списка:
-%s
+ЗАДАЧА:
+Сгенерируй 10 рекомендаций, которые идеально подходят по духу, эпохе и жанру к "Теме списка". 
 
-СТРОГИЕ ИНСТРУКЦИИ ДЛЯ РЕКОМЕНДАЦИЙ:
-1. АНАЛИЗ НАЗВАНИЯ И ТЕМАТИКИ: Название списка "%s" — это ТЕМАТИКА (жанр/настроение/эпоха), а не буквальное слово для поиска!
-   - Не ищи фильмы, в названии которых есть слово "%s" (например, если список "Апокалипсис", нужны фильмы про конец света, а не фильмы со словом "Апокалипсис" в названии).
-   - Если список называется "Фильмы СССР", советуй ТОЛЬКО фильмы производства СССР (до 1991 года).
-   - Если список про культуру, искусство, конкретного режиссера, актера или узкий жанр (например документалки об искусстве) — рекомендуй СТРОГО аналогичные тайтлы по этой же теме!
-2. УЧЕТ ЭПОХИ И СТРАНЫ: Не рекомендуй современные фильмы, если список про прошлые века или СССР, и наоборот!
-3. РАЗНООБРАЗИЕ И ИСКЛЮЧЕНИЕ СПИН-ОФФОВ: Категорически ЗАПРЕЩЕНО выдавать части, сезоны или спин-оффы одного франшизного произведения. Все 10 рекомендаций должны быть 10 РАЗНЫМИ популярными культовыми произведениями!
-4. ИСКЛЮЧЕНИЕ ПОВТОРОВ: Не рекомендуй тайтлы, уже находящиеся в списке выше.
-5. ФОРМАТ ОТВЕТА: Верни СТРОГО валидный JSON-массив из 10 оригинальных официальных названий на русском языке: ["Название 1", "Название 2", ...]. Никакого текста до или после JSON.`,
-		listTitleDisplay, catRuName, eraContextStr, countriesStr, genresStr, itemsBlock, listTitleDisplay, listTitleDisplay)
+ПРАВИЛА:
+1. Тема списка задает смысловой вектор, а не ключевые слова для поиска.
+2. Строго соблюдай историческую эпоху и географию.
+3. Разнообразие: все 10 элементов должны быть самостоятельными произведениями из разных франшиз (без сиквелов, приквелов и спин-оффов).
+4. Элементы из поля "Исключить" использовать нельзя.
+5. Формат ответа: только сырой JSON-массив строк с официальными русскими названиями. Пример: ["Название 1", "Название 2"]. 
+6. Без markdown-разметки (без ```json) и без сопроводительного текста.`,
+		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, listItemsFormatted)
 
 	// 4. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
@@ -4396,7 +4413,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
 		"accounts/fireworks/models/deepseek-v4-flash",
-		"accounts/fireworks/models/qwen2p5-72b-instruct",
+		"accounts/fireworks/models/gpt-oss-120b",
 	}
 
 	var recommendedTitles []string
