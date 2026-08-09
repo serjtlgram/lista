@@ -122,7 +122,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   }, [listId]);
 
   useEffect(() => {
-    if (cachedAddedItems && cachedAddedItems.length > 0) {
+    if (cachedAddedItems) {
       setAddedItems(cachedAddedItems);
     }
   }, [cachedAddedItems]);

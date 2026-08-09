@@ -70,6 +70,13 @@ export function App() {
       const { tempId, realId, serverItem } = e.detail;
       setItems((prev) => prev.map(i => i.id === tempId ? { ...i, ...serverItem, id: realId } as Item : i));
       setSelectedItem((prev) => prev?.id === tempId ? { ...prev, ...serverItem, id: realId } as Item : prev);
+      setRecommendationListInfo((prev) => {
+        if (!prev || !prev.addedItems) return prev;
+        const updatedAdded = prev.addedItems.map((ai) => 
+          ai.id === tempId ? { ...ai, ...serverItem, id: realId } as Item : ai
+        );
+        return { ...prev, addedItems: updatedAdded };
+      });
     };
     window.addEventListener('ListaItemCreated', handleItemCreated);
     return () => window.removeEventListener('ListaItemCreated', handleItemCreated);
