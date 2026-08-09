@@ -926,6 +926,7 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 	}
 
 	if year != "" {
+		yearInt, _ := strconv.Atoi(year)
 		for _, item := range searchRes.Results {
 			if item.MediaType == "movie" || item.MediaType == "tv" {
 				itemYear := ""
@@ -934,11 +935,20 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 				} else if len(item.FirstAirDate) >= 4 {
 					itemYear = item.FirstAirDate[:4]
 				}
+				
 				if itemYear == year {
 					return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
 				}
+				
+				if itemYearInt, err := strconv.Atoi(itemYear); err == nil && yearInt > 0 {
+					if itemYearInt == yearInt-1 || itemYearInt == yearInt+1 {
+						return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
+					}
+				}
 			}
 		}
+		// If year is provided but no match within +/- 1 year is found, do not fall back to an arbitrary year.
+		return nil, fmt.Errorf("no TMDb match found for year %s", year)
 	}
 
 	for _, item := range searchRes.Results {
