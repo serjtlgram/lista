@@ -173,7 +173,7 @@ func searchViaWebParser(client *http.Client, query string) (string, error) {
 	// Fallback raw videoId
 	if matches := fallbackVideoIDRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
 		candidateURL := "https://www.youtube.com/watch?v=" + matches[1]
-		if isVideoEmbeddable(client, candidateURL) {
+		if IsVideoEmbeddable(client, candidateURL) {
 			return candidateURL, nil
 		}
 	}
