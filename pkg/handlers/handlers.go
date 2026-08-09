@@ -2477,12 +2477,12 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			var dbItem parser.ExtractedMedia
 			ctx := context.Background()
 			query := `
-				SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating
+				SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating, country
 				FROM items WHERE id = $1 LIMIT 1
 			`
 			errScan := h.DB.Pool.QueryRow(ctx, query, startAppID).Scan(
 				&dbItem.Title, &dbItem.Category, &dbItem.Genre, &dbItem.Duration, &dbItem.ReleaseYear,
-				&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating,
+				&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating, &dbItem.Country,
 			)
 			if errScan == nil && strings.TrimSpace(dbItem.Title) != "" {
 				dbItem.SourceURL = rawURL
@@ -2500,12 +2500,12 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					var dbItem parser.ExtractedMedia
 					ctx := context.Background()
 					query := `
-						SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating
+						SELECT title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, public_rating, country
 						FROM items WHERE LOWER(TRIM(title)) = LOWER($1) LIMIT 1
 					`
 					errScan := h.DB.Pool.QueryRow(ctx, query, cleanT).Scan(
 						&dbItem.Title, &dbItem.Category, &dbItem.Genre, &dbItem.Duration, &dbItem.ReleaseYear,
-						&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating,
+						&dbItem.PosterURL, &dbItem.Description, &dbItem.YoutubeURL, &dbItem.Director, &dbItem.Cast, &dbItem.PublicRating, &dbItem.Country,
 					)
 					if errScan == nil && strings.TrimSpace(dbItem.Title) != "" {
 						dbItem.SourceURL = rawURL
@@ -2538,37 +2538,56 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" {
 		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil)
 		if len(onlineResults) > 0 {
-			for _, res := range onlineResults {
-				if media.PublicRating == "" && res.PublicRating != "" {
-					media.PublicRating = res.PublicRating
+			var best models.CatalogSearchResult
+			found := false
+			if media.ReleaseYear != "" {
+				for _, res := range onlineResults {
+					if res.ReleaseYear == media.ReleaseYear {
+						best = res
+						found = true
+						break
+					}
 				}
-				if media.Description == "" && res.Description != "" {
-					media.Description = res.Description
-				}
-				if media.PosterURL == "" && res.PosterURL != "" {
-					media.PosterURL = res.PosterURL
-				}
-				if media.ReleaseYear == "" && res.ReleaseYear != "" {
-					media.ReleaseYear = res.ReleaseYear
-				}
-				if media.Duration == "" && res.Duration != "" {
-					media.Duration = res.Duration
-				}
-				if media.Genre == "" && res.Genre != "" {
-					media.Genre = res.Genre
-				}
-				if media.Director == "" && res.Director != "" {
-					media.Director = res.Director
-				}
-				if media.Cast == "" && res.Cast != "" {
-					media.Cast = res.Cast
-				}
-				if media.Author == "" && res.Author != "" {
-					media.Author = res.Author
-				}
-				if media.ISBN == "" && res.ISBN != "" {
-					media.ISBN = res.ISBN
-				}
+			}
+			if !found {
+				best = onlineResults[0]
+			}
+			
+			if media.PublicRating == "" && best.PublicRating != "" {
+				media.PublicRating = best.PublicRating
+			}
+			if media.Description == "" && best.Description != "" {
+				media.Description = best.Description
+			}
+			if media.PosterURL == "" && best.PosterURL != "" {
+				media.PosterURL = best.PosterURL
+			}
+			if media.ReleaseYear == "" && best.ReleaseYear != "" {
+				media.ReleaseYear = best.ReleaseYear
+			}
+			if media.Duration == "" && best.Duration != "" {
+				media.Duration = best.Duration
+			}
+			if media.Genre == "" && best.Genre != "" {
+				media.Genre = best.Genre
+			}
+			if media.Director == "" && best.Director != "" {
+				media.Director = best.Director
+			}
+			if media.Cast == "" && best.Cast != "" {
+				media.Cast = best.Cast
+			}
+			if media.Author == "" && best.Author != "" {
+				media.Author = best.Author
+			}
+			if media.ISBN == "" && best.ISBN != "" {
+				media.ISBN = best.ISBN
+			}
+			if media.YoutubeURL == "" && best.YoutubeURL != "" {
+				media.YoutubeURL = best.YoutubeURL
+			}
+			if media.Country == "" && best.Country != "" {
+				media.Country = best.Country
 			}
 		}
 	}
@@ -2579,7 +2598,15 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	var finalItemID string = itemUUID
 	if h.DB != nil && h.DB.Pool != nil {
 		var existingID string
-		checkErr := h.DB.Pool.QueryRow(ctx, "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4)) LIMIT 1", userID, titleTrimmed, media.Category, catEn).Scan(&existingID)
+		checkQuery := "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))"
+		args := []interface{}{userID, titleTrimmed, media.Category, catEn}
+		if media.ReleaseYear != "" {
+			checkQuery += " AND release_year = $5"
+			args = append(args, media.ReleaseYear)
+		}
+		checkQuery += " LIMIT 1"
+		
+		checkErr := h.DB.Pool.QueryRow(ctx, checkQuery, args...).Scan(&existingID)
 		if checkErr == nil && existingID != "" {
 			finalItemID = existingID
 			// Update missing fields if new data has director/cast/poster/duration/public_rating
@@ -2595,9 +2622,10 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
 					public_rating = CASE WHEN public_rating = '' OR public_rating IS NULL THEN $9 ELSE public_rating END,
 					note = CASE WHEN note = '' OR note IS NULL THEN $10 ELSE note END,
+					country = CASE WHEN country = '' OR country IS NULL THEN $11 ELSE country END,
 					updated_at = CURRENT_TIMESTAMP
-				WHERE id = $11 AND user_id = $12;
-			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, finalItemID, userID)
+				WHERE id = $12 AND user_id = $13;
+			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, media.Country, finalItemID, userID)
 		} else {
 			insertQuery := `
 				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country, note)

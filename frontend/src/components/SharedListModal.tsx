@@ -49,7 +49,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
 
       // 2. Add each item to user database & list
       for (const item of sharedItems) {
-        const existing = userItems.find((ui) => norm(ui.title) === norm(item.title));
+        const existing = userItems.find((ui) => norm(ui.title) === norm(item.title) && ui.release_year === item.release_year);
         let targetId = existing?.id;
 
         if (!targetId) {
@@ -70,6 +70,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
             author: item.author || '',
             isbn: item.isbn || '',
             note: item.note || '',
+            country: item.country || '',
           };
           const created = await api.createItem(payload);
           if (created?.id) {
