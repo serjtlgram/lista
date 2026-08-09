@@ -4407,7 +4407,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
 	}
 
-	listTitleDisplay := "Мои рекомендации"
 	listItemsFormatted := itemTitlesParam
 	if listItemsFormatted == "" {
 		listItemsFormatted = "пусто"
