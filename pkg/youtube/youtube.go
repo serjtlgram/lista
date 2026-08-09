@@ -30,7 +30,7 @@ var (
 	fallbackVideoIDRegex  = regexp.MustCompile(`"videoId":"([a-zA-Z0-9_-]{11})"`)
 )
 
-func isVideoEmbeddable(client *http.Client, targetURL string) bool {
+func IsVideoEmbeddable(client *http.Client, targetURL string) bool {
 	if targetURL == "" {
 		return false
 	}
@@ -95,7 +95,7 @@ func SearchYouTube(apiKey, title, category string) (string, error) {
 
 func searchViaOfficialAPI(client *http.Client, apiKey, query string) (string, error) {
 	apiURL := fmt.Sprintf(
-		"https://www.googleapis.com/youtube/v3/search?part=snippet&q=%s&type=video&maxResults=5&key=%s",
+		"https://www.googleapis.com/youtube/v3/search?part=snippet&q=%s&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=5&key=%s",
 		url.QueryEscape(query),
 		apiKey,
 	)
@@ -123,7 +123,7 @@ func searchViaOfficialAPI(client *http.Client, apiKey, query string) (string, er
 	for _, item := range data.Items {
 		if item.ID.VideoID != "" {
 			candidateURL := "https://www.youtube.com/watch?v=" + item.ID.VideoID
-			if isVideoEmbeddable(client, candidateURL) {
+			if IsVideoEmbeddable(client, candidateURL) {
 				return candidateURL, nil
 			}
 		}
@@ -163,7 +163,7 @@ func searchViaWebParser(client *http.Client, query string) (string, error) {
 			if len(match) > 1 {
 				vID := match[1]
 				candidateURL := "https://www.youtube.com/watch?v=" + vID
-				if isVideoEmbeddable(client, candidateURL) {
+				if IsVideoEmbeddable(client, candidateURL) {
 					return candidateURL, nil
 				}
 			}

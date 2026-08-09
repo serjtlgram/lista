@@ -883,8 +883,11 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 	// YouTube Video / Trailer
 	for _, v := range data.Videos.Results {
 		if v.Site == "YouTube" && (v.Type == "Trailer" || v.Type == "Teaser") {
-			media.YoutubeURL = "https://www.youtube.com/watch?v=" + v.Key
-			break
+			candidateURL := "https://www.youtube.com/watch?v=" + v.Key
+			if youtube.IsVideoEmbeddable(client, candidateURL) {
+				media.YoutubeURL = candidateURL
+				break
+			}
 		}
 	}
 
