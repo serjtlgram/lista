@@ -229,97 +229,45 @@ export function getFavoritesList(): UserList {
 }
 
 export async function syncListsFromCloud(): Promise<void> {
-  // 1. Fetch from Backend (PostgreSQL)
   const backendData = await api.getListsData();
-  let backendFolders: ListFolder[] = [];
-  let backendLists: UserList[] = [];
 
   if (backendData) {
-    if (Array.isArray(backendData.folders) && backendData.folders.length > 0) {
-      backendFolders = backendData.folders;
-    }
-    if (Array.isArray(backendData.lists) && backendData.lists.length > 0) {
-      backendLists = backendData.lists;
-    }
-  }
+    const isBackendEmpty = (!backendData.lists || backendData.lists.length === 0) && (!backendData.folders || backendData.folders.length === 0);
 
-  // 2. Fetch local (PC/Phone)
-  const localFolders = getFolders();
-  const localLists = getLists();
-
-  // 3. Merge Folders (Backend + Local, prioritizing backend but keeping local-only)
-  const mergedFoldersMap = new Map<string, ListFolder>();
-  backendFolders.forEach(f => mergedFoldersMap.set(f.id, f));
-  localFolders.forEach(f => {
-    if (!mergedFoldersMap.has(f.id)) mergedFoldersMap.set(f.id, f);
-  });
-  const mergedFolders = Array.from(mergedFoldersMap.values());
-
-  // 4. Merge Lists (Backend + Local, merging items)
-  const mergedListsMap = new Map<string, UserList>();
-  backendLists.forEach(l => mergedListsMap.set(l.id, l));
-  
-  localLists.forEach(localList => {
-    if (mergedListsMap.has(localList.id)) {
-      const backendList = mergedListsMap.get(localList.id)!;
-      const combinedItemIds = Array.from(new Set([...(backendList.itemIds || []), ...(localList.itemIds || [])]));
-      mergedListsMap.set(localList.id, {
-        ...backendList,
-        name: backendList.name || localList.name,
-        itemIds: combinedItemIds,
-        folderId: backendList.folderId || localList.folderId,
-      });
+    if (isBackendEmpty) {
+      // 1. Initial migration: push local data to empty backend
+      const localFolders = getFolders();
+      const localLists = getLists();
+      api.syncListsData(localLists, localFolders);
     } else {
-      mergedListsMap.set(localList.id, localList);
-    }
-  });
-  const mergedLists = Array.from(mergedListsMap.values());
+      // 2. Backend is the single source of truth. Overwrite local storage.
+      let backendFolders = backendData.folders;
+      if (!backendFolders || backendFolders.length === 0) {
+        backendFolders = DEFAULT_FOLDERS;
+      }
 
-  // 5. Check Telegram CloudStorage (as a secondary backup)
-  try {
-    const folderVal = await loadFromCloudStorage(FOLDERS_KEY);
-    if (folderVal) {
-      const parsedFolders = JSON.parse(folderVal);
-      if (Array.isArray(parsedFolders)) {
-        parsedFolders.forEach(f => {
-          if (!mergedFoldersMap.has(f.id)) mergedFolders.push(f);
-        });
+      let backendLists = backendData.lists || [];
+      if (!backendLists.some((l: UserList) => l.id === FAVORITES_ID)) {
+        backendLists = [getDefaultFavoritesList(), ...backendLists];
       }
+
+      const ts = Date.now().toString();
+
+      localStorage.setItem(FOLDERS_KEY, JSON.stringify(backendFolders));
+      localStorage.setItem(FOLDERS_TS_KEY, ts);
+      window.dispatchEvent(new Event('lista_folders_updated'));
+
+      localStorage.setItem(LISTS_KEY, JSON.stringify(backendLists));
+      localStorage.setItem(LISTS_TS_KEY, ts);
+      window.dispatchEvent(new Event('lista_lists_updated'));
+
+      // Keep CloudStorage somewhat in sync for legacy clients, though unused by new logic
+      saveToCloudStorage(FOLDERS_KEY, JSON.stringify(backendFolders));
+      saveToCloudStorage(LISTS_KEY, JSON.stringify(backendLists));
     }
-    const listsVal = await loadFromCloudStorage(LISTS_KEY);
-    if (listsVal) {
-      const parsedLists = JSON.parse(listsVal);
-      if (Array.isArray(parsedLists)) {
-        parsedLists.forEach((cloudList: UserList) => {
-          const existing = mergedLists.find(l => l.id === cloudList.id);
-          if (existing) {
-            existing.itemIds = Array.from(new Set([...(existing.itemIds || []), ...(cloudList.itemIds || [])]));
-          } else {
-            mergedLists.push(cloudList);
-          }
-        });
-      }
-    }
-  } catch (e) {
-    console.warn('Error syncing cloud backup:', e);
+  } else {
+    console.warn('syncListsFromCloud: failed to fetch from backend, skipping sync');
   }
-
-  // 6. Save merged result locally
-  const ts = Date.now().toString();
-  localStorage.setItem(FOLDERS_KEY, JSON.stringify(mergedFolders));
-  localStorage.setItem(FOLDERS_TS_KEY, ts);
-  window.dispatchEvent(new Event('lista_folders_updated'));
-
-  localStorage.setItem(LISTS_KEY, JSON.stringify(mergedLists));
-  localStorage.setItem(LISTS_TS_KEY, ts);
-  window.dispatchEvent(new Event('lista_lists_updated'));
-
-  // 7. Push final merged result to Backend & CloudStorage
-  api.syncListsData(mergedLists, mergedFolders);
-  saveToCloudStorage(FOLDERS_KEY, JSON.stringify(mergedFolders));
-  saveToCloudStorage(FOLDERS_TS_KEY, ts);
-  saveToCloudStorage(LISTS_KEY, JSON.stringify(mergedLists));
-  saveToCloudStorage(LISTS_TS_KEY, ts);
 }
 
 export const FAVORITES_ID = FAVORITES_LIST_ID;
