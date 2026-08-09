@@ -40,7 +40,7 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; cachedResults?: CatalogItem[] } | null>(null);
+  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; cachedResults?: CatalogItem[]; addedItems?: Item[] } | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
   const [theme, setTheme] = useState<string>(getStoredTheme());
@@ -427,7 +427,12 @@ function safeBase64Decode(str: string): any {
 
   const handleOpenRecommendations = (listId: string, listTitle: string, listItems: Item[]) => {
     triggerHaptic();
-    setRecommendationListInfo({ id: listId, title: listTitle, items: listItems, cachedResults: undefined });
+    setRecommendationListInfo((prev) => {
+      if (prev && prev.id === listId) {
+        return { ...prev, title: listTitle, items: listItems };
+      }
+      return { id: listId, title: listTitle, items: listItems, cachedResults: undefined, addedItems: undefined };
+    });
     if (activeTab !== 'details' && activeTab !== 'recommendations') {
       setPreviousTab(activeTab as any);
       setSavedScrollPosition(window.scrollY);
@@ -819,6 +824,10 @@ function safeBase64Decode(str: string): any {
               cachedResults={recommendationListInfo.cachedResults}
               onUpdateCachedResults={(results) => {
                 setRecommendationListInfo((prev) => prev ? { ...prev, cachedResults: results } : prev);
+              }}
+              cachedAddedItems={recommendationListInfo.addedItems}
+              onUpdateCachedAddedItems={(added) => {
+                setRecommendationListInfo((prev) => prev ? { ...prev, addedItems: added } : prev);
               }}
               onBack={handleBackFromRecommendations}
               onSelectItem={handleSelectItem}

@@ -28,6 +28,7 @@ export interface Item {
   completed_at?: string;
   created_at?: string;
   updated_at?: string;
+  isSharedPreview?: boolean;
 }
 
 export interface CatalogItem {

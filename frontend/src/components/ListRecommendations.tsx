@@ -16,6 +16,8 @@ interface ListRecommendationsProps {
   onUpdateItem: (id: string, updates: Partial<Item>) => void;
   cachedResults?: CatalogItem[];
   onUpdateCachedResults: (results: CatalogItem[]) => void;
+  cachedAddedItems?: Item[];
+  onUpdateCachedAddedItems: (items: Item[]) => void;
   t: Translations;
 }
 
@@ -30,10 +32,12 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   onUpdateItem,
   cachedResults,
   onUpdateCachedResults,
+  cachedAddedItems,
+  onUpdateCachedAddedItems,
   t,
 }) => {
   const [recommendations, setRecommendations] = useState<CatalogItem[]>(cachedResults || []);
-  const [addedItems, setAddedItems] = useState<Item[]>([]);
+  const [addedItems, setAddedItems] = useState<Item[]>(cachedAddedItems || []);
   const [isLoading, setIsLoading] = useState<boolean>(!cachedResults || cachedResults.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -53,6 +57,11 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   const fetchRecommendations = async (force: boolean = false) => {
     if (!force && cachedResults && cachedResults.length > 0) {
       return;
+    }
+
+    if (force) {
+      setAddedItems([]);
+      onUpdateCachedAddedItems([]);
     }
 
     setIsLoading(true);
@@ -99,22 +108,22 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         setRecommendations(results);
         onUpdateCachedResults(results);
       } else {
-        setError('Не удалось загрузить рекомендации. Попробуйте еще раз.');
+        setError('Не удалось загрузить рекомендации.');
       }
-    } catch (err) {
-      console.error('Error fetching recommendations:', err);
-      setError('Произошла ошибка при загрузке рекомендаций.');
+    } catch (err: any) {
+      setError('Ошибка при загрузке рекомендаций.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRecommendations();
+    fetchRecommendations(false);
   }, [listId]);
 
   const mapCatalogToItem = (c: CatalogItem): Item => ({
-    id: c.id || `rec_${Math.random().toString(36).substring(2, 9)}`,
+    id: c.id || '',
+    user_id: 0,
     title: c.title,
     category: c.category || 'Фильмы',
     status: 'planned',
@@ -124,6 +133,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     release_year: c.release_year || '',
     poster_url: c.poster_url || '',
     description: c.description || '',
+    note: '',
     youtube_url: c.youtube_url || '',
     director: c.director || '',
     cast: c.cast || '',
@@ -131,6 +141,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     isbn: c.isbn || '',
     public_rating: c.public_rating || '',
     country: c.country || '',
+    isSharedPreview: true,
   });
 
   const handleAddItem = (catItem: CatalogItem, e: React.MouseEvent) => {
@@ -140,7 +151,9 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     
     // Add to our local addedItems list for display
     const mapped = mapCatalogToItem(catItem);
-    setAddedItems((prev) => [mapped, ...prev]);
+    const updatedAdded = [mapped, ...addedItems];
+    setAddedItems(updatedAdded);
+    onUpdateCachedAddedItems(updatedAdded);
 
     setRecommendations((prev) => {
       const updated = prev.filter((item) => item.id !== catItem.id);

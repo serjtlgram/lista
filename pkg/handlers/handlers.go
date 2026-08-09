@@ -3452,7 +3452,7 @@ var tmdbGenreMap = map[int]string{
 func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	if strings.TrimSpace(tmdbKey) == "" {
-		return list
+		tmdbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
 	}
 
 	apiURL := fmt.Sprintf(
@@ -3519,7 +3519,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.Ca
 			if targetCat == "movie" && cat != "movie" {
 				continue
 			}
-			if targetCat == "show" && cat != "show" {
+			if (targetCat == "show" || targetCat == "tv") && cat != "show" {
 				continue
 			}
 
@@ -4201,14 +4201,29 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		categoryParam = bodyParams.Category
 	}
 
-	// 1. Gather existing item descriptions for contextual analysis
+	// 1. Gather existing item descriptions and collect user DB titles for deduplication
 	itemDescriptions := []string{}
 	categoriesFound := []string{}
 	yearsFound := []int{}
 	genresFound := []string{}
 	countriesFound := []string{}
+	directorsFound := []string{}
+	authorsFound := []string{}
+	userExistingTitles := make(map[string]bool)
 
 	if userID != 0 && h.DB != nil && h.DB.Pool != nil {
+		// Fetch all items of user across all lists for total deduplication
+		rowsAll, errAll := h.DB.Pool.Query(r.Context(), `SELECT title FROM items WHERE user_id = $1`, userID)
+		if errAll == nil && rowsAll != nil {
+			defer rowsAll.Close()
+			for rowsAll.Next() {
+				var dbTitle string
+				if err := rowsAll.Scan(&dbTitle); err == nil && strings.TrimSpace(dbTitle) != "" {
+					userExistingTitles[strings.ToLower(strings.TrimSpace(dbTitle))] = true
+				}
+			}
+		}
+
 		query := `SELECT title, category, release_year, genre, country, director, author FROM items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`
 		rows, err := h.DB.Pool.Query(r.Context(), query, userID)
 		if err == nil && rows != nil {
@@ -4234,9 +4249,11 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 					}
 					if dir != "" {
 						meta = append(meta, "Режиссер: "+dir)
+						directorsFound = append(directorsFound, dir)
 					}
 					if aut != "" {
 						meta = append(meta, "Автор: "+aut)
+						authorsFound = append(authorsFound, aut)
 					}
 					if len(meta) > 0 {
 						desc += fmt.Sprintf(" [%s]", strings.Join(meta, ", "))
@@ -4262,7 +4279,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	switch catEn {
 	case "movie":
 		catRuName = "фильмы"
-	case "tv":
+	case "tv", "show":
 		catRuName = "сериалы"
 	case "book":
 		catRuName = "книги"
@@ -4291,6 +4308,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 	uniqGenres := cleanTitlesList(genresFound)
 	uniqCountries := cleanTitlesList(countriesFound)
+	uniqDirectors := cleanTitlesList(directorsFound)
+	uniqAuthors := cleanTitlesList(authorsFound)
 
 	metaStr := ""
 	metaParts := []string{}
@@ -4319,32 +4338,44 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	yearsStr := strings.Join(uniqYears, ", ")
 	countriesStr := strings.Join(uniqCountries, ", ")
 	genresStr := strings.Join(uniqGenres, ", ")
+	directorsStr := strings.Join(uniqDirectors, ", ")
+	authorsStr := strings.Join(uniqAuthors, ", ")
+
+	directorsLine := ""
+	if directorsStr != "" {
+		directorsLine = fmt.Sprintf("\nРежиссеры: %s", directorsStr)
+	}
+	authorsLine := ""
+	if authorsStr != "" {
+		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
+	}
+
 	listTitleDisplay := "Мои рекомендации"
 	listItemsFormatted := itemTitlesParam
 	if listItemsFormatted == "" {
 		listItemsFormatted = "пусто"
 	}
 
-	prompt := fmt.Sprintf(`Ты - эксперт в подборе произведений. Твоя задача: проанализировать контекст пользователя и сгенерировать 10 новых рекомендаций.
+	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и сгенерировать 15 новых рекомендаций.
 Тема списка: "%s"
-Категория: %s%s
+Категория: %s
 Годы: %s
 Страны: %s
-Жанры: %s
+Жанры: %s%s%s
 Текущий список пользователя:
 %s
-Элементы для учета (дополнительно): %s
+Элементы для учета: %s
 
-Сгенерируй 10 рекомендаций, которые идеально подходят по духу, эпохе и жанру к "Теме списка" и похожи на текущие элементы из входных данных. 
+Сгенерируй 15 рекомендаций, которые идеально подходят по духу, смыслу, категории (%s), эпохе и жанру к "Теме списка" и похожи на текущие элементы из входных данных. 
 
 ПРАВИЛА:
 1. Тема списка и текущие элементы задают смысловой вектор, а не ключевые слова для поиска.
-2. Строго соблюдай историческую эпоху и географию.
-3. Разнообразие: все 10 элементов должны быть самостоятельными произведениями из разных франшиз (без сиквелов, приквелов и спин-оффов).
-4. Элементы из поля "Исключить" использовать нельзя.
-5. Формат ответа: только сырой JSON-массив строк с официальными русскими названиями. Пример: ["Название 1", "Название 2"]. 
+2. Строго соблюдай категорию (%s), историческую эпоху и географию.
+3. Разнообразие: все 15 элементов должны быть самостоятельными произведениями из разных франшиз (без сиквелов, приквелов и спин-оффов).
+4. Категорически ЗАПРЕЩЕНО указывать произведения, которые уже присутствуют во входящем списке пользователя.
+5. Формат ответа: только сырой JSON-массив из 15 строк с официальными русскими названиями. Пример: ["Название 1", "Название 2", ...]. 
 6. Без markdown-разметки и без сопроводительного текста.`,
-		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, listItemsFormatted, listItemsFormatted)
+		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, listItemsFormatted, catRuName, catRuName)
 
 	// 4. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
