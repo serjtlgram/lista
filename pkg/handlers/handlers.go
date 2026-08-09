@@ -4583,8 +4583,15 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				} else {
 					parsedTitles := parseTitlesFromAIResponse(rawContent)
 					if len(parsedTitles) > 0 {
-						recommendedTitles = parsedTitles
-						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s", len(recommendedTitles), modelName)
+						var filteredTitles []string
+						for _, pt := range parsedTitles {
+							ptClean := strings.ToLower(strings.TrimSpace(pt))
+							if !userExistingTitles[ptClean] {
+								filteredTitles = append(filteredTitles, pt)
+							}
+						}
+						recommendedTitles = filteredTitles
+						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s (filtered out %d existing)", len(recommendedTitles), modelName, len(parsedTitles)-len(filteredTitles))
 						break
 					} else {
 						log.Printf("[FireworksAI] Could not parse JSON array from model %s response. rawContent: %s", modelName, rawContent)
