@@ -4407,11 +4407,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
 	}
 
-	listItemsFormatted := itemTitlesParam
-	if listItemsFormatted == "" {
-		listItemsFormatted = "пусто"
-	}
-
 	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и сгенерировать 15 новых рекомендаций.
 Тема списка: "%s"
 Категория: %s
@@ -4420,7 +4415,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 Жанры: %s%s%s
 Текущий список пользователя:
 %s
-Элементы для учета: %s
 
 Сгенерируй 15 рекомендаций, которые идеально подходят по духу, смыслу, категории (%s), эпохе и жанру к "Теме списка" и похожи на текущие элементы из входных данных. 
 
@@ -4431,7 +4425,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 4. Категорически ЗАПРЕЩЕНО указывать произведения, которые уже присутствуют во входящем списке пользователя.
 5. Формат ответа: только сырой JSON-массив из 15 строк с официальными русскими названиями. Пример: ["Название 1", "Название 2", ...]. 
 6. Без markdown-разметки и без сопроводительного текста.`,
-		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, listItemsFormatted, catRuName, catRuName)
+		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
 	// 4. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
