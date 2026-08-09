@@ -11,7 +11,7 @@ interface ListRecommendationsProps {
   listItems: Item[];
   onBack: () => void;
   onSelectItem: (item: Item) => void;
-  onAddCatalogItem: (catalogItem: CatalogItem) => void;
+  onAddCatalogItem: (catalogItem: CatalogItem) => Promise<Item | undefined> | Item | undefined;
   onToggleStatus: (item: Item, e: React.MouseEvent) => void;
   onUpdateItem: (id: string, updates: Partial<Item>) => void;
   cachedResults?: CatalogItem[];
@@ -144,14 +144,14 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     isSharedPreview: true,
   });
 
-  const handleAddItem = (catItem: CatalogItem, e: React.MouseEvent) => {
+  const handleAddItem = async (catItem: CatalogItem, e: React.MouseEvent) => {
     e.stopPropagation();
     triggerHaptic();
-    onAddCatalogItem(catItem);
+    const createdItem = await onAddCatalogItem(catItem);
     
-    // Add to our local addedItems list for display
-    const mapped = mapCatalogToItem(catItem);
-    const updatedAdded = [mapped, ...addedItems];
+    // Add to our local addedItems list for display with isSharedPreview: false so status/genre can be edited
+    const itemToAdd: Item = createdItem ? { ...createdItem, isSharedPreview: false } : { ...mapCatalogToItem(catItem), isSharedPreview: false };
+    const updatedAdded = [itemToAdd, ...addedItems.filter((i) => i.id !== itemToAdd.id)];
     setAddedItems(updatedAdded);
     onUpdateCachedAddedItems(updatedAdded);
 
@@ -240,8 +240,19 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
                   key={`added_${item.id}`}
                   item={item}
                   onSelect={onSelectItem}
-                  onToggleStatus={onToggleStatus}
-                  onUpdateItem={onUpdateItem}
+                  onToggleStatus={(itemToToggle, e) => {
+                    onToggleStatus(itemToToggle, e);
+                    const nextStatus = itemToToggle.status === 'completed' ? 'planned' : 'completed';
+                    const updated = addedItems.map((ai) => ai.id === itemToToggle.id ? { ...ai, status: nextStatus } : ai);
+                    setAddedItems(updated);
+                    onUpdateCachedAddedItems(updated);
+                  }}
+                  onUpdateItem={(id, updates) => {
+                    onUpdateItem(id, updates);
+                    const updated = addedItems.map((ai) => ai.id === id ? { ...ai, ...updates } : ai);
+                    setAddedItems(updated);
+                    onUpdateCachedAddedItems(updated);
+                  }}
                   t={t}
                 />
               ))}

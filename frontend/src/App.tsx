@@ -625,7 +625,7 @@ function safeBase64Decode(str: string): any {
     return false;
   });
 
-  const handleAddCatalogItem = async (catalogItem: any) => {
+  const handleAddCatalogItem = async (catalogItem: any): Promise<Item | undefined> => {
     triggerHaptic();
     const norm = (s?: string) => (s || '').trim().toLowerCase();
     const normCat = (c?: string) => {
@@ -647,7 +647,7 @@ function safeBase64Decode(str: string): any {
       }
       setSelectedItem(existing);
       setActiveTab('details');
-      return;
+      return existing;
     }
 
     const catLc = (catalogItem.category || '').toLowerCase().trim();
@@ -689,6 +689,7 @@ function safeBase64Decode(str: string): any {
       setSelectedItem(createdItem);
       setActiveTab('details');
     }
+    return createdItem;
   };
 
   return (

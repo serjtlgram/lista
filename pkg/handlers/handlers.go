@@ -4180,6 +4180,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		ItemIDs    string `json:"item_ids"`
 		ItemTitles string `json:"item_titles"`
 		Category   string `json:"category"`
+		Title      string `json:"title"`
 	}
 	if r.Method == "POST" {
 		_ = json.NewDecoder(r.Body).Decode(&bodyParams)
@@ -4189,7 +4190,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	if bodyParams.ItemIDs != "" {
 		itemIDsParam = bodyParams.ItemIDs
 	}
-	_ = itemIDsParam
 
 	itemTitlesParam := r.URL.Query().Get("item_titles")
 	if bodyParams.ItemTitles != "" {
@@ -4201,18 +4201,16 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		categoryParam = bodyParams.Category
 	}
 
-	// 1. Gather existing item descriptions and collect user DB titles for deduplication
-	itemDescriptions := []string{}
-	categoriesFound := []string{}
-	yearsFound := []int{}
-	genresFound := []string{}
-	countriesFound := []string{}
-	directorsFound := []string{}
-	authorsFound := []string{}
-	userExistingTitles := make(map[string]bool)
+	listTitleDisplay := "Мои рекомендации"
+	if bodyParams.Title != "" {
+		listTitleDisplay = bodyParams.Title
+	} else if tQuery := r.URL.Query().Get("title"); tQuery != "" {
+		listTitleDisplay = tQuery
+	}
 
+	// 1. Collect all user DB titles for deduplication (prevent recommending items user already has anywhere in DB)
+	userExistingTitles := make(map[string]bool)
 	if userID != 0 && h.DB != nil && h.DB.Pool != nil {
-		// Fetch all items of user across all lists for total deduplication
 		rowsAll, errAll := h.DB.Pool.Query(r.Context(), `SELECT title FROM items WHERE user_id = $1`, userID)
 		if errAll == nil && rowsAll != nil {
 			defer rowsAll.Close()
@@ -4223,43 +4221,102 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		}
+	}
 
-		query := `SELECT title, category, release_year, genre, country, director, author FROM items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`
-		rows, err := h.DB.Pool.Query(r.Context(), query, userID)
-		if err == nil && rows != nil {
-			defer rows.Close()
-			for rows.Next() {
-				var t, c, y, g, cnt, dir, aut string
-				if err := rows.Scan(&t, &c, &y, &g, &cnt, &dir, &aut); err == nil && t != "" {
-					desc := t
-					meta := []string{}
-					if y != "" {
-						meta = append(meta, y)
-						if yVal, e := strconv.Atoi(y); e == nil {
-							yearsFound = append(yearsFound, yVal)
+	// 2. Gather context metadata (genres, countries, years, directors, authors) SPECIFICALLY for items in THIS list
+	itemDescriptions := []string{}
+	categoriesFound := []string{}
+	yearsFound := []int{}
+	genresFound := []string{}
+	countriesFound := []string{}
+	directorsFound := []string{}
+	authorsFound := []string{}
+
+	if itemIDsParam != "" && userID != 0 && h.DB != nil && h.DB.Pool != nil {
+		ids := strings.Split(itemIDsParam, ",")
+		validIDs := []string{}
+		for _, id := range ids {
+			idClean := strings.TrimSpace(id)
+			if idClean != "" {
+				validIDs = append(validIDs, idClean)
+			}
+		}
+		if len(validIDs) > 0 {
+			query := `SELECT title, category, release_year, genre, country, director, author FROM items WHERE user_id = $1 AND id = ANY($2)`
+			rows, err := h.DB.Pool.Query(r.Context(), query, userID, validIDs)
+			if err == nil && rows != nil {
+				defer rows.Close()
+				for rows.Next() {
+					var t, c, y, g, cnt, dir, aut string
+					if err := rows.Scan(&t, &c, &y, &g, &cnt, &dir, &aut); err == nil && t != "" {
+						desc := t
+						meta := []string{}
+						if y != "" {
+							meta = append(meta, y)
+							if yVal, e := strconv.Atoi(y); e == nil {
+								yearsFound = append(yearsFound, yVal)
+							}
 						}
+						if g != "" {
+							meta = append(meta, g)
+							genresFound = append(genresFound, g)
+						}
+						if cnt != "" {
+							meta = append(meta, "Страна: "+cnt)
+							countriesFound = append(countriesFound, cnt)
+						}
+						if dir != "" {
+							meta = append(meta, "Режиссер: "+dir)
+							directorsFound = append(directorsFound, dir)
+						}
+						if aut != "" {
+							meta = append(meta, "Автор: "+aut)
+							authorsFound = append(authorsFound, aut)
+						}
+						if len(meta) > 0 {
+							desc += fmt.Sprintf(" [%s]", strings.Join(meta, ", "))
+						}
+						itemDescriptions = append(itemDescriptions, desc)
+						categoriesFound = append(categoriesFound, mapCategoryToEn(c))
 					}
-					if g != "" {
-						meta = append(meta, g)
-						genresFound = append(genresFound, g)
+				}
+			}
+		}
+	}
+
+	if len(itemDescriptions) == 0 && itemTitlesParam != "" {
+		rawTitles := strings.Split(itemTitlesParam, "|")
+		for _, rawT := range rawTitles {
+			rawT = strings.TrimSpace(rawT)
+			if rawT == "" {
+				continue
+			}
+			itemDescriptions = append(itemDescriptions, rawT)
+			if idx := strings.Index(rawT, "["); idx != -1 && strings.HasSuffix(rawT, "]") {
+				inner := rawT[idx+1 : len(rawT)-1]
+				parts := strings.Split(inner, ",")
+				for _, p := range parts {
+					p = strings.TrimSpace(p)
+					if strings.HasPrefix(p, "Страна:") {
+						cntVal := strings.TrimSpace(strings.TrimPrefix(p, "Страна:"))
+						if cntVal != "" {
+							countriesFound = append(countriesFound, cntVal)
+						}
+					} else if strings.HasPrefix(p, "Режиссер:") {
+						dirVal := strings.TrimSpace(strings.TrimPrefix(p, "Режиссер:"))
+						if dirVal != "" {
+							directorsFound = append(directorsFound, dirVal)
+						}
+					} else if strings.HasPrefix(p, "Автор:") {
+						autVal := strings.TrimSpace(strings.TrimPrefix(p, "Автор:"))
+						if autVal != "" {
+							authorsFound = append(authorsFound, autVal)
+						}
+					} else if yVal, e := strconv.Atoi(p); e == nil {
+						yearsFound = append(yearsFound, yVal)
+					} else if p != "" {
+						genresFound = append(genresFound, p)
 					}
-					if cnt != "" {
-						meta = append(meta, "Страна: "+cnt)
-						countriesFound = append(countriesFound, cnt)
-					}
-					if dir != "" {
-						meta = append(meta, "Режиссер: "+dir)
-						directorsFound = append(directorsFound, dir)
-					}
-					if aut != "" {
-						meta = append(meta, "Автор: "+aut)
-						authorsFound = append(authorsFound, aut)
-					}
-					if len(meta) > 0 {
-						desc += fmt.Sprintf(" [%s]", strings.Join(meta, ", "))
-					}
-					itemDescriptions = append(itemDescriptions, desc)
-					categoriesFound = append(categoriesFound, mapCategoryToEn(c))
 				}
 			}
 		}
