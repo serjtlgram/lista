@@ -121,6 +121,12 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     fetchRecommendations(false);
   }, [listId]);
 
+  useEffect(() => {
+    if (cachedAddedItems && cachedAddedItems.length > 0) {
+      setAddedItems(cachedAddedItems);
+    }
+  }, [cachedAddedItems]);
+
   const mapCatalogToItem = (c: CatalogItem): Item => ({
     id: c.id || '',
     user_id: 0,

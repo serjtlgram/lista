@@ -20,7 +20,7 @@ import { Navbar } from './components/Navbar';
 import { api } from './services/api';
 import { getTranslatedGenreFull } from './services/genres';
 import { getFavoriteIds, setFavoriteIds, syncFavoritesFromCloud } from './services/favorites';
-import { getLists, saveLists, syncListsFromCloud, UserList } from './services/lists';
+import { getLists, saveLists, addItemToList, syncListsFromCloud, UserList } from './services/lists';
 import { Item, UserProfile, StatsData, CatalogItem } from './types';
 import {
   Language,
@@ -502,6 +502,13 @@ function safeBase64Decode(str: string): any {
     const newStatus = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' ? 'planned' : 'completed';
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } as Item : i)));
     setSelectedItem((prev) => (prev?.id === item.id ? { ...prev, status: newStatus } as Item : prev));
+
+    setRecommendationListInfo((prev) => {
+      if (!prev || !prev.addedItems) return prev;
+      const updatedAdded = prev.addedItems.map((ai) => (ai.id === item.id ? { ...ai, status: newStatus } as Item : ai));
+      return { ...prev, addedItems: updatedAdded };
+    });
+
     api.updateItem(item.id, { status: newStatus });
   };
 
@@ -509,6 +516,13 @@ function safeBase64Decode(str: string): any {
     triggerHaptic();
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } as Item : i)));
     setSelectedItem((prev) => (prev && prev.id === id ? { ...prev, ...updates } as Item : prev));
+
+    setRecommendationListInfo((prev) => {
+      if (!prev || !prev.addedItems) return prev;
+      const updatedAdded = prev.addedItems.map((ai) => (ai.id === id ? { ...ai, ...updates } as Item : ai));
+      return { ...prev, addedItems: updatedAdded };
+    });
+
     api.updateItem(id, updates);
   };
 
@@ -560,6 +574,13 @@ function safeBase64Decode(str: string): any {
     if (editingItem) {
       setItems((prev) => prev.map((i) => (i.id === editingItem.id ? { ...i, ...itemData } as Item : i)));
       setSelectedItem((prev) => (prev && prev.id === editingItem.id ? { ...prev, ...itemData } as Item : prev));
+
+      setRecommendationListInfo((prev) => {
+        if (!prev || !prev.addedItems) return prev;
+        const updatedAdded = prev.addedItems.map((ai) => (ai.id === editingItem.id ? { ...ai, ...itemData } as Item : ai));
+        return { ...prev, addedItems: updatedAdded };
+      });
+
       api.updateItem(editingItem.id, itemData);
       setEditingItem(null);
     } else {
@@ -641,12 +662,18 @@ function safeBase64Decode(str: string): any {
     );
 
     if (existing) {
-      if (activeTab !== 'details') {
-        setPreviousTab(activeTab as any);
-        setSavedScrollPosition(window.scrollY);
+      if (recommendationListInfo?.id) {
+        addItemToList(recommendationListInfo.id, existing.id);
+        window.dispatchEvent(new Event('lista_lists_updated'));
       }
-      setSelectedItem(existing);
-      setActiveTab('details');
+      if (activeTab !== 'recommendations') {
+        if (activeTab !== 'details') {
+          setPreviousTab(activeTab as any);
+          setSavedScrollPosition(window.scrollY);
+        }
+        setSelectedItem(existing);
+        setActiveTab('details');
+      }
       return existing;
     }
 
@@ -680,6 +707,11 @@ function safeBase64Decode(str: string): any {
     };
     const createdItem = await api.createItem(payload);
     setItems((prev) => [createdItem, ...prev]);
+
+    if (recommendationListInfo?.id) {
+      addItemToList(recommendationListInfo.id, createdItem.id);
+      window.dispatchEvent(new Event('lista_lists_updated'));
+    }
 
     if (activeTab !== 'recommendations') {
       if (activeTab !== 'details') {
