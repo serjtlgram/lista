@@ -4353,7 +4353,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	modelsToTry := []string{
-		"accounts/fireworks/models/gpt-oss-120b",
+		"accounts/fireworks/models/deepseek-v4-flash-0731",
 	}
 
 	var recommendedTitles []string
@@ -4372,8 +4372,12 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
-			"temperature": 0.5,
-			"max_tokens":  8192,
+			"thinking": map[string]interface{}{
+				"type": "disabled",
+			},
+			"reasoning_effort": "none",
+			"temperature":      0.3,
+			"max_tokens":       2048,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
