@@ -604,10 +604,17 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, started_at, completed_at, created_at, updated_at
 			FROM items
 			WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))
-			LIMIT 1;
 		`
+		args := []interface{}{user.ID, titleTrimmed, req.Category, cat}
+		reqYear := strings.TrimSpace(req.ReleaseYear)
+		if reqYear != "" {
+			checkQuery += ` AND release_year = $5`
+			args = append(args, reqYear)
+		}
+		checkQuery += ` LIMIT 1;`
+		
 		var existingItem models.Item
-		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, user.ID, titleTrimmed, req.Category, cat).Scan(
+		err := h.DB.Pool.QueryRow(r.Context(), checkQuery, args...).Scan(
 			&existingItem.ID, &existingItem.UserID, &existingItem.Title, &existingItem.Category, &existingItem.Status, &existingItem.Rating,
 			&existingItem.Genre, &existingItem.Duration, &existingItem.ReleaseYear, &existingItem.PosterURL, &existingItem.Description, &existingItem.Note,
 			&existingItem.RawInput, &existingItem.AIParsed, &existingItem.YoutubeURL, &existingItem.Director, &existingItem.Cast, &existingItem.Author, &existingItem.ISBN, &existingItem.PublicRating, &existingItem.Country, &existingItem.StartedAt, &existingItem.CompletedAt, &existingItem.CreatedAt, &existingItem.UpdatedAt,
@@ -651,13 +658,24 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
 			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating string
-			errScan := h.DB.Pool.QueryRow(r.Context(), `
+			queryStr := `
 				SELECT director, cast_members, duration, genre, release_year, poster_url, description, public_rating
 				FROM items
 				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '' OR public_rating != '')
+			`
+			args := []interface{}{titleTrimmed, cat}
+			
+			if releaseYearVal != "" {
+				queryStr += ` AND release_year = $3`
+				args = append(args, releaseYearVal)
+			}
+			
+			queryStr += `
 				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END + CASE WHEN public_rating != '' THEN 1 ELSE 0 END) DESC
 				LIMIT 1
-			`, titleTrimmed, cat).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc, &dbRating)
+			`
+			
+			errScan := h.DB.Pool.QueryRow(r.Context(), queryStr, args...).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc, &dbRating)
 			if errScan == nil {
 				if directorVal == "" {
 					directorVal = dbDir
@@ -690,7 +708,20 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			if h.KinopoiskAPIKey != "" {
 				kpResults := fetchKinopoiskInline(titleTrimmed, h.KinopoiskAPIKey, cat)
 				if len(kpResults) > 0 {
-					best := kpResults[0]
+					var best models.CatalogSearchResult
+					found := false
+					if releaseYearVal != "" {
+						for _, res := range kpResults {
+							if res.ReleaseYear == releaseYearVal {
+								best = res
+								found = true
+								break
+							}
+						}
+					}
+					if !found {
+						best = kpResults[0]
+					}
 					if directorVal == "" {
 						directorVal = best.Director
 					}
@@ -720,7 +751,20 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			if (directorVal == "" || castVal == "" || pubRatingVal == "") && h.TMDBAPIKey != "" {
 				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat)
 				if len(tmdbResults) > 0 {
-					best := tmdbResults[0]
+					var best models.CatalogSearchResult
+					found := false
+					if releaseYearVal != "" {
+						for _, res := range tmdbResults {
+							if res.ReleaseYear == releaseYearVal {
+								best = res
+								found = true
+								break
+							}
+						}
+					}
+					if !found {
+						best = tmdbResults[0]
+					}
 					if directorVal == "" {
 						directorVal = best.Director
 					}
@@ -1509,10 +1553,20 @@ func (h *Handler) updateItemMetadataInDB(title string, cat string, director stri
 			country = CASE WHEN country = '' THEN $11 ELSE country END,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE LOWER(TRIM(title)) = LOWER(TRIM($12))
-		  AND (category = $13 OR category = $14);
+		  AND (category = $13 OR category = $14)
 	`
+	
 	catEn := mapCategoryToEn(cat)
-	_, err := h.DB.Pool.Exec(ctx, query, director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, country, title, cat, catEn)
+	args := []interface{}{director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, country, title, cat, catEn}
+	
+	if releaseYear != "" {
+		query += ` AND release_year = $15;`
+		args = append(args, releaseYear)
+	} else {
+		query += `;`
+	}
+
+	_, err := h.DB.Pool.Exec(ctx, query, args...)
 	if err != nil {
 		log.Printf("[UpdateItemMetadata] Error updating DB item %s: %v", title, err)
 	}

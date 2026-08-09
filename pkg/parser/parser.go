@@ -161,6 +161,13 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 			media.ISBN = cISBN
 		}
 	} else {
+		if media.ReleaseYear == "" {
+			yearMatch := regexp.MustCompile(`\(\s*((?:19|20)\d\d)\s*\)`).FindStringSubmatch(media.Title)
+			if len(yearMatch) > 1 {
+				media.ReleaseYear = yearMatch[1]
+			}
+		}
+
 		cleanedTitle := cleanTitle(media.Title)
 		if cleanedTitle != "" {
 			media.Title = cleanedTitle
