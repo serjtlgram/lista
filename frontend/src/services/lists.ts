@@ -1,6 +1,7 @@
 // lists.ts — Lists & Folders management service
 // Stores user-created lists & folders in localStorage, syncs with Telegram CloudStorage
 import { saveToCloudStorage, loadFromCloudStorage } from './cloud';
+import { api } from './api';
 
 export interface ListFolder {
   id: string;
@@ -70,6 +71,8 @@ export function saveFolders(folders: ListFolder[]): void {
 
   saveToCloudStorage(FOLDERS_KEY, JSON.stringify(folders));
   saveToCloudStorage(FOLDERS_TS_KEY, timestamp);
+
+  api.syncListsData(getLists(), folders);
 }
 
 export function createFolder(name: string, icon?: string): ListFolder {
@@ -162,6 +165,8 @@ export function saveLists(lists: UserList[]): void {
 
   saveToCloudStorage(LISTS_KEY, JSON.stringify(lists));
   saveToCloudStorage(LISTS_TS_KEY, timestamp);
+
+  api.syncListsData(lists, getFolders());
 }
 
 export function createList(name: string, folderId?: string): UserList {
@@ -224,61 +229,97 @@ export function getFavoritesList(): UserList {
 }
 
 export async function syncListsFromCloud(): Promise<void> {
-  // Sync Folders
+  // 1. Fetch from Backend (PostgreSQL)
+  const backendData = await api.getListsData();
+  let backendFolders: ListFolder[] = [];
+  let backendLists: UserList[] = [];
+
+  if (backendData) {
+    if (Array.isArray(backendData.folders) && backendData.folders.length > 0) {
+      backendFolders = backendData.folders;
+    }
+    if (Array.isArray(backendData.lists) && backendData.lists.length > 0) {
+      backendLists = backendData.lists;
+    }
+  }
+
+  // 2. Fetch local (PC/Phone)
+  const localFolders = getFolders();
+  const localLists = getLists();
+
+  // 3. Merge Folders (Backend + Local, prioritizing backend but keeping local-only)
+  const mergedFoldersMap = new Map<string, ListFolder>();
+  backendFolders.forEach(f => mergedFoldersMap.set(f.id, f));
+  localFolders.forEach(f => {
+    if (!mergedFoldersMap.has(f.id)) mergedFoldersMap.set(f.id, f);
+  });
+  const mergedFolders = Array.from(mergedFoldersMap.values());
+
+  // 4. Merge Lists (Backend + Local, merging items)
+  const mergedListsMap = new Map<string, UserList>();
+  backendLists.forEach(l => mergedListsMap.set(l.id, l));
+  
+  localLists.forEach(localList => {
+    if (mergedListsMap.has(localList.id)) {
+      const backendList = mergedListsMap.get(localList.id)!;
+      const combinedItemIds = Array.from(new Set([...(backendList.itemIds || []), ...(localList.itemIds || [])]));
+      mergedListsMap.set(localList.id, {
+        ...backendList,
+        name: backendList.name || localList.name,
+        itemIds: combinedItemIds,
+        folderId: backendList.folderId || localList.folderId,
+      });
+    } else {
+      mergedListsMap.set(localList.id, localList);
+    }
+  });
+  const mergedLists = Array.from(mergedListsMap.values());
+
+  // 5. Check Telegram CloudStorage (as a secondary backup)
   try {
     const folderVal = await loadFromCloudStorage(FOLDERS_KEY);
     if (folderVal) {
       const parsedFolders = JSON.parse(folderVal);
       if (Array.isArray(parsedFolders)) {
-        const cloudTsStr = await loadFromCloudStorage(FOLDERS_TS_KEY);
-        const cloudTs = cloudTsStr ? parseInt(cloudTsStr, 10) : 0;
-        const localTsStr = localStorage.getItem(FOLDERS_TS_KEY);
-        const localTs = localTsStr ? parseInt(localTsStr, 10) : 0;
-
-        if (cloudTs > localTs) {
-          localStorage.setItem(FOLDERS_KEY, JSON.stringify(parsedFolders));
-          localStorage.setItem(FOLDERS_TS_KEY, cloudTs.toString());
-          window.dispatchEvent(new Event('lista_folders_updated'));
-        }
+        parsedFolders.forEach(f => {
+          if (!mergedFoldersMap.has(f.id)) mergedFolders.push(f);
+        });
+      }
+    }
+    const listsVal = await loadFromCloudStorage(LISTS_KEY);
+    if (listsVal) {
+      const parsedLists = JSON.parse(listsVal);
+      if (Array.isArray(parsedLists)) {
+        parsedLists.forEach((cloudList: UserList) => {
+          const existing = mergedLists.find(l => l.id === cloudList.id);
+          if (existing) {
+            existing.itemIds = Array.from(new Set([...(existing.itemIds || []), ...(cloudList.itemIds || [])]));
+          } else {
+            mergedLists.push(cloudList);
+          }
+        });
       }
     }
   } catch (e) {
-    console.warn('Error syncing cloud folders:', e);
+    console.warn('Error syncing cloud backup:', e);
   }
 
-  // Sync Lists
-  const val = await loadFromCloudStorage(LISTS_KEY);
-  if (!val) {
-    const local = getLists();
-    if (local.length > 0) {
-      const localTs = localStorage.getItem(LISTS_TS_KEY) || Date.now().toString();
-      saveToCloudStorage(LISTS_KEY, JSON.stringify(local));
-      saveToCloudStorage(LISTS_TS_KEY, localTs);
-    }
-    return;
-  }
+  // 6. Save merged result locally
+  const ts = Date.now().toString();
+  localStorage.setItem(FOLDERS_KEY, JSON.stringify(mergedFolders));
+  localStorage.setItem(FOLDERS_TS_KEY, ts);
+  window.dispatchEvent(new Event('lista_folders_updated'));
 
-  try {
-    const parsed = JSON.parse(val);
-    if (Array.isArray(parsed)) {
-      const cloudTsStr = await loadFromCloudStorage(LISTS_TS_KEY);
-      const cloudTs = cloudTsStr ? parseInt(cloudTsStr, 10) : 0;
-      const localTsStr = localStorage.getItem(LISTS_TS_KEY);
-      const localTs = localTsStr ? parseInt(localTsStr, 10) : 0;
+  localStorage.setItem(LISTS_KEY, JSON.stringify(mergedLists));
+  localStorage.setItem(LISTS_TS_KEY, ts);
+  window.dispatchEvent(new Event('lista_lists_updated'));
 
-      if (cloudTs > localTs) {
-        localStorage.setItem(LISTS_KEY, JSON.stringify(parsed));
-        localStorage.setItem(LISTS_TS_KEY, cloudTs.toString());
-        window.dispatchEvent(new Event('lista_lists_updated'));
-      } else {
-        const local = getLists();
-        saveToCloudStorage(LISTS_KEY, JSON.stringify(local));
-        saveToCloudStorage(LISTS_TS_KEY, (localTs || Date.now()).toString());
-      }
-    }
-  } catch (e) {
-    console.warn('Error syncing cloud lists:', e);
-  }
+  // 7. Push final merged result to Backend & CloudStorage
+  api.syncListsData(mergedLists, mergedFolders);
+  saveToCloudStorage(FOLDERS_KEY, JSON.stringify(mergedFolders));
+  saveToCloudStorage(FOLDERS_TS_KEY, ts);
+  saveToCloudStorage(LISTS_KEY, JSON.stringify(mergedLists));
+  saveToCloudStorage(LISTS_TS_KEY, ts);
 }
 
 export const FAVORITES_ID = FAVORITES_LIST_ID;

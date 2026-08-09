@@ -96,6 +96,8 @@ func main() {
 		r.Use(auth.AuthMiddleware(cfg.BotToken, isDev))
 
 		r.Get("/api/user/profile", h.GetProfile)
+		r.Get("/api/user/lists_sync", h.GetListsData)
+		r.Post("/api/user/lists_sync", h.SaveListsData)
 		r.Get("/api/items", h.GetItems)
 		r.Post("/api/items", h.CreateItem)
 		r.Put("/api/items/{id}", h.UpdateItem)

@@ -234,4 +234,30 @@ export const api = {
 
     return [];
   },
+
+  async getListsData(): Promise<{ lists: any[]; folders: any[] } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/api/user/lists_sync`, { headers: getHeaders() });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.warn('API getListsData error:', e);
+      return null;
+    }
+  },
+
+  async syncListsData(lists: any[], folders: any[]): Promise<void> {
+    try {
+      const res = await fetch(`${API_BASE}/api/user/lists_sync`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ lists, folders }),
+      });
+      if (!res.ok) {
+        console.warn('API syncListsData error:', res.status);
+      }
+    } catch (e) {
+      console.warn('API syncListsData network error:', e);
+    }
+  },
 };

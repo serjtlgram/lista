@@ -354,6 +354,67 @@ func (h *Handler) sendWelcomeMessage(userID int64, langCode string) {
 	}
 }
 
+// SyncListsPayload struct for saving lists
+type SyncListsPayload struct {
+	Lists   json.RawMessage `json:"lists"`
+	Folders json.RawMessage `json:"folders"`
+}
+
+// GET /api/user/lists_sync
+func (h *Handler) GetListsData(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.GetUserFromContext(r)
+	if user == nil || user.ID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var listsData, foldersData []byte
+	err := h.DB.Pool.QueryRow(r.Context(), "SELECT lists_data, folders_data FROM users WHERE id = $1", user.ID).Scan(&listsData, &foldersData)
+	if err != nil {
+		log.Printf("Error fetching lists for user %d: %v", user.ID, err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"lists":   json.RawMessage(listsData),
+		"folders": json.RawMessage(foldersData),
+	})
+}
+
+// POST /api/user/lists_sync
+func (h *Handler) SaveListsData(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.GetUserFromContext(r)
+	if user == nil || user.ID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var payload SyncListsPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	if len(payload.Lists) == 0 {
+		payload.Lists = []byte("[]")
+	}
+	if len(payload.Folders) == 0 {
+		payload.Folders = []byte("[]")
+	}
+
+	_, err := h.DB.Pool.Exec(r.Context(), "UPDATE users SET lists_data = $1, folders_data = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3", payload.Lists, payload.Folders, user.ID)
+	if err != nil {
+		log.Printf("Error updating lists for user %d: %v", user.ID, err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
 // GET /api/user/profile
 func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	user, ok := auth.GetUserFromContext(r)
