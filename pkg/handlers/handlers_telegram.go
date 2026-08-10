@@ -11,7 +11,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,11 +20,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"lista-backend/pkg/auth"
 	"lista-backend/pkg/genres"
 	"lista-backend/pkg/models"
 	"lista-backend/pkg/parser"
-	"lista-backend/pkg/youtube"
 )
 
 // POST /api/telegram/webhook
