@@ -414,7 +414,15 @@ function safeBase64Decode(str: string): any {
 
     if (profData) setProfile(profData);
     if (itemsData) {
-      setItems(itemsData);
+      setItems((prev) => {
+        const tempItems = prev.filter((i) => i.id.startsWith('temp_'));
+        if (tempItems.length === 0) return itemsData;
+        const norm = (s?: string) => (s || '').trim().toLowerCase();
+        const unSyncedTempItems = tempItems.filter(
+          (temp) => !itemsData.some((server) => norm(server.title) === norm(temp.title) && server.release_year === temp.release_year)
+        );
+        return [...unSyncedTempItems, ...itemsData];
+      });
       setSelectedItem((prev) => {
         if (!prev) return null;
         const fresh = itemsData.find((i) => i.id === prev.id);
@@ -1013,7 +1021,14 @@ function safeBase64Decode(str: string): any {
           sharedItems={sharedListModalData.items}
           userItems={items}
           onClose={() => setSharedListModalData(null)}
-          onSuccessImport={(newListId) => {
+          onSuccessImport={(newListId, newlyCreatedItems) => {
+            if (newlyCreatedItems && newlyCreatedItems.length > 0) {
+              setItems((prev) => {
+                const existingIds = new Set(prev.map((i) => i.id));
+                const uniqueNew = newlyCreatedItems.filter((i) => !existingIds.has(i.id));
+                return [...uniqueNew, ...prev];
+              });
+            }
             setSharedListModalData(null);
             setTargetListIdToOpen(newListId);
             setSelectedListId(newListId);

@@ -12,7 +12,7 @@ interface SharedListModalProps {
   sharedItems: Item[];
   userItems: Item[];
   onClose: () => void;
-  onSuccessImport: (newListId: string) => void;
+  onSuccessImport: (newListId: string, newlyCreatedItems?: Item[]) => void;
   t: Translations;
 }
 
@@ -46,10 +46,11 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
       const newList = createList(sharedListTitle);
 
       const norm = (s?: string) => (s || '').trim().toLowerCase();
+      const newlyCreatedItems: Item[] = [];
 
       // 2. Add each item to user database & list
       for (const item of sharedItems) {
-        const existing = userItems.find((ui) => norm(ui.title) === norm(item.title) && ui.release_year === item.release_year);
+        const existing = [...userItems, ...newlyCreatedItems].find((ui) => norm(ui.title) === norm(item.title) && ui.release_year === item.release_year);
         let targetId = existing?.id;
 
         if (!targetId) {
@@ -75,6 +76,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
           const created = await api.createItem(payload);
           if (created?.id) {
             targetId = created.id;
+            newlyCreatedItems.push(created);
           }
         }
 
@@ -85,8 +87,8 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
 
       setImportDone(true);
       setTimeout(() => {
-        onSuccessImport(newList.id);
-      }, 1000);
+        onSuccessImport(newList.id, newlyCreatedItems);
+      }, 500);
     } catch (e) {
       console.error('Failed to import shared list:', e);
     } finally {
