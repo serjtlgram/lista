@@ -4697,8 +4697,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 6. Enrich recommended titles with external search (TMDb, Kinopoisk, Google Books, Steam, etc.)
-	if len(recommendedTitles) > 10 {
-		recommendedTitles = recommendedTitles[:10]
+	if len(recommendedTitles) > 20 {
+		recommendedTitles = recommendedTitles[:20]
 	}
 
 	type enrichedResult struct {
