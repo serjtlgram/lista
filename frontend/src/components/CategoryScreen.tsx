@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2, X } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
@@ -21,7 +21,7 @@ interface CategoryScreenProps {
   t: Translations;
 }
 
-export const CategoryScreen: React.FC<CategoryScreenProps> = ({
+const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   title,
   items,
   activeCategories = [],
@@ -136,12 +136,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
     return lc;
   };
-  const userItemKeys = new Set(
-    items.map((i) => `${(i.title || '').trim().toLowerCase()}::${normCatKey(i.category)}`)
-  );
-  const externalCatalogResults = catalogResults.filter(
-    (c) => !userItemKeys.has(`${(c.title || '').trim().toLowerCase()}::${normCatKey(c.category)}`)
-  );
+
   const isCategoryMatch = (itemCat: string, tabTitle: string): boolean => {
     const tLower = (tabTitle || '').toLowerCase().trim();
     if (tLower === 'все' || tLower === 'all' || !tLower) return true;
@@ -166,29 +161,6 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     }
     return true;
   };
-
-  const dbCatalogResults = externalCatalogResults.filter((c) => c.source !== 'online');
-  const onlineCatalogResults = externalCatalogResults.filter((c) => c.source === 'online');
-
-  const filteredItems = items.filter((item) => {
-    if (!isCategoryMatch(item.category, title)) return false;
-
-    if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю' && item.status !== 'Читаю' && item.status !== 'Граю') return false;
-    if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
-    if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
-
-    if (selectedGenres.length > 0) {
-      const itemGenre = getTranslatedGenreFull(item.genre, t);
-      if (!selectedGenres.includes(itemGenre)) return false;
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return item.title.toLowerCase().includes(q) || (item.genre && item.genre.toLowerCase().includes(q));
-    }
-
-    return true;
-  });
 
   const getTabCategoryPriority = (itemCat: string, tabTitle: string): number => {
     const tLower = (tabTitle || '').toLowerCase().trim();
@@ -222,38 +194,76 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     return 1;
   };
 
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    const prioA = getTabCategoryPriority(a.category, title);
-    const prioB = getTabCategoryPriority(b.category, title);
-    if (prioA !== prioB) return prioA - prioB;
+  const { sortedItems, dbCatalogResults, onlineCatalogResults } = useMemo(() => {
+    const userItemKeys = new Set(
+      items.map((i) => `${(i.title || '').trim().toLowerCase()}::${normCatKey(i.category)}`)
+    );
+    const externalCatalogResults = catalogResults.filter(
+      (c) => !userItemKeys.has(`${(c.title || '').trim().toLowerCase()}::${normCatKey(c.category)}`)
+    );
 
-    if (sortBy === 'year') {
-      const yearStrA = (a.release_year || '').toString();
-      const yearStrB = (b.release_year || '').toString();
-      const matchA = yearStrA.match(/\d{4}/);
-      const matchB = yearStrB.match(/\d{4}/);
-      const yearA = matchA ? parseInt(matchA[0], 10) : 0;
-      const yearB = matchB ? parseInt(matchB[0], 10) : 0;
+    const dbResults = externalCatalogResults.filter((c) => c.source !== 'online');
+    const onlineResults = externalCatalogResults.filter((c) => c.source === 'online');
 
-      if (yearA !== yearB) {
-        if (yearA === 0) return 1;
-        if (yearB === 0) return -1;
-        return sortOrder === 'desc' ? yearB - yearA : yearA - yearB;
+    const filtered = items.filter((item) => {
+      if (!isCategoryMatch(item.category, title)) return false;
+
+      if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю' && item.status !== 'Читаю' && item.status !== 'Граю') return false;
+      if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
+      if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
+
+      if (selectedGenres.length > 0) {
+        const itemGenre = getTranslatedGenreFull(item.genre, t);
+        if (!selectedGenres.includes(itemGenre)) return false;
       }
-    }
 
-    if (sortBy === 'rating') {
-      const ratingA = parseFloat(a.public_rating || '0') || 0;
-      const ratingB = parseFloat(b.public_rating || '0') || 0;
-      if (ratingA !== ratingB) {
-        return sortOrder === 'desc' ? ratingB - ratingA : ratingA - ratingB;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return item.title.toLowerCase().includes(q) || (item.genre && item.genre.toLowerCase().includes(q));
       }
-    }
 
-    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
-  });
+      return true;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      const prioA = getTabCategoryPriority(a.category, title);
+      const prioB = getTabCategoryPriority(b.category, title);
+      if (prioA !== prioB) return prioA - prioB;
+
+      if (sortBy === 'year') {
+        const yearStrA = (a.release_year || '').toString();
+        const yearStrB = (b.release_year || '').toString();
+        const matchA = yearStrA.match(/\d{4}/);
+        const matchB = yearStrB.match(/\d{4}/);
+        const yearA = matchA ? parseInt(matchA[0], 10) : 0;
+        const yearB = matchB ? parseInt(matchB[0], 10) : 0;
+
+        if (yearA !== yearB) {
+          if (yearA === 0) return 1;
+          if (yearB === 0) return -1;
+          return sortOrder === 'desc' ? yearB - yearA : yearA - yearB;
+        }
+      }
+
+      if (sortBy === 'rating') {
+        const ratingA = parseFloat(a.public_rating || '0') || 0;
+        const ratingB = parseFloat(b.public_rating || '0') || 0;
+        if (ratingA !== ratingB) {
+          return sortOrder === 'desc' ? ratingB - ratingA : ratingA - ratingB;
+        }
+      }
+
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
+
+    return {
+      sortedItems: sorted,
+      dbCatalogResults: dbResults,
+      onlineCatalogResults: onlineResults,
+    };
+  }, [items, catalogResults, title, activeFilterKey, selectedGenres, searchQuery, sortBy, sortOrder, t]);
 
   const mapCatalogToItem = (c: CatalogItem): Item => ({
     id: c.id || `cat_${c.title}`,
@@ -276,10 +286,10 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
 
   const isSearchActive = searchQuery.trim().length >= 2;
 
-  const availableGenres = getAvailableGenres(title, t);
+  const availableGenres = useMemo(() => getAvailableGenres(title, t), [title, t]);
 
   return (
-    <div className="space-y-3.5 animate-slide-up">
+    <div className="space-y-3.5">
       {showSearchInput && (
         <div className="relative w-full">
           <input
@@ -593,3 +603,5 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
     </div>
   );
 };
+
+export const CategoryScreen = React.memo(CategoryScreenComponent);

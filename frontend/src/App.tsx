@@ -459,10 +459,10 @@ function safeBase64Decode(str: string): any {
 
   const handleTabChange = (tab: string) => {
     triggerHaptic();
-    if (tab === 'search') {
-      setSelectedCategory('Все');
-    }
     startTransition(() => {
+      if (tab === 'search') {
+        setSelectedCategory('Все');
+      }
       setActiveTab(tab as any);
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
