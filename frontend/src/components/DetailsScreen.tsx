@@ -1000,14 +1000,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             <BookMarked className="w-4 h-4 text-amber-400" />
             <span>{t.lists?.in_lists || 'В списках'}</span>
           </span>
-          <button
-            onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-            className="p-1 text-gray-400 hover:text-accentViolet transition flex items-center gap-1 text-[11px] font-bold"
-            title={t.details?.to_list_btn || 'Настроить списки'}
-          >
-            <Plus className="w-3.5 h-3.5 text-accentViolet" />
-            <span className="text-accentViolet">{t.lists?.manage_lists || 'Настроить'}</span>
-          </button>
         </div>
 
         {assignedLists.length > 0 ? (
