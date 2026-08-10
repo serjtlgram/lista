@@ -112,6 +112,8 @@ export function App() {
   useEffect(() => {
     let lastScrollY = window.scrollY;
     let ticking = false;
+    let currentNavVisible = true;
+    let currentShowScroll = false;
 
     const handleScroll = () => {
       if (!ticking) {
@@ -120,18 +122,27 @@ export function App() {
           const screenHeight = window.innerHeight;
 
           // Show back to top button if scrolled more than 2 screens (> 2 * window.innerHeight)
-          setShowScrollTop(currentScrollY > screenHeight * 2);
+          const shouldShowScroll = currentScrollY > screenHeight * 2;
+          if (shouldShowScroll !== currentShowScroll) {
+            currentShowScroll = shouldShowScroll;
+            setShowScrollTop(shouldShowScroll);
+          }
 
           // Auto hide/show navbar based on scroll direction
           if (currentScrollY <= 20) {
-            setIsNavVisible(true);
+            if (!currentNavVisible) {
+              currentNavVisible = true;
+              setIsNavVisible(true);
+            }
           } else {
             const diff = currentScrollY - lastScrollY;
-            if (diff > 6) {
+            if (diff > 6 && currentNavVisible) {
               // User scrolling DOWN page -> hide navbar
+              currentNavVisible = false;
               setIsNavVisible(false);
-            } else if (diff < -6) {
+            } else if (diff < -6 && !currentNavVisible) {
               // User scrolling UP page -> show navbar
+              currentNavVisible = true;
               setIsNavVisible(true);
             }
           }
@@ -782,7 +793,7 @@ function safeBase64Decode(str: string): any {
 
   return (
     <div
-      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-28 overflow-x-hidden transition-all duration-200"
+      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-28 overflow-x-hidden transition-colors duration-200"
       style={{
         paddingTop: isFullscreen ? 'max(68px, env(safe-area-inset-top, 68px))' : undefined,
       }}
@@ -963,15 +974,15 @@ function safeBase64Decode(str: string): any {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         aria-label="Back to top"
-        className={`fixed left-5 w-11 h-11 rounded-full bg-cardDark/90 backdrop-blur-xl border border-cardBorder text-gray-200 flex items-center justify-center shadow-lg shadow-black/40 active:scale-[0.95] transition-all duration-300 z-40 ${
+        className={`fixed right-6 w-10 h-10 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition-all duration-300 z-40 ${
           isNavVisible
-            ? 'bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]'
-            : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'bottom-[calc(9.5rem+env(safe-area-inset-bottom,0px))]'
+            : 'bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]'
         } ${
           showScrollTop ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
         }`}
       >
-        <ChevronUp className="w-5 h-5 text-accentViolet" />
+        <ChevronUp className="w-5 h-5" />
       </button>
 
       {/* Floating Action Button (+) on Home & Search screens */}
@@ -984,7 +995,7 @@ function safeBase64Decode(str: string): any {
           }}
           className={`fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition-all duration-300 z-40 ${
             isNavVisible
-              ? 'bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]'
+              ? 'bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]'
               : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]'
           }`}
         >
