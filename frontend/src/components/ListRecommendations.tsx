@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
@@ -107,6 +107,8 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       if (results && results.length > 0) {
         setRecommendations(results);
         onUpdateCachedResults(results);
+        // Trigger background poster enrichment for items missing poster_url
+        enrichMissingPosters(results);
       } else {
         setError('Не удалось загрузить рекомендации.');
       }
@@ -117,9 +119,49 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     }
   };
 
+  // Track which titles we've already tried to enrich to avoid redundant requests
+  const enrichedTitles = useRef<Set<string>>(new Set());
+
+  // Background poster enrichment: for items without poster_url, fetch from catalog search
+  const enrichMissingPosters = async (items: CatalogItem[]) => {
+    const missing = items.filter(
+      (c) => !c.poster_url || !c.poster_url.trim()
+    );
+    if (missing.length === 0) return;
+
+    for (const catItem of missing) {
+      const key = `${catItem.title}__${catItem.category || ''}`;
+      if (enrichedTitles.current.has(key)) continue;
+      enrichedTitles.current.add(key);
+
+      // Fire and forget — update poster when found
+      api.searchCatalog(catItem.title, catItem.category).then((results) => {
+        if (!results || results.length === 0) return;
+        const match = results.find((r: any) => r.poster_url && r.poster_url.trim()) || null;
+        if (!match || !match.poster_url) return;
+        setRecommendations((prev) => {
+          const updated = prev.map((r) =>
+            r.title === catItem.title && r.category === catItem.category
+              ? { ...r, poster_url: match.poster_url }
+              : r
+          );
+          onUpdateCachedResults(updated);
+          return updated;
+        });
+      }).catch(() => {});
+    }
+  };
+
   useEffect(() => {
     fetchRecommendations(false);
   }, [listId]);
+
+  // If we loaded from cache but some items are missing posters, enrich them
+  useEffect(() => {
+    if (cachedResults && cachedResults.length > 0) {
+      enrichMissingPosters(cachedResults);
+    }
+  }, []);
 
   useEffect(() => {
     if (cachedAddedItems) {
