@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, startTransition } from 'react';
 import { Plus, ChevronUp } from 'lucide-react';
 
 import { Header } from './components/Header';
@@ -462,7 +462,9 @@ function safeBase64Decode(str: string): any {
     if (tab === 'search') {
       setSelectedCategory('Все');
     }
-    setActiveTab(tab as any);
+    startTransition(() => {
+      setActiveTab(tab as any);
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -974,7 +976,7 @@ function safeBase64Decode(str: string): any {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         aria-label="Back to top"
-        className={`fixed right-6 w-10 h-10 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition-all duration-300 z-40 bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))] ${
+        className={`fixed right-6 w-10 h-10 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))] ${
           showScrollTop ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
         }`}
       >
@@ -989,7 +991,7 @@ function safeBase64Decode(str: string): any {
             setEditingItem(null);
             setIsModalOpen(true);
           }}
-          className="fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition-all duration-300 z-40 bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
+          className="fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
         >
           <Plus className="w-6 h-6" />
         </button>

@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t, isVis
 
   return (
     <div
-      className={`fixed bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] inset-x-0 max-w-md mx-auto px-4 z-40 transition-all duration-300 ease-in-out ${
+      className={`fixed bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] inset-x-0 max-w-md mx-auto px-4 z-40 transition duration-300 ease-in-out ${
         isVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-24 opacity-0 pointer-events-none'
       }`}
     >
@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t, isVis
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`nav-item flex flex-col items-center gap-0.5 py-1 px-3.5 rounded-2xl transition-all duration-200 ${
+              className={`nav-item flex flex-col items-center gap-0.5 py-1 px-3.5 rounded-2xl transition duration-200 ${
                 isActive
                   ? 'active text-accentViolet bg-accentViolet/15 font-semibold scale-105 shadow-sm'
                   : 'text-gray-400 hover:text-gray-200 active:scale-95'
