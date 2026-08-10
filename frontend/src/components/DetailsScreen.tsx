@@ -24,7 +24,9 @@ import {
   Video,
   FolderPlus,
   Copy,
-  Popcorn
+  Popcorn,
+  BookMarked,
+  Plus
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -32,7 +34,8 @@ import { getItemPoster, getNextPlaceholderPoster } from '../services/posters';
 import { getTranslatedGenreFull } from '../services/genres';
 import { getTranslatedGenreShort } from '../services/genres';
 import { api } from '../services/api';
-import { isFavorite, toggleFavorite } from '../services/favorites';
+import { isFavorite, toggleFavorite, getFavoriteIds } from '../services/favorites';
+import { getLists, FAVORITES_ID, UserList } from '../services/lists';
 import { ListSelectionModal } from './ListSelectionModal';
 import { CountryFlag } from './CountryFlag';
 
@@ -152,6 +155,45 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isFav, setIsFav] = useState<boolean>(() => isFavorite(item.id));
   const [showSharedPreviewModal, setShowSharedPreviewModal] = useState(false);
+  const [assignedLists, setAssignedLists] = useState<UserList[]>([]);
+
+  const refreshAssignedLists = () => {
+    const allLists = getLists();
+    const favIds = getFavoriteIds();
+    const matches: UserList[] = [];
+
+    if (favIds.includes(item.id)) {
+      const favList = allLists.find((l) => l.id === FAVORITES_ID) || {
+        id: FAVORITES_ID,
+        name: t.lists?.favorites || 'Избранное',
+        isDefault: true,
+        itemIds: [],
+        createdAt: '',
+      };
+      matches.push(favList);
+    }
+
+    allLists.forEach((l) => {
+      if (!l.isDefault && l.itemIds.includes(item.id)) {
+        matches.push(l);
+      }
+    });
+
+    setAssignedLists(matches);
+  };
+
+  useEffect(() => {
+    refreshAssignedLists();
+    const handleUpdate = () => refreshAssignedLists();
+    window.addEventListener('lista_lists_updated', handleUpdate);
+    window.addEventListener('lista_favorites_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('lista_lists_updated', handleUpdate);
+      window.removeEventListener('lista_favorites_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [item.id]);
 
   useEffect(() => {
     setIsFav(isFavorite(item.id));
@@ -947,6 +989,62 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             ) : (
               <span className="text-gray-500 font-normal italic">{t.details.note_placeholder_empty}</span>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* In Lists Block */}
+      <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
+            <BookMarked className="w-4 h-4 text-amber-400" />
+            <span>{t.lists?.in_lists || 'В списках'}</span>
+          </span>
+          <button
+            onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+            className="p-1 text-gray-400 hover:text-accentViolet transition flex items-center gap-1 text-[11px] font-bold"
+            title={t.details?.to_list_btn || 'Настроить списки'}
+          >
+            <Plus className="w-3.5 h-3.5 text-accentViolet" />
+            <span className="text-accentViolet">{t.lists?.manage_lists || 'Настроить'}</span>
+          </button>
+        </div>
+
+        {assignedLists.length > 0 ? (
+          <div className="flex flex-wrap gap-2 pt-0.5">
+            {assignedLists.map((list) => {
+              const isFav = list.id === FAVORITES_ID;
+              const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
+
+              return (
+                <button
+                  key={list.id}
+                  onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                  className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
+                    isFav
+                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                      : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
+                  }`}
+                >
+                  {isFav ? (
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                  ) : (
+                    <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
+                  )}
+                  <span>{listName}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-xs text-gray-500 font-normal italic flex items-center justify-between pt-0.5">
+            <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
+            <button
+              onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+              className="text-xs font-bold text-accentViolet hover:underline ml-2"
+            >
+              + Добавить
+            </button>
           </div>
         )}
       </div>

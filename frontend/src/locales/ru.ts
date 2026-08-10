@@ -239,5 +239,8 @@ export const ru: Translations = {
     select_folder: 'Папка для списка',
     change_folder: 'Сменить папку',
     folder_label: 'Папка',
+    in_lists: 'В списках',
+    not_in_any_list: 'Не добавлен ни в один список',
+    manage_lists: 'Настроить',
   },
 };

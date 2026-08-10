@@ -239,5 +239,8 @@ export interface Translations {
     select_folder?: string;
     change_folder?: string;
     folder_label?: string;
+    in_lists?: string;
+    not_in_any_list?: string;
+    manage_lists?: string;
   };
 }
