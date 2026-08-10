@@ -32,6 +32,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
   const [selectedFolderId, setSelectedFolderId] = useState<string>(DEFAULT_FOLDER_ID);
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterFolderId, setFilterFolderId] = useState<string | null>(null);
 
   const triggerHaptic = () => {
     const tg = (window as any).Telegram?.WebApp;
@@ -64,6 +65,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     setSelectedFolderId(DEFAULT_FOLDER_ID);
     setIsFolderDropdownOpen(false);
     setSearchQuery('');
+    setFilterFolderId(null);
   }, [isOpen, item]);
 
   if (!isOpen) return null;
@@ -171,6 +173,38 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           )}
         </div>
 
+        {/* Folder Filter Chips */}
+        {folders.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-0.5 -mx-1 px-1">
+            <button
+              type="button"
+              onClick={() => { setFilterFolderId(null); triggerHaptic(); }}
+              className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
+                filterFolderId === null
+                  ? 'bg-accentViolet text-white shadow-sm'
+                  : 'bg-white/5 border border-cardBorder text-gray-400 hover:text-white hover:border-gray-500'
+              }`}
+            >
+              Все
+            </button>
+            {folders.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => { setFilterFolderId(f.id === filterFolderId ? null : f.id); triggerHaptic(); }}
+                className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
+                  filterFolderId === f.id
+                    ? 'bg-accentViolet text-white shadow-sm'
+                    : 'bg-white/5 border border-cardBorder text-gray-400 hover:text-white hover:border-gray-500'
+                }`}
+              >
+                <span className="text-xs leading-none">{f.icon || '📁'}</span>
+                <span className="truncate max-w-[80px]">{f.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="max-h-[50vh] overflow-y-auto space-y-2 hide-scrollbar">
           {/* Favorites List Item */}
           {(() => {
@@ -216,6 +250,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           {userLists
             .filter((l) => !l.isDefault)
             .filter((l) => !searchQuery.trim() || l.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+            .filter((l) => filterFolderId === null || (l.folderId || DEFAULT_FOLDER_ID) === filterFolderId)
             .map((list) => {
               const isSelected = selectedListIds.includes(list.id);
               const folderName = folders.find((f) => f.id === (list.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное';
