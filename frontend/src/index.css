@@ -442,7 +442,7 @@ body.light-powdery nav,
 body.light-mint nav,
 body.light-neon nav {
   background-color: rgba(255, 255, 255, 0.92) !important;
-  box-shadow: 0 -8px 30px rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 10px 30px rgba(148, 163, 184, 0.3) !important;
 }
 
 body.light input,

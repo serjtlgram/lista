@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronUp } from 'lucide-react';
 
 import { Header } from './components/Header';
 import { CategoryGrid } from './components/CategoryGrid';
@@ -58,6 +58,9 @@ export function App() {
   const [targetListIdToOpen, setTargetListIdToOpen] = useState<string | undefined>(undefined);
   const [selectedListId, setSelectedListId] = useState<string>('favorites');
 
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return !!(window as any).Telegram?.WebApp?.isFullscreen;
   });
@@ -98,10 +101,56 @@ export function App() {
     const interval = setInterval(checkFullscreen, 800);
 
     return () => {
-      if (tg.offEvent) tg.offEvent('fullscreenChanged', checkFullscreen);
+      if (tg.offEvent) {
+        tg.offEvent('fullscreenChanged', checkFullscreen);
+      }
       clearInterval(interval);
     };
   }, []);
+
+  // Scroll direction & distance listener for navbar hide/show & back-to-top button
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const screenHeight = window.innerHeight;
+
+          // Show back to top button if scrolled more than 2 screens (> 2 * window.innerHeight)
+          setShowScrollTop(currentScrollY > screenHeight * 2);
+
+          // Auto hide/show navbar based on scroll direction
+          if (currentScrollY <= 20) {
+            setIsNavVisible(true);
+          } else {
+            const diff = currentScrollY - lastScrollY;
+            if (diff > 6) {
+              // User scrolling DOWN page -> hide navbar
+              setIsNavVisible(false);
+            } else if (diff < -6) {
+              // User scrolling UP page -> show navbar
+              setIsNavVisible(true);
+            }
+          }
+
+          lastScrollY = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Always reveal navbar when switching tabs
+  useEffect(() => {
+    setIsNavVisible(true);
+  }, [activeTab]);
 
   const t = translations[language] || translations.ru;
 
@@ -733,7 +782,7 @@ function safeBase64Decode(str: string): any {
 
   return (
     <div
-      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-20 overflow-x-hidden transition-all duration-200"
+      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-28 overflow-x-hidden transition-all duration-200"
       style={{
         paddingTop: isFullscreen ? 'max(68px, env(safe-area-inset-top, 68px))' : undefined,
       }}
@@ -907,6 +956,24 @@ function safeBase64Decode(str: string): any {
         )}
       </main>
 
+      {/* Back to Top Button (Appears when scrolled > 2 screens) */}
+      <button
+        onClick={() => {
+          triggerHaptic();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        aria-label="Back to top"
+        className={`fixed left-5 w-11 h-11 rounded-full bg-cardDark/90 backdrop-blur-xl border border-cardBorder text-gray-200 flex items-center justify-center shadow-lg shadow-black/40 active:scale-[0.95] transition-all duration-300 z-40 ${
+          isNavVisible
+            ? 'bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]'
+            : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]'
+        } ${
+          showScrollTop ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
+        }`}
+      >
+        <ChevronUp className="w-5 h-5 text-accentViolet" />
+      </button>
+
       {/* Floating Action Button (+) on Home & Search screens */}
       {(activeTab === 'home' || activeTab === 'search') && (
         <button
@@ -915,14 +982,23 @@ function safeBase64Decode(str: string): any {
             setEditingItem(null);
             setIsModalOpen(true);
           }}
-          className="fixed bottom-16 right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition z-40"
+          className={`fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition-all duration-300 z-40 ${
+            isNavVisible
+              ? 'bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]'
+              : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]'
+          }`}
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
 
       {/* Bottom Navbar */}
-      <Navbar activeTab={activeTab === 'details' ? 'search' : activeTab} onTabChange={handleTabChange} t={t} />
+      <Navbar
+        activeTab={activeTab === 'details' ? 'search' : activeTab}
+        onTabChange={handleTabChange}
+        t={t}
+        isVisible={isNavVisible}
+      />
 
       {/* Shared List Deep Link Import Modal */}
       {sharedListModalData && (

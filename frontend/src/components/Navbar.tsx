@@ -6,9 +6,10 @@ interface NavbarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   t: Translations;
+  isVisible?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t, isVisible = true }) => {
   const tabs = [
     { id: 'home', label: t.nav_home, icon: Home },
     { id: 'search', label: t.nav_search, icon: Search },
@@ -17,23 +18,31 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, t }) => 
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-cardDark/90 backdrop-blur-xl py-2 px-6 flex justify-between items-center z-30 shadow-[0_-8px_30px_rgba(0,0,0,0.4)]">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`nav-item flex flex-col items-center gap-1 transition ${
-              isActive ? 'active text-accentViolet font-semibold' : 'text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-[11.5px] font-medium">{tab.label}</span>
-          </button>
-        );
-      })}
-    </nav>
+    <div
+      className={`fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] inset-x-0 max-w-md mx-auto px-4 z-40 transition-all duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-24 opacity-0 pointer-events-none'
+      }`}
+    >
+      <nav className="w-full bg-cardDark/85 backdrop-blur-2xl border border-cardBorder rounded-[26px] py-1.5 px-2 flex justify-around items-center shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`nav-item flex flex-col items-center gap-0.5 py-1 px-3.5 rounded-2xl transition-all duration-200 ${
+                isActive
+                  ? 'active text-accentViolet bg-accentViolet/15 font-semibold scale-105 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 active:scale-95'
+              }`}
+            >
+              <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+              <span className="text-[11px] font-medium leading-none">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 };
