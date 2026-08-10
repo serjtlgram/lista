@@ -359,7 +359,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             e.preventDefault();
           }
         }}
-        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer active:scale-[0.97] transition card-hover relative overflow-hidden select-none"
+        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer transition-colors hover:border-accentViolet/50 relative overflow-hidden select-none"
       >
         <div className="flex items-stretch gap-3 w-full">
           {/* Rectangular poster image */}
@@ -445,13 +445,13 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         {((!isPlanned && item.rating > 0) || (item.public_rating && item.public_rating.trim() !== '')) && (
           <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
             {item.public_rating && item.public_rating.trim() !== '' && (
-              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-md shadow-sm backdrop-blur-md">
+              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-md shadow-sm">
                 {isBook ? <Star className="w-3 h-3 text-orange-400 fill-orange-400/20 shrink-0" /> : <Popcorn className="w-3 h-3 text-orange-400 shrink-0" />}
                 <span>{item.public_rating}</span>
               </div>
             )}
             {!isPlanned && item.rating > 0 && (
-              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-md shadow-sm backdrop-blur-md">
+              <div className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-md shadow-sm">
                 <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                 <span>{item.rating}</span>
               </div>

@@ -66,7 +66,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <div
               key={cat.key}
               onClick={() => onSelectCategory(cat.key)}
-              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-[0.97] transition card-hover min-w-0 ${
+              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer transition-colors hover:border-accentViolet/50 min-w-0 ${
                 isLastOdd ? 'col-span-2' : ''
               }`}
             >
