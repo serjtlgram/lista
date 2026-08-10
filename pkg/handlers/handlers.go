@@ -305,7 +305,7 @@ func (h *Handler) sendWelcomeMessage(userID int64, langCode string) {
 	}
 
 	content := getWelcomeContent(langCode)
-	appURL := "https://t.me/manytgbot?startapp=true"
+	webAppURL := "https://lista-kappa-six.vercel.app"
 
 	payload := map[string]interface{}{
 		"chat_id":                  userID,
@@ -317,7 +317,9 @@ func (h *Handler) sendWelcomeMessage(userID int64, langCode string) {
 				{
 					{
 						"text": content.Button,
-						"url":  appURL,
+						"web_app": map[string]interface{}{
+							"url": webAppURL,
+						},
 					},
 				},
 			},
