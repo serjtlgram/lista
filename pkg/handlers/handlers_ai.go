@@ -13,10 +13,23 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/models"
 )
+
+func normalizeTitleForComparison(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var sb strings.Builder
+	for _, r := range s {
+		// Keep letters, numbers and spaces, ignore punctuation/quotes
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
+			sb.WriteRune(r)
+		}
+	}
+	return strings.Join(strings.Fields(sb.String()), " ")
+}
 
 func parseTitlesFromAIResponse(raw string) []string {
 	raw = strings.TrimSpace(raw)
@@ -62,9 +75,16 @@ func cleanTitlesList(titles []string) []string {
 	seen := make(map[string]bool)
 	for _, t := range titles {
 		trimmed := strings.TrimSpace(t)
-		if trimmed != "" && !seen[trimmed] {
-			seen[trimmed] = true
-			result = append(result, trimmed)
+		if trimmed != "" {
+			norm := normalizeTitleForComparison(trimmed)
+			if norm != "" && !seen[norm] {
+				seen[norm] = true
+				result = append(result, trimmed)
+			} else if norm == "" && !seen[trimmed] {
+				// Fallback if title is purely punctuation
+				seen[trimmed] = true
+				result = append(result, trimmed)
+			}
 		}
 	}
 	return result
@@ -120,6 +140,11 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			for rowsAll.Next() {
 				var dbTitle string
 				if err := rowsAll.Scan(&dbTitle); err == nil && strings.TrimSpace(dbTitle) != "" {
+					norm := normalizeTitleForComparison(dbTitle)
+					if norm != "" {
+						userExistingTitles[norm] = true
+					}
+					// also store exact lowercase trim just in case
 					userExistingTitles[strings.ToLower(strings.TrimSpace(dbTitle))] = true
 				}
 			}
@@ -429,8 +454,16 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 						var filteredTitles []string
 						for _, pt := range parsedTitles {
 							ptClean := strings.ToLower(strings.TrimSpace(pt))
-							if !userExistingTitles[ptClean] {
-								filteredTitles = append(filteredTitles, pt)
+							norm := normalizeTitleForComparison(pt)
+							
+							if norm != "" {
+								if !userExistingTitles[norm] && !userExistingTitles[ptClean] {
+									filteredTitles = append(filteredTitles, pt)
+								}
+							} else {
+								if !userExistingTitles[ptClean] {
+									filteredTitles = append(filteredTitles, pt)
+								}
 							}
 						}
 						recommendedTitles = filteredTitles
