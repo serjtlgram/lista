@@ -1176,6 +1176,14 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
+	directorUpdated := false
+	if enriched.Director != "" {
+		updateQuery += fmt.Sprintf(", director = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Director)
+		argIdx++
+		directorUpdated = true
+	}
+
 	if enriched.Budget != "" {
 		updateQuery += fmt.Sprintf(", budget = $%d", argIdx)
 		updateArgs = append(updateArgs, enriched.Budget)
@@ -1217,6 +1225,9 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"episodes_list":  enriched.EpisodesList,
 		"cast_roles":     enriched.CastRoles,
 		"budget":         enriched.Budget,
+	}
+	if directorUpdated || enriched.Director != "" {
+		ret["director"] = enriched.Director
 	}
 	if durationUpdated || enriched.Duration != "" {
 		ret["duration"] = enriched.Duration

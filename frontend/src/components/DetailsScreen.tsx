@@ -828,6 +828,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if (result.budget) updates.budget = result.budget;
                       if (result.duration) updates.duration = result.duration;
                       if ((result as any).country) updates.country = (result as any).country;
+                      if ((result as any).director) updates.director = (result as any).director;
                       onUpdateItem(item.id, updates);
                       setToastMessage('✨ Данные обновлены!');
                     } else {
