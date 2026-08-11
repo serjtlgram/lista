@@ -41,6 +41,14 @@ type Item struct {
 	ISBN         string     `json:"isbn,omitempty"`
 	PublicRating string     `json:"public_rating,omitempty"`
 	Country      string     `json:"country,omitempty"`
+	Seasons      int        `json:"seasons,omitempty"`
+	EpisodesTotal int       `json:"episodes_total,omitempty"`
+	AirStatus    string     `json:"air_status,omitempty"`
+	EpisodesList string     `json:"episodes_list,omitempty"` // JSON string
+	CastRoles    string     `json:"cast_roles,omitempty"`   // "Actor — Role, Actor — Role"
+	AgeRating    string     `json:"age_rating,omitempty"`
+	Budget       string     `json:"budget,omitempty"`
+	AiEnriched   bool       `json:"ai_enriched,omitempty"`
 	StartedAt    *time.Time `json:"started_at,omitempty"`
 	CompletedAt  *time.Time `json:"completed_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
@@ -87,6 +95,14 @@ type UpdateItemRequest struct {
 	ISBN         *string `json:"isbn,omitempty"`
 	PublicRating *string `json:"public_rating,omitempty"`
 	Country      *string `json:"country,omitempty"`
+	Seasons      *int    `json:"seasons,omitempty"`
+	EpisodesTotal *int   `json:"episodes_total,omitempty"`
+	AirStatus    *string `json:"air_status,omitempty"`
+	EpisodesList *string `json:"episodes_list,omitempty"`
+	CastRoles    *string `json:"cast_roles,omitempty"`
+	AgeRating    *string `json:"age_rating,omitempty"`
+	Budget       *string `json:"budget,omitempty"`
+	AiEnriched   *bool   `json:"ai_enriched,omitempty"`
 }
 
 type CatalogSearchResult struct {

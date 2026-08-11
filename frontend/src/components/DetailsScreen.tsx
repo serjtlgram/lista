@@ -124,7 +124,76 @@ const renderTextWithLinks = (text: string) => {
   });
 };
 
+interface Episode {
+  s: number;
+  e: number;
+  title: string;
+  air_date: string;
+  overview: string;
+  runtime: number;
+}
+
+const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
+  const [openSeason, setOpenSeason] = useState<number | null>(null);
+
+  // Group by season
+  const seasons: Record<number, Episode[]> = {};
+  episodes.forEach(ep => {
+    if (!seasons[ep.s]) seasons[ep.s] = [];
+    seasons[ep.s].push(ep);
+  });
+  const seasonNumbers = Object.keys(seasons).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs text-gray-400 font-semibold mb-2">Эпизоды</div>
+      {seasonNumbers.map(sNum => {
+        const isOpen = openSeason === sNum;
+        const eps = seasons[sNum];
+        return (
+          <div key={sNum} className="rounded-xl overflow-hidden border border-cardBorder/60">
+            <button
+              type="button"
+              onClick={() => setOpenSeason(isOpen ? null : sNum)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-bgDark/50 text-xs font-semibold text-white hover:bg-bgDark/80 transition"
+            >
+              <span>Сезон {sNum}</span>
+              <span className="text-gray-400 flex items-center gap-1">
+                <span>{eps.length} эп.</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+            {isOpen && (
+              <div className="divide-y divide-cardBorder/30 bg-bgDark/30">
+                {eps.map(ep => (
+                  <div key={ep.e} className="px-3 py-2.5 space-y-0.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-white leading-snug flex-1">
+                        <span className="text-gray-500 mr-1">{ep.e}.</span>{ep.title}
+                      </span>
+                      {ep.runtime > 0 && (
+                        <span className="text-[10px] text-gray-500 shrink-0 font-mono">{ep.runtime}м</span>
+                      )}
+                    </div>
+                    {ep.air_date && (
+                      <div className="text-[10px] text-gray-500">{ep.air_date}</div>
+                    )}
+                    {ep.overview && (
+                      <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2">{ep.overview}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 interface DetailsScreenProps {
+
   item: Item;
   onBack: () => void;
   onEdit: (item: Item) => void;
@@ -159,6 +228,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isFav, setIsFav] = useState<boolean>(() => isFavorite(item.id));
   const [showSharedPreviewModal, setShowSharedPreviewModal] = useState(false);
   const [assignedLists, setAssignedLists] = useState<UserList[]>([]);
+  const [isEnriching, setIsEnriching] = useState(false);
 
   const refreshAssignedLists = () => {
     const allLists = getLists();
@@ -663,28 +733,28 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               )}
 
-              {/* Episodes Row for Series */}
-              {!isBook && (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay) && (
+              {/* Episodes Row for Series — uses episodes_total if enriched, else legacy field */}
+              {!isBook && (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay || item.episodes_total) && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <Tv className="w-3.5 h-3.5 text-accentPink" />
                     {t.details.episodes}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                    {episodesDisplay || '-'}
+                    {item.episodes_total ? String(item.episodes_total) : (episodesDisplay || '-')}
                   </span>
                 </div>
               )}
 
-              {/* Seasons Row for Series (only if filled) */}
-              {!isBook && seasonsDisplay && (
+              {/* Seasons Row for Series — uses seasons field if enriched, else legacy parse */}
+              {!isBook && (item.seasons || seasonsDisplay) && (
                 <div className="flex items-center justify-between text-gray-300 gap-1">
                   <span className="text-gray-400 flex items-center gap-1 shrink-0">
                     <Tv className="w-3.5 h-3.5 text-orange-400" />
                     {t.details.seasons || 'Сезонов'}
                   </span>
                   <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                    {seasonsDisplay}
+                    {item.seasons ? String(item.seasons) : seasonsDisplay}
                   </span>
                 </div>
               )}
@@ -733,15 +803,47 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               {/* AI Magic Wand Button */}
               <button
                 type="button"
-                onClick={() => handleProtectedAction(() => {
-                  if (onAiAction) {
-                    onAiAction(item);
+                onClick={() => handleProtectedAction(async () => {
+                  if (item.ai_enriched || isEnriching) return;
+                  setIsEnriching(true);
+                  try {
+                    const result = await api.enrichItem(item.id);
+                    if (result && onUpdateItem) {
+                      const updates: Partial<typeof item> = { ai_enriched: true };
+                      if (result.seasons) updates.seasons = result.seasons;
+                      if (result.episodes_total) updates.episodes_total = result.episodes_total;
+                      if (result.air_status) updates.air_status = result.air_status;
+                      if (result.episodes_list) updates.episodes_list = result.episodes_list;
+                      if (result.cast_roles) updates.cast_roles = result.cast_roles;
+                      if (result.age_rating) updates.age_rating = result.age_rating;
+                      if (result.budget) updates.budget = result.budget;
+                      onUpdateItem(item.id, updates);
+                      setToastMessage('✨ Данные обновлены!');
+                    } else {
+                      if (onUpdateItem) onUpdateItem(item.id, { ai_enriched: true });
+                      setToastMessage('Данные не найдены');
+                    }
+                  } catch {
+                    setToastMessage('Ошибка загрузки');
+                  } finally {
+                    setIsEnriching(false);
                   }
                 })}
-                className="p-2 rounded-xl bg-cardDark border border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10 flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0"
-                title={t.details?.ai_assistant || "ИИ Помощник"}
+                disabled={item.ai_enriched || isEnriching}
+                className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
+                  item.ai_enriched
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default'
+                    : isEnriching
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-wait animate-pulse'
+                    : 'bg-cardDark border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10'
+                }`}
+                title={item.ai_enriched ? 'Данные уже загружены' : (t.details?.ai_assistant || 'ИИ Помощник')}
               >
-                <Wand2 className="w-4 h-4 text-amber-400" />
+                {item.ai_enriched ? (
+                  <Check className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <Wand2 className={`w-4 h-4 ${isEnriching ? 'text-amber-300' : 'text-amber-400'}`} />
+                )}
               </button>
             </div>
           </div>
@@ -773,6 +875,80 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* AI Enrichment Block: Air Status + Episodes List (series only) */}
+      {!isBook && (item.air_status || item.episodes_list) && (() => {
+        let parsedEpisodes: Array<{ s: number; e: number; title: string; air_date: string; overview: string; runtime: number }> = [];
+        try {
+          if (item.episodes_list) parsedEpisodes = JSON.parse(item.episodes_list);
+        } catch {}
+        return (
+          <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+            {/* Air Status badge */}
+            {item.air_status && (
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                  item.air_status === 'Выходит' ? 'bg-emerald-400 animate-pulse' :
+                  item.air_status === 'Завершён' ? 'bg-gray-400' :
+                  item.air_status === 'Отменён' ? 'bg-red-400' : 'bg-amber-400'
+                }`} />
+                <span className="text-xs font-bold text-white">{item.air_status}</span>
+                {item.seasons && item.seasons > 0 && (
+                  <span className="text-xs text-gray-400 ml-1">• {item.seasons} {item.seasons === 1 ? 'сезон' : item.seasons < 5 ? 'сезона' : 'сезонов'}</span>
+                )}
+              </div>
+            )}
+            {/* Episodes accordion */}
+            {parsedEpisodes.length > 0 && (
+              <EpisodesAccordion episodes={parsedEpisodes} />
+            )}
+          </div>
+        );
+      })()}
+
+      {/* AI Enrichment Block: Cast with Roles */}
+      {item.cast_roles && (
+        <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
+          <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-accentTeal" />
+            {t.details.cast || 'В ролях'}
+          </div>
+          <div className="space-y-1.5 pt-0.5">
+            {item.cast_roles.split(', ').map((entry, i) => {
+              const [actor, role] = entry.split(' — ');
+              return (
+                <div key={i} className="flex items-start justify-between gap-2">
+                  <span className="text-xs text-white font-medium">{actor?.trim()}</span>
+                  {role && <span className="text-xs text-gray-400 italic text-right flex-shrink-0 max-w-[50%]">{role.trim()}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* AI Enrichment Block: Age Rating + Budget */}
+      {(item.age_rating || item.budget) && (
+        <div className="glass-card p-4 rounded-3xl shadow-sm">
+          <div className="flex items-center gap-4">
+            {item.age_rating && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg border-2 border-gray-500 flex items-center justify-center">
+                  <span className="text-[10px] font-black text-gray-300 leading-none">{item.age_rating}</span>
+                </div>
+                <span className="text-xs text-gray-400">Возрастной рейтинг</span>
+              </div>
+            )}
+            {item.age_rating && item.budget && <div className="w-px h-8 bg-cardBorder" />}
+            {item.budget && (
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-400">Бюджет</span>
+                <span className="text-sm font-bold text-white">{item.budget}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

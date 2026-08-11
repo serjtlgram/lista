@@ -1601,3 +1601,389 @@ func isLikelyAuthorName(s string) bool {
 	}
 	return false
 }
+
+// EnrichedDetails holds extended metadata fetched by the AI Wand button
+type EnrichedDetails struct {
+	// Series-specific
+	Seasons       int    `json:"seasons"`
+	EpisodesTotal int    `json:"episodes_total"`
+	AirStatus     string `json:"air_status"`     // e.g. "Ended", "Returning Series", "Cancelled"
+	EpisodesList  string `json:"episodes_list"`  // JSON array of episode objects
+	// Both movies and shows
+	CastRoles  string `json:"cast_roles"`  // "Actor — Role" comma-separated, max 8
+	AgeRating  string `json:"age_rating"`  // "18+", "PG-13", etc.
+	Budget     string `json:"budget"`      // "$120,000,000" or empty if unknown
+}
+
+// EpisodeInfo represents one episode in the serialised list
+type EpisodeInfo struct {
+	Season      int    `json:"s"`
+	Episode     int    `json:"e"`
+	Title       string `json:"title"`
+	AirDate     string `json:"air_date"`
+	Overview    string `json:"overview"`
+	RuntimeMin  int    `json:"runtime"`
+}
+
+// FetchEnrichedDetails searches TMDB by title+year, then pulls extended fields.
+// Returns nil if nothing useful was found.
+func FetchEnrichedDetails(tmdbKey string, title string, year string, category string) *EnrichedDetails {
+	if tmdbKey == "" || strings.TrimSpace(title) == "" {
+		return nil
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+
+	// Determine media type
+	mediaTypeHint := "movie"
+	catLower := strings.ToLower(strings.TrimSpace(category))
+	if strings.Contains(catLower, "show") || strings.Contains(catLower, "series") ||
+		strings.Contains(catLower, "сериал") || strings.Contains(catLower, "сериалы") {
+		mediaTypeHint = "tv"
+	}
+
+	// --- Step 1: search TMDB for the TMDB ID ---
+	tmdbID, mediaType := searchTMDbForID(client, tmdbKey, title, year, mediaTypeHint)
+	if tmdbID == 0 {
+		return nil
+	}
+
+	result := &EnrichedDetails{}
+
+	// --- Step 2: fetch detailed data ---
+	detailURL := fmt.Sprintf(
+		"https://api.themoviedb.org/3/%s/%d?api_key=%s&language=ru-RU&append_to_response=credits,content_ratings,release_dates",
+		mediaType, tmdbID, tmdbKey,
+	)
+	req, err := http.NewRequest("GET", detailURL, nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var detail struct {
+		Status           string  `json:"status"`
+		NumberOfSeasons  int     `json:"number_of_seasons"`
+		NumberOfEpisodes int     `json:"number_of_episodes"`
+		Budget           int64   `json:"budget"`
+		Credits struct {
+			Cast []struct {
+				Name      string `json:"name"`
+				Character string `json:"character"`
+				Order     int    `json:"order"`
+			} `json:"cast"`
+		} `json:"credits"`
+		ContentRatings struct {
+			Results []struct {
+				ISO3166 string `json:"iso_3166_1"`
+				Rating  string `json:"rating"`
+			} `json:"results"`
+		} `json:"content_ratings"`
+		ReleaseDates struct {
+			Results []struct {
+				ISO3166      string `json:"iso_3166_1"`
+				ReleaseDates []struct {
+					Certification string `json:"certification"`
+				} `json:"release_dates"`
+			} `json:"results"`
+		} `json:"release_dates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
+		return nil
+	}
+
+	// Air status
+	if detail.Status != "" {
+		result.AirStatus = mapTMDbStatus(detail.Status)
+	}
+
+	// Seasons / episodes (TV only)
+	if mediaType == "tv" {
+		if detail.NumberOfSeasons > 0 {
+			result.Seasons = detail.NumberOfSeasons
+		}
+		if detail.NumberOfEpisodes > 0 {
+			result.EpisodesTotal = detail.NumberOfEpisodes
+		}
+	}
+
+	// Budget (movies)
+	if detail.Budget > 0 {
+		result.Budget = formatBudget(detail.Budget)
+	}
+
+	// Age rating — prefer RU, fallback to US
+	result.AgeRating = extractAgeRating(detail.ContentRatings.Results, detail.ReleaseDates.Results, mediaType)
+
+	// Cast with characters (max 8)
+	var roleLines []string
+	for i, c := range detail.Credits.Cast {
+		if i >= 8 {
+			break
+		}
+		name := strings.TrimSpace(c.Name)
+		char := strings.TrimSpace(c.Character)
+		if name == "" {
+			continue
+		}
+		if char != "" && char != name {
+			roleLines = append(roleLines, name+" — "+char)
+		} else {
+			roleLines = append(roleLines, name)
+		}
+	}
+	result.CastRoles = strings.Join(roleLines, ", ")
+
+	// --- Step 3: fetch episodes for TV shows (up to 3 seasons to keep it manageable) ---
+	if mediaType == "tv" && result.Seasons > 0 {
+		maxSeasons := result.Seasons
+		if maxSeasons > 3 {
+			maxSeasons = 3
+		}
+		var allEpisodes []EpisodeInfo
+		for s := 1; s <= maxSeasons; s++ {
+			eps := fetchTMDbSeasonEpisodes(client, tmdbKey, tmdbID, s)
+			allEpisodes = append(allEpisodes, eps...)
+		}
+		if len(allEpisodes) > 0 {
+			if b, err := json.Marshal(allEpisodes); err == nil {
+				result.EpisodesList = string(b)
+			}
+		}
+	}
+
+	return result
+}
+
+// searchTMDbForID finds a TMDB ID by title+year, returns (id, mediaType).
+func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string) (int, string) {
+	queryURL := fmt.Sprintf(
+		"https://api.themoviedb.org/3/search/multi?api_key=%s&language=ru-RU&query=%s",
+		tmdbKey, url.QueryEscape(title),
+	)
+	req, err := http.NewRequest("GET", queryURL, nil)
+	if err != nil {
+		return 0, ""
+	}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return 0, ""
+	}
+	defer resp.Body.Close()
+
+	var searchRes struct {
+		Results []struct {
+			ID           int    `json:"id"`
+			MediaType    string `json:"media_type"`
+			ReleaseDate  string `json:"release_date"`
+			FirstAirDate string `json:"first_air_date"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&searchRes); err != nil {
+		return 0, ""
+	}
+
+	yearInt, _ := strconv.Atoi(year)
+	// First pass: exact year match with hint
+	for _, item := range searchRes.Results {
+		if item.MediaType != "movie" && item.MediaType != "tv" {
+			continue
+		}
+		itemYear := ""
+		if len(item.ReleaseDate) >= 4 {
+			itemYear = item.ReleaseDate[:4]
+		} else if len(item.FirstAirDate) >= 4 {
+			itemYear = item.FirstAirDate[:4]
+		}
+		itemYearInt, _ := strconv.Atoi(itemYear)
+		yearMatch := yearInt == 0 || itemYear == year || (yearInt > 0 && abs(itemYearInt-yearInt) <= 1)
+		typeMatch := hint == "" || item.MediaType == hint
+		if yearMatch && typeMatch {
+			return item.ID, item.MediaType
+		}
+	}
+	// Second pass: any match
+	for _, item := range searchRes.Results {
+		if item.MediaType == "movie" || item.MediaType == "tv" {
+			return item.ID, item.MediaType
+		}
+	}
+	return 0, ""
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// fetchTMDbSeasonEpisodes fetches episode list for a given season.
+func fetchTMDbSeasonEpisodes(client *http.Client, tmdbKey string, showID int, season int) []EpisodeInfo {
+	epURL := fmt.Sprintf(
+		"https://api.themoviedb.org/3/tv/%d/season/%d?api_key=%s&language=ru-RU",
+		showID, season, tmdbKey,
+	)
+	req, err := http.NewRequest("GET", epURL, nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var seasonData struct {
+		Episodes []struct {
+			EpisodeNumber int    `json:"episode_number"`
+			Name          string `json:"name"`
+			Overview      string `json:"overview"`
+			AirDate       string `json:"air_date"`
+			Runtime       int    `json:"runtime"`
+		} `json:"episodes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&seasonData); err != nil {
+		return nil
+	}
+
+	var result []EpisodeInfo
+	for _, ep := range seasonData.Episodes {
+		overview := ep.Overview
+		if len([]rune(overview)) > 200 {
+			runes := []rune(overview)
+			overview = string(runes[:200]) + "…"
+		}
+		result = append(result, EpisodeInfo{
+			Season:     season,
+			Episode:    ep.EpisodeNumber,
+			Title:      ep.Name,
+			AirDate:    ep.AirDate,
+			Overview:   overview,
+			RuntimeMin: ep.Runtime,
+		})
+	}
+	return result
+}
+
+func mapTMDbStatus(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "ended":
+		return "Завершён"
+	case "returning series":
+		return "Выходит"
+	case "canceled", "cancelled":
+		return "Отменён"
+	case "in production":
+		return "В производстве"
+	case "planned":
+		return "Планируется"
+	case "pilot":
+		return "Пилот"
+	case "released":
+		return "Вышел"
+	default:
+		return s
+	}
+}
+
+func formatBudget(b int64) string {
+	if b <= 0 {
+		return ""
+	}
+	s := fmt.Sprintf("%d", b)
+	// Insert commas every 3 digits from right
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return "$" + string(result)
+}
+
+type contentRatingResult struct {
+	ISO3166 string `json:"iso_3166_1"`
+	Rating  string `json:"rating"`
+}
+
+type releaseDateResult struct {
+	ISO3166      string `json:"iso_3166_1"`
+	ReleaseDates []struct {
+		Certification string `json:"certification"`
+	} `json:"release_dates"`
+}
+
+func extractAgeRating(tvRatings []contentRatingResult, movieDates []releaseDateResult, mediaType string) string {
+	if mediaType == "tv" {
+		// TV: prefer RU, then US
+		for _, r := range tvRatings {
+			if r.ISO3166 == "RU" && r.Rating != "" {
+				return normalizeRating(r.Rating)
+			}
+		}
+		for _, r := range tvRatings {
+			if r.ISO3166 == "US" && r.Rating != "" {
+				return normalizeRating(r.Rating)
+			}
+		}
+	} else {
+		// Movies: prefer RU, then US
+		for _, r := range movieDates {
+			if r.ISO3166 == "RU" {
+				for _, rd := range r.ReleaseDates {
+					if rd.Certification != "" {
+						return normalizeRating(rd.Certification)
+					}
+				}
+			}
+		}
+		for _, r := range movieDates {
+			if r.ISO3166 == "US" {
+				for _, rd := range r.ReleaseDates {
+					if rd.Certification != "" {
+						return normalizeRating(rd.Certification)
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func normalizeRating(r string) string {
+	r = strings.TrimSpace(r)
+	switch strings.ToUpper(r) {
+	case "G", "TP", "E":
+		return "0+"
+	case "PG", "6", "6+", "TV-G", "TV-Y", "TV-Y7":
+		return "6+"
+	case "PG-13", "12", "12+", "12A", "TV-PG", "TV-14":
+		return "12+"
+	case "TV-14", "14", "14+":
+		return "14+"
+	case "R", "16", "16+", "TV-MA", "NC-17", "18", "18+", "M":
+		return "18+"
+	default:
+		if r != "" {
+			return r
+		}
+		return ""
+	}
+}
+

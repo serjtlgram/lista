@@ -503,7 +503,7 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	query := `
-		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, started_at, completed_at, created_at, updated_at
+		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, seasons, episodes_total, air_status, episodes_list, cast_roles, age_rating, budget, ai_enriched, started_at, completed_at, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 	`
@@ -549,7 +549,9 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
 			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
-			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country, &item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.RawInput, &item.AIParsed, &item.YoutubeURL, &item.Director, &item.Cast, &item.Author, &item.ISBN, &item.PublicRating, &item.Country,
+			&item.Seasons, &item.EpisodesTotal, &item.AirStatus, &item.EpisodesList, &item.CastRoles, &item.AgeRating, &item.Budget, &item.AiEnriched,
+			&item.StartedAt, &item.CompletedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err == nil {
 			if strings.HasPrefix(item.PosterURL, "data:image/") || len(item.PosterURL) > 300 {
@@ -993,6 +995,50 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		args = append(args, mappedCountry)
 		argIdx++
 	}
+	if req.Seasons != nil {
+		query += fmt.Sprintf(", seasons = $%d", argIdx)
+		args = append(args, *req.Seasons)
+		argIdx++
+	}
+	if req.EpisodesTotal != nil {
+		query += fmt.Sprintf(", episodes_total = $%d", argIdx)
+		args = append(args, *req.EpisodesTotal)
+		argIdx++
+	}
+	if req.AirStatus != nil {
+		*req.AirStatus = limitStrLen(*req.AirStatus, 100)
+		query += fmt.Sprintf(", air_status = $%d", argIdx)
+		args = append(args, *req.AirStatus)
+		argIdx++
+	}
+	if req.EpisodesList != nil {
+		query += fmt.Sprintf(", episodes_list = $%d", argIdx)
+		args = append(args, *req.EpisodesList)
+		argIdx++
+	}
+	if req.CastRoles != nil {
+		*req.CastRoles = limitStrLen(*req.CastRoles, 1000)
+		query += fmt.Sprintf(", cast_roles = $%d", argIdx)
+		args = append(args, *req.CastRoles)
+		argIdx++
+	}
+	if req.AgeRating != nil {
+		*req.AgeRating = limitStrLen(*req.AgeRating, 20)
+		query += fmt.Sprintf(", age_rating = $%d", argIdx)
+		args = append(args, *req.AgeRating)
+		argIdx++
+	}
+	if req.Budget != nil {
+		*req.Budget = limitStrLen(*req.Budget, 50)
+		query += fmt.Sprintf(", budget = $%d", argIdx)
+		args = append(args, *req.Budget)
+		argIdx++
+	}
+	if req.AiEnriched != nil {
+		query += fmt.Sprintf(", ai_enriched = $%d", argIdx)
+		args = append(args, *req.AiEnriched)
+		argIdx++
+	}
 
 	query += " WHERE id = $1 AND (user_id = $2 OR (user_id = 0 AND $2 = 214993606))"
 
@@ -1034,6 +1080,120 @@ func (h *Handler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+}
+
+// POST /api/items/{id}/enrich — fetches extended metadata from TMDB and saves it to the item
+func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.GetUserFromContext(r)
+	if !ok {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	itemID := chi.URLParam(r, "id")
+	if itemID == "" {
+		http.Error(w, `{"error":"item id required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Fetch the item from DB to get title, year, category
+	var title, category, releaseYear string
+	var alreadyEnriched bool
+	err := h.DB.Pool.QueryRow(r.Context(),
+		"SELECT title, category, release_year, COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		itemID, user.ID,
+	).Scan(&title, &category, &releaseYear, &alreadyEnriched)
+	if err != nil {
+		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
+		return
+	}
+
+	if alreadyEnriched {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "already_enriched"})
+		return
+	}
+
+	if h.TMDBAPIKey == "" {
+		http.Error(w, `{"error":"TMDB API key not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	// Fetch enriched data
+	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category)
+	if enriched == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
+		// Still mark as enriched so button becomes disabled
+		_, _ = h.DB.Pool.Exec(r.Context(),
+			"UPDATE items SET ai_enriched = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2",
+			itemID, user.ID,
+		)
+		return
+	}
+
+	// Build update query dynamically
+	updateQuery := "UPDATE items SET ai_enriched = TRUE, updated_at = CURRENT_TIMESTAMP"
+	updateArgs := []interface{}{itemID, user.ID}
+	argIdx := 3
+
+	if enriched.Seasons > 0 {
+		updateQuery += fmt.Sprintf(", seasons = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Seasons)
+		argIdx++
+	}
+	if enriched.EpisodesTotal > 0 {
+		updateQuery += fmt.Sprintf(", episodes_total = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.EpisodesTotal)
+		argIdx++
+	}
+	if enriched.AirStatus != "" {
+		updateQuery += fmt.Sprintf(", air_status = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.AirStatus)
+		argIdx++
+	}
+	if enriched.EpisodesList != "" {
+		updateQuery += fmt.Sprintf(", episodes_list = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.EpisodesList)
+		argIdx++
+	}
+	if enriched.CastRoles != "" {
+		updateQuery += fmt.Sprintf(", cast_roles = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.CastRoles)
+		argIdx++
+	}
+	if enriched.AgeRating != "" {
+		updateQuery += fmt.Sprintf(", age_rating = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.AgeRating)
+		argIdx++
+	}
+	if enriched.Budget != "" {
+		updateQuery += fmt.Sprintf(", budget = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Budget)
+		argIdx++
+	}
+
+	updateQuery += " WHERE id = $1 AND user_id = $2"
+
+	_, err = h.DB.Pool.Exec(r.Context(), updateQuery, updateArgs...)
+	if err != nil {
+		log.Printf("[EnrichItem] DB error for item %s: %v", itemID, err)
+		http.Error(w, `{"error":"failed to save enriched data"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":         "ok",
+		"ai_enriched":    true,
+		"seasons":        enriched.Seasons,
+		"episodes_total": enriched.EpisodesTotal,
+		"air_status":     enriched.AirStatus,
+		"episodes_list":  enriched.EpisodesList,
+		"cast_roles":     enriched.CastRoles,
+		"age_rating":     enriched.AgeRating,
+		"budget":         enriched.Budget,
+	})
 }
 
 // GET /api/stats

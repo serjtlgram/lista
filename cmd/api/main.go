@@ -102,6 +102,7 @@ func main() {
 		r.Post("/api/items", h.CreateItem)
 		r.Put("/api/items/{id}", h.UpdateItem)
 		r.Delete("/api/items/{id}", h.DeleteItem)
+		r.Post("/api/items/{id}/enrich", h.EnrichItem)
 		r.Get("/api/stats", h.GetStats)
 		r.Get("/api/catalog/search", h.SearchCatalog)
 		r.Get("/api/youtube/search", h.SearchYouTube)

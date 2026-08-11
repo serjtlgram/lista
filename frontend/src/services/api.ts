@@ -260,4 +260,21 @@ export const api = {
       console.warn('API syncListsData network error:', e);
     }
   },
+
+  async enrichItem(id: string): Promise<Record<string, any> | null> {
+    try {
+      const res = await fetch(`${API_BASE}/api/items/${id}/enrich`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        console.warn(`enrichItem failed for ${id}:`, res.status);
+        return null;
+      }
+      return await res.json();
+    } catch (e) {
+      console.warn('enrichItem network error:', e);
+      return null;
+    }
+  },
 };

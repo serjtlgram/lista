@@ -54,6 +54,15 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS lists_data JSONB DEFAULT '[]';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS folders_data JSONB DEFAULT '[]';`)
 	_, _ = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS shared_lists (id VARCHAR(64) PRIMARY KEY, title VARCHAR(255) NOT NULL, data JSONB NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS country VARCHAR(255) DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS seasons INT DEFAULT 0;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS episodes_total INT DEFAULT 0;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS air_status TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS episodes_list TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_roles TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS age_rating TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS budget TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS ai_enriched BOOLEAN DEFAULT FALSE;`)
 
 	return &DB{Pool: pool}, nil
 }

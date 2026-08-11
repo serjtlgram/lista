@@ -24,6 +24,15 @@ export interface Item {
   isbn?: string;
   public_rating?: string;
   country?: string;
+  // AI Wand enrichment fields
+  seasons?: number;
+  episodes_total?: number;
+  air_status?: string;
+  episodes_list?: string;  // JSON string of EpisodeInfo[]
+  cast_roles?: string;     // "Actor — Role, Actor — Role"
+  age_rating?: string;
+  budget?: string;
+  ai_enriched?: boolean;
   started_at?: string;
   completed_at?: string;
   created_at?: string;
