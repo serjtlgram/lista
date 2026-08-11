@@ -1642,50 +1642,133 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 		return
 	}
 
-	targetLangName := "Russian"
+	var prompt string
 	switch lang {
-	case "en":
-		targetLangName = "English"
-	case "es":
-		targetLangName = "Spanish"
 	case "uk":
-		targetLangName = "Ukrainian"
-	}
+		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти та заповнити дані для фільму/серіалу "%s" УКРАЇНСЬКОЮ МОВОЮ.
 
-	prompt := fmt.Sprintf(`You are a top-tier translation AI for movie/show metadata.
-Title: "%s". Target language: %s (Language code: %s).
+СУВОРІ ПРАВИЛА ПЕРЕКЛАДУ:
+1. УСІ ІМЕНА АКТОРІВ ТА УСІ ІМЕНА ПЕРСОНАЖІВ/РОЛЕЙ (включаючи прізвиська та кличка) ОБОВ'ЯЗКОВО ПЕРЕКЛАДИ УКРАЇНСЬКОЮ МОВОЮ КИРИЛИЦЕЮ!
+   - Англійські та латинські імена акторів і ролей транслітеруй/переклади (наприклад: 'Gary Carr' -> 'Гері Карр', 'Vova Suvorov Adidas' -> 'Вова Суворов Адідас').
+   - У полі cast_roles НЕ ПОВИННО БУТИ ЖОДНОГО АНГЛІЙСЬКОГО/ЛАТИНСЬКОГО СЛОВА!
+2. Поле cast_roles форматуй так: Актор — Роль, Актор — Роль (до 8 пар).
+3. Переклади air_status українською ("Завершено", "Виходить", "Скасовано").
+4. Країну country вкажи 2-літерним ISO кодом (наприклад: US, RU, GB, FR, DE, UA).
+5. Тривалість duration вкажи у хвилинах (наприклад: "45 хв").
 
-CRITICAL MANDATORY RULES:
-1. TRANSLATE EVERY SINGLE ACTOR NAME AND CHARACTER/ROLE NAME INTO %s (%s CYRILLIC ALPHABET).
-   - Convert English actor names (e.g. 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг').
-   - Convert English character/role names (e.g. 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон', 'Burton Fisher' -> 'Бёртон Фишер', 'Cherise Nuland' -> 'Шериз Нуланд').
-   - DO NOT leave ANY English/Latin letters in cast_roles! Every single word in cast_roles MUST be in %s!
-2. FORMAT cast_roles strictly as: Actor — Role, Actor — Role (up to 8 pairs).
-3. TRANSLATE air_status (e.g. "Ended" -> "Завершён", "Returning Series" -> "Выходит").
-4. TRANSLATE country to a 2-letter ISO code (e.g. US, RU, GB, FR, DE, JP, KR).
-5. DURATION: If duration is empty or "-", you MUST fill it with accurate average episode or movie duration in minutes (e.g. "45 мин", "50 мин").
-
-Return ONLY a valid JSON object matching this structure:
+Поверни ВИКЛЮЧНО JSON без разметки:
 {
-  "cast_roles": "Actor — Role, Actor — Role",
-  "country": "2-letter ISO code",
-  "budget": "Budget string",
-  "air_status": "Air status string",
-  "duration": "Duration string (e.g. 45 мин)",
+  "cast_roles": "Актор — Роль, Актор — Роль",
+  "country": "UA",
+  "budget": "Бюджет",
+  "air_status": "Завершено",
+  "duration": "45 хв",
   "seasons": 0,
   "episodes_total": 0
 }
 
-Input Data to translate/fill:
+Вхідні дані:
 cast_roles: %s
 country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d
+episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
-Return raw JSON object only.`, title, targetLangName, lang, targetLangName, targetLangName, targetLangName, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+	case "es":
+		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película/serie "%s" EN ESPAÑOL.
+
+REGLAS OBLIGATORIAS:
+1. Traduce todos los nombres de actores y personajes/roles al español. ¡NO dejes nombres de personajes en inglés!
+2. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
+3. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
+4. Convierte country a un código ISO de 2 letras (ejemplo: US, RU, ES, MX, AR).
+5. La duración duration debe estar en minutos (ejemplo: "45 min").
+
+Devuelve ÚNICAMENTE un objeto JSON:
+{
+  "cast_roles": "Actor — Rol, Actor — Rol",
+  "country": "ES",
+  "budget": "Presupuesto",
+  "air_status": "Finalizada",
+  "duration": "45 min",
+  "seasons": 0,
+  "episodes_total": 0
+}
+
+Datos de entrada:
+cast_roles: %s
+country: %s
+budget: %s
+air_status: %s
+duration: %s
+seasons: %d
+episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+
+	case "en":
+		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to translate and complete metadata for "%s" IN ENGLISH.
+
+MANDATORY RULES:
+1. All actor names and character/role names must be in English / Latin script.
+2. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
+3. Translate air_status to English ("Ended", "Returning Series", "Canceled").
+4. Convert country to a 2-letter ISO code (e.g. US, RU, GB, FR, DE, CA).
+5. Set duration in minutes (e.g. "45 min").
+
+Return ONLY a JSON object:
+{
+  "cast_roles": "Actor — Role, Actor — Role",
+  "country": "US",
+  "budget": "Budget",
+  "air_status": "Ended",
+  "duration": "45 min",
+  "seasons": 0,
+  "episodes_total": 0
+}
+
+Input Data:
+cast_roles: %s
+country: %s
+budget: %s
+air_status: %s
+duration: %s
+seasons: %d
+episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+
+	default: // "ru" or any other
+		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя единственная задача — перевести и заполнить данные для фильма/сериала "%s" НА РУССКИЙ ЯЗЫК.
+
+СТРОГИЕ ПРАВИЛА ПЕРЕВОДА:
+1. ВСЕ ИМЕНА АКТЁРОВ И ВСЕ ИМЕНА ПЕРСОНАЖЕЙ/РОЛЕЙ (включая прозвища и клички) ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
+   - Английские и латинские имена актёров транслитерируй/переведи на русский (например: 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг', 'Chloe Grace Moretz' -> 'Хлоя Грейс Морец').
+   - Имена персонажей И ИХ ПРОЗВИЩА ОБЯЗАТЕЛЬНО переведи на русский кириллицей (например: 'Vova Suvorov Adidas' -> 'Вова Суворов «Адидас»', 'Andrey Vasilyev Palto' -> 'Андрей Васильев «Пальто»', 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон', 'Cherise Nuland' -> 'Шериз Нуланд', 'Svetlana Mikhaylovna - Andrey\'s mother' -> 'Светлана Михайловна — мама Андрея').
+   - В строке cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Вся строка cast_roles должна состоять исключительно из кириллицы.
+2. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар).
+3. Переведи статус air_status на русский (например: "Завершён", "Выходит", "Отменён").
+4. Страну country укажи 2-буквенным ISO-кодом (например: RU, US, GB, FR, DE, JP).
+5. Длительность duration укажи в минутах (например: "45 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
+
+Ответь ИСКЛЮЧИТЕЛЬНО в формате JSON без markdown:
+{
+  "cast_roles": "Актёр — Роль, Актёр — Роль",
+  "country": "RU",
+  "budget": "120 млн $",
+  "air_status": "Завершён",
+  "duration": "45 мин",
+  "seasons": 0,
+  "episodes_total": 0
+}
+
+Входные данные:
+cast_roles: %s
+country: %s
+budget: %s
+air_status: %s
+duration: %s
+seasons: %d
+episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+	}
 
 	reqBodyMap := map[string]interface{}{
 		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",

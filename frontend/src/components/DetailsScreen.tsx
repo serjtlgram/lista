@@ -888,17 +888,17 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </div>
           )}
           {item.cast_roles ? (
-            <div className="space-y-1.5 pt-0.5">
+            <div className="space-y-2 pt-0.5 px-0.5">
               <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 mb-2">
-                <Users className="w-4 h-4 text-accentTeal" />
+                <Users className="w-4 h-4 text-accentTeal shrink-0" />
                 {t.details.cast || 'В ролях'}
               </div>
               {item.cast_roles.split(', ').map((entry, i) => {
                 const [actor, role] = entry.split(' — ');
                 return (
-                  <div key={i} className="flex items-start justify-between gap-2">
-                    <span className="text-xs text-white font-medium">{actor?.trim()}</span>
-                    {role && <span className="text-xs text-gray-400 italic text-right flex-shrink-0 max-w-[50%]">{role.trim()}</span>}
+                  <div key={i} className="flex items-start justify-between gap-3 px-1 py-0.5 rounded-lg hover:bg-white/5 transition-colors">
+                    <span className="text-xs text-white font-medium break-words min-w-0 pr-1">{actor?.trim()}</span>
+                    {role && <span className="text-xs text-gray-400 italic text-right break-words min-w-0 max-w-[55%] pl-1 shrink-0">{role.trim()}</span>}
                   </div>
                 );
               })}

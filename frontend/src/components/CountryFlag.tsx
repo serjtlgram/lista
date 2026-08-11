@@ -36,13 +36,32 @@ interface CountryFlagProps {
   className?: string;
 }
 
+const LEGACY_COUNTRY_MAP: Record<string, string> = {
+  'russia': 'RU', 'российская федерация': 'RU', 'россия': 'RU', 'rus': 'RU',
+  'usa': 'US', 'us': 'US', 'united states': 'US', 'united states of america': 'US', 'сша': 'US', 'америка': 'US',
+  'uk': 'GB', 'gb': 'GB', 'united kingdom': 'GB', 'great britain': 'GB', 'англия': 'GB', 'великобритания': 'GB',
+  'germany': 'DE', 'германия': 'DE', 'deu': 'DE',
+  'france': 'FR', 'франция': 'FR', 'fra': 'FR',
+  'japan': 'JP', 'япония': 'JP', 'jpn': 'JP',
+  'china': 'CN', 'китай': 'CN', 'chn': 'CN',
+  'canada': 'CA', 'канада': 'CA', 'can': 'CA',
+  'spain': 'ES', 'испания': 'ES', 'esp': 'ES',
+  'italy': 'IT', 'италия': 'IT', 'ita': 'IT',
+  'korea': 'KR', 'south korea': 'KR', 'корея': 'KR', 'южная корея': 'KR',
+};
+
 export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className }) => {
   if (!country || !country.trim()) return null;
 
-  const raw = country.trim();
+  let raw = country.trim();
+  const lower = raw.toLowerCase();
+
+  if (LEGACY_COUNTRY_MAP[lower]) {
+    raw = LEGACY_COUNTRY_MAP[lower];
+  }
 
   // USSR special case
-  if (raw === 'USSR' || raw === 'USSR_FLAG') {
+  if (raw === 'USSR' || raw === 'USSR_FLAG' || lower === 'ссср' || lower === 'советский союз') {
     return <USSRFlagSVG className={className} />;
   }
 
@@ -52,6 +71,6 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className }) 
     return <span className="inline-block align-middle">{emoji}</span>;
   }
 
-  // Fallback: show raw value (should rarely happen with backend normalization)
+  // Fallback: show raw value
   return <span className="inline-block align-middle text-gray-400 text-xs font-semibold">{raw}</span>;
 };
