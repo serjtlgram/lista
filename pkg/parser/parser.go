@@ -1969,13 +1969,20 @@ func abs(x int) int {
 // fetchTMDbSeasonEpisodes fetches episode list for a given season.
 func fetchTMDbSeasonEpisodes(client *http.Client, tmdbKey string, showID int, season int) []EpisodeInfo {
 	epURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/tv/%d/season/%d?api_key=%s&language=ru-RU",
-		showID, season, tmdbKey,
+		"https://api.themoviedb.org/3/tv/%d/season/%d?language=ru-RU",
+		showID, season,
 	)
+	if len(tmdbKey) < 50 {
+		epURL += "&api_key=" + tmdbKey
+	}
 	req, err := http.NewRequest("GET", epURL, nil)
 	if err != nil {
 		return nil
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {

@@ -877,7 +877,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       )}
 
       {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
-      {!isBook && (item.director || item.cast) && (
+      {!isBook && (item.director || item.cast || item.cast_roles) && (
         <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
           {item.director && (
             <div className="flex items-start gap-2.5">
@@ -890,7 +890,23 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </span>
             </div>
           )}
-          {item.cast && (
+          {item.cast_roles ? (
+            <div className="space-y-1.5 pt-0.5">
+              <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 mb-2">
+                <Users className="w-4 h-4 text-accentTeal" />
+                {t.details.cast || 'В ролях'}
+              </div>
+              {item.cast_roles.split(', ').map((entry, i) => {
+                const [actor, role] = entry.split(' — ');
+                return (
+                  <div key={i} className="flex items-start justify-between gap-2">
+                    <span className="text-xs text-white font-medium">{actor?.trim()}</span>
+                    {role && <span className="text-xs text-gray-400 italic text-right flex-shrink-0 max-w-[50%]">{role.trim()}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : item.cast ? (
             <div className="flex items-start gap-2.5">
               <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
                 <Users className="w-4 h-4 text-accentTeal" />
@@ -900,7 +916,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 {item.cast}
               </span>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -934,26 +950,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         );
       })()}
 
-      {/* AI Enrichment Block: Cast with Roles */}
-      {item.cast_roles && (
-        <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
-          <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-accentTeal" />
-            {t.details.cast || 'В ролях'}
-          </div>
-          <div className="space-y-1.5 pt-0.5">
-            {item.cast_roles.split(', ').map((entry, i) => {
-              const [actor, role] = entry.split(' — ');
-              return (
-                <div key={i} className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-white font-medium">{actor?.trim()}</span>
-                  {role && <span className="text-xs text-gray-400 italic text-right flex-shrink-0 max-w-[50%]">{role.trim()}</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
 
       {/* Dedicated Author & ISBN Block for Books */}
       {isBook && (item.author || item.isbn) && (
