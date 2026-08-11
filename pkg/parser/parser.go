@@ -1681,18 +1681,10 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 			} `json:"cast"`
 		} `json:"credits"`
 		ContentRatings struct {
-			Results []struct {
-				ISO3166 string `json:"iso_3166_1"`
-				Rating  string `json:"rating"`
-			} `json:"results"`
+			Results []contentRatingResult `json:"results"`
 		} `json:"content_ratings"`
 		ReleaseDates struct {
-			Results []struct {
-				ISO3166      string `json:"iso_3166_1"`
-				ReleaseDates []struct {
-					Certification string `json:"certification"`
-				} `json:"release_dates"`
-			} `json:"results"`
+			Results []releaseDateResult `json:"results"`
 		} `json:"release_dates"`
 	}
 
@@ -1973,7 +1965,7 @@ func normalizeRating(r string) string {
 		return "0+"
 	case "PG", "6", "6+", "TV-G", "TV-Y", "TV-Y7":
 		return "6+"
-	case "PG-13", "12", "12+", "12A", "TV-PG", "TV-14":
+	case "PG-13", "12", "12+", "12A", "TV-PG":
 		return "12+"
 	case "TV-14", "14", "14+":
 		return "14+"
