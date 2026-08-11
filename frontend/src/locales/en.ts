@@ -138,6 +138,7 @@ export const en: Translations = {
     show_more: 'More...',
     show_less: 'Less',
     watch_on_youtube: 'Watch on YouTube',
+    ai_assistant: 'AI Assistant',
     open_in_youtube: 'Open in YouTube',
     public_rating: 'Audience Rating',
     to_list_btn: 'To List',

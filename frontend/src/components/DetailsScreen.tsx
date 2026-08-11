@@ -26,7 +26,8 @@ import {
   Copy,
   Popcorn,
   BookMarked,
-  Plus
+  Plus,
+  Wand2
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -130,6 +131,7 @@ interface DetailsScreenProps {
   onDelete: (id: string) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   onAddSharedItem?: (item: Item) => void;
+  onAiAction?: (item: Item) => void;
   isSharedPreview?: boolean;
   t: Translations;
 }
@@ -141,6 +143,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   onDelete,
   onUpdateItem,
   onAddSharedItem,
+  onAiAction,
   isSharedPreview = false,
   t,
 }) => {
@@ -688,41 +691,58 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
             </div>
 
-            {/* Interactive Status Pill Button */}
-            <div className="relative pt-1.5">
-              <button
-                onClick={() => handleProtectedAction(() => setIsStatusDropdownOpen(!isStatusDropdownOpen))}
-                className="w-full px-3 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
-              >
-                <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
-                  <ChevronDown className="w-3.5 h-3.5 text-white/80" />
-                </div>
-              </button>
+            {/* Interactive Status Pill Button & AI Magic Wand Button */}
+            <div className="flex items-center gap-1.5 pt-1.5">
+              {/* Status Select Dropdown Container */}
+              <div className="relative flex-1 min-w-0">
+                <button
+                  onClick={() => handleProtectedAction(() => setIsStatusDropdownOpen(!isStatusDropdownOpen))}
+                  className="w-full px-2.5 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
+                >
+                  <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
+                  <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                    <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
+                    <ChevronDown className="w-3.5 h-3.5 text-white/80" />
+                  </div>
+                </button>
 
-              {/* Dropdown Options */}
-              {isStatusDropdownOpen && (
-                <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
-                  {statusOptions.map((opt) => {
-                    const isSelected = item.status === opt.val || getTranslatedStatus(item.status, item.category, t) === opt.label;
-                    return (
-                      <button
-                        key={opt.val}
-                        onClick={() => handleSelectStatus(opt.val)}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
-                          isSelected
-                            ? 'dropdown-option-active bg-accentViolet text-white'
-                            : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
-                        }`}
-                      >
-                        <span>{opt.label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                {/* Dropdown Options */}
+                {isStatusDropdownOpen && (
+                  <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
+                    {statusOptions.map((opt) => {
+                      const isSelected = item.status === opt.val || getTranslatedStatus(item.status, item.category, t) === opt.label;
+                      return (
+                        <button
+                          key={opt.val}
+                          onClick={() => handleSelectStatus(opt.val)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                            isSelected
+                              ? 'dropdown-option-active bg-accentViolet text-white'
+                              : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* AI Magic Wand Button */}
+              <button
+                type="button"
+                onClick={() => handleProtectedAction(() => {
+                  if (onAiAction) {
+                    onAiAction(item);
+                  }
+                })}
+                className="p-2 rounded-xl bg-cardDark border border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10 flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0"
+                title={t.details?.ai_assistant || "ИИ Помощник"}
+              >
+                <Wand2 className="w-4 h-4 text-amber-400" />
+              </button>
             </div>
           </div>
         </div>

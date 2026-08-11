@@ -138,6 +138,7 @@ export interface Translations {
     show_more: string;
     show_less: string;
     watch_on_youtube: string;
+    ai_assistant?: string;
     open_in_youtube: string;
     public_rating: string;
     to_list_btn: string;

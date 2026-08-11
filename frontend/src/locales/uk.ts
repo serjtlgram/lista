@@ -138,6 +138,7 @@ export const uk: Translations = {
     show_more: 'Ще...',
     show_less: 'Приховати',
     watch_on_youtube: 'Дивитися на YouTube',
+    ai_assistant: 'ІІ Помічник',
     open_in_youtube: 'Відкрити в YouTube',
     public_rating: 'Рейтинг',
     to_list_btn: 'До списку',

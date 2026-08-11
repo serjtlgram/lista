@@ -138,6 +138,7 @@ export const ru: Translations = {
     show_more: 'Ещё...',
     show_less: 'Скрыть',
     watch_on_youtube: 'Смотреть на YouTube',
+    ai_assistant: 'ИИ Помощник',
     open_in_youtube: 'Открыть в YouTube',
     public_rating: 'Рейтинг',
     to_list_btn: 'В список',
