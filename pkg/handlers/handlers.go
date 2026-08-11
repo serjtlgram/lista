@@ -650,7 +650,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	pubRatingVal := strings.TrimSpace(req.PublicRating)
 	countryVal := mapCountryToFlag(strings.TrimSpace(req.Country))
 
-	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "") {
+	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "" || countryVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
 			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating string
 			queryStr := `
@@ -699,7 +699,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if directorVal == "" || castVal == "" || durationVal == "" || pubRatingVal == "" {
+		if directorVal == "" || castVal == "" || durationVal == "" || pubRatingVal == "" || countryVal == "" {
 			if h.KinopoiskAPIKey != "" {
 				kpResults := fetchKinopoiskInline(titleTrimmed, h.KinopoiskAPIKey, cat)
 				if len(kpResults) > 0 {
@@ -746,7 +746,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			if (directorVal == "" || castVal == "" || pubRatingVal == "") && h.TMDBAPIKey != "" {
+			if (directorVal == "" || castVal == "" || pubRatingVal == "" || countryVal == "") && h.TMDBAPIKey != "" {
 				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat)
 				if len(tmdbResults) > 0 {
 					var best models.CatalogSearchResult
@@ -1102,13 +1102,13 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the item from DB to get title, year, category, duration
-	var title, category, releaseYear, currentDuration string
+	// Fetch the item from DB to get title, year, category, duration, country
+	var title, category, releaseYear, currentDuration, currentCountry string
 	var alreadyEnriched bool
 	err := h.DB.Pool.QueryRow(r.Context(),
-		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
 		itemID, user.ID,
-	).Scan(&title, &category, &releaseYear, &currentDuration, &alreadyEnriched)
+	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &alreadyEnriched)
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
 		return
@@ -1186,6 +1186,14 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	
+	countryUpdated := false
+	if enriched.Country != "" && (currentCountry == "" || len(currentCountry) > 2) {
+		updateQuery += fmt.Sprintf(", country = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Country)
+		argIdx++
+		countryUpdated = true
+	}
+
 	durationUpdated := false
 	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-") {
 		updateQuery += fmt.Sprintf(", duration = $%d", argIdx)
@@ -1215,6 +1223,9 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if durationUpdated {
 		ret["duration"] = enriched.Duration
+	}
+	if countryUpdated || enriched.Country != "" {
+		ret["country"] = enriched.Country
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -1631,6 +1631,7 @@ type EnrichedDetails struct {
 	EpisodesList  string `json:"episodes_list"`  // JSON array of episode objects
 	// Both movies and shows
 	CastRoles  string `json:"cast_roles"`  // "Actor — Role" comma-separated, max 8
+	Country    string `json:"country"`     // e.g. "RU", "US"
 	Budget     string `json:"budget"`      // "$120,000,000" or empty if unknown
 	Duration   string `json:"duration"`    // e.g. "45 мин"
 }
@@ -1641,28 +1642,47 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 		return
 	}
 
-	prompt := fmt.Sprintf(`You are an assistant. The user wants metadata for the movie/show "%s".
-Translate ALL the following fields (including ALL actor names, characters/roles, statuses, duration, etc.) into the "%s" language. It is CRITICAL that every single word is translated to "%s". If a field is empty (or says "unknown"), try to fill it in accurately based on your knowledge of the movie/show.
-Return ONLY a valid JSON object EXACTLY matching this structure:
+	targetLangName := "Russian"
+	switch lang {
+	case "en":
+		targetLangName = "English"
+	case "es":
+		targetLangName = "Spanish"
+	case "uk":
+		targetLangName = "Ukrainian"
+	}
+
+	prompt := fmt.Sprintf(`You are a translator and metadata expert for movies/shows.
+Title: "%s". Target language: %s.
+
+CRITICAL INSTRUCTIONS:
+1. Translate ALL actor names AND character/role names into %s Cyrillic alphabet (e.g., translate 'Sofiya Yanovna' -> 'София Яновна', 'Dasha Kanayeva' -> 'Даша Канаева', 'Pavel' -> 'Павел', 'Mikhail Jackovich' -> 'Михаил Джекович'). NEVER leave character/role names in English/Latin script when target language is %s!
+2. Format cast_roles strictly as: Actor — Role, Actor — Role
+3. Translate air_status (e.g., "Ended" -> "Завершён", "Returning Series" -> "Выходит").
+4. Translate country into a 2-letter ISO code (e.g. RU, US, GB) or full name in %s.
+5. Translate budget and duration into %s.
+
+Return ONLY a valid JSON object matching this structure:
 {
-  "cast_roles": "Translated cast roles, or filled if you know them. Format: Actor — Role, Actor — Role",
-  "budget": "Filled or translated budget (e.g. $120M, 120 млн $)",
-  "air_status": "Translated air status (e.g. Закончен, Снимается)",
-  "duration": "Translated or filled duration (e.g. 45 мин, 45 min)",
+  "cast_roles": "Actor — Role, Actor — Role",
+  "country": "Country string",
+  "budget": "Budget string",
+  "air_status": "Air status string",
+  "duration": "Duration string",
   "seasons": 0,
   "episodes_total": 0
 }
-Note for seasons and episodes_total: fill with integers if this is a TV show and you know them. Otherwise use 0.
 
 Input Data:
 cast_roles: %s
+country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
 episodes_total: %d
 
-Do not include markdown blocks like %s, just return raw JSON string.`, title, lang, lang, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal, "```json")
+Return raw JSON object only.`, title, targetLangName, targetLangName, targetLangName, targetLangName, targetLangName, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	reqBodyMap := map[string]interface{}{
 		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
@@ -1712,6 +1732,7 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 		rawContent := strings.TrimSpace(fireworksResp.Choices[0].Message.Content)
 		var parsed struct {
 			CastRoles     string `json:"cast_roles"`
+			Country       string `json:"country"`
 			Budget        string `json:"budget"`
 			AirStatus     string `json:"air_status"`
 			Duration      string `json:"duration"`
@@ -1721,6 +1742,9 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil {
 			if parsed.CastRoles != "" {
 				details.CastRoles = parsed.CastRoles
+			}
+			if parsed.Country != "" {
+				details.Country = parsed.Country
 			}
 			if parsed.Budget != "" {
 				details.Budget = parsed.Budget
@@ -1818,6 +1842,10 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		Budget           int64   `json:"budget"`
 		Runtime          int     `json:"runtime"`
 		EpisodeRunTime   []int   `json:"episode_run_time"`
+		ProductionCountries []struct {
+			Name string `json:"name"`
+		} `json:"production_countries"`
+		OriginCountry []string `json:"origin_country"`
 		Credits struct {
 			Cast []struct {
 				Name      string `json:"name"`
@@ -1840,6 +1868,13 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 	// Air status
 	if detail.Status != "" {
 		result.AirStatus = mapTMDbStatus(detail.Status)
+	}
+
+	// Country of production
+	if len(detail.ProductionCountries) > 0 {
+		result.Country = mapCountryToFlag(detail.ProductionCountries[0].Name)
+	} else if len(detail.OriginCountry) > 0 {
+		result.Country = mapCountryToFlag(detail.OriginCountry[0])
 	}
 
 	// Seasons / episodes (TV only)

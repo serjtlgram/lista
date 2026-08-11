@@ -556,11 +556,18 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       if (!episodesDisplay) episodesDisplay = e;
       durationDisplay = m ? `${m} ${isBook ? (t.details.pages_unit || 'стр.') : t.details.minutes_short}` : '-';
     } else {
-      const durNum = raw.replace(/\D/g, '');
+      const durNum = parseInt(raw.replace(/\D/g, ''), 10);
       if (isBook) {
         durationDisplay = durNum ? `${durNum} ${t.details.pages_unit || 'стр.'}` : (raw.includes('стр') ? raw : `${raw} ${t.details.pages_unit || 'стр.'}`);
       } else {
-        durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+        const isMovieCat = item.category === 'movie' || item.category === 'фильм' || item.category === 'фильмы';
+        const totalEps = item.episodes || item.episodes_total;
+        if (!isMovieCat && durNum > 300 && totalEps && totalEps > 0) {
+          const avgDur = Math.round(durNum / totalEps);
+          durationDisplay = `~${avgDur} ${t.details.minutes_short} / сер.`;
+        } else {
+          durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+        }
       }
     }
   }
@@ -820,6 +827,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
                       if (result.budget) updates.budget = result.budget;
                       if (result.duration) updates.duration = result.duration;
+                      if ((result as any).country) updates.country = (result as any).country;
                       onUpdateItem(item.id, updates);
                       setToastMessage('✨ Данные обновлены!');
                     } else {
