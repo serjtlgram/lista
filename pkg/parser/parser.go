@@ -1647,7 +1647,7 @@ episodes_total: %d
 Do not include markdown blocks like %s, just return raw JSON string.`, title, lang, details.CastRoles, details.AgeRating, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal, "```json")
 
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
@@ -1659,6 +1659,7 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 	bodyBytes, _ := json.Marshal(reqBodyMap)
 	req, err := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
 	if err != nil {
+		fmt.Printf("[FireworksAI] Error creating request: %v\n", err)
 		return
 	}
 
@@ -1668,13 +1669,17 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		if resp != nil {
-			resp.Body.Close()
-		}
+	if err != nil {
+		fmt.Printf("[FireworksAI] Request failed: %v\n", err)
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		fmt.Printf("[FireworksAI] Bad status %d: %s\n", resp.StatusCode, string(respBody))
+		return
+	}
 
 	respBody, _ := io.ReadAll(resp.Body)
 	var fireworksResp struct {
