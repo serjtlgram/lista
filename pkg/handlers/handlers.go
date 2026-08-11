@@ -1188,6 +1188,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	
 	countryUpdated := false
 	if enriched.Country != "" && (currentCountry == "" || len(currentCountry) > 2) {
+		enriched.Country = mapCountryToFlag(enriched.Country)
 		updateQuery += fmt.Sprintf(", country = $%d", argIdx)
 		updateArgs = append(updateArgs, enriched.Country)
 		argIdx++

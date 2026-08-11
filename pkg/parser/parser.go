@@ -1872,9 +1872,9 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 
 	// Country of production
 	if len(detail.ProductionCountries) > 0 {
-		result.Country = mapCountryToFlag(detail.ProductionCountries[0].Name)
+		result.Country = detail.ProductionCountries[0].Name
 	} else if len(detail.OriginCountry) > 0 {
-		result.Country = mapCountryToFlag(detail.OriginCountry[0])
+		result.Country = detail.OriginCountry[0]
 	}
 
 	// Seasons / episodes (TV only)
