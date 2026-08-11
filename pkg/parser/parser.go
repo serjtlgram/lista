@@ -1712,7 +1712,6 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 		rawContent := strings.TrimSpace(fireworksResp.Choices[0].Message.Content)
 		var parsed struct {
 			CastRoles     string `json:"cast_roles"`
-			AgeRating     string `json:"age_rating"`
 			Budget        string `json:"budget"`
 			AirStatus     string `json:"air_status"`
 			Duration      string `json:"duration"`
@@ -1722,9 +1721,6 @@ Do not include markdown blocks like %s, just return raw JSON string.`, title, la
 		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil {
 			if parsed.CastRoles != "" {
 				details.CastRoles = parsed.CastRoles
-			}
-			if parsed.AgeRating != "" {
-				details.AgeRating = parsed.AgeRating
 			}
 			if parsed.Budget != "" {
 				details.Budget = parsed.Budget
