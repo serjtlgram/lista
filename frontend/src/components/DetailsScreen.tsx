@@ -817,7 +817,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if (result.air_status) updates.air_status = result.air_status;
                       if (result.episodes_list) updates.episodes_list = result.episodes_list;
                       if (result.cast_roles) updates.cast_roles = result.cast_roles;
-                      if (result.age_rating) updates.age_rating = result.age_rating;
+
                       if (result.budget) updates.budget = result.budget;
                       if (result.duration) updates.duration = result.duration;
                       onUpdateItem(item.id, updates);
@@ -853,25 +853,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         </div>
       </div>
 
-      {/* AI Enrichment Block: Age Rating + Budget */}
-      {(item.age_rating || item.budget) && (
+      {/* Budget */}
+      {item.budget && item.budget !== '0' && !item.budget.toLowerCase().includes('неизвестно') && !item.budget.toLowerCase().includes('unknown') && (
         <div className="glass-card p-4 rounded-3xl shadow-sm mb-4">
           <div className="flex items-center gap-4">
-            {item.age_rating && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg border-2 border-gray-500 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-black text-gray-300 leading-none">{item.age_rating}</span>
-                </div>
-                <span className="text-xs text-gray-400">Возрастной рейтинг</span>
-              </div>
-            )}
-            {item.age_rating && item.budget && <div className="w-px h-8 bg-cardBorder shrink-0" />}
-            {item.budget && (
-              <div className="flex flex-col justify-center">
-                <span className="text-xs text-gray-400">Бюджет</span>
-                <span className="text-sm font-bold text-white">{item.budget}</span>
-              </div>
-            )}
+            <div className="flex flex-col justify-center">
+              <span className="text-xs text-gray-400">Бюджет</span>
+              <span className="text-sm font-bold text-white">{item.budget}</span>
+            </div>
           </div>
         </div>
       )}

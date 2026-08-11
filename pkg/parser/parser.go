@@ -699,14 +699,21 @@ func FetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID strin
 
 func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string) (*ExtractedMedia, error) {
 	findURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/find/%s?api_key=%s&external_source=imdb_id&language=ru-RU",
-		externalID, tmdbKey,
+		"https://api.themoviedb.org/3/find/%s?external_source=imdb_id&language=ru-RU",
+		externalID,
 	)
+	if len(tmdbKey) < 50 {
+		findURL += "&api_key=" + tmdbKey
+	}
 
 	req, err := http.NewRequest("GET", findURL, nil)
 	if err != nil {
 		return nil, err
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -747,14 +754,21 @@ func FetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 
 func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string) (*ExtractedMedia, error) {
 	detailsURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/%s/%s?api_key=%s&language=ru-RU&append_to_response=credits,videos",
-		mediaType, tmdbID, tmdbKey,
+		"https://api.themoviedb.org/3/%s/%s?language=ru-RU&append_to_response=credits,videos",
+		mediaType, tmdbID,
 	)
+	if len(tmdbKey) < 50 {
+		detailsURL += "&api_key=" + tmdbKey
+	}
 
 	req, err := http.NewRequest("GET", detailsURL, nil)
 	if err != nil {
 		return nil, err
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -895,14 +909,21 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 
 func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year string) (*ExtractedMedia, error) {
 	queryURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?api_key=%s&language=ru-RU&query=%s",
-		tmdbKey, url.QueryEscape(title),
+		"https://api.themoviedb.org/3/search/multi?language=ru-RU&query=%s",
+		url.QueryEscape(title),
 	)
+	if len(tmdbKey) < 50 {
+		queryURL += "&api_key=" + tmdbKey
+	}
 
 	req, err := http.NewRequest("GET", queryURL, nil)
 	if err != nil {
 		return nil, err
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -1610,7 +1631,6 @@ type EnrichedDetails struct {
 	EpisodesList  string `json:"episodes_list"`  // JSON array of episode objects
 	// Both movies and shows
 	CastRoles  string `json:"cast_roles"`  // "Actor — Role" comma-separated, max 8
-	AgeRating  string `json:"age_rating"`  // "18+", "PG-13", etc.
 	Budget     string `json:"budget"`      // "$120,000,000" or empty if unknown
 	Duration   string `json:"duration"`    // e.g. "45 мин"
 }
@@ -1622,11 +1642,10 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 	}
 
 	prompt := fmt.Sprintf(`You are an assistant. The user wants metadata for the movie/show "%s".
-Translate the following fields into "%s" language. If a field is empty (or says "unknown"), try to fill it in accurately based on your knowledge of the movie/show.
+Translate ALL the following fields (including ALL actor names, characters/roles, statuses, duration, etc.) into the "%s" language. It is CRITICAL that every single word is translated to "%s". If a field is empty (or says "unknown"), try to fill it in accurately based on your knowledge of the movie/show.
 Return ONLY a valid JSON object EXACTLY matching this structure:
 {
   "cast_roles": "Translated cast roles, or filled if you know them. Format: Actor — Role, Actor — Role",
-  "age_rating": "Filled or translated age rating (e.g. 18+, PG-13)",
   "budget": "Filled or translated budget (e.g. $120M, 120 млн $)",
   "air_status": "Translated air status (e.g. Закончен, Снимается)",
   "duration": "Translated or filled duration (e.g. 45 мин, 45 min)",
@@ -1637,14 +1656,13 @@ Note for seasons and episodes_total: fill with integers if this is a TV show and
 
 Input Data:
 cast_roles: %s
-age_rating: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
 episodes_total: %d
 
-Do not include markdown blocks like %s, just return raw JSON string.`, title, lang, details.CastRoles, details.AgeRating, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal, "```json")
+Do not include markdown blocks like %s, just return raw JSON string.`, title, lang, lang, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal, "```json")
 
 	reqBodyMap := map[string]interface{}{
 		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
@@ -1850,9 +1868,6 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		result.Budget = formatBudget(detail.Budget)
 	}
 
-	// Age rating — prefer RU, fallback to US
-	result.AgeRating = extractAgeRating(detail.ContentRatings.Results, detail.ReleaseDates.Results, mediaType)
-
 	// Cast with characters (max 8)
 	var roleLines []string
 	for i, c := range detail.Credits.Cast {
@@ -1872,14 +1887,10 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 	}
 	result.CastRoles = strings.Join(roleLines, ", ")
 
-	// --- Step 3: fetch episodes for TV shows (up to 3 seasons to keep it manageable) ---
+	// --- Step 3: fetch episodes for TV shows ---
 	if mediaType == "tv" && result.Seasons > 0 {
-		maxSeasons := result.Seasons
-		if maxSeasons > 3 {
-			maxSeasons = 3
-		}
 		var allEpisodes []EpisodeInfo
-		for s := 1; s <= maxSeasons; s++ {
+		for s := 1; s <= result.Seasons; s++ {
 			eps := fetchTMDbSeasonEpisodes(client, tmdbKey, tmdbID, s)
 			allEpisodes = append(allEpisodes, eps...)
 		}

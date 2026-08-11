@@ -741,6 +741,9 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					if pubRatingVal == "" {
 						pubRatingVal = best.PublicRating
 					}
+					if countryVal == "" {
+						countryVal = mapCountryToFlag(best.Country)
+					}
 				}
 			}
 			if (directorVal == "" || castVal == "" || pubRatingVal == "") && h.TMDBAPIKey != "" {
@@ -783,6 +786,9 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					}
 					if pubRatingVal == "" {
 						pubRatingVal = best.PublicRating
+					}
+					if countryVal == "" {
+						countryVal = mapCountryToFlag(best.Country)
 					}
 				}
 			}
@@ -1132,7 +1138,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, enriched)
 
 	// If after AI it's STILL basically empty, then return no_data
-	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.AgeRating == "" && enriched.Budget == "" && enriched.Duration == "" {
+	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Budget == "" && enriched.Duration == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
 		// Still mark as enriched so button becomes disabled
@@ -1173,11 +1179,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		updateArgs = append(updateArgs, enriched.CastRoles)
 		argIdx++
 	}
-	if enriched.AgeRating != "" {
-		updateQuery += fmt.Sprintf(", age_rating = $%d", argIdx)
-		updateArgs = append(updateArgs, enriched.AgeRating)
-		argIdx++
-	}
+
 	if enriched.Budget != "" {
 		updateQuery += fmt.Sprintf(", budget = $%d", argIdx)
 		updateArgs = append(updateArgs, enriched.Budget)
