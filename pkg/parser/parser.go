@@ -1769,13 +1769,20 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 
 	// --- Step 2: fetch detailed data ---
 	detailURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/%s/%d?api_key=%s&language=%s&append_to_response=credits,content_ratings,release_dates",
-		mediaType, tmdbID, tmdbKey, langParam,
+		"https://api.themoviedb.org/3/%s/%d?language=%s&append_to_response=credits,content_ratings,release_dates",
+		mediaType, tmdbID, langParam,
 	)
+	if len(tmdbKey) < 50 {
+		detailURL += "&api_key=" + tmdbKey
+	}
 	req, err := http.NewRequest("GET", detailURL, nil)
 	if err != nil {
 		return nil
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -1884,13 +1891,20 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 // searchTMDbForID finds a TMDB ID by title+year, returns (id, mediaType).
 func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string, langParam string) (int, string) {
 	queryURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?api_key=%s&language=%s&query=%s",
-		tmdbKey, langParam, url.QueryEscape(title),
+		"https://api.themoviedb.org/3/search/multi?language=%s&query=%s",
+		langParam, url.QueryEscape(title),
 	)
+	if len(tmdbKey) < 50 {
+		queryURL += "&api_key=" + tmdbKey
+	}
 	req, err := http.NewRequest("GET", queryURL, nil)
 	if err != nil {
 		return 0, ""
 	}
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
