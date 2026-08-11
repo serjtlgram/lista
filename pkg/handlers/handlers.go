@@ -1192,8 +1192,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	ret := map[string]interface{}{
 		"status":         "ok",
 		"ai_enriched":    true,
 		"seasons":        enriched.Seasons,
@@ -1203,8 +1202,13 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"cast_roles":     enriched.CastRoles,
 		"age_rating":     enriched.AgeRating,
 		"budget":         enriched.Budget,
-		"duration":       durationUpdated ? enriched.Duration : "",
-	})
+	}
+	if durationUpdated {
+		ret["duration"] = enriched.Duration
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ret)
 }
 
 // GET /api/stats
