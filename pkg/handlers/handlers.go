@@ -1124,6 +1124,15 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	// Fetch enriched data
 	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang)
 	if enriched == nil {
+		// TMDB failed or returned nothing (e.g., API key is invalid/missing). Let's create an empty object and let AI guess!
+		enriched = &parser.EnrichedDetails{}
+	}
+
+	// Call AI to translate and fill missing data
+	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, enriched)
+
+	// If after AI it's STILL basically empty, then return no_data
+	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.AgeRating == "" && enriched.Budget == "" && enriched.Duration == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
 		// Still mark as enriched so button becomes disabled

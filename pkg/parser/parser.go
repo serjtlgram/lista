@@ -1615,6 +1615,113 @@ type EnrichedDetails struct {
 	Duration   string `json:"duration"`    // e.g. "45 мин"
 }
 
+// TranslateAndFillWithAI uses Fireworks AI to translate metadata into the requested language and fill gaps.
+func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedDetails) {
+	if fireworksKey == "" || details == nil {
+		return
+	}
+
+	prompt := fmt.Sprintf(`You are an assistant. The user wants metadata for the movie/show "%s".
+Translate the following fields into "%s" language. If a field is empty (or says "unknown"), try to fill it in accurately based on your knowledge of the movie/show.
+Return ONLY a valid JSON object EXACTLY matching this structure:
+{
+  "cast_roles": "Translated cast roles, or filled if you know them. Format: Actor — Role, Actor — Role",
+  "age_rating": "Filled or translated age rating (e.g. 18+, PG-13)",
+  "budget": "Filled or translated budget (e.g. $120M, 120 млн $)",
+  "air_status": "Translated air status (e.g. Закончен, Снимается)",
+  "duration": "Translated or filled duration (e.g. 45 мин, 45 min)",
+  "seasons": 0,
+  "episodes_total": 0
+}
+Note for seasons and episodes_total: fill with integers if this is a TV show and you know them. Otherwise use 0.
+
+Input Data:
+cast_roles: %s
+age_rating: %s
+budget: %s
+air_status: %s
+duration: %s
+seasons: %d
+episodes_total: %d
+
+Do not include markdown blocks like %s, just return raw JSON string.`, title, lang, details.CastRoles, details.AgeRating, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal, "```json")
+
+	reqBodyMap := map[string]interface{}{
+		"model": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"response_format": map[string]string{"type": "json_object"},
+		"temperature":     0.1,
+		"max_tokens":      1024,
+	}
+
+	bodyBytes, _ := json.Marshal(reqBodyMap)
+	req, err := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+fireworksKey)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var fireworksResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.Unmarshal(respBody, &fireworksResp); err == nil && len(fireworksResp.Choices) > 0 {
+		rawContent := strings.TrimSpace(fireworksResp.Choices[0].Message.Content)
+		var parsed struct {
+			CastRoles     string `json:"cast_roles"`
+			AgeRating     string `json:"age_rating"`
+			Budget        string `json:"budget"`
+			AirStatus     string `json:"air_status"`
+			Duration      string `json:"duration"`
+			Seasons       int    `json:"seasons"`
+			EpisodesTotal int    `json:"episodes_total"`
+		}
+		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil {
+			if parsed.CastRoles != "" {
+				details.CastRoles = parsed.CastRoles
+			}
+			if parsed.AgeRating != "" {
+				details.AgeRating = parsed.AgeRating
+			}
+			if parsed.Budget != "" {
+				details.Budget = parsed.Budget
+			}
+			if parsed.AirStatus != "" {
+				details.AirStatus = parsed.AirStatus
+			}
+			if parsed.Duration != "" {
+				details.Duration = parsed.Duration
+			}
+			if parsed.Seasons > 0 && details.Seasons == 0 {
+				details.Seasons = parsed.Seasons
+			}
+			if parsed.EpisodesTotal > 0 && details.EpisodesTotal == 0 {
+				details.EpisodesTotal = parsed.EpisodesTotal
+			}
+		}
+	}
+}
+
 // EpisodeInfo represents one episode in the serialised list
 type EpisodeInfo struct {
 	Season      int    `json:"s"`
