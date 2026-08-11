@@ -1771,11 +1771,15 @@ episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, 
 	}
 
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
+		"model": "accounts/fireworks/models/qwen3p7-plus",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
+		"thinking": map[string]interface{}{
+			"type": "disabled",
+		},
+		"reasoning_effort": "none",
 		"temperature":     0.1,
 		"max_tokens":      1024,
 	}
