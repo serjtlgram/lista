@@ -1211,7 +1211,6 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"air_status":     enriched.AirStatus,
 		"episodes_list":  enriched.EpisodesList,
 		"cast_roles":     enriched.CastRoles,
-		"age_rating":     enriched.AgeRating,
 		"budget":         enriched.Budget,
 	}
 	if durationUpdated {
