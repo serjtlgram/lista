@@ -37,6 +37,7 @@ interface CountryFlagProps {
 }
 
 const LEGACY_COUNTRY_MAP: Record<string, string> = {
+  'ussr': 'USSR', 'ссср': 'USSR', 'советский союз': 'USSR', 'su': 'USSR', 'suhh': 'USSR', 'ussr_flag': 'USSR',
   'russia': 'RU', 'российская федерация': 'RU', 'россия': 'RU', 'rus': 'RU',
   'usa': 'US', 'us': 'US', 'united states': 'US', 'united states of america': 'US', 'сша': 'US', 'америка': 'US',
   'uk': 'GB', 'gb': 'GB', 'united kingdom': 'GB', 'great britain': 'GB', 'англия': 'GB', 'великобритания': 'GB',
@@ -61,7 +62,7 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className }) 
   }
 
   // USSR special case
-  if (raw === 'USSR' || raw === 'USSR_FLAG' || lower === 'ссср' || lower === 'советский союз') {
+  if (raw === 'USSR' || raw === 'USSR_FLAG' || lower === 'ссср' || lower === 'советский союз' || lower === 'su' || lower === 'suhh' || lower === 'ussr') {
     return <USSRFlagSVG className={className} />;
   }
 

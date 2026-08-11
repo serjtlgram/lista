@@ -1291,6 +1291,7 @@ func mapCountryToFlag(country string) string {
 		keys []string
 		code string
 	}{
+		{[]string{"ссср", "советский союз"}, "USSR"},
 		{[]string{"сша", "соединенные штаты", "соединённые штаты", "америка"}, "US"},
 		{[]string{"великобритания", "соединенное королевство", "соединённое королевство", "англия"}, "GB"},
 		{[]string{"россия", "российская федерация"}, "RU"},
@@ -1347,7 +1348,6 @@ func mapCountryToFlag(country string) string {
 		{[]string{"алжир"}, "DZ"},
 		{[]string{"марокко"}, "MA"},
 		{[]string{"эфиопия"}, "ET"},
-		{[]string{"ссср", "советский союз"}, "USSR"},
 	}
 
 	// English names / ISO codes mapping
@@ -1355,7 +1355,7 @@ func mapCountryToFlag(country string) string {
 		keys []string
 		code string
 	}{
-		{[]string{"ussr", "ussr_flag", "soviet union"}, "USSR"},
+		{[]string{"ussr", "ussr_flag", "soviet union", "su", "suhh"}, "USSR"},
 		{[]string{"usa", "us", "united states", "united states of america", "america"}, "US"},
 		{[]string{"gb", "uk", "united kingdom", "great britain", "england", "britain"}, "GB"},
 		{[]string{"ru", "rus", "russia", "russian federation"}, "RU"},
