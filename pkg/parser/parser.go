@@ -1771,7 +1771,7 @@ episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, 
 	}
 
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/qwen3p7-plus",
+		"model": "accounts/fireworks/models/gpt-oss-120b",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},

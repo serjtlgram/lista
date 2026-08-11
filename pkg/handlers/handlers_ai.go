@@ -363,7 +363,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	modelsToTry := []string{
-		"accounts/fireworks/models/qwen3p7-plus",
+		"accounts/fireworks/models/deepseek-v4-flash-0731",
 	}
 
 	var recommendedTitles []string
