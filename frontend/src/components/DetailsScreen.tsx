@@ -813,7 +813,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               <button
                 type="button"
                 onClick={() => handleProtectedAction(async () => {
-                  if (item.ai_enriched || isEnriching) return;
+                  if (isEnriching) return;
                   setIsEnriching(true);
                   try {
                     const result = await api.enrichItem(item.id, language);
@@ -840,20 +840,22 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     setIsEnriching(false);
                   }
                 })}
-                disabled={item.ai_enriched || isEnriching}
+                disabled={isEnriching}
+                title={item.ai_enriched ? 'Обновить данные через ИИ' : 'Обогатить через ИИ'}
                 className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
-                  item.ai_enriched
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default'
-                    : isEnriching
+                  isEnriching
                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-wait animate-pulse'
+                    : item.ai_enriched
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-400/60'
                     : 'bg-cardDark border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10'
                 }`}
-                title={item.ai_enriched ? 'Данные уже загружены' : (t.details?.ai_assistant || 'ИИ Помощник')}
               >
-                {item.ai_enriched ? (
-                  <Check className="w-4 h-4 text-emerald-400" />
+                {isEnriching ? (
+                  <Wand2 className="w-4 h-4 text-amber-300 animate-spin" />
+                ) : item.ai_enriched ? (
+                  <Wand2 className="w-4 h-4 text-emerald-400" />
                 ) : (
-                  <Wand2 className={`w-4 h-4 ${isEnriching ? 'text-amber-300' : 'text-amber-400'}`} />
+                  <Wand2 className="w-4 h-4 text-amber-400" />
                 )}
               </button>
             </div>

@@ -1114,11 +1114,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if alreadyEnriched {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "already_enriched"})
-		return
-	}
+
 
 	if h.TMDBAPIKey == "" {
 		http.Error(w, `{"error":"TMDB API key not configured"}`, http.StatusServiceUnavailable)
