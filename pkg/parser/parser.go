@@ -1748,7 +1748,7 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
 
 СТРОГИЕ ПРАВИЛА ПЕРЕВОДА:
 1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖИ/РОЛИ И ИМЕНА РЕЖИССЁРОВ/СОЗДАТЕЛЕЙ (director) ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
-   - Английские и латинские имена режиссёров/создателей ОБЯЗАТЕЛЬНО транслитерируй/переведи на русский (например: 'Greg Plageman' -> 'Грег Плейджман', 'Jonathan Nolan' -> 'Джонатан Нолан', 'Christopher Nolan' -> 'Кристофер Нолан').
+   - Английские и латинские имена режиссёров/создателей ОБЯЗАТЕЛЬНО транслитерируй/переведи на русский. Если режиссёров несколько, перечисли их всех через запятую (например: 'Guy Ritchie' -> 'Гай Ричи', 'Greg Plageman' -> 'Грег Плейджман', 'Joel Coen, Ethan Coen' -> 'Джоэл Коэн, Итан Коэн').
    - Английские и латинские имена актёров транслитерируй/переведи на русский (например: 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг', 'Chloe Grace Moretz' -> 'Хлоя Грейс Морец').
    - Имена персонажей И ИХ ПРОЗВИЩА ОБЯЗАТЕЛЬНО переведи на русский кириллицей (например: 'Vova Suvorov Adidas' -> 'Вова Суворов «Адидас»', 'Andrey Vasilyev Palto' -> 'Андрей Васильев «Пальто»', 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон').
    - В строках director и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
@@ -2008,17 +2008,26 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		}
 	}
 
-	// Director from crew or created_by
+	// Director from crew or created_by (support multiple directors)
 	var directors []string
+	seenDir := make(map[string]bool)
 	for _, c := range detail.Credits.Crew {
 		if strings.EqualFold(c.Job, "Director") && c.Name != "" {
-			directors = append(directors, strings.TrimSpace(c.Name))
+			nameClean := strings.TrimSpace(c.Name)
+			if !seenDir[nameClean] {
+				seenDir[nameClean] = true
+				directors = append(directors, nameClean)
+			}
 		}
 	}
 	if len(directors) == 0 {
 		for _, creator := range detail.CreatedBy {
 			if creator.Name != "" {
-				directors = append(directors, strings.TrimSpace(creator.Name))
+				nameClean := strings.TrimSpace(creator.Name)
+				if !seenDir[nameClean] {
+					seenDir[nameClean] = true
+					directors = append(directors, nameClean)
+				}
 			}
 		}
 	}
@@ -2108,18 +2117,24 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 
 	var searchRes struct {
 		Results []struct {
-			ID           int    `json:"id"`
-			MediaType    string `json:"media_type"`
-			ReleaseDate  string `json:"release_date"`
-			FirstAirDate string `json:"first_air_date"`
+			ID           int     `json:"id"`
+			MediaType    string  `json:"media_type"`
+			ReleaseDate  string  `json:"release_date"`
+			FirstAirDate string  `json:"first_air_date"`
+			Popularity   float64 `json:"popularity"`
+			VoteCount    int     `json:"vote_count"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&searchRes); err != nil {
 		return 0, ""
 	}
 
+	var bestID int
+	var bestType string
+	var maxScore float64 = -1.0
+
 	yearInt, _ := strconv.Atoi(year)
-	// First pass: exact year match with hint
+	// First pass: match year and media type hint, selecting highest popularity / vote count candidate
 	for _, item := range searchRes.Results {
 		if item.MediaType != "movie" && item.MediaType != "tv" {
 			continue
@@ -2134,14 +2149,31 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 		yearMatch := yearInt == 0 || itemYear == year || (yearInt > 0 && abs(itemYearInt-yearInt) <= 1)
 		typeMatch := hint == "" || item.MediaType == hint
 		if yearMatch && typeMatch {
-			return item.ID, item.MediaType
+			score := item.Popularity + float64(item.VoteCount)
+			if score > maxScore {
+				maxScore = score
+				bestID = item.ID
+				bestType = item.MediaType
+			}
 		}
 	}
-	// Second pass: any match
+	if bestID > 0 {
+		return bestID, bestType
+	}
+
+	// Second pass: any match by popularity
 	for _, item := range searchRes.Results {
 		if item.MediaType == "movie" || item.MediaType == "tv" {
-			return item.ID, item.MediaType
+			score := item.Popularity + float64(item.VoteCount)
+			if score > maxScore {
+				maxScore = score
+				bestID = item.ID
+				bestType = item.MediaType
+			}
 		}
+	}
+	if bestID > 0 {
+		return bestID, bestType
 	}
 	return 0, ""
 }
