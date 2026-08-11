@@ -43,8 +43,6 @@ type ExtractedMedia struct {
 	SourceURL    string `json:"source_url"`
 }
 
-const defaultTMDbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
-
 var (
 	urlRegex        = regexp.MustCompile(`https?://[^\s<">]+`)
 	imdbIDRegex     = regexp.MustCompile(`(tt\d{6,10})`)
@@ -77,7 +75,8 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	}
 
 	if strings.TrimSpace(tmdbKey) == "" {
-		tmdbKey = defaultTMDbKey
+		// Proceed without TMDB if key is empty
+		tmdbKey = ""
 	}
 
 	media := &ExtractedMedia{
