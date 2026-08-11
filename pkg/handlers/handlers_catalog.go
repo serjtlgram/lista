@@ -893,19 +893,28 @@ var tmdbGenreMap = map[int]string{
 
 func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
-	if strings.TrimSpace(tmdbKey) == "" {
+	tmdbKey = strings.TrimSpace(tmdbKey)
+	if tmdbKey == "" {
 		tmdbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
 	}
 
 	apiURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?api_key=%s&query=%s&language=ru-RU&page=1",
-		tmdbKey, url.QueryEscape(query),
+		"https://api.themoviedb.org/3/search/multi?query=%s&language=ru-RU&page=1",
+		url.QueryEscape(query),
 	)
+	if len(tmdbKey) < 50 {
+		apiURL += "&api_key=" + tmdbKey
+	}
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return list
 	}
+
+	if len(tmdbKey) >= 50 {
+		req.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	req.Header.Set("accept", "application/json")
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
