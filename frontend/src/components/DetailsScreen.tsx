@@ -203,6 +203,7 @@ interface DetailsScreenProps {
   onAiAction?: (item: Item) => void;
   isSharedPreview?: boolean;
   t: Translations;
+  language: string;
 }
 
 export const DetailsScreen: React.FC<DetailsScreenProps> = ({
@@ -215,6 +216,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   onAiAction,
   isSharedPreview = false,
   t,
+  language,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -807,7 +809,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   if (item.ai_enriched || isEnriching) return;
                   setIsEnriching(true);
                   try {
-                    const result = await api.enrichItem(item.id);
+                    const result = await api.enrichItem(item.id, language);
                     if (result && onUpdateItem) {
                       const updates: Partial<typeof item> = { ai_enriched: true };
                       if (result.seasons) updates.seasons = result.seasons;
@@ -817,6 +819,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if (result.cast_roles) updates.cast_roles = result.cast_roles;
                       if (result.age_rating) updates.age_rating = result.age_rating;
                       if (result.budget) updates.budget = result.budget;
+                      if (result.duration) updates.duration = result.duration;
                       onUpdateItem(item.id, updates);
                       setToastMessage('✨ Данные обновлены!');
                     } else {
@@ -849,6 +852,29 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Enrichment Block: Age Rating + Budget */}
+      {(item.age_rating || item.budget) && (
+        <div className="glass-card p-4 rounded-3xl shadow-sm mb-4">
+          <div className="flex items-center gap-4">
+            {item.age_rating && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg border-2 border-gray-500 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-gray-300 leading-none">{item.age_rating}</span>
+                </div>
+                <span className="text-xs text-gray-400">Возрастной рейтинг</span>
+              </div>
+            )}
+            {item.age_rating && item.budget && <div className="w-px h-8 bg-cardBorder shrink-0" />}
+            {item.budget && (
+              <div className="flex flex-col justify-center">
+                <span className="text-xs text-gray-400">Бюджет</span>
+                <span className="text-sm font-bold text-white">{item.budget}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
       {!isBook && (item.director || item.cast) && (
@@ -925,29 +951,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* AI Enrichment Block: Age Rating + Budget */}
-      {(item.age_rating || item.budget) && (
-        <div className="glass-card p-4 rounded-3xl shadow-sm">
-          <div className="flex items-center gap-4">
-            {item.age_rating && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg border-2 border-gray-500 flex items-center justify-center">
-                  <span className="text-[10px] font-black text-gray-300 leading-none">{item.age_rating}</span>
-                </div>
-                <span className="text-xs text-gray-400">Возрастной рейтинг</span>
-              </div>
-            )}
-            {item.age_rating && item.budget && <div className="w-px h-8 bg-cardBorder" />}
-            {item.budget && (
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-400">Бюджет</span>
-                <span className="text-sm font-bold text-white">{item.budget}</span>
-              </div>
-            )}
           </div>
         </div>
       )}

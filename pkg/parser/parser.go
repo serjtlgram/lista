@@ -1613,6 +1613,7 @@ type EnrichedDetails struct {
 	CastRoles  string `json:"cast_roles"`  // "Actor — Role" comma-separated, max 8
 	AgeRating  string `json:"age_rating"`  // "18+", "PG-13", etc.
 	Budget     string `json:"budget"`      // "$120,000,000" or empty if unknown
+	Duration   string `json:"duration"`    // e.g. "45 мин"
 }
 
 // EpisodeInfo represents one episode in the serialised list
@@ -1627,9 +1628,19 @@ type EpisodeInfo struct {
 
 // FetchEnrichedDetails searches TMDB by title+year, then pulls extended fields.
 // Returns nil if nothing useful was found.
-func FetchEnrichedDetails(tmdbKey string, title string, year string, category string) *EnrichedDetails {
+func FetchEnrichedDetails(tmdbKey string, title string, year string, category string, lang string) *EnrichedDetails {
 	if tmdbKey == "" || strings.TrimSpace(title) == "" {
 		return nil
+	}
+
+	langParam := "ru-RU"
+	switch lang {
+	case "en":
+		langParam = "en-US"
+	case "es":
+		langParam = "es-ES"
+	case "uk":
+		langParam = "uk-UA"
 	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
@@ -1643,7 +1654,7 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 	}
 
 	// --- Step 1: search TMDB for the TMDB ID ---
-	tmdbID, mediaType := searchTMDbForID(client, tmdbKey, title, year, mediaTypeHint)
+	tmdbID, mediaType := searchTMDbForID(client, tmdbKey, title, year, mediaTypeHint, langParam)
 	if tmdbID == 0 {
 		return nil
 	}
@@ -1652,8 +1663,8 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 
 	// --- Step 2: fetch detailed data ---
 	detailURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/%s/%d?api_key=%s&language=ru-RU&append_to_response=credits,content_ratings,release_dates",
-		mediaType, tmdbID, tmdbKey,
+		"https://api.themoviedb.org/3/%s/%d?api_key=%s&language=%s&append_to_response=credits,content_ratings,release_dates",
+		mediaType, tmdbID, tmdbKey, langParam,
 	)
 	req, err := http.NewRequest("GET", detailURL, nil)
 	if err != nil {
@@ -1673,6 +1684,8 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		NumberOfSeasons  int     `json:"number_of_seasons"`
 		NumberOfEpisodes int     `json:"number_of_episodes"`
 		Budget           int64   `json:"budget"`
+		Runtime          int     `json:"runtime"`
+		EpisodeRunTime   []int   `json:"episode_run_time"`
 		Credits struct {
 			Cast []struct {
 				Name      string `json:"name"`
@@ -1704,6 +1717,13 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		}
 		if detail.NumberOfEpisodes > 0 {
 			result.EpisodesTotal = detail.NumberOfEpisodes
+		}
+		if len(detail.EpisodeRunTime) > 0 && detail.EpisodeRunTime[0] > 0 {
+			result.Duration = fmt.Sprintf("%d мин", detail.EpisodeRunTime[0])
+		}
+	} else if mediaType == "movie" {
+		if detail.Runtime > 0 {
+			result.Duration = fmt.Sprintf("%d мин", detail.Runtime)
 		}
 	}
 
@@ -1756,10 +1776,10 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 }
 
 // searchTMDbForID finds a TMDB ID by title+year, returns (id, mediaType).
-func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string) (int, string) {
+func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string, langParam string) (int, string) {
 	queryURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?api_key=%s&language=ru-RU&query=%s",
-		tmdbKey, url.QueryEscape(title),
+		"https://api.themoviedb.org/3/search/multi?api_key=%s&language=%s&query=%s",
+		tmdbKey, langParam, url.QueryEscape(title),
 	)
 	req, err := http.NewRequest("GET", queryURL, nil)
 	if err != nil {

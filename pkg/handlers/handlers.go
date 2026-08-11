@@ -1096,13 +1096,13 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the item from DB to get title, year, category
-	var title, category, releaseYear string
+	// Fetch the item from DB to get title, year, category, duration
+	var title, category, releaseYear, currentDuration string
 	var alreadyEnriched bool
 	err := h.DB.Pool.QueryRow(r.Context(),
-		"SELECT title, category, release_year, COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
 		itemID, user.ID,
-	).Scan(&title, &category, &releaseYear, &alreadyEnriched)
+	).Scan(&title, &category, &releaseYear, &currentDuration, &alreadyEnriched)
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
 		return
@@ -1119,8 +1119,10 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lang := r.URL.Query().Get("lang")
+
 	// Fetch enriched data
-	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category)
+	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang)
 	if enriched == nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
@@ -1172,6 +1174,14 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		updateArgs = append(updateArgs, enriched.Budget)
 		argIdx++
 	}
+	
+	durationUpdated := false
+	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-") {
+		updateQuery += fmt.Sprintf(", duration = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Duration)
+		argIdx++
+		durationUpdated = true
+	}
 
 	updateQuery += " WHERE id = $1 AND user_id = $2"
 
@@ -1193,6 +1203,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"cast_roles":     enriched.CastRoles,
 		"age_rating":     enriched.AgeRating,
 		"budget":         enriched.Budget,
+		"duration":       durationUpdated ? enriched.Duration : "",
 	})
 }
 

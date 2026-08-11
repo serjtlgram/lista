@@ -261,9 +261,10 @@ export const api = {
     }
   },
 
-  async enrichItem(id: string): Promise<Record<string, any> | null> {
+  async enrichItem(id: string, lang?: string): Promise<Record<string, any> | null> {
     try {
-      const res = await fetch(`${API_BASE}/api/items/${id}/enrich`, {
+      const query = lang ? `?lang=${lang}` : '';
+      const res = await fetch(`${API_BASE}/api/items/${id}/enrich${query}`, {
         method: 'POST',
         headers: getHeaders(),
       });
