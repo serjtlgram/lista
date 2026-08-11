@@ -1776,10 +1776,7 @@ episodes_total: %d`, title, details.CastRoles, details.Country, details.Budget, 
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
-		"thinking": map[string]interface{}{
-			"type": "disabled",
-		},
-		"reasoning_effort": "none",
+		"reasoning_effort": "low",
 		"temperature":     0.1,
 		"max_tokens":      1024,
 	}
