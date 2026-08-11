@@ -1102,13 +1102,13 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the item from DB to get title, year, category, duration, country
-	var title, category, releaseYear, currentDuration, currentCountry string
+	// Fetch the item from DB to get title, year, category, duration, country, director
+	var title, category, releaseYear, currentDuration, currentCountry, currentDirector string
 	var alreadyEnriched bool
 	err := h.DB.Pool.QueryRow(r.Context(),
-		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(director, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
 		itemID, user.ID,
-	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &alreadyEnriched)
+	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &currentDirector, &alreadyEnriched)
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
 		return
@@ -1128,6 +1128,10 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	if enriched == nil {
 		// TMDB failed or returned nothing (e.g., API key is invalid/missing). Let's create an empty object and let AI guess!
 		enriched = &parser.EnrichedDetails{}
+	}
+
+	if enriched.Director == "" && currentDirector != "" {
+		enriched.Director = currentDirector
 	}
 
 	// Call AI to translate and fill missing data

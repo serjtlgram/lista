@@ -1747,8 +1747,9 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
 		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя единственная задача — перевести и заполнить данные для фильма/сериала "%s" НА РУССКИЙ ЯЗЫК.
 
 СТРОГИЕ ПРАВИЛА ПЕРЕВОДА:
-1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖЕЙ/РОЛЕЙ И ИМЯ РЕЖИССЁРА ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
-   - Английские и латинские имена актёров и режиссёров транслитерируй/переведи на русский (например: 'Greg Plageman' -> 'Грег Плейджман', 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг').
+1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖИ/РОЛИ И ИМЕНА РЕЖИССЁРОВ/СОЗДАТЕЛЕЙ (director) ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
+   - Английские и латинские имена режиссёров/создателей ОБЯЗАТЕЛЬНО транслитерируй/переведи на русский (например: 'Greg Plageman' -> 'Грег Плейджман', 'Jonathan Nolan' -> 'Джонатан Нолан', 'Christopher Nolan' -> 'Кристофер Нолан').
+   - Английские и латинские имена актёров транслитерируй/переведи на русский (например: 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг', 'Chloe Grace Moretz' -> 'Хлоя Грейс Морец').
    - Имена персонажей И ИХ ПРОЗВИЩА ОБЯЗАТЕЛЬНО переведи на русский кириллицей (например: 'Vova Suvorov Adidas' -> 'Вова Суворов «Адидас»', 'Andrey Vasilyev Palto' -> 'Андрей Васильев «Пальто»', 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон').
    - В строках director и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
 2. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар).
@@ -1942,6 +1943,9 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		Budget           int64   `json:"budget"`
 		Runtime          int     `json:"runtime"`
 		EpisodeRunTime   []int   `json:"episode_run_time"`
+		CreatedBy []struct {
+			Name string `json:"name"`
+		} `json:"created_by"`
 		ProductionCountries []struct {
 			Name string `json:"name"`
 		} `json:"production_countries"`
@@ -2004,11 +2008,18 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		}
 	}
 
-	// Director from crew
+	// Director from crew or created_by
 	var directors []string
 	for _, c := range detail.Credits.Crew {
 		if strings.EqualFold(c.Job, "Director") && c.Name != "" {
 			directors = append(directors, strings.TrimSpace(c.Name))
+		}
+	}
+	if len(directors) == 0 {
+		for _, creator := range detail.CreatedBy {
+			if creator.Name != "" {
+				directors = append(directors, strings.TrimSpace(creator.Name))
+			}
 		}
 	}
 	if len(directors) > 0 {
