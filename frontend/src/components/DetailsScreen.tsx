@@ -564,7 +564,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         const totalEps = item.episodes || item.episodes_total;
         if (!isMovieCat && durNum > 300 && totalEps && totalEps > 0) {
           const avgDur = Math.round(durNum / totalEps);
-          durationDisplay = `~${avgDur} ${t.details.minutes_short} / сер.`;
+          durationDisplay = `${avgDur} ${t.details.minutes_short}`;
         } else {
           durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
         }

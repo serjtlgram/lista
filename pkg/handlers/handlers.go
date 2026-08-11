@@ -1196,7 +1196,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	durationUpdated := false
-	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-") {
+	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-" || currentDuration == "0" || strings.Contains(currentDuration, "1619")) {
 		updateQuery += fmt.Sprintf(", duration = $%d", argIdx)
 		updateArgs = append(updateArgs, enriched.Duration)
 		argIdx++
@@ -1222,7 +1222,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"cast_roles":     enriched.CastRoles,
 		"budget":         enriched.Budget,
 	}
-	if durationUpdated {
+	if durationUpdated || enriched.Duration != "" {
 		ret["duration"] = enriched.Duration
 	}
 	if countryUpdated || enriched.Country != "" {

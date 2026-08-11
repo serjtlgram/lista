@@ -1652,28 +1652,31 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 		targetLangName = "Ukrainian"
 	}
 
-	prompt := fmt.Sprintf(`You are a translator and metadata expert for movies/shows.
-Title: "%s". Target language: %s.
+	prompt := fmt.Sprintf(`You are a top-tier translation AI for movie/show metadata.
+Title: "%s". Target language: %s (Language code: %s).
 
-CRITICAL INSTRUCTIONS:
-1. Translate ALL actor names AND character/role names into %s Cyrillic alphabet (e.g., translate 'Sofiya Yanovna' -> 'София Яновна', 'Dasha Kanayeva' -> 'Даша Канаева', 'Pavel' -> 'Павел', 'Mikhail Jackovich' -> 'Михаил Джекович'). NEVER leave character/role names in English/Latin script when target language is %s!
-2. Format cast_roles strictly as: Actor — Role, Actor — Role
-3. Translate air_status (e.g., "Ended" -> "Завершён", "Returning Series" -> "Выходит").
-4. Translate country into a 2-letter ISO code (e.g. RU, US, GB) or full name in %s.
-5. Translate budget and duration into %s.
+CRITICAL MANDATORY RULES:
+1. TRANSLATE EVERY SINGLE ACTOR NAME AND CHARACTER/ROLE NAME INTO %s (%s CYRILLIC ALPHABET).
+   - Convert English actor names (e.g. 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг').
+   - Convert English character/role names (e.g. 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон', 'Burton Fisher' -> 'Бёртон Фишер', 'Cherise Nuland' -> 'Шериз Нуланд').
+   - DO NOT leave ANY English/Latin letters in cast_roles! Every single word in cast_roles MUST be in %s!
+2. FORMAT cast_roles strictly as: Actor — Role, Actor — Role (up to 8 pairs).
+3. TRANSLATE air_status (e.g. "Ended" -> "Завершён", "Returning Series" -> "Выходит").
+4. TRANSLATE country to a 2-letter ISO code (e.g. US, RU, GB, FR, DE, JP, KR).
+5. DURATION: If duration is empty or "-", you MUST fill it with accurate average episode or movie duration in minutes (e.g. "45 мин", "50 мин").
 
 Return ONLY a valid JSON object matching this structure:
 {
   "cast_roles": "Actor — Role, Actor — Role",
-  "country": "Country string",
+  "country": "2-letter ISO code",
   "budget": "Budget string",
   "air_status": "Air status string",
-  "duration": "Duration string",
+  "duration": "Duration string (e.g. 45 мин)",
   "seasons": 0,
   "episodes_total": 0
 }
 
-Input Data:
+Input Data to translate/fill:
 cast_roles: %s
 country: %s
 budget: %s
@@ -1682,7 +1685,7 @@ duration: %s
 seasons: %d
 episodes_total: %d
 
-Return raw JSON object only.`, title, targetLangName, targetLangName, targetLangName, targetLangName, targetLangName, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+Return raw JSON object only.`, title, targetLangName, lang, targetLangName, targetLangName, targetLangName, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	reqBodyMap := map[string]interface{}{
 		"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
@@ -1887,6 +1890,12 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		}
 		if len(detail.EpisodeRunTime) > 0 && detail.EpisodeRunTime[0] > 0 {
 			result.Duration = fmt.Sprintf("%d мин", detail.EpisodeRunTime[0])
+		} else if detail.Runtime > 0 {
+			if result.EpisodesTotal > 0 && detail.Runtime > 300 {
+				result.Duration = fmt.Sprintf("%d мин", detail.Runtime/result.EpisodesTotal)
+			} else {
+				result.Duration = fmt.Sprintf("%d мин", detail.Runtime)
+			}
 		}
 	} else if mediaType == "movie" {
 		if detail.Runtime > 0 {
@@ -1928,6 +1937,19 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 		if len(allEpisodes) > 0 {
 			if b, err := json.Marshal(allEpisodes); err == nil {
 				result.EpisodesList = string(b)
+			}
+			if result.Duration == "" {
+				tot := 0
+				cnt := 0
+				for _, ep := range allEpisodes {
+					if ep.RuntimeMin > 0 {
+						tot += ep.RuntimeMin
+						cnt++
+					}
+				}
+				if cnt > 0 {
+					result.Duration = fmt.Sprintf("%d мин", tot/cnt)
+				}
 			}
 		}
 	}
