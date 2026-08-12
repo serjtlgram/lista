@@ -32,15 +32,21 @@ export const getTranslatedStatus = (st: string, cat: string, t: Translations): s
 };
 
 export const getStoredLanguage = (): Language => {
-  const stored = localStorage.getItem('lista_language') as Language;
+  // 1. Check saved user language in localStorage (lista_language, i18nextLng, app_language)
+  const stored = (
+    localStorage.getItem('lista_language') ||
+    localStorage.getItem('i18nextLng') ||
+    localStorage.getItem('app_language')
+  ) as Language;
+
   if (stored && ['ru', 'uk', 'en', 'es'].includes(stored)) {
     return stored;
   }
 
-  // Detect Telegram WebApp user language code if no explicit preference saved!
+  // 2. If NO saved language in localStorage (first run), auto-detect from Telegram WebApp
   try {
     const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
-    if (tgLang) {
+    if (tgLang && typeof tgLang === 'string') {
       const code = tgLang.toLowerCase().slice(0, 2);
       if (code === 'uk' || code === 'ua') return 'uk';
       if (code === 'en') return 'en';
@@ -51,7 +57,7 @@ export const getStoredLanguage = (): Language => {
     console.warn('Telegram language detection error:', e);
   }
 
-  // Also check browser navigator.language as fallback
+  // Also check browser navigator.language as fallback before default fallback
   try {
     const navLang = navigator.language?.toLowerCase().slice(0, 2);
     if (navLang === 'uk' || navLang === 'ua') return 'uk';
@@ -60,11 +66,14 @@ export const getStoredLanguage = (): Language => {
     if (navLang === 'ru') return 'ru';
   } catch (e) {}
 
-  return 'ru';
+  // Fallback language if tgLang is empty or unsupported
+  return 'en';
 };
 
 export const setStoredLanguage = (lang: Language): void => {
   localStorage.setItem('lista_language', lang);
+  localStorage.setItem('i18nextLng', lang);
+  localStorage.setItem('app_language', lang);
   try {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.CloudStorage) {
