@@ -232,6 +232,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [assignedLists, setAssignedLists] = useState<UserList[]>([]);
   const [isEnriching, setIsEnriching] = useState(false);
 
+  const currentUsername = (
+    (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.username || ''
+  ).toLowerCase().replace(/^@/, '');
+  const isAlwaysActiveUser = ['neznayca', 'znayca'].includes(currentUsername);
+
   const refreshAssignedLists = () => {
     const allLists = getLists();
     const favIds = getFavoriteIds();
@@ -813,7 +818,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               <button
                 type="button"
                 onClick={() => handleProtectedAction(async () => {
-                  if (item.ai_enriched || isEnriching) return;
+                  if ((item.ai_enriched && !isAlwaysActiveUser) || isEnriching) return;
                   setIsEnriching(true);
                   try {
                     const result = await api.enrichItem(item.id, language);
@@ -840,10 +845,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     setIsEnriching(false);
                   }
                 })}
-                disabled={item.ai_enriched || isEnriching}
-                title={item.ai_enriched ? 'Данные загружены' : 'Обогатить через ИИ'}
+                disabled={isEnriching || (item.ai_enriched && !isAlwaysActiveUser)}
+                title={item.ai_enriched && !isAlwaysActiveUser ? 'Данные загружены' : 'Обогатить через ИИ'}
                 className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
-                  item.ai_enriched
+                  item.ai_enriched && !isAlwaysActiveUser
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default opacity-80'
                     : isEnriching
                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-wait animate-pulse'
@@ -852,7 +857,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               >
                 {isEnriching ? (
                   <Wand2 className="w-4 h-4 text-amber-300 animate-spin" />
-                ) : item.ai_enriched ? (
+                ) : item.ai_enriched && !isAlwaysActiveUser ? (
                   <Check className="w-4 h-4 text-emerald-400" />
                 ) : (
                   <Wand2 className="w-4 h-4 text-amber-400" />
