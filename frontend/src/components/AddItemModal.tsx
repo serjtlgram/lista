@@ -264,6 +264,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
     if (sug.genre) setGenre(getTranslatedGenreFull(sug.genre, t, targetCat));
     if (sug.release_year) setReleaseYear(sug.release_year);
+    if (sug.country) setCountry(sug.country);
     if (sug.poster_url) setPosterUrl(sug.poster_url);
     if (sug.youtube_url) setYoutubeUrl(sug.youtube_url);
     if (sug.description) setDescription(sug.description);

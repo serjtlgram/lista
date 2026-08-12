@@ -640,8 +640,8 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	titleTrimmed := strings.TrimSpace(media.Title)
 	catEn := mapCategoryToEn(media.Category)
 
-	// Enrich missing data via catalog search (especially for PublicRating)
-	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" {
+	// Enrich missing data via catalog search (especially for PublicRating and Country)
+	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" || media.Country == "" {
 		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil)
 		if len(onlineResults) > 0 {
 			var best models.CatalogSearchResult
@@ -696,6 +696,10 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 				media.Country = best.Country
 			}
 		}
+	}
+
+	if media.Country != "" {
+		media.Country = mapCountryToFlag(media.Country)
 	}
 
 	itemUUID := uuid.New().String()

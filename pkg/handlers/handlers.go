@@ -1114,8 +1114,6 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
 	if h.TMDBAPIKey == "" {
 		http.Error(w, `{"error":"TMDB API key not configured"}`, http.StatusServiceUnavailable)
 		return
@@ -1134,8 +1132,8 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		enriched.Director = currentDirector
 	}
 
-	// Call AI to translate and fill missing data
-	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, enriched)
+	// Call AI to translate and fill missing data with context (title, releaseYear, currentCountry)
+	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, releaseYear, currentCountry, enriched)
 
 	// If after AI it's STILL basically empty, then return no_data
 	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Budget == "" && enriched.Duration == "" {
@@ -1193,15 +1191,6 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		updateArgs = append(updateArgs, enriched.Budget)
 		argIdx++
 	}
-	
-	countryUpdated := false
-	if enriched.Country != "" && (currentCountry == "" || len(currentCountry) > 2) {
-		enriched.Country = mapCountryToFlag(enriched.Country)
-		updateQuery += fmt.Sprintf(", country = $%d", argIdx)
-		updateArgs = append(updateArgs, enriched.Country)
-		argIdx++
-		countryUpdated = true
-	}
 
 	durationUpdated := false
 	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-" || currentDuration == "0" || strings.Contains(currentDuration, "1619")) {
@@ -1235,9 +1224,6 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if durationUpdated || enriched.Duration != "" {
 		ret["duration"] = enriched.Duration
-	}
-	if countryUpdated || enriched.Country != "" {
-		ret["country"] = enriched.Country
 	}
 
 	w.Header().Set("Content-Type", "application/json")

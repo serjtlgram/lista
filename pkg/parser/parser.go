@@ -1638,7 +1638,7 @@ type EnrichedDetails struct {
 }
 
 // TranslateAndFillWithAI uses Fireworks AI to translate metadata into the requested language and fill gaps.
-func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedDetails) {
+func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country string, details *EnrichedDetails) {
 	if fireworksKey == "" || details == nil {
 		return
 	}
@@ -1646,7 +1646,7 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 	var prompt string
 	switch lang {
 	case "uk":
-		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти та заповнити дані для фільму/серіалу "%s" УКРАЇНСЬКОЮ МОВОЮ.
+		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти та заповнити дані для фільму/серіалу "%s" (%s року виходу, країна: %s) УКРАЇНСЬКОЮ МОВОЮ.
 
 СУВОРІ ПРАВИЛА ПЕРЕКЛАДУ:
 1. УСІ ІМЕНА АКТОРІВ, УСІ ІМЕНА ПЕРСОНАЖІВ/РОЛЕЙ ТА ІМ'Я РЕЖИСЕРА ОБОВ'ЯЗКОВО ПЕРЕКЛАДИ УКРАЇНСЬКОЮ МОВОЮ КИРИЛИЦЕЮ!
@@ -1654,14 +1654,12 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
    - У полях director та cast_roles НЕ ПОВИННО БУТИ ЖОДНОГО АНГЛІЙСЬКОГО/ЛАТИНСЬКОГО СЛОВА!
 2. Поле cast_roles форматуй так: Актор — Роль, Актор — Роль (до 8 пар).
 3. Переклади air_status українською ("Завершено", "Виходить", "Скасовано").
-4. Країну country вкажи 2-літерним ISO кодом (наприклад: US, RU, GB, FR, DE, UA).
-5. Тривалість duration вкажи у хвилинах (наприклад: "45 хв").
+4. Тривалість duration вкажи у хвилинах (наприклад: "45 хв").
 
 Поверни ВИКЛЮЧНО JSON без разметки:
 {
   "director": "Ім'я Режисера",
   "cast_roles": "Актор — Роль, Актор — Роль",
-  "country": "UA",
   "budget": "Бюджет",
   "air_status": "Завершено",
   "duration": "45 хв",
@@ -1670,30 +1668,30 @@ func TranslateAndFillWithAI(fireworksKey, lang, title string, details *EnrichedD
 }
 
 Вхідні дані:
+Назва: %s
+Рік виходу: %s
+Країна: %s
 director: %s
 cast_roles: %s
-country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, details.Director, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "es":
-		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película/serie "%s" EN ESPAÑOL.
+		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película/serie "%s" (año %s, país: %s) EN ESPAÑOL.
 
 REGLAS OBLIGATORIAS:
 1. Traduce todos los nombres de actores, personajes/roles y del director al español. ¡NO dejes nombres en inglés!
 2. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
 3. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
-4. Convierte country a un código ISO de 2 letras (ejemplo: US, RU, ES, MX, AR).
-5. La duración duration debe estar en minutos (ejemplo: "45 min").
+4. La duración duration debe estar en minutos (ejemplo: "45 min").
 
 Devuelve ÚNICAMENTE un objeto JSON:
 {
   "director": "Nombre del director",
   "cast_roles": "Actor — Rol, Actor — Rol",
-  "country": "ES",
   "budget": "Presupuesto",
   "air_status": "Finalizada",
   "duration": "45 min",
@@ -1702,30 +1700,30 @@ Devuelve ÚNICAMENTE un objeto JSON:
 }
 
 Datos de entrada:
+Título: %s
+Año de estreno: %s
+País: %s
 director: %s
 cast_roles: %s
-country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, details.Director, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "en":
-		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to translate and complete metadata for "%s" IN ENGLISH.
+		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to translate and complete metadata for "%s" (%s release year, country: %s) IN ENGLISH.
 
 MANDATORY RULES:
 1. All actor names, character/role names, and director names must be in English / Latin script.
 2. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
 3. Translate air_status to English ("Ended", "Returning Series", "Canceled").
-4. Convert country to a 2-letter ISO code (e.g. US, RU, GB, FR, DE, CA).
-5. Set duration in minutes (e.g. "45 min").
+4. Set duration in minutes (e.g. "45 min").
 
 Return ONLY a JSON object:
 {
   "director": "Director Name",
   "cast_roles": "Actor — Role, Actor — Role",
-  "country": "US",
   "budget": "Budget",
   "air_status": "Ended",
   "duration": "45 min",
@@ -1734,17 +1732,19 @@ Return ONLY a JSON object:
 }
 
 Input Data:
+Title: %s
+Release Year: %s
+Country: %s
 director: %s
 cast_roles: %s
-country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, details.Director, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	default: // "ru" or any other
-		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя единственная задача — перевести и заполнить данные для фильма/сериала "%s" НА РУССКИЙ ЯЗЫК.
+		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя единственная задача — перевести и заполнить данные для фильма/сериала "%s" (%s года выхода, страна: %s) НА РУССКИЙ ЯЗЫК.
 
 СТРОГИЕ ПРАВИЛА ПЕРЕВОДА:
 1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖИ/РОЛИ И ИМЕНА РЕЖИССЁРОВ/СОЗДАТЕЛЕЙ (director) ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
@@ -1754,14 +1754,12 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
    - В строках director и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
 2. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар).
 3. Переведи статус air_status на русский (например: "Завершён", "Выходит", "Отменён").
-4. Страну country укажи 2-буквенным ISO-кодом (например: RU, US, GB, FR, DE, JP).
-5. Длительность duration укажи в минутах (например: "45 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
+4. Длительность duration укажи в минутах (например: "45 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
 
 Ответь ИСКЛЮЧИТЕЛЬНО в формате JSON без markdown:
 {
   "director": "Грег Плейджман",
   "cast_roles": "Актёр — Роль, Актёр — Роль",
-  "country": "RU",
   "budget": "120 млн $",
   "air_status": "Завершён",
   "duration": "45 мин",
@@ -1770,14 +1768,16 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
 }
 
 Входные данные:
+Название: %s
+Год выхода: %s
+Страна: %s
 director: %s
 cast_roles: %s
-country: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, details.Director, details.CastRoles, details.Country, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 	}
 
 	reqBodyMap := map[string]interface{}{
@@ -1830,7 +1830,6 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
 		var parsed struct {
 			Director      string `json:"director"`
 			CastRoles     string `json:"cast_roles"`
-			Country       string `json:"country"`
 			Budget        string `json:"budget"`
 			AirStatus     string `json:"air_status"`
 			Duration      string `json:"duration"`
@@ -1843,9 +1842,6 @@ episodes_total: %d`, title, details.Director, details.CastRoles, details.Country
 			}
 			if parsed.CastRoles != "" {
 				details.CastRoles = parsed.CastRoles
-			}
-			if parsed.Country != "" {
-				details.Country = parsed.Country
 			}
 			if parsed.Budget != "" {
 				details.Budget = parsed.Budget

@@ -360,7 +360,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         .searchCatalog(item.title, item.category)
         .then((results) => {
           if (results && results.length > 0) {
-            const match = results.find(r => r.public_rating || r.author || r.isbn) || results[0];
+            const match = results.find(r => (!item.country && r.country) || r.public_rating || r.author || r.isbn) || results[0];
             if (match) {
               const updates: Partial<Item> = {};
               if (!item.public_rating && match.public_rating) updates.public_rating = match.public_rating;
@@ -827,7 +827,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
                       if (result.budget) updates.budget = result.budget;
                       if (result.duration) updates.duration = result.duration;
-                      if ((result as any).country) updates.country = (result as any).country;
                       if ((result as any).director) updates.director = (result as any).director;
                       onUpdateItem(item.id, updates);
                       setToastMessage('✨ Данные обновлены!');
