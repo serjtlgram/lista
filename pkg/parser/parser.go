@@ -1781,11 +1781,12 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 	}
 
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b",
+		"model": "accounts/fireworks/models/gpt-oss-120b",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
+		"reasoning_effort": "low",
 		"temperature":     0.1,
 		"max_tokens":      1024,
 	}
