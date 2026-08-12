@@ -642,6 +642,10 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 
 	// Enrich missing data via catalog search (especially for PublicRating and Country)
 	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" || media.Country == "" {
+		langCode := ""
+		if from != nil {
+			langCode = from.LanguageCode
+		}
 		targetLang := parser.DetectTargetLanguage(titleTrimmed, langCode)
 		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil, targetLang)
 		if len(onlineResults) > 0 {

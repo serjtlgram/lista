@@ -17,6 +17,7 @@ import (
 
 	"lista-backend/pkg/auth"
 	"lista-backend/pkg/models"
+	"lista-backend/pkg/parser"
 )
 
 func normalizeTitleForComparison(s string) string {
