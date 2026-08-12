@@ -747,7 +747,8 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if (directorVal == "" || castVal == "" || pubRatingVal == "" || countryVal == "") && h.TMDBAPIKey != "" {
-				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat)
+				targetLang := parser.DetectTargetLanguage(titleTrimmed, "")
+				tmdbResults := fetchTMDbInline(titleTrimmed, h.TMDBAPIKey, cat, targetLang)
 				if len(tmdbResults) > 0 {
 					var best models.CatalogSearchResult
 					found := false

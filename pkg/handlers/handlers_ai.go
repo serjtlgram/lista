@@ -509,7 +509,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		wg.Add(1)
 		go func(idx int, tName string) {
 			defer wg.Done()
-			onlineRes := h.searchOnlineCatalog(tName, catEn, nil)
+			targetLang := parser.DetectTargetLanguage(tName, "")
+			onlineRes := h.searchOnlineCatalog(tName, catEn, nil, targetLang)
 			if len(onlineRes) > 0 {
 				bestIdx := 0
 				for j, res := range onlineRes {

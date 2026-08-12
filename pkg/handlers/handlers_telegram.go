@@ -642,7 +642,8 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 
 	// Enrich missing data via catalog search (especially for PublicRating and Country)
 	if media.PublicRating == "" || media.Description == "" || media.PosterURL == "" || media.Country == "" {
-		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil)
+		targetLang := parser.DetectTargetLanguage(titleTrimmed, langCode)
+		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil, targetLang)
 		if len(onlineResults) > 0 {
 			var best models.CatalogSearchResult
 			found := false
@@ -1326,6 +1327,7 @@ func (h *Handler) handleChosenInlineResult(cir *struct {
 func (h *Handler) searchInlineResults(query string, langCode string) []models.CatalogSearchResult {
 	query = strings.TrimSpace(query)
 	categoryFilter, cleanQuery := parseSearchQuery(query)
+	targetLang := parser.DetectTargetLanguage(cleanQuery, langCode)
 
 	type resStruct struct {
 		items []models.CatalogSearchResult
@@ -1349,26 +1351,38 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 		go func() { ch <- resStruct{items: parser.SearchGamesMultiSource(cleanQuery)} }()
 
 	case "movie":
-		numSources = 5
+		if targetLang == "ru-RU" {
+			numSources = 5
+			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "movie")} }()
+		} else {
+			numSources = 4
+		}
 		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movie")} }()
-		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "movie")} }()
-		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "movie")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "movie", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
 		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "movie")} }()
 
 	case "show":
-		numSources = 5
+		if targetLang == "ru-RU" {
+			numSources = 5
+			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "show")} }()
+		} else {
+			numSources = 4
+		}
 		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "show")} }()
-		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "show")} }()
-		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "show")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "show", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
 		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "show")} }()
 
 	default: // Default mode: Movies & Series only
-		numSources = 5
+		if targetLang == "ru-RU" {
+			numSources = 5
+			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "all")} }()
+		} else {
+			numSources = 4
+		}
 		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movies_and_shows")} }()
-		go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "all")} }()
-		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "all")} }()
+		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "all", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
 		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
 	}

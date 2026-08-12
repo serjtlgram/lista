@@ -50,6 +50,12 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 	catEn := mapCategoryToEn(category)
 
+	langParam := strings.TrimSpace(r.URL.Query().Get("lang"))
+	if langParam == "" {
+		langParam = r.Header.Get("Accept-Language")
+	}
+	targetLang := parser.DetectTargetLanguage(q, langParam)
+
 	// If no category specified or "all", check if search query contains category trigger words
 	if catEn == "" || catEn == "all" {
 		if parsedCat, cleanedQ := parseSearchQuery(q); parsedCat != "" {
@@ -59,7 +65,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Check Search Cache
-	cacheKey := fmt.Sprintf("catalog:%s:%s", strings.ToLower(q), catEn)
+	cacheKey := fmt.Sprintf("catalog:%s:%s:%s", strings.ToLower(q), catEn, targetLang)
 	if cachedResults, found := h.SearchCache.GetCatalogResults(cacheKey); found {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(cachedResults)
@@ -70,7 +76,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	dbResults := h.searchDBCatalog(r.Context(), q, catEn)
 
 	// 4. Online search filtered by category
-	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults)
+	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults, targetLang)
 
 	// 5. Merge results adhering strictly to category order & limits
 	finalResults := mergeSearchResults(dbResults, onlineResults, catEn)
@@ -211,7 +217,8 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 				}
 			}
 			if (item.Director == "" || item.Cast == "" || item.PublicRating == "" || item.Country == "") && h.TMDBAPIKey != "" {
-				tmdb := fetchTMDbInline(title, h.TMDBAPIKey, cat)
+				targetLang := parser.DetectTargetLanguage(title, "")
+				tmdb := fetchTMDbInline(title, h.TMDBAPIKey, cat, targetLang)
 				if len(tmdb) > 0 {
 					best := tmdb[0]
 					if item.Director == "" && best.Director != "" {
@@ -347,7 +354,7 @@ func (h *Handler) updateItemMetadataInDB(title string, cat string, director stri
 	}
 }
 
-func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models.CatalogSearchResult) []models.CatalogSearchResult {
+func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models.CatalogSearchResult, targetLang string) []models.CatalogSearchResult {
 	var items []models.CatalogSearchResult
 
 	parsedCat, cleanedQ := parseSearchQuery(q)
@@ -358,6 +365,10 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 		}
 	}
 
+	if targetLang == "" {
+		targetLang = parser.DetectTargetLanguage(q, "")
+	}
+
 	switch catEn {
 	case "book":
 		items = parser.SearchBooksMultiSource(q)
@@ -366,8 +377,11 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 		items = parser.SearchGamesMultiSource(q)
 
 	case "movie":
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "movie")
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "movie")
+		var kinopoisk []models.CatalogSearchResult
+		if targetLang == "ru-RU" {
+			kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "movie")
+		}
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "movie", targetLang)
 		itunes := fetchITunesInline(q, "movie")
 		wiki := fetchWikiInline(q, "movie")
 		for _, item := range append(append(append(kinopoisk, tmdb...), itunes...), wiki...) {
@@ -379,8 +393,11 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 		}
 
 	case "show":
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "show")
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "show")
+		var kinopoisk []models.CatalogSearchResult
+		if targetLang == "ru-RU" {
+			kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "show")
+		}
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "show", targetLang)
 		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
 		wiki := fetchWikiInline(q, "show")
 		for _, item := range append(append(append(kinopoisk, tmdb...), tvmaze...), wiki...) {
@@ -392,8 +409,11 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 		}
 
 	default: // "all" or empty -> Movies and TV series
-		kinopoisk := fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
-		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all")
+		var kinopoisk []models.CatalogSearchResult
+		if targetLang == "ru-RU" {
+			kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
+		}
+		tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all", targetLang)
 		itunes := fetchITunesInline(q, "movie")
 		tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
 
@@ -891,16 +911,21 @@ var tmdbGenreMap = map[int]string{
 	10762: "Мультфильмы", 10763: "Шоу", 10764: "Шоу", 10765: "Фантастика",
 }
 
-func fetchTMDbInline(query string, tmdbKey string, targetCat string) []models.CatalogSearchResult {
+func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang string) []models.CatalogSearchResult {
 	var list []models.CatalogSearchResult
 	tmdbKey = strings.TrimSpace(tmdbKey)
 	if tmdbKey == "" {
 		tmdbKey = "b5f8997a3cfc68383f7a40b3c6628b03"
 	}
 
+	if targetLang == "" {
+		targetLang = parser.DetectTargetLanguage(query, "")
+	}
+
 	apiURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?query=%s&language=ru-RU&page=1",
+		"https://api.themoviedb.org/3/search/multi?query=%s&language=%s&page=1",
 		url.QueryEscape(query),
+		url.QueryEscape(targetLang),
 	)
 	if len(tmdbKey) < 50 {
 		apiURL += "&api_key=" + tmdbKey

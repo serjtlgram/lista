@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"lista-backend/pkg/models"
 	"lista-backend/pkg/youtube"
@@ -179,7 +180,8 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 
 	// 4a. TMDb Search Fallback: Query TMDb search API ONLY for movies/shows
 	if media.Category != "book" && media.Title != "" {
-		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear); err == nil && enriched != nil && enriched.Title != "" {
+		targetLang := DetectTargetLanguage(media.Title, "")
+		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear, targetLang); err == nil && enriched != nil && enriched.Title != "" {
 			if enriched.PosterURL != "" {
 				media.PosterURL = enriched.PosterURL
 			}
@@ -692,15 +694,61 @@ func extractPersonNames(obj interface{}, maxCount int) string {
 	return strings.Join(names, ", ")
 }
 
-// TMDb API Integration
-func FetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string) (*ExtractedMedia, error) {
-	return fetchTMDbByExternalID(client, tmdbKey, externalID)
+// DetectTargetLanguage determines the target locale (uk-UA, ru-RU, es-ES, en-US) based on query content and user language code.
+func DetectTargetLanguage(query string, userLangCode string) string {
+	uLang := strings.ToLower(strings.TrimSpace(userLangCode))
+
+	// 1. Check for specific Ukrainian letters (і, ї, є, ґ in any case)
+	for _, r := range query {
+		switch r {
+		case 'і', 'І', 'ї', 'Ї', 'є', 'Є', 'ґ', 'Ґ':
+			return "uk-UA"
+		}
+	}
+
+	// 2. Check for general Cyrillic
+	hasCyrillic := false
+	for _, r := range query {
+		if unicode.Is(unicode.Cyrillic, r) {
+			hasCyrillic = true
+			break
+		}
+	}
+
+	if hasCyrillic {
+		if uLang == "uk" || strings.HasPrefix(uLang, "uk") || uLang == "ua" {
+			return "uk-UA"
+		}
+		return "ru-RU"
+	}
+
+	// 3. No Cyrillic found -> Latin / non-Cyrillic
+	switch {
+	case strings.HasPrefix(uLang, "es"):
+		return "es-ES"
+	case strings.HasPrefix(uLang, "uk") || uLang == "ua":
+		return "uk-UA"
+	case strings.HasPrefix(uLang, "ru"):
+		return "ru-RU"
+	case strings.HasPrefix(uLang, "en"):
+		return "en-US"
+	default:
+		return "en-US"
+	}
 }
 
-func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string) (*ExtractedMedia, error) {
+// TMDb API Integration
+func FetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string, targetLang string) (*ExtractedMedia, error) {
+	return fetchTMDbByExternalID(client, tmdbKey, externalID, targetLang)
+}
+
+func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID string, targetLang string) (*ExtractedMedia, error) {
+	if targetLang == "" {
+		targetLang = "ru-RU"
+	}
 	findURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/find/%s?external_source=imdb_id&language=ru-RU",
-		externalID,
+		"https://api.themoviedb.org/3/find/%s?external_source=imdb_id&language=%s",
+		externalID, url.QueryEscape(targetLang),
 	)
 	if len(tmdbKey) < 50 {
 		findURL += "&api_key=" + tmdbKey
@@ -739,23 +787,26 @@ func fetchTMDbByExternalID(client *http.Client, tmdbKey string, externalID strin
 	}
 
 	if len(res.MovieResults) > 0 {
-		return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(res.MovieResults[0].ID), "movie")
+		return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(res.MovieResults[0].ID), "movie", targetLang)
 	}
 	if len(res.TVResults) > 0 {
-		return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(res.TVResults[0].ID), "tv")
+		return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(res.TVResults[0].ID), "tv", targetLang)
 	}
 
 	return nil, fmt.Errorf("no TMDb match found for %s", externalID)
 }
 
-func FetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string) (*ExtractedMedia, error) {
-	return fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType)
+func FetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string, targetLang string) (*ExtractedMedia, error) {
+	return fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType, targetLang)
 }
 
-func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string) (*ExtractedMedia, error) {
+func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaType string, targetLang string) (*ExtractedMedia, error) {
+	if targetLang == "" {
+		targetLang = "ru-RU"
+	}
 	detailsURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/%s/%s?language=ru-RU&append_to_response=credits,videos",
-		mediaType, tmdbID,
+		"https://api.themoviedb.org/3/%s/%s?language=%s&append_to_response=credits,videos",
+		mediaType, tmdbID, url.QueryEscape(targetLang),
 	)
 	if len(tmdbKey) < 50 {
 		detailsURL += "&api_key=" + tmdbKey
@@ -907,9 +958,13 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 	return media, nil
 }
 
-func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year string) (*ExtractedMedia, error) {
+func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year string, targetLang string) (*ExtractedMedia, error) {
+	if targetLang == "" {
+		targetLang = DetectTargetLanguage(title, "")
+	}
 	queryURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?language=ru-RU&query=%s",
+		"https://api.themoviedb.org/3/search/multi?language=%s&query=%s",
+		url.QueryEscape(targetLang),
 		url.QueryEscape(title),
 	)
 	if len(tmdbKey) < 50 {
