@@ -79,7 +79,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults, targetLang)
 
 	// 5. Merge results adhering strictly to category order & limits
-	finalResults := mergeSearchResults(dbResults, onlineResults, catEn)
+	finalResults := mergeSearchResults(dbResults, onlineResults, catEn, targetLang)
 
 	// Cache final results
 	h.SearchCache.Set(cacheKey, finalResults)
@@ -474,7 +474,7 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 	return items
 }
 
-func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn string) []models.CatalogSearchResult {
+func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn string, targetLang string) []models.CatalogSearchResult {
 	movieBucket := []models.CatalogSearchResult{}
 	showBucket := []models.CatalogSearchResult{}
 	bookBucket := []models.CatalogSearchResult{}
@@ -485,7 +485,12 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 	seenBook := make(map[string]int)
 	seenGame := make(map[string]int)
 
-	allRaw := append(dbItems, onlineItems...)
+	var allRaw []models.CatalogSearchResult
+	if targetLang != "ru-RU" && len(onlineItems) > 0 {
+		allRaw = append(onlineItems, dbItems...)
+	} else {
+		allRaw = append(dbItems, onlineItems...)
+	}
 
 	for _, item := range allRaw {
 		normCat := mapCategoryToEn(item.Category)
@@ -922,8 +927,16 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 		targetLang = parser.DetectTargetLanguage(query, "")
 	}
 
+	endpoint := "search/multi"
+	if targetCat == "movie" {
+		endpoint = "search/movie"
+	} else if targetCat == "show" || targetCat == "tv" {
+		endpoint = "search/tv"
+	}
+
 	apiURL := fmt.Sprintf(
-		"https://api.themoviedb.org/3/search/multi?query=%s&language=%s&page=1",
+		"https://api.themoviedb.org/3/%s?query=%s&language=%s&include_adult=false&page=1",
+		endpoint,
 		url.QueryEscape(query),
 		url.QueryEscape(targetLang),
 	)
@@ -988,7 +1001,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 			}
 
 			cat := "movie"
-			if r.MediaType == "tv" {
+			if r.MediaType == "tv" || targetCat == "show" || targetCat == "tv" {
 				cat = "show"
 			}
 
@@ -1021,7 +1034,16 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 				}
 			}
 
-			rawID := fmt.Sprintf("tmdb_%s_%d", r.MediaType, r.ID)
+			mediaType := r.MediaType
+			if mediaType == "" {
+				if cat == "show" {
+					mediaType = "tv"
+				} else {
+					mediaType = "movie"
+				}
+			}
+
+			rawID := fmt.Sprintf("tmdb_%s_%d", mediaType, r.ID)
 			itemID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(rawID)).String()
 
 			pubRating := ""
@@ -1041,9 +1063,9 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 			}
 
 			wg.Add(1)
-			go func(idx int, tmdbID int, mediaType string, bItem models.CatalogSearchResult) {
+			go func(idx int, tmdbID int, mType string, bItem models.CatalogSearchResult) {
 				defer wg.Done()
-				if details, err := parser.FetchTMDbDetails(client, tmdbKey, strconv.Itoa(tmdbID), mediaType); err == nil && details != nil {
+				if details, err := parser.FetchTMDbDetails(client, tmdbKey, strconv.Itoa(tmdbID), mType, targetLang); err == nil && details != nil {
 					if details.Director != "" {
 						bItem.Director = details.Director
 					}

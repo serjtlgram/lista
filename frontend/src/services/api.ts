@@ -1,11 +1,13 @@
 import { Item, UserProfile, StatsData, CatalogItem } from '../types';
 import { enqueueAction, SyncAction, purgeOrphanedQueue } from './syncQueue';
+import { getStoredLanguage } from './i18n';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://129.151.217.58.nip.io';
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept-Language': getStoredLanguage(),
   };
 
   const tg = (window as any).Telegram?.WebApp;
@@ -130,10 +132,11 @@ export const api = {
     }
   },
 
-  async searchCatalog(query: string, category?: string): Promise<any[]> {
+  async searchCatalog(query: string, category?: string, lang?: string): Promise<any[]> {
     try {
       if (!query || query.length < 2) return [];
-      const params = new URLSearchParams({ q: query });
+      const currentLang = lang || getStoredLanguage();
+      const params = new URLSearchParams({ q: query, lang: currentLang });
       if (category) params.append('category', category);
 
       const res = await fetch(`${API_BASE}/api/catalog/search?${params.toString()}`, { headers: getHeaders() });
