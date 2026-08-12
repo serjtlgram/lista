@@ -123,7 +123,7 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	// 1. Check if IMDb ID is in URL
 	if matches := imdbIDRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		imdbID := matches[1]
-		if tmdbMedia, err := fetchTMDbByExternalID(client, tmdbKey, imdbID); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+		if tmdbMedia, err := fetchTMDbByExternalID(client, tmdbKey, imdbID, ""); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
 			enrichYouTubeTrailer(youtubeKey, tmdbMedia)
 			tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
 			return tmdbMedia, nil
@@ -134,7 +134,7 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	if matches := tmdbIDRegex.FindStringSubmatch(rawURL); len(matches) > 2 {
 		mediaType := matches[1] // "movie" or "tv"
 		tmdbID := matches[2]
-		if tmdbMedia, err := fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+		if tmdbMedia, err := fetchTMDbDetails(client, tmdbKey, tmdbID, mediaType, ""); err == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
 			enrichYouTubeTrailer(youtubeKey, tmdbMedia)
 			tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
 			return tmdbMedia, nil
@@ -1015,12 +1015,12 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 				}
 				
 				if itemYear == year {
-					return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
+					return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
 				}
 				
 				if itemYearInt, err := strconv.Atoi(itemYear); err == nil && yearInt > 0 {
 					if itemYearInt == yearInt-1 || itemYearInt == yearInt+1 {
-						return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
+						return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
 					}
 				}
 			}
@@ -1031,7 +1031,7 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 
 	for _, item := range searchRes.Results {
 		if item.MediaType == "movie" || item.MediaType == "tv" {
-			return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType)
+			return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
 		}
 	}
 
