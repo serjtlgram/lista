@@ -26,6 +26,7 @@ const FOLDERS_KEY = 'lista_list_folders';
 const FOLDERS_TS_KEY = 'lista_list_folders_ts';
 
 const FAVORITES_LIST_ID = 'favorites';
+export const UNCATEGORIZED_ID = 'uncategorized';
 export const DEFAULT_FOLDER_ID = 'misc';
 
 export const DEFAULT_FOLDERS: ListFolder[] = [

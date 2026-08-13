@@ -18,6 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   Wand2,
+  Inbox,
 } from 'lucide-react';
 import { Item } from '../types';
 import {
@@ -34,8 +35,10 @@ import {
   createFolder,
   renameFolder,
   deleteFolder,
+  deleteFolder,
   removeItemFromList,
   FAVORITES_ID,
+  UNCATEGORIZED_ID,
   DEFAULT_FOLDER_ID,
 } from '../services/lists';
 import { getFavoriteIds, setFavoriteIds, toggleFavorite } from '../services/favorites';
@@ -301,7 +304,9 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     };
   }, [dragState?.list.id]);
 
-  const currentList = lists.find((l) => l.id === activeSelectedListId) || lists[0];
+  const currentList = activeSelectedListId === UNCATEGORIZED_ID 
+    ? { id: UNCATEGORIZED_ID, name: 'Неразобрано', isDefault: true, itemIds: [], createdAt: '', folderId: 'all' } as UserList
+    : lists.find((l) => l.id === activeSelectedListId) || lists[0];
 
   const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>(() => {
     const saved = localStorage.getItem('lista_lists_sort_by');
@@ -324,9 +329,24 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   // Get items belonging to selected list
   const favoriteIds = getFavoriteIds();
+  
+  // Calculate uncategorized items (not in ANY custom user list)
+  const categorizedItemIds = new Set<string>();
+  lists.forEach(list => {
+    if (!list.isDefault && list.id !== FAVORITES_ID && list.id !== UNCATEGORIZED_ID) {
+      list.itemIds.forEach(id => categorizedItemIds.add(id));
+    }
+  });
+  
+  const uncategorizedItems = items.filter(item => !categorizedItemIds.has(item.id));
+  const uncategorizedCount = uncategorizedItems.length;
+
   const listItems = items.filter((item) => {
     if (currentList.id === FAVORITES_ID) {
       return favoriteIds.includes(item.id);
+    }
+    if (currentList.id === UNCATEGORIZED_ID) {
+      return !categorizedItemIds.has(item.id);
     }
     return currentList.itemIds.includes(item.id);
   });
@@ -511,6 +531,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   // Opens Add Items modal and initializes tempSelectedIds
   const handleOpenAddItemsModal = () => {
+    if (currentList.id === UNCATEGORIZED_ID) return;
     triggerHaptic();
     if (currentList.id === FAVORITES_ID) {
       setTempSelectedIds([...getFavoriteIds()]);
@@ -550,6 +571,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     if (currentList.id === FAVORITES_ID) {
       toggleFavorite(item.id);
       showToast((t as any).favorites?.removed || 'Убрано из избранного');
+    } else if (currentList.id === UNCATEGORIZED_ID) {
+      showToast('Добавьте элемент в любой список, чтобы он пропал отсюда');
     } else {
       removeItemFromList(currentList.id, item.id);
       showToast((t as any).lists?.item_removed || 'Удалено из списка');
@@ -815,32 +838,72 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         >
           {/* Tab 1: Favorites (Always accessible only in ALL folder) */}
           {selectedFolderId === 'all' && (
-            <button
-              onClick={() => handleSelectTab(FAVORITES_ID)}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
-                activeSelectedListId === FAVORITES_ID
-                  ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
-                  : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
-              }`}
-              title={t.lists.favorites}
-            >
-              <Star
-                className={`w-4 h-4 ${
+            <>
+              <button
+                onClick={() => handleSelectTab(FAVORITES_ID)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
                   activeSelectedListId === FAVORITES_ID
-                    ? 'fill-white text-white'
-                    : 'fill-amber-400 text-amber-400'
+                    ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                    : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
                 }`}
-              />
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                  activeSelectedListId === FAVORITES_ID
-                    ? 'bg-white/20 text-white'
-                    : 'bg-bgDark text-gray-400'
-                }`}
+                title={t.lists.favorites}
               >
-                {favoriteIds.filter(id => items.some(item => item.id === id)).length}
-              </span>
-            </button>
+                <Star
+                  className={`w-4 h-4 ${
+                    activeSelectedListId === FAVORITES_ID
+                      ? 'fill-white text-white'
+                      : 'fill-amber-400 text-amber-400'
+                  }`}
+                />
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    activeSelectedListId === FAVORITES_ID
+                      ? 'bg-white/20 text-white'
+                      : 'bg-bgDark text-gray-400'
+                  }`}
+                >
+                  {favoriteIds.filter(id => items.some(item => item.id === id)).length}
+                </span>
+              </button>
+
+              {/* UNCATEGORIZED (Неразобрано) */}
+              <button
+                onClick={() => {
+                  if (uncategorizedCount > 0) {
+                    handleSelectTab(UNCATEGORIZED_ID);
+                  }
+                }}
+                disabled={uncategorizedCount === 0}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+                  activeSelectedListId === UNCATEGORIZED_ID
+                    ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
+                    : uncategorizedCount === 0
+                    ? 'bg-cardDark/50 border-cardBorder/50 text-gray-500 opacity-60 pointer-events-none'
+                    : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
+                }`}
+                title="Неразобрано"
+              >
+                <Inbox
+                  className={`w-4 h-4 ${
+                    activeSelectedListId === UNCATEGORIZED_ID
+                      ? 'text-white'
+                      : uncategorizedCount === 0
+                      ? 'text-gray-500'
+                      : 'text-gray-400'
+                  }`}
+                />
+                <span>Неразобрано</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    activeSelectedListId === UNCATEGORIZED_ID
+                      ? 'bg-white/20 text-white'
+                      : 'bg-bgDark text-gray-400'
+                  }`}
+                >
+                  {uncategorizedCount}
+                </span>
+              </button>
+            </>
           )}
 
           {filteredUserLists.length === 0 && (
@@ -931,14 +994,16 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         {/* Top Row: List Title & Item Count */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            {currentList.isDefault ? (
+            {currentList.id === UNCATEGORIZED_ID ? (
+              <Inbox className="w-5 h-5 text-accentViolet shrink-0" />
+            ) : currentList.isDefault ? (
               <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
             ) : (
               <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
             )}
             <div className="min-w-0 flex-1">
               <h2 className="text-base font-bold text-white truncate">
-                {currentList.isDefault ? t.lists.favorites : currentList.name}
+                {currentList.id === UNCATEGORIZED_ID ? 'Неразобрано' : currentList.isDefault ? t.lists.favorites : currentList.name}
               </h2>
               <p className="text-[11px] text-gray-400">
                 {listItems.length} {t.lists.items_count}
@@ -1137,7 +1202,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
         </div>
       ) : (
         <div className="glass-card p-8 rounded-3xl text-center space-y-3 border-dashed">
-          {currentList.isDefault ? (
+          {currentList.id === UNCATEGORIZED_ID ? (
+            <>
+              <Inbox className="w-10 h-10 mx-auto text-accentViolet opacity-60" />
+              <p className="text-xs text-gray-300 font-medium">Здесь пока ничего нет, все элементы разобраны по спискам!</p>
+            </>
+          ) : currentList.isDefault ? (
             <>
               <Star className="w-10 h-10 mx-auto text-amber-400 opacity-60" />
               <p className="text-xs text-gray-300 font-medium">{t.lists.empty_favorites}</p>
