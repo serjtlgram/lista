@@ -502,6 +502,19 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
+	// Auto-seed 20 initial items physically in user's language if user has 0 items
+	if h.DB != nil && h.DB.Pool != nil {
+		var itemCount int
+		errCount := h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM items WHERE user_id = $1", user.ID).Scan(&itemCount)
+		if errCount == nil && itemCount == 0 {
+			userLang := user.LanguageCode
+			if userLang == "" {
+				userLang = r.Header.Get("Accept-Language")
+			}
+			_ = SeedInitialUserData(r.Context(), h.DB, user.ID, userLang)
+		}
+	}
+
 	query := `
 		SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, raw_input, ai_parsed, youtube_url, director, cast_members, author, isbn, public_rating, country, seasons, episodes_total, air_status, episodes_list, cast_roles, age_rating, budget, ai_enriched, started_at, completed_at, created_at, updated_at
 		FROM items
