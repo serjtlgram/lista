@@ -403,7 +403,11 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     if (onOpenRecommendations) {
       onOpenRecommendations(
         currentList.id,
-        currentList.isDefault ? t.lists.favorites : currentList.name,
+        currentList.id === UNCATEGORIZED_ID 
+          ? 'Неразобрано' 
+          : currentList.isDefault 
+            ? t.lists.favorites 
+            : currentList.name,
         listItems
       );
     }
