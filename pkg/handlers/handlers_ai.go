@@ -598,6 +598,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			if card.Category == "" {
 				card.Category = catEn
 			}
+			if card.Country != "" {
+				card.Country = mapCountryToFlag(card.Country)
+			}
 			if !isTitleAlreadyExisting(card.Title) {
 				finalCards = append(finalCards, card)
 			}

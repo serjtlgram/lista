@@ -665,25 +665,25 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 
 	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "" || countryVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
-			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating string
+			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating, dbCountry string
 			queryStr := `
-				SELECT director, cast_members, duration, genre, release_year, poster_url, description, public_rating
+				SELECT director, cast_members, duration, genre, release_year, poster_url, description, public_rating, country
 				FROM items
-				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '' OR public_rating != '')
+				WHERE LOWER(TRIM(title)) = LOWER($1) AND (category IN ('movie','show') OR category = $2) AND (director != '' OR cast_members != '' OR public_rating != '' OR country != '')
 			`
 			args := []interface{}{titleTrimmed, cat}
 			
 			if releaseYearVal != "" {
-				queryStr += ` AND release_year = $3`
+				queryStr += ` AND (release_year = $3 OR release_year = '' OR release_year IS NULL)`
 				args = append(args, releaseYearVal)
 			}
 			
 			queryStr += `
-				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END + CASE WHEN public_rating != '' THEN 1 ELSE 0 END) DESC
+				ORDER BY (CASE WHEN director != '' THEN 1 ELSE 0 END + CASE WHEN cast_members != '' THEN 1 ELSE 0 END + CASE WHEN public_rating != '' THEN 1 ELSE 0 END + CASE WHEN country != '' THEN 1 ELSE 0 END) DESC
 				LIMIT 1
 			`
 			
-			errScan := h.DB.Pool.QueryRow(r.Context(), queryStr, args...).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc, &dbRating)
+			errScan := h.DB.Pool.QueryRow(r.Context(), queryStr, args...).Scan(&dbDir, &dbCast, &dbDur, &dbGenre, &dbYear, &dbPoster, &dbDesc, &dbRating, &dbCountry)
 			if errScan == nil {
 				if directorVal == "" {
 					directorVal = dbDir
@@ -708,6 +708,9 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 				}
 				if pubRatingVal == "" {
 					pubRatingVal = dbRating
+				}
+				if countryVal == "" && dbCountry != "" {
+					countryVal = mapCountryToFlag(dbCountry)
 				}
 			}
 		}
@@ -1150,7 +1153,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, releaseYear, currentCountry, enriched)
 
 	// If after AI it's STILL basically empty, then return no_data
-	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Budget == "" && enriched.Duration == "" {
+	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Budget == "" && enriched.Duration == "" && enriched.Country == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
 		// Still mark as enriched so button becomes disabled
@@ -1206,6 +1209,17 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
+	countryUpdated := false
+	if enriched.Country != "" && currentCountry == "" {
+		mappedCountry := mapCountryToFlag(enriched.Country)
+		if mappedCountry != "" {
+			updateQuery += fmt.Sprintf(", country = $%d", argIdx)
+			updateArgs = append(updateArgs, mappedCountry)
+			argIdx++
+			countryUpdated = true
+		}
+	}
+
 	durationUpdated := false
 	if enriched.Duration != "" && (currentDuration == "" || currentDuration == "-" || currentDuration == "0" || strings.Contains(currentDuration, "1619")) {
 		updateQuery += fmt.Sprintf(", duration = $%d", argIdx)
@@ -1238,6 +1252,9 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if durationUpdated || enriched.Duration != "" {
 		ret["duration"] = enriched.Duration
+	}
+	if countryUpdated || enriched.Country != "" {
+		ret["country"] = mapCountryToFlag(enriched.Country)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

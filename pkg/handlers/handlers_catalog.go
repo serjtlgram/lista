@@ -160,6 +160,12 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string) [
 		wg.Wait()
 	}
 
+	for i := range results {
+		if results[i].Country != "" {
+			results[i].Country = mapCountryToFlag(results[i].Country)
+		}
+	}
+
 	return results
 }
 
@@ -211,7 +217,7 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 						updated = true
 					}
 					if item.Country == "" && best.Country != "" {
-						item.Country = best.Country
+						item.Country = mapCountryToFlag(best.Country)
 						updated = true
 					}
 				}
@@ -254,7 +260,7 @@ func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
 						updated = true
 					}
 					if item.Country == "" && best.Country != "" {
-						item.Country = best.Country
+						item.Country = mapCountryToFlag(best.Country)
 						updated = true
 					}
 				}
@@ -342,7 +348,7 @@ func (h *Handler) updateItemMetadataInDB(title string, cat string, director stri
 	args := []interface{}{director, cast, duration, genre, releaseYear, posterURL, description, author, isbn, publicRating, country, title, cat, catEn}
 	
 	if releaseYear != "" {
-		query += ` AND release_year = $15;`
+		query += ` AND (release_year = $15 OR release_year = '' OR release_year IS NULL);`
 		args = append(args, releaseYear)
 	} else {
 		query += `;`
@@ -1334,23 +1340,37 @@ func mapCountryToFlag(country string) string {
 		return ""
 	}
 
+	// USSR special cases
+	if raw == "ussr" || raw == "ussr_flag" || raw == "ссср" || raw == "советский союз" || raw == "su" || raw == "suhh" {
+		return "USSR"
+	}
+
+	// Direct 2-letter standard ISO code handling (e.g. US, RU, GB, FR, DE, KR, JP, etc.)
+	if len(raw) == 2 && ((raw[0] >= 'a' && raw[0] <= 'z') || (raw[0] >= 'A' && raw[0] <= 'Z')) && ((raw[1] >= 'a' && raw[1] <= 'z') || (raw[1] >= 'A' && raw[1] <= 'Z')) {
+		if raw == "su" {
+			return "USSR"
+		}
+		return strings.ToUpper(raw)
+	}
+
 	// Russian country names mapping
 	countryRU := []struct {
 		keys []string
 		code string
 	}{
 		{[]string{"ссср", "советский союз"}, "USSR"},
-		{[]string{"сша", "соединенные штаты", "соединённые штаты", "америка"}, "US"},
-		{[]string{"великобритания", "соединенное королевство", "соединённое королевство", "англия"}, "GB"},
+		{[]string{"сша", "соединенные штаты", "соединённые штаты", "соединенные штаты америки", "соединённые штаты америки", "америка"}, "US"},
+		{[]string{"великобритания", "соединенное королевство", "соединённое королевство", "англия", "британия"}, "GB"},
 		{[]string{"россия", "российская федерация"}, "RU"},
 		{[]string{"украина"}, "UA"},
 		{[]string{"япония"}, "JP"},
-		{[]string{"южная корея", "республика корея", "корея"}, "KR"},
+		{[]string{"корея южная", "южная корея", "республика корея", "корея"}, "KR"},
+		{[]string{"северная корея", "кндр"}, "KP"},
 		{[]string{"франция"}, "FR"},
-		{[]string{"германия"}, "DE"},
+		{[]string{"германия", "фрг", "гдр"}, "DE"},
 		{[]string{"испания"}, "ES"},
 		{[]string{"италия"}, "IT"},
-		{[]string{"китай"}, "CN"},
+		{[]string{"китай", "кнр"}, "CN"},
 		{[]string{"канада"}, "CA"},
 		{[]string{"австралия"}, "AU"},
 		{[]string{"индия"}, "IN"},
@@ -1367,21 +1387,22 @@ func mapCountryToFlag(country string) string {
 		{[]string{"австрия"}, "AT"},
 		{[]string{"польша"}, "PL"},
 		{[]string{"чехия", "чехословакия"}, "CZ"},
+		{[]string{"словакия"}, "SK"},
 		{[]string{"турция"}, "TR"},
 		{[]string{"новая зеландия"}, "NZ"},
 		{[]string{"гонконг"}, "HK"},
 		{[]string{"тайвань"}, "TW"},
 		{[]string{"аргентина"}, "AR"},
-		{[]string{"оаэ", "объединенные арабские эмираты"}, "AE"},
-		{[]string{"юар", "южно-африканская республика"}, "ZA"},
-		{[]string{"беларусь"}, "BY"},
+		{[]string{"оаэ", "объединенные арабские эмираты", "объединённые арабские эмираты"}, "AE"},
+		{[]string{"юар", "южно-африканская республика", "южноафриканская республика"}, "ZA"},
+		{[]string{"беларусь", "белоруссия"}, "BY"},
 		{[]string{"казахстан"}, "KZ"},
 		{[]string{"португалия"}, "PT"},
 		{[]string{"румыния"}, "RO"},
 		{[]string{"венгрия"}, "HU"},
 		{[]string{"греция"}, "GR"},
 		{[]string{"израиль"}, "IL"},
-		{[]string{"таиланд"}, "TH"},
+		{[]string{"таиланд", "тайланд"}, "TH"},
 		{[]string{"сингапур"}, "SG"},
 		{[]string{"индонезия"}, "ID"},
 		{[]string{"малайзия"}, "MY"},
@@ -1396,6 +1417,19 @@ func mapCountryToFlag(country string) string {
 		{[]string{"алжир"}, "DZ"},
 		{[]string{"марокко"}, "MA"},
 		{[]string{"эфиопия"}, "ET"},
+		{[]string{"грузия"}, "GE"},
+		{[]string{"армения"}, "AM"},
+		{[]string{"азербайджан"}, "AZ"},
+		{[]string{"узбекистан"}, "UZ"},
+		{[]string{"эстония"}, "EE"},
+		{[]string{"латвия"}, "LV"},
+		{[]string{"литва"}, "LT"},
+		{[]string{"сербия", "югославия"}, "RS"},
+		{[]string{"хорватия"}, "HR"},
+		{[]string{"болгария"}, "BG"},
+		{[]string{"исландия"}, "IS"},
+		{[]string{"кипр"}, "CY"},
+		{[]string{"филиппины"}, "PH"},
 	}
 
 	// English names / ISO codes mapping
@@ -1409,7 +1443,8 @@ func mapCountryToFlag(country string) string {
 		{[]string{"ru", "rus", "russia", "russian federation"}, "RU"},
 		{[]string{"ua", "ukr", "ukraine"}, "UA"},
 		{[]string{"jp", "jpn", "japan"}, "JP"},
-		{[]string{"kr", "kor", "south korea", "korea"}, "KR"},
+		{[]string{"kr", "kor", "south korea", "korea", "republic of korea"}, "KR"},
+		{[]string{"kp", "prk", "north korea"}, "KP"},
 		{[]string{"fr", "fra", "france"}, "FR"},
 		{[]string{"de", "deu", "germany"}, "DE"},
 		{[]string{"es", "esp", "spain"}, "ES"},
@@ -1430,8 +1465,9 @@ func mapCountryToFlag(country string) string {
 		{[]string{"ch", "che", "switzerland"}, "CH"},
 		{[]string{"at", "aut", "austria"}, "AT"},
 		{[]string{"pl", "pol", "poland"}, "PL"},
-		{[]string{"cz", "cze", "czech republic", "czechia"}, "CZ"},
-		{[]string{"tr", "tur", "turkey"}, "TR"},
+		{[]string{"cz", "cze", "czech republic", "czechia", "czechoslovakia"}, "CZ"},
+		{[]string{"sk", "svk", "slovakia"}, "SK"},
+		{[]string{"tr", "tur", "turkey", "türkiye"}, "TR"},
 		{[]string{"nz", "nzl", "new zealand"}, "NZ"},
 		{[]string{"hk", "hkg", "hong kong"}, "HK"},
 		{[]string{"tw", "twn", "taiwan"}, "TW"},
@@ -1460,10 +1496,23 @@ func mapCountryToFlag(country string) string {
 		{[]string{"dz", "dza", "algeria"}, "DZ"},
 		{[]string{"ma", "mar", "morocco"}, "MA"},
 		{[]string{"et", "eth", "ethiopia"}, "ET"},
+		{[]string{"ge", "geo", "georgia"}, "GE"},
+		{[]string{"am", "arm", "armenia"}, "AM"},
+		{[]string{"az", "aze", "azerbaijan"}, "AZ"},
+		{[]string{"uz", "uzb", "uzbekistan"}, "UZ"},
+		{[]string{"ee", "est", "estonia"}, "EE"},
+		{[]string{"lv", "lva", "latvia"}, "LV"},
+		{[]string{"lt", "ltu", "lithuania"}, "LT"},
+		{[]string{"rs", "srb", "serbia", "yugoslavia"}, "RS"},
+		{[]string{"hr", "hrv", "croatia"}, "HR"},
+		{[]string{"bg", "bgr", "bulgaria"}, "BG"},
+		{[]string{"is", "isl", "iceland"}, "IS"},
+		{[]string{"cy", "cyp", "cyprus"}, "CY"},
+		{[]string{"ph", "phl", "philippines"}, "PH"},
 	}
 
 	parts := strings.FieldsFunc(raw, func(r rune) bool {
-		return r == ',' || r == '/'
+		return r == ',' || r == '/' || r == ';'
 	})
 	for i, p := range parts {
 		parts[i] = strings.TrimSpace(p)
@@ -1498,6 +1547,9 @@ func mapCountryToFlag(country string) string {
 		}
 	}
 
+	if len(country) == 2 {
+		return strings.ToUpper(country)
+	}
 	return country
 }
 

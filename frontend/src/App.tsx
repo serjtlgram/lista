@@ -826,6 +826,7 @@ function safeBase64Decode(str: string): any {
       author: catalogItem.author || '',
       isbn: catalogItem.isbn || '',
       public_rating: catalogItem.public_rating || '',
+      country: catalogItem.country || '',
     };
     const createdItem = await api.createItem(payload);
     setItems((prev) => [createdItem, ...prev]);

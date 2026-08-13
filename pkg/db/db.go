@@ -63,6 +63,22 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS age_rating TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS budget TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS ai_enriched BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `
+		UPDATE items SET country = 'USSR' 
+		WHERE country IN ('ссср', 'советский союз', 'USSR_FLAG', 'ussr_flag', 'su', 'suhh') 
+		   OR LOWER(country) = 'ссср' OR LOWER(country) = 'советский союз';
+	`)
+	_, _ = pool.Exec(ctx, `
+		UPDATE items i1
+		SET country = i2.country
+		FROM items i2
+		WHERE LOWER(TRIM(i1.title)) = LOWER(TRIM(i2.title))
+		  AND (i1.category IN ('movie','show','movies','shows','series','фильм','фильмы','сериал','сериалы'))
+		  AND (i2.category IN ('movie','show','movies','shows','series','фильм','фильмы','сериал','сериалы'))
+		  AND (i1.country = '' OR i1.country IS NULL)
+		  AND (i2.country != '' AND i2.country IS NOT NULL)
+		  AND i1.id != i2.id;
+	`)
 
 	return &DB{Pool: pool}, nil
 }

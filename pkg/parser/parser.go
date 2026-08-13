@@ -848,7 +848,8 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 			Name string `json:"name"`
 		} `json:"genres"`
 		ProductionCountries []struct {
-			Name string `json:"name"`
+			Iso31661 string `json:"iso_3166_1"`
+			Name     string `json:"name"`
 		} `json:"production_countries"`
 		OriginCountry []string `json:"origin_country"`
 		Credits struct {
@@ -910,7 +911,11 @@ func fetchTMDbDetails(client *http.Client, tmdbKey string, tmdbID string, mediaT
 
 	// Country of production
 	if len(data.ProductionCountries) > 0 {
-		media.Country = data.ProductionCountries[0].Name
+		if data.ProductionCountries[0].Iso31661 != "" {
+			media.Country = data.ProductionCountries[0].Iso31661
+		} else {
+			media.Country = data.ProductionCountries[0].Name
+		}
 	} else if len(data.OriginCountry) > 0 {
 		media.Country = data.OriginCountry[0]
 	}
@@ -1888,6 +1893,7 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 			Budget        string `json:"budget"`
 			AirStatus     string `json:"air_status"`
 			Duration      string `json:"duration"`
+			Country       string `json:"country"`
 			Seasons       int    `json:"seasons"`
 			EpisodesTotal int    `json:"episodes_total"`
 		}
@@ -1906,6 +1912,9 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 			}
 			if parsed.Duration != "" {
 				details.Duration = parsed.Duration
+			}
+			if parsed.Country != "" && details.Country == "" {
+				details.Country = parsed.Country
 			}
 			if parsed.Seasons > 0 && details.Seasons == 0 {
 				details.Seasons = parsed.Seasons
@@ -1998,7 +2007,8 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 			Name string `json:"name"`
 		} `json:"created_by"`
 		ProductionCountries []struct {
-			Name string `json:"name"`
+			Iso31661 string `json:"iso_3166_1"`
+			Name     string `json:"name"`
 		} `json:"production_countries"`
 		OriginCountry []string `json:"origin_country"`
 		Credits struct {
@@ -2031,7 +2041,11 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 
 	// Country of production
 	if len(detail.ProductionCountries) > 0 {
-		result.Country = detail.ProductionCountries[0].Name
+		if detail.ProductionCountries[0].Iso31661 != "" {
+			result.Country = detail.ProductionCountries[0].Iso31661
+		} else {
+			result.Country = detail.ProductionCountries[0].Name
+		}
 	} else if len(detail.OriginCountry) > 0 {
 		result.Country = detail.OriginCountry[0]
 	}
