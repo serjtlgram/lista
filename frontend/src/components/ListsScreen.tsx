@@ -1193,7 +1193,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               key={item.id}
               item={item}
               onSelect={onSelectItem}
-              onRemoveFromList={handleRemoveItemFromCurrentList}
+              onRemoveFromList={currentList.id === UNCATEGORIZED_ID ? undefined : handleRemoveItemFromCurrentList}
               onUpdateItem={onUpdateItem}
               t={t}
             />
