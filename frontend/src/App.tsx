@@ -976,6 +976,7 @@ function safeBase64Decode(str: string): any {
               listId={recommendationListInfo.id}
               listTitle={recommendationListInfo.title}
               listItems={recommendationListInfo.items.length > 0 ? recommendationListInfo.items : items}
+              allItems={items}
               cachedResults={recommendationListInfo.cachedResults}
               onUpdateCachedResults={(results) => {
                 setRecommendationListInfo((prev) => prev ? { ...prev, cachedResults: results } : prev);

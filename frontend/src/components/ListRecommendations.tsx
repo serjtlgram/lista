@@ -9,6 +9,7 @@ interface ListRecommendationsProps {
   listId: string;
   listTitle: string;
   listItems: Item[];
+  allItems?: Item[];
   onBack: () => void;
   onSelectItem: (item: Item) => void;
   onAddCatalogItem: (catalogItem: CatalogItem) => Promise<Item | undefined> | Item | undefined;
@@ -21,10 +22,39 @@ interface ListRecommendationsProps {
   t: Translations;
 }
 
+const normalizeTitle = (title?: string): string => {
+  if (!title) return '';
+  let str = title.toLowerCase().trim();
+  str = str.replace(/ё/g, 'е');
+  str = str.replace(/[\(\[\{]\s*\d{4}\s*[\)\]\}]/g, '');
+  str = str.replace(/[^\p{L}\p{N}\s]/gu, '');
+  return str.replace(/\s+/g, ' ').trim();
+};
+
+const isTitleMatch = (t1?: string, t2?: string): boolean => {
+  if (!t1 || !t2) return false;
+  const norm1 = normalizeTitle(t1);
+  const norm2 = normalizeTitle(t2);
+  if (!norm1 || !norm2) return false;
+  if (norm1 === norm2) return true;
+
+  const parts1 = t1.split(/[\/\|\:\-]/).map(normalizeTitle).filter(Boolean);
+  const parts2 = t2.split(/[\/\|\:\-]/).map(normalizeTitle).filter(Boolean);
+
+  for (const p1 of parts1) {
+    for (const p2 of parts2) {
+      if (p1.length >= 3 && p1 === p2) return true;
+    }
+  }
+
+  return false;
+};
+
 export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   listId,
   listTitle,
   listItems,
+  allItems,
   onBack,
   onSelectItem,
   onAddCatalogItem,
@@ -105,10 +135,14 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       );
 
       if (results && results.length > 0) {
-        setRecommendations(results);
-        onUpdateCachedResults(results);
+        const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;
+        const cleanResults = results.filter(
+          (c) => !userItemsToFilter.some((userItem) => isTitleMatch(c.title, userItem.title))
+        );
+        setRecommendations(cleanResults);
+        onUpdateCachedResults(cleanResults);
         // Trigger background poster enrichment for items missing poster_url
-        enrichMissingPosters(results);
+        enrichMissingPosters(cleanResults);
       } else {
         setError('Не удалось загрузить рекомендации.');
       }
@@ -307,34 +341,44 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-between px-1 text-xs text-gray-400">
-            <span>Найдено {recommendations.length} новых рекомендаций</span>
-            <button
-              onClick={() => {
-                triggerHaptic();
-                fetchRecommendations(true);
-              }}
-              className="flex items-center gap-1 text-accentViolet font-semibold hover:underline active:scale-95 transition"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Обновить</span>
-            </button>
-          </div>
+          {(() => {
+            const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;
+            const filteredRecommendations = recommendations.filter(
+              (rec) => !userItemsToFilter.some((userItem) => isTitleMatch(rec.title, userItem.title))
+            );
+            return (
+              <>
+                <div className="flex items-center justify-between px-1 text-xs text-gray-400">
+                  <span>Найдено {filteredRecommendations.length} новых рекомендаций</span>
+                  <button
+                    onClick={() => {
+                      triggerHaptic();
+                      fetchRecommendations(true);
+                    }}
+                    className="flex items-center gap-1 text-accentViolet font-semibold hover:underline active:scale-95 transition"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Обновить</span>
+                  </button>
+                </div>
 
-          <div className="space-y-2.5">
-            {recommendations.map((catItem, idx) => {
-              const mappedItem = mapCatalogToItem(catItem);
-              return (
-                <ItemCard
-                  key={catItem.id || `rec_item_${idx}`}
-                  item={mappedItem}
-                  onSelect={onSelectItem}
-                  onAdd={(item, e) => handleAddItem(catItem, e)}
-                  t={t}
-                />
-              );
-            })}
-          </div>
+                <div className="space-y-2.5">
+                  {filteredRecommendations.map((catItem, idx) => {
+                    const mappedItem = mapCatalogToItem(catItem);
+                    return (
+                      <ItemCard
+                        key={catItem.id || `rec_item_${idx}`}
+                        item={mappedItem}
+                        onSelect={onSelectItem}
+                        onAdd={(item, e) => handleAddItem(catItem, e)}
+                        t={t}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 

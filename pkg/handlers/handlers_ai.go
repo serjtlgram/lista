@@ -22,6 +22,10 @@ import (
 
 func normalizeTitleForComparison(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "ё", "е")
+	s = strings.ReplaceAll(s, "Ё", "е")
+	reYears := regexp.MustCompile(`[\(\[\{]\s*\d{4}\s*[\)\]\}]`)
+	s = reYears.ReplaceAllString(s, "")
 	var sb strings.Builder
 	for _, r := range s {
 		// Keep letters, numbers and spaces, ignore punctuation/quotes
@@ -132,23 +136,50 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		listTitleDisplay = tQuery
 	}
 
-	// 1. Collect all user DB titles for deduplication (prevent recommending items user already has anywhere in DB)
+	// 1. Collect all user DB titles + incoming titles for deduplication
 	userExistingTitles := make(map[string]bool)
+	addExistingTitle := func(title string) {
+		tTrim := strings.TrimSpace(title)
+		if tTrim == "" {
+			return
+		}
+		norm := normalizeTitleForComparison(tTrim)
+		if norm != "" {
+			userExistingTitles[norm] = true
+		}
+		userExistingTitles[strings.ToLower(tTrim)] = true
+		parts := strings.FieldsFunc(tTrim, func(r rune) bool {
+			return r == '/' || r == '|' || r == ':' || r == '-'
+		})
+		for _, p := range parts {
+			pNorm := normalizeTitleForComparison(p)
+			if len(pNorm) >= 3 {
+				userExistingTitles[pNorm] = true
+			}
+		}
+	}
+
 	if userID != 0 && h.DB != nil && h.DB.Pool != nil {
 		rowsAll, errAll := h.DB.Pool.Query(r.Context(), `SELECT title FROM items WHERE user_id = $1`, userID)
 		if errAll == nil && rowsAll != nil {
 			defer rowsAll.Close()
 			for rowsAll.Next() {
 				var dbTitle string
-				if err := rowsAll.Scan(&dbTitle); err == nil && strings.TrimSpace(dbTitle) != "" {
-					norm := normalizeTitleForComparison(dbTitle)
-					if norm != "" {
-						userExistingTitles[norm] = true
-					}
-					// also store exact lowercase trim just in case
-					userExistingTitles[strings.ToLower(strings.TrimSpace(dbTitle))] = true
+				if err := rowsAll.Scan(&dbTitle); err == nil {
+					addExistingTitle(dbTitle)
 				}
 			}
+		}
+	}
+
+	if itemTitlesParam != "" {
+		rawTitles := strings.Split(itemTitlesParam, "|")
+		for _, rawT := range rawTitles {
+			cleanT := strings.TrimSpace(rawT)
+			if idx := strings.Index(cleanT, "["); idx != -1 {
+				cleanT = strings.TrimSpace(cleanT[:idx])
+			}
+			addExistingTitle(cleanT)
 		}
 	}
 
@@ -454,17 +485,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 					if len(parsedTitles) > 0 {
 						var filteredTitles []string
 						for _, pt := range parsedTitles {
-							ptClean := strings.ToLower(strings.TrimSpace(pt))
-							norm := normalizeTitleForComparison(pt)
-							
-							if norm != "" {
-								if !userExistingTitles[norm] && !userExistingTitles[ptClean] {
-									filteredTitles = append(filteredTitles, pt)
-								}
-							} else {
-								if !userExistingTitles[ptClean] {
-									filteredTitles = append(filteredTitles, pt)
-								}
+							if !isTitleAlreadyExisting(pt) {
+								filteredTitles = append(filteredTitles, pt)
 							}
 						}
 						recommendedTitles = filteredTitles
@@ -555,7 +577,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			if card.Category == "" {
 				card.Category = catEn
 			}
-			finalCards = append(finalCards, card)
+			if !isTitleAlreadyExisting(card.Title) {
+				finalCards = append(finalCards, card)
+			}
 		}
 	}
 
