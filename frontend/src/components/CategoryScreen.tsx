@@ -52,7 +52,16 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     if (onSearchQueryChange) onSearchQueryChange(q);
   };
   const [showSearchInput, setShowSearchInput] = useState(true);
-  const [searchMode, setSearchMode] = useState<'title' | 'actor' | 'director'>('title');
+  const [searchMode, setSearchMode] = useState<'title' | 'actor' | 'director'>(() => {
+    const saved = localStorage.getItem('lista_catalog_search_mode');
+    if (saved === 'actor' || saved === 'director' || saved === 'title') return saved;
+    return 'title';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lista_catalog_search_mode', searchMode);
+  }, [searchMode]);
+
   const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>(() => {
     const saved = localStorage.getItem('lista_catalog_sort_by');
     if (saved === 'year' || saved === 'rating' || saved === 'date') return saved;
@@ -72,7 +81,36 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     localStorage.setItem('lista_catalog_sort_order', sortOrder);
   }, [sortOrder]);
 
-  const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
+  const [catalogResults, setCatalogResults] = useState<CatalogItem[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('lista_catalog_search_results');
+      const savedQuery = sessionStorage.getItem('lista_catalog_search_query');
+      const savedMode = sessionStorage.getItem('lista_catalog_search_mode_cached');
+      const currentQ = (onSearchQueryChange ? searchQueryProp : internalQuery).trim();
+      const currentM = localStorage.getItem('lista_catalog_search_mode') || 'title';
+      if (saved && savedQuery === currentQ && savedMode === currentM) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      const q = searchQuery.trim();
+      if (q.length >= 2 && catalogResults.length > 0) {
+        sessionStorage.setItem('lista_catalog_search_results', JSON.stringify(catalogResults));
+        sessionStorage.setItem('lista_catalog_search_query', q);
+        sessionStorage.setItem('lista_catalog_search_mode_cached', searchMode);
+      } else if (q.length < 2) {
+        sessionStorage.removeItem('lista_catalog_search_results');
+        sessionStorage.removeItem('lista_catalog_search_query');
+        sessionStorage.removeItem('lista_catalog_search_mode_cached');
+      }
+    } catch (e) {}
+  }, [catalogResults, searchQuery, searchMode]);
+
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(() => {
     try {
