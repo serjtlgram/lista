@@ -183,6 +183,27 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	isTitleAlreadyExisting := func(title string) bool {
+		tClean := strings.ToLower(strings.TrimSpace(title))
+		if tClean != "" && userExistingTitles[tClean] {
+			return true
+		}
+		norm := normalizeTitleForComparison(title)
+		if norm != "" && userExistingTitles[norm] {
+			return true
+		}
+		parts := strings.FieldsFunc(title, func(r rune) bool {
+			return r == '/' || r == '|' || r == ':' || r == '-'
+		})
+		for _, p := range parts {
+			pNorm := normalizeTitleForComparison(p)
+			if len(pNorm) >= 3 && userExistingTitles[pNorm] {
+				return true
+			}
+		}
+		return false
+	}
+
 	// 2. Gather context metadata (genres, countries, years, directors, authors) SPECIFICALLY for items in THIS list
 	itemDescriptions := []string{}
 	categoriesFound := []string{}
