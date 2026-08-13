@@ -38,7 +38,13 @@ export function App() {
   const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile'>('home');
   const [savedScrollPosition, setSavedScrollPosition] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Все');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    return localStorage.getItem('lista_catalog_category_filter') || 'Все';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lista_catalog_category_filter', selectedCategory);
+  }, [selectedCategory]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; cachedResults?: CatalogItem[]; addedItems?: Item[] } | null>(null);
 

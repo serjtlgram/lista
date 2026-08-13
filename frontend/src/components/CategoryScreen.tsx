@@ -35,7 +35,16 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   onAddCatalogItem,
   t,
 }) => {
-  const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>('all');
+  const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>(() => {
+    const saved = localStorage.getItem('lista_catalog_status_filter');
+    if (saved === 'watching' || saved === 'completed' || saved === 'planned') return saved;
+    return 'all';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lista_catalog_status_filter', activeFilterKey);
+  }, [activeFilterKey]);
+
   const [internalQuery, setInternalQuery] = useState(searchQueryProp);
   const searchQuery = onSearchQueryChange ? searchQueryProp : internalQuery;
   const setSearchQuery = (q: string) => {
@@ -64,11 +73,22 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
 
   const [catalogResults, setCatalogResults] = useState<CatalogItem[]>([]);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('lista_catalog_genre_filter');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
 
   useEffect(() => {
-    setSelectedGenres([]);
-  }, [title]);
+    try {
+      localStorage.setItem('lista_catalog_genre_filter', JSON.stringify(selectedGenres));
+    } catch (e) {}
+  }, [selectedGenres]);
 
   const filters = [
     { key: 'all', label: t.recently_added.see_all },
