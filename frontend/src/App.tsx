@@ -788,7 +788,7 @@ function safeBase64Decode(str: string): any {
       if (recommendationListInfo?.id) {
         syncRecommendationItemAdded(existing, catalogItem.title, catalogItem.category);
       }
-      if (activeTab !== 'recommendations') {
+      if (activeTab !== 'recommendations' && activeTab !== 'search') {
         if (activeTab !== 'details') {
           setPreviousTab(activeTab as any);
           setSavedScrollPosition(window.scrollY);
@@ -835,7 +835,7 @@ function safeBase64Decode(str: string): any {
       syncRecommendationItemAdded(createdItem, catalogItem.title, catalogItem.category);
     }
 
-    if (activeTab !== 'recommendations') {
+    if (activeTab !== 'recommendations' && activeTab !== 'search') {
       if (activeTab !== 'details') {
         setPreviousTab(activeTab as any);
         setSavedScrollPosition(window.scrollY);

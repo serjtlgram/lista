@@ -347,6 +347,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     cast: c.cast || '',
     author: c.author || '',
     isbn: c.isbn || '',
+    public_rating: c.public_rating || '',
+    country: c.country || '',
     isSharedPreview: true,
   } as any);
 
