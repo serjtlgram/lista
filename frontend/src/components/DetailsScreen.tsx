@@ -133,7 +133,7 @@ interface Episode {
   runtime: number;
 }
 
-const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
+const EpisodesAccordion: React.FC<{ episodes: Episode[]; t: Translations }> = ({ episodes, t }) => {
   const [openSeason, setOpenSeason] = useState<number | null>(null);
 
   // Group by season
@@ -157,7 +157,7 @@ const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
               onClick={() => setOpenSeason(isOpen ? null : sNum)}
               className="w-full flex items-center justify-between px-3 py-2 bg-bgDark/50 text-xs font-semibold text-white hover:bg-bgDark/80 transition"
             >
-              <span>{t.details.season_prefix ? t.details.season_prefix.replace('{num}', sNum) : `Сезон ${sNum}`}</span>
+              <span>{t.details.season_prefix ? t.details.season_prefix.replace('{num}', String(sNum)) : `Сезон ${sNum}`}</span>
               <span className="text-gray-400 flex items-center gap-1">
                 <span>{eps.length} {t.details.episodes_short || 'эп.'}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -948,7 +948,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             )}
             {/* Episodes accordion */}
             {parsedEpisodes.length > 0 && (
-              <EpisodesAccordion episodes={parsedEpisodes} />
+              <EpisodesAccordion episodes={parsedEpisodes} t={t} />
             )}
           </div>
         );
