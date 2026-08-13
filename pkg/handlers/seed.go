@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"lista/pkg/db"
+	"lista-backend/pkg/db"
 )
 
 type SeedItem struct {
