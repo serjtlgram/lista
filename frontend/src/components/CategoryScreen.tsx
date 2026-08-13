@@ -99,11 +99,11 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   useEffect(() => {
     try {
       const q = searchQuery.trim();
-      if (q.length >= 2 && catalogResults.length > 0) {
+      if (q.length >= 1 && catalogResults.length > 0) {
         sessionStorage.setItem('lista_catalog_search_results', JSON.stringify(catalogResults));
         sessionStorage.setItem('lista_catalog_search_query', q);
         sessionStorage.setItem('lista_catalog_search_mode_cached', searchMode);
-      } else if (q.length < 2) {
+      } else if (q.length < 1) {
         sessionStorage.removeItem('lista_catalog_search_results');
         sessionStorage.removeItem('lista_catalog_search_query');
         sessionStorage.removeItem('lista_catalog_search_mode_cached');
@@ -162,10 +162,10 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     ? canonicalCategories.filter((cat) => normalizedActiveSet.has(cat))
     : canonicalCategories;
 
-  // Search catalog in DB when searchQuery changes
+  // Search catalog in DB when searchQuery changes (500ms debounce, length >= 1)
   useEffect(() => {
     const q = searchQuery.trim();
-    if (q.length < 2) {
+    if (q.length < 1) {
       setCatalogResults([]);
       setIsSearchingCatalog(false);
       return;
@@ -182,7 +182,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       } finally {
         setIsSearchingCatalog(false);
       }
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [searchQuery, title, searchMode]);
@@ -352,7 +352,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     isSharedPreview: true,
   } as any);
 
-  const isSearchActive = searchQuery.trim().length >= 2;
+  const isSearchActive = searchQuery.trim().length >= 1;
 
   const availableGenres = useMemo(() => getAvailableGenres(title, t), [title, t]);
 

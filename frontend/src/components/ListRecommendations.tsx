@@ -90,6 +90,20 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     }
 
     if (force) {
+      const now = Date.now();
+      const lastRefreshKey = `lista_rec_last_refresh_${listId}`;
+      const lastTime = parseInt(localStorage.getItem(lastRefreshKey) || '0', 10);
+      const elapsedSec = Math.floor((now - lastTime) / 1000);
+      const COOLDOWN_SEC = 300; // 5 minutes
+
+      if (lastTime > 0 && elapsedSec < COOLDOWN_SEC) {
+        const remaining = COOLDOWN_SEC - elapsedSec;
+        const remMin = Math.floor(remaining / 60);
+        const remSec = remaining % 60;
+        showToast(`Подождите ${remMin} мин. ${remSec} сек. перед повторным обновлением.`);
+        return;
+      }
+
       setAddedItems([]);
       onUpdateCachedAddedItems([]);
     }
@@ -135,6 +149,9 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       );
 
       if (results && results.length > 0) {
+        if (force) {
+          localStorage.setItem(`lista_rec_last_refresh_${listId}`, Date.now().toString());
+        }
         const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;
         const cleanResults = results.filter(
           (c) => !userItemsToFilter.some((userItem) => isTitleMatch(c.title, userItem.title))
@@ -147,7 +164,9 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         setError('Не удалось загрузить рекомендации.');
       }
     } catch (err: any) {
-      setError('Ошибка при загрузке рекомендаций.');
+      const msg = err?.message || 'Ошибка при загрузке рекомендаций.';
+      setError(msg);
+      showToast(msg);
     } finally {
       setIsLoading(false);
     }

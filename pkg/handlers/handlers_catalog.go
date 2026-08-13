@@ -23,22 +23,41 @@ import (
 
 // GET /api/catalog/search?q=Title&category=Category
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
-	// 1. Rate limiting: 1 request per 2 seconds per user/IP
 	rateKey := getRateLimitKey(r)
-	if allowed, wait := h.RateLimiter.Allow("search:"+rateKey, 2*time.Second); !allowed {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Retry-After", "2")
-		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error":                "Слишком много запросов. Пожалуйста, подождите 2 секунды перед следующим поиском.",
-			"retry_after_seconds": 2,
-			"wait_ms":              wait.Milliseconds(),
-		})
-		return
+
+	// 1. Check AutoJail
+	if h.AutoJail != nil {
+		if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "rate_limit_exceeded",
+				"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
+			})
+			return
+		}
+	}
+
+	// 2. Search Rate Limiter: max 20 requests per minute per user/IP
+	if h.SearchLimiter != nil {
+		if allowed, wait := h.SearchLimiter.AllowSearch(rateKey); !allowed {
+			if h.AutoJail != nil {
+				h.AutoJail.Record429(rateKey)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":               "Слишком много поисковых запросов. Пожалуйста, подождите немного перед следующим поиском.",
+				"retry_after_seconds": int(wait.Seconds()),
+			})
+			return
+		}
 	}
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if len(q) < 2 {
+	if len(q) < 1 {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]models.CatalogSearchResult{})
 		return

@@ -24,33 +24,45 @@ import (
 )
 
 type Handler struct {
-	DB               *db.DB
-	BotToken         string
-	YoutubeAPIKey    string
-	TMDBAPIKey       string
-	KinopoiskAPIKey  string
-	FireworksAPIKey  string
-	BotSecretToken   string
-	RateLimiter      *ratelimit.RateLimiter
-	SearchCache      *SearchCache
-	sharedListsCache map[string][]byte
-	cacheMu          sync.RWMutex
-	outboundSem      chan struct{}
+	DB                     *db.DB
+	BotToken               string
+	YoutubeAPIKey          string
+	TMDBAPIKey             string
+	KinopoiskAPIKey        string
+	FireworksAPIKey        string
+	BotSecretToken         string
+	RateLimiter            *ratelimit.RateLimiter
+	AutoJail               *ratelimit.AutoJail
+	RecommendationsLimiter *ratelimit.RecommendationsLimiter
+	SearchLimiter          *ratelimit.SearchLimiter
+	BotFloodLimiter        *ratelimit.BotFloodLimiter
+	OutboundLimiter        *ratelimit.OutboundLimiter
+	SearchCache            *SearchCache
+	sharedListsCache       map[string][]byte
+	cacheMu                sync.RWMutex
+	outboundSem            chan struct{}
+	ParserSem              chan struct{}
 }
 
 func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIKey string, kinopoiskAPIKey string, fireworksAPIKey string, botSecretToken string) *Handler {
 	h := &Handler{
-		DB:               database,
-		BotToken:         botToken,
-		YoutubeAPIKey:    youtubeAPIKey,
-		TMDBAPIKey:       tmdbAPIKey,
-		KinopoiskAPIKey:  kinopoiskAPIKey,
-		FireworksAPIKey:  fireworksAPIKey,
-		BotSecretToken:   botSecretToken,
-		RateLimiter:      ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
-		SearchCache:      NewSearchCache(3 * time.Minute),
-		sharedListsCache: make(map[string][]byte),
-		outboundSem:      make(chan struct{}, 25),
+		DB:                     database,
+		BotToken:               botToken,
+		YoutubeAPIKey:          youtubeAPIKey,
+		TMDBAPIKey:             tmdbAPIKey,
+		KinopoiskAPIKey:        kinopoiskAPIKey,
+		FireworksAPIKey:        fireworksAPIKey,
+		BotSecretToken:         botSecretToken,
+		RateLimiter:            ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
+		AutoJail:               ratelimit.NewAutoJail(),
+		RecommendationsLimiter: ratelimit.NewRecommendationsLimiter(5, 5*time.Minute),
+		SearchLimiter:          ratelimit.NewSearchLimiter(20, 1*time.Minute),
+		BotFloodLimiter:        ratelimit.NewBotFloodLimiter(),
+		OutboundLimiter:        ratelimit.NewOutboundLimiter(),
+		SearchCache:            NewSearchCache(3 * time.Minute),
+		sharedListsCache:       make(map[string][]byte),
+		outboundSem:            make(chan struct{}, 25),
+		ParserSem:              make(chan struct{}, 8), // Max 8 concurrent heavy scraping jobs
 	}
 	go h.InitBotCommandsAndMenu()
 	return h
@@ -1495,18 +1507,37 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/youtube/search?q=...&category=...
 func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
-	// 1. Rate limiting: 1 request per 2 seconds per user/IP
 	rateKey := getRateLimitKey(r)
-	if allowed, wait := h.RateLimiter.Allow("yt_search:"+rateKey, 2*time.Second); !allowed {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Retry-After", "2")
-		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error":                "Слишком много запросов. Пожалуйста, подождите 2 секунды перед следующим поиском.",
-			"retry_after_seconds": 2,
-			"wait_ms":              wait.Milliseconds(),
-		})
-		return
+
+	// 1. Check AutoJail
+	if h.AutoJail != nil {
+		if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "rate_limit_exceeded",
+				"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
+			})
+			return
+		}
+	}
+
+	// 2. Search Rate Limiter: max 20 requests per minute per user/IP
+	if h.SearchLimiter != nil {
+		if allowed, wait := h.SearchLimiter.AllowSearch(rateKey); !allowed {
+			if h.AutoJail != nil {
+				h.AutoJail.Record429(rateKey)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":               "Слишком много поисковых запросов. Пожалуйста, подождите немного перед следующим поиском.",
+				"retry_after_seconds": int(wait.Seconds()),
+			})
+			return
+		}
 	}
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -1519,7 +1550,7 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 		q = q[:150]
 	}
 
-	// 2. Check Cache
+	// 3. Check Cache
 	cacheKey := fmt.Sprintf("yt:%s:%s", strings.ToLower(q), strings.ToLower(cat))
 	if cachedVal, ok := h.SearchCache.Get(cacheKey); ok {
 		if ytURL, isStr := cachedVal.(string); isStr {

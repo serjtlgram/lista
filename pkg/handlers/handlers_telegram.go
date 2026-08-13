@@ -48,14 +48,14 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Inline Query rate limit (1 per 2 seconds)
+	// Inline Query rate limit (1 per 0.5 seconds)
 	if update.InlineQuery != nil && update.InlineQuery.ID != "" {
 		userID := update.InlineQuery.From.ID
-		if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_inline:%d", userID), 2*time.Second); !allowed {
+		if allowed := h.BotFloodLimiter.AllowInline(userID); !allowed {
 			h.sendBotAPIRequest("answerInlineQuery", map[string]interface{}{
 				"inline_query_id": update.InlineQuery.ID,
 				"results":         []interface{}{},
-				"cache_time":      5,
+				"cache_time":      300,
 			})
 			w.WriteHeader(http.StatusOK)
 			return
@@ -73,19 +73,6 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
-
-		// Message rate limit (1 request per 2 seconds per user)
-		if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
-			log.Printf("[TelegramWebhook] Rate limit exceeded for user %d", userID)
-			if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
-				go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
-					"chat_id": userID,
-					"text":    "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.",
-				})
-			}
-			w.WriteHeader(http.StatusOK)
-			return
-		}
 
 		msgText := strings.TrimSpace(update.Message.Text)
 		if msgText == "" {
@@ -118,8 +105,33 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stats") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
 			go h.handleAdminCommand(userID, update.Message.From.Username, msgText)
 		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
+			// Anti-flood check for incoming links (max 1 link per 4 sec, max 15 links per min)
+			if allowed, shouldWarn := h.BotFloodLimiter.AllowLink(userID); !allowed {
+				log.Printf("[TelegramWebhook] Link flood rate limit exceeded for user %d", userID)
+				if shouldWarn {
+					go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+						"chat_id": userID,
+						"text":    "⏳ Слишком много запросов. Пожалуйста, подождите пару секунд.",
+					})
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 			log.Printf("[TelegramWebhook] Extracted URL from user %d: %s", userID, extractedURL)
 			go h.processIncomingMediaURL(userID, update.Message.From, extractedURL)
+		} else {
+			// Regular message rate limit (1 request per 2 seconds per user)
+			if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
+				log.Printf("[TelegramWebhook] Message rate limit exceeded for user %d", userID)
+				if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
+					go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+						"chat_id": userID,
+						"text":    "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.",
+					})
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 		}
 	}
 
@@ -550,6 +562,21 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 			log.Printf("[PanicRecovery] processIncomingMediaURL panic: %v", r)
 		}
 	}()
+
+	// Limit concurrent heavy parser jobs to prevent server exhaustion
+	if h.ParserSem != nil {
+		select {
+		case h.ParserSem <- struct{}{}:
+			defer func() { <-h.ParserSem }()
+		case <-time.After(10 * time.Second):
+			log.Printf("[ParserPool] Server busy, dropped parsing for user %d: %s", userID, rawURL)
+			go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+				"chat_id": userID,
+				"text":    "⏳ Сервер сейчас обрабатывает много запросов. Пожалуйста, отправьте ссылку еще раз через несколько секунд.",
+			})
+			return
+		}
+	}
 
 	if h.DB != nil && h.DB.Pool != nil && from != nil {
 		userQuery := `
@@ -1110,6 +1137,25 @@ func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) e
 		return nil
 	}
 
+	// Extract chat_id if available to throttle per-chat
+	var targetChatID int64
+	if pMap, ok := payload.(map[string]interface{}); ok {
+		if cVal, hasChat := pMap["chat_id"]; hasChat {
+			switch v := cVal.(type) {
+			case int64:
+				targetChatID = v
+			case int:
+				targetChatID = int64(v)
+			case float64:
+				targetChatID = int64(v)
+			}
+		}
+	}
+
+	if h.OutboundLimiter != nil {
+		h.OutboundLimiter.WaitOutbound(targetChatID)
+	}
+
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -1301,7 +1347,7 @@ func (h *Handler) handleInlineQuery(iq *struct {
 	payload := map[string]interface{}{
 		"inline_query_id":     iq.ID,
 		"results":             telegramResults,
-		"cache_time":          5,
+		"cache_time":          300, // 5 minutes cache on Telegram client side
 		"is_personal":         true,
 		"switch_pm_text":      placeholder,
 		"switch_pm_parameter": "start",

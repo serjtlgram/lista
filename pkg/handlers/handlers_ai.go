@@ -409,7 +409,41 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 7. ВАЖНО: Список должен состоять строго из 30 позиций. Выдай ровно 30 названий.`,
 		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
-	// 4. Query Fireworks AI API
+	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user)
+	rateKey := getRateLimitKey(r)
+	if h.AutoJail != nil {
+		if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "rate_limit_exceeded",
+				"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
+			})
+			return
+		}
+	}
+
+	if h.RecommendationsLimiter != nil && userID != 0 {
+		if allowed, errCode, msg, retryAfter := h.RecommendationsLimiter.CheckAndConsume(userID); !allowed {
+			if h.AutoJail != nil {
+				h.AutoJail.Record429(rateKey)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if retryAfter > 0 {
+				w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+			}
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":               errCode,
+				"message":             msg,
+				"retry_after_seconds": int(retryAfter.Seconds()),
+			})
+			return
+		}
+	}
+
+	// 5. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
 	if apiKey == "" {
 		apiKey = "fw_R9nn6yvzVv8txadL2FLqC2"

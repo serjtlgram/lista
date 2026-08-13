@@ -231,12 +231,16 @@ export const api = {
         if (Array.isArray(data) && data.length > 0) {
           return data;
         }
+        return [];
+      } else {
+        const errData = await res.json().catch(() => null);
+        const errMsg = errData?.message || (res.status === 429 ? 'Слишком много запросов. Пожалуйста, подождите.' : 'Ошибка при загрузке рекомендаций');
+        throw new Error(errMsg);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('API getRecommendations backend fetch error:', e);
+      throw e;
     }
-
-    return [];
   },
 
   async getListsData(): Promise<{ lists: any[]; folders: any[] } | null> {

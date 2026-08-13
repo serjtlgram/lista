@@ -44,7 +44,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(120 * time.Second))
 
-	// Global IP DDoS Protection Middleware (Max 30 req/sec per IP, burst 60)
+	// Global IP DDoS Protection & AutoJail Middleware (Max 30 req/sec per IP, burst 60)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := r.Header.Get("X-Real-IP")
@@ -55,16 +55,30 @@ func main() {
 				ip = r.RemoteAddr
 			}
 
+			// 1. AutoJail Check (instant rejection if blacklisted)
+			if h.AutoJail != nil {
+				if jailed, rem := h.AutoJail.IsJailed(fmt.Sprintf("ip_%s", ip)); jailed {
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Retry-After", fmt.Sprintf("%d", int(rem.Seconds())))
+					w.WriteHeader(http.StatusTooManyRequests)
+					w.Write([]byte(fmt.Sprintf(`{"error":"Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин."}`, int(rem.Minutes())+1)))
+					return
+				}
+			}
+
 			if !globalLimiter.AllowBurst(fmt.Sprintf("global_ip:%s", ip), 60, time.Second/30) {
+				if h.AutoJail != nil {
+					h.AutoJail.Record429(fmt.Sprintf("ip_%s", ip))
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				w.Write([]byte(`{"error":"Too many requests to server"}`))
 				return
 			}
 
-			// Limit request body size to max 2MB to prevent RAM exhaustion attacks
+			// Limit request body size to max 0.5MB (512 KB) to prevent RAM exhaustion attacks
 			if r.Body != nil {
-				r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+				r.Body = http.MaxBytesReader(w, r.Body, 512<<10)
 			}
 			next.ServeHTTP(w, r)
 		})
