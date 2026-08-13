@@ -147,6 +147,20 @@ export interface Translations {
     add_first_title: string;
     add_first_desc: string;
     add_first_btn: string;
+    season_prefix?: string;
+    episodes_short?: string;
+    ai_data_updated?: string;
+    ai_data_not_found?: string;
+    ai_data_error?: string;
+    ai_data_loaded?: string;
+    ai_enrich_action?: string;
+    budget_title?: string;
+    box_office_title?: string;
+    mpaa_rating_title?: string;
+    age_rating_title?: string;
+    view_in_lista?: string;
+    fullscreen?: string;
+    fullscreen_playing?: string;
   };
   stats: {
     title: string;
@@ -243,5 +257,25 @@ export interface Translations {
     in_lists?: string;
     not_in_any_list?: string;
     manage_lists?: string;
+    uncategorized?: string;
+    empty_uncategorized?: string;
+    uncategorized_toast?: string;
+    lists_in_folders?: string;
+    search_results?: string;
+    folder_limit_reached?: string;
+    folder_created?: string;
+    folder_updated?: string;
+    folder_this_folder?: string;
+    folder_delete_confirm?: string;
+    folder_deleted?: string;
+    list_moved_to_folder?: string;
+    no_lists_in_folder?: string;
+    create_new?: string;
+    ai_cooldown?: string;
+    ai_recommendations?: string;
+    folder_settings?: string;
+    delete_action?: string;
+    select_folder_for_list?: string;
+    folder_misc?: string;
   };
 }

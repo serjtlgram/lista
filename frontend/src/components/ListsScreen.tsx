@@ -304,7 +304,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   }, [dragState?.list.id]);
 
   const currentList = activeSelectedListId === UNCATEGORIZED_ID 
-    ? { id: UNCATEGORIZED_ID, name: 'Неразобрано', isDefault: true, itemIds: [], createdAt: '', folderId: 'all' } as UserList
+    ? { id: UNCATEGORIZED_ID, name: t.lists.uncategorized || 'Неразобрано', isDefault: true, itemIds: [], createdAt: '', folderId: 'all' } as UserList
     : lists.find((l) => l.id === activeSelectedListId) || lists[0];
 
   const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>(() => {
@@ -404,7 +404,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       onOpenRecommendations(
         currentList.id,
         currentList.id === UNCATEGORIZED_ID 
-          ? 'Неразобрано' 
+          ? t.lists.uncategorized || 'Неразобрано' 
           : currentList.isDefault 
             ? t.lists.favorites 
             : currentList.name,
@@ -460,7 +460,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     e.preventDefault();
     if (!newFolderName.trim()) return;
     if (folders.length >= 200) {
-      showToast('Достигнут лимит в 200 папок');
+      showToast(t.lists.folder_limit_reached || 'Достигнут лимит в 200 папок');
       return;
     }
     triggerHaptic();
@@ -469,7 +469,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     setSelectedFolderId(created.id);
     setNewFolderName('');
     setIsCreateFolderModalOpen(false);
-    showToast(`Папка создана`);
+    showToast(t.lists.folder_created || 'Папка создана');
   };
 
   const handleRenameFolder = (e: React.FormEvent) => {
@@ -480,13 +480,14 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     refreshFolders();
     setIsManageFolderModalOpen(false);
     setEditingFolder(null);
-    showToast('Настройки папки обновлены');
+    showToast(t.lists.folder_updated || 'Настройки папки обновлены');
   };
 
   const handleDeleteFolder = () => {
     if (!editingFolder) return;
-    const name = editingFolder.name || 'Эту папку';
-    if (window.confirm(`Удалить «${name}»? Списки будут перенесены в раздел «Все».`)) {
+    const name = editingFolder.name || (t.lists.folder_this_folder || 'Эту папку');
+    const msg = (t.lists.folder_delete_confirm || `Удалить «{name}»? Списки будут перенесены в раздел «Все».`).replace('{name}', name);
+    if (window.confirm(msg)) {
       triggerHaptic();
       deleteFolder(editingFolder.id);
       refreshFolders();
@@ -496,7 +497,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       }
       setIsManageFolderModalOpen(false);
       setEditingFolder(null);
-      showToast('Папка удалена, списки перенесены в раздел «Все»');
+      showToast(t.lists.folder_deleted || 'Папка удалена, списки перенесены в раздел «Все»');
     }
   };
 
@@ -507,7 +508,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     refreshLists();
     setIsChangeListFolderModalOpen(false);
     const targetFolderObj = folders.find((f) => f.id === targetFolderId);
-    showToast(`Список перенесён в папку «${targetFolderObj?.name || 'Разное'}»`);
+    const msg = (t.lists.list_moved_to_folder || `Список перенесён в папку «{name}»`).replace('{name}', targetFolderObj?.name || (t.lists.folder_misc || 'Разное'));
+    showToast(msg);
   };
 
   const handleRenameList = (e: React.FormEvent) => {
@@ -575,7 +577,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       toggleFavorite(item.id);
       showToast((t as any).favorites?.removed || 'Убрано из избранного');
     } else if (currentList.id === UNCATEGORIZED_ID) {
-      showToast('Добавьте элемент в любой список, чтобы он пропал отсюда');
+      showToast(t.lists.uncategorized_toast || 'Добавьте элемент в любой список, чтобы он пропал отсюда');
     } else {
       removeItemFromList(currentList.id, item.id);
       showToast((t as any).lists?.item_removed || 'Удалено из списка');
@@ -813,7 +815,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {/* All Lists Layout (Filtered by Folder or Search) */}
       <div className="flex items-center justify-between px-1 mt-4 mb-2">
         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pl-1">
-          {listsSearchQuery ? 'Результаты поиска' : 'Списки в папках'}
+          {listsSearchQuery ? t.lists.search_results || 'Результаты поиска' : t.lists.lists_in_folders || 'Списки в папках'}
         </span>
       </div>
       <div className="relative w-full">
@@ -884,7 +886,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     ? 'bg-cardDark/50 border-cardBorder/50 text-gray-500 opacity-60 pointer-events-none'
                     : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
                 }`}
-                title="Неразобрано"
+                title={t.lists.uncategorized || "Неразобрано"}
               >
                 <Inbox
                   className={`w-4 h-4 ${
@@ -895,7 +897,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       : 'text-gray-400'
                   }`}
                 />
-                <span>Неразобрано</span>
+                <span>{t.lists.uncategorized || "Неразобрано"}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                     activeSelectedListId === UNCATEGORIZED_ID
@@ -911,7 +913,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
           {filteredUserLists.length === 0 && (
             <div className="text-xs text-gray-400 py-1.5 px-2 flex items-center gap-2">
-              <span>В этой папке пока нет списков</span>
+              <span>{t.lists.no_lists_in_folder || 'В этой папке пока нет списков'}</span>
               <button
                 onClick={() => {
                   triggerHaptic();
@@ -921,7 +923,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 }}
                 className="text-accentViolet font-bold hover:underline"
               >
-                + Создать
+                {t.lists.create_new || '+ Создать'}
               </button>
             </div>
           )}
@@ -1006,7 +1008,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             )}
             <div className="min-w-0 flex-1">
               <h2 className="text-base font-bold text-white truncate">
-                {currentList.id === UNCATEGORIZED_ID ? 'Неразобрано' : currentList.isDefault ? t.lists.favorites : currentList.name}
+                {currentList.id === UNCATEGORIZED_ID ? (t.lists.uncategorized || 'Неразобрано') : currentList.isDefault ? t.lists.favorites : currentList.name}
               </h2>
               <p className="text-[11px] text-gray-400">
                 {listItems.length} {t.lists.items_count}
@@ -1026,7 +1028,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
             >
               <Folder className="w-3.5 h-3.5 text-accentViolet" />
               <span>
-                {folders.find((f) => f.id === (currentList.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное'}
+                {folders.find((f) => f.id === (currentList.folderId || DEFAULT_FOLDER_ID))?.name || (t.lists.folder_misc || 'Разное')}
               </span>
               <ChevronDown className="w-3 h-3 text-gray-400" />
             </button>
@@ -1078,7 +1080,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
                   : 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
               }`}
-              title={cooldownLeft > 0 ? `Повтор через ${cooldownLeft}с` : 'ИИ-рекомендации'}
+              title={cooldownLeft > 0 ? (t.lists.ai_cooldown || `Повтор через {seconds}с`).replace('{seconds}', String(cooldownLeft)) : (t.lists.ai_recommendations || 'ИИ-рекомендации')}
             >
               <Wand2 className={`w-4 h-4 ${cooldownLeft > 0 ? 'opacity-50 animate-pulse' : 'text-amber-400'}`} />
               {cooldownLeft > 0 && <span className="text-[10px] font-mono font-bold text-amber-400/90">{cooldownLeft}s</span>}
@@ -1208,7 +1210,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           {currentList.id === UNCATEGORIZED_ID ? (
             <>
               <Inbox className="w-10 h-10 mx-auto text-accentViolet opacity-60" />
-              <p className="text-xs text-gray-300 font-medium">Здесь пока ничего нет, все элементы разобраны по спискам!</p>
+              <p className="text-xs text-gray-300 font-medium">{t.lists.empty_uncategorized || 'Здесь пока ничего нет, все элементы разобраны по спискам!'}</p>
             </>
           ) : currentList.isDefault ? (
             <>
@@ -1352,7 +1354,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <form onSubmit={handleCreateFolder} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">{t.lists.folder_name_placeholder || 'Название папки...'}</label>
                   <input
                     type="text"
                     maxLength={100}
@@ -1393,7 +1395,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Folder className="w-5 h-5 text-accentViolet" />
-                  <span>{(t as any).lists?.rename_folder || 'Настройки папки'}</span>
+                  <span>{t.lists.folder_settings || 'Настройки папки'}</span>
                 </h3>
                 <button
                   onClick={() => {
@@ -1408,7 +1410,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <form onSubmit={handleRenameFolder} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-400 font-semibold mb-1 block">Название папки</label>
+                  <label className="text-xs text-gray-400 font-semibold mb-1 block">{t.lists.folder_name_placeholder || 'Название папки...'}</label>
                   <input
                     type="text"
                     maxLength={100}
@@ -1425,7 +1427,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Удалить</span>
+                    <span>{t.lists.delete_action || 'Удалить'}</span>
                   </button>
 
                   <div className="flex gap-2">
@@ -1474,7 +1476,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <div className="space-y-2">
                 <p className="text-xs text-gray-300">
-                  Выберите папку для списка «<span className="font-bold text-white">{currentList.name}</span>»:
+                  {t.lists.select_folder_for_list ? t.lists.select_folder_for_list.replace('{name}', currentList.name) : `Выберите папку для списка «${currentList.name}»:`}
                 </p>
                 <div className="space-y-2 max-h-60 overflow-y-auto hide-scrollbar pt-1">
                   {folders.map((f) => {

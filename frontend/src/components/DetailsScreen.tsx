@@ -146,7 +146,7 @@ const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
 
   return (
     <div className="space-y-1.5">
-      <div className="text-xs text-gray-400 font-semibold mb-2">Эпизоды</div>
+      <div className="text-xs text-gray-400 font-semibold mb-2">{t.details.episodes || 'Эпизоды'}</div>
       {seasonNumbers.map(sNum => {
         const isOpen = openSeason === sNum;
         const eps = seasons[sNum];
@@ -157,9 +157,9 @@ const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
               onClick={() => setOpenSeason(isOpen ? null : sNum)}
               className="w-full flex items-center justify-between px-3 py-2 bg-bgDark/50 text-xs font-semibold text-white hover:bg-bgDark/80 transition"
             >
-              <span>Сезон {sNum}</span>
+              <span>{t.details.season_prefix ? t.details.season_prefix.replace('{num}', sNum) : `Сезон ${sNum}`}</span>
               <span className="text-gray-400 flex items-center gap-1">
-                <span>{eps.length} эп.</span>
+                <span>{eps.length} {t.details.episodes_short || 'эп.'}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </span>
             </button>
@@ -172,7 +172,7 @@ const EpisodesAccordion: React.FC<{ episodes: Episode[] }> = ({ episodes }) => {
                         <span className="text-gray-500 mr-1">{ep.e}.</span>{ep.title}
                       </span>
                       {ep.runtime > 0 && (
-                        <span className="text-[10px] text-gray-500 shrink-0 font-mono">{ep.runtime}м</span>
+                        <span className="text-[10px] text-gray-500 shrink-0 font-mono">{ep.runtime}{t.details.minutes_short || 'м'}</span>
                       )}
                     </div>
                     {ep.air_date && (
@@ -674,7 +674,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
-                  {isBook ? 'КНИГА' : formatCategorySingle(item.category)}
+                  {isBook ? (t.categories?.book_single?.toUpperCase() || 'КНИГА') : formatCategorySingle(item.category)}
                 </span>
                 <span className="text-sm font-bold text-white flex items-center gap-1.5 inline-flex">
                   {item.release_year ? item.release_year : '2024'}
@@ -834,19 +834,19 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if (result.duration) updates.duration = result.duration;
                       if ((result as any).director) updates.director = (result as any).director;
                       onUpdateItem(item.id, updates);
-                      setToastMessage('✨ Данные обновлены!');
+                      setToastMessage(t.details.ai_data_updated || '✨ Данные обновлены!');
                     } else {
                       if (onUpdateItem) onUpdateItem(item.id, { ai_enriched: true });
-                      setToastMessage('Данные не найдены');
+                      setToastMessage(t.details.ai_data_not_found || 'Данные не найдены');
                     }
                   } catch {
-                    setToastMessage('Ошибка загрузки');
+                    setToastMessage(t.details.ai_data_error || 'Ошибка загрузки');
                   } finally {
                     setIsEnriching(false);
                   }
                 })}
                 disabled={isEnriching || (item.ai_enriched && !isAlwaysActiveUser)}
-                title={item.ai_enriched && !isAlwaysActiveUser ? 'Данные загружены' : 'Обогатить через ИИ'}
+                title={item.ai_enriched && !isAlwaysActiveUser ? (t.details.ai_data_loaded || 'Данные загружены') : (t.details.ai_enrich_action || 'Обогатить через ИИ')}
                 className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
                   item.ai_enriched && !isAlwaysActiveUser
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default opacity-80'
@@ -873,7 +873,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         <div className="glass-card p-4 rounded-3xl shadow-sm mb-4">
           <div className="flex items-center gap-4">
             <div className="flex flex-col justify-center">
-              <span className="text-xs text-gray-400">Бюджет</span>
+              <span className="text-xs text-gray-400">{t.details.budget_title || 'Бюджет'}</span>
               <span className="text-sm font-bold text-white">{item.budget}</span>
             </div>
           </div>
@@ -1039,10 +1039,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   type="button"
                   onClick={() => setIsFullscreenVideo(true)}
                   className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
-                  title="На весь экран"
+                  title={t.details.fullscreen || 'На весь экран'}
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
-                  <span>Экран</span>
+                  <span>{t.details.fullscreen || 'Экран'}</span>
                 </button>
               )}
               <a
@@ -1072,7 +1072,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     type="button"
                     onClick={() => setIsFullscreenVideo(true)}
                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
-                    title="На весь экран"
+                    title={t.details.fullscreen || 'На весь экран'}
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
@@ -1083,7 +1083,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-gray-400 text-xs font-semibold gap-2 cursor-pointer p-4 text-center select-none"
                 >
                   <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
-                  <span>Воспроизведение на весь экран...</span>
+                  <span>{t.details.fullscreen_playing || 'Воспроизведение на весь экран...'}</span>
                 </div>
               )}
             </div>
