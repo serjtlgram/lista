@@ -609,6 +609,36 @@ function safeBase64Decode(str: string): any {
     api.updateItem(id, updates);
   };
 
+  const syncRecommendationItemAdded = (addedItem: Item, title: string, category?: string) => {
+    if (!recommendationListInfo?.id) return;
+
+    addItemToList(recommendationListInfo.id, addedItem.id);
+    window.dispatchEvent(new Event('lista_lists_updated'));
+
+    setRecommendationListInfo((prev) => {
+      if (!prev) return prev;
+      const itemToAdd: Item = { ...addedItem, isSharedPreview: false };
+      const updatedAdded = [itemToAdd, ...(prev.addedItems || []).filter((i) => i.id !== itemToAdd.id)];
+      const norm = (s?: string) => (s || '').trim().toLowerCase();
+      const normCat = (c?: string) => {
+        const lc = (c || '').toLowerCase().trim();
+        if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'movie';
+        if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'series';
+        if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'book';
+        if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
+        return lc;
+      };
+      const updatedCached = (prev.cachedResults || []).filter(
+        (r) => norm(r.title) !== norm(title) || normCat(r.category) !== normCat(category)
+      );
+      return {
+        ...prev,
+        addedItems: updatedAdded,
+        cachedResults: updatedCached,
+      };
+    });
+  };
+
   const handleAddSharedItem = async (sharedItem: Item) => {
     const norm = (s?: string) => (s || '').trim().toLowerCase();
     const normCat = (c?: string) => {
@@ -623,32 +653,42 @@ function safeBase64Decode(str: string): any {
       (i) => norm(i.title) === norm(sharedItem.title) && normCat(i.category) === normCat(sharedItem.category)
     );
 
+    let addedItem: Item;
+
     if (existing) {
-      if (activeTab !== 'details') {
-        setPreviousTab(activeTab as any);
-        setSavedScrollPosition(window.scrollY);
-      }
-      setSelectedItem(existing);
-      setActiveTab('details');
-      return;
+      addedItem = existing;
+    } else {
+      const payload: Partial<Item> = {
+        title: sharedItem.title,
+        category: sharedItem.category,
+        status: 'planned',
+        rating: 10,
+        genre: sharedItem.genre,
+        duration: sharedItem.duration,
+        release_year: sharedItem.release_year,
+        poster_url: sharedItem.poster_url,
+        description: sharedItem.description,
+        note: sharedItem.note,
+        youtube_url: sharedItem.youtube_url,
+        director: sharedItem.director,
+        cast: sharedItem.cast,
+        author: sharedItem.author,
+        isbn: sharedItem.isbn,
+        public_rating: sharedItem.public_rating,
+        country: sharedItem.country,
+      };
+      addedItem = await api.createItem(payload);
+      setItems((prev) => [addedItem, ...prev]);
     }
 
-    const payload: Partial<Item> = {
-      title: sharedItem.title,
-      category: sharedItem.category,
-      status: 'planned',
-      rating: 10,
-      genre: sharedItem.genre,
-      duration: sharedItem.duration,
-      release_year: sharedItem.release_year,
-      poster_url: sharedItem.poster_url,
-      description: sharedItem.description,
-      note: sharedItem.note,
-    };
-    const createdItem = await api.createItem(payload);
-    setItems((prev) => [createdItem, ...prev]);
-    setSelectedItem(createdItem);
-    setActiveTab('details');
+    if (recommendationListInfo?.id) {
+      syncRecommendationItemAdded(addedItem, sharedItem.title, sharedItem.category);
+    }
+
+    setSelectedItem({ ...addedItem, isSharedPreview: false });
+    if (activeTab !== 'details') {
+      setActiveTab('details');
+    }
     window.scrollTo(0, 0);
   };
 
@@ -746,8 +786,7 @@ function safeBase64Decode(str: string): any {
 
     if (existing) {
       if (recommendationListInfo?.id) {
-        addItemToList(recommendationListInfo.id, existing.id);
-        window.dispatchEvent(new Event('lista_lists_updated'));
+        syncRecommendationItemAdded(existing, catalogItem.title, catalogItem.category);
       }
       if (activeTab !== 'recommendations') {
         if (activeTab !== 'details') {
@@ -792,8 +831,7 @@ function safeBase64Decode(str: string): any {
     setItems((prev) => [createdItem, ...prev]);
 
     if (recommendationListInfo?.id) {
-      addItemToList(recommendationListInfo.id, createdItem.id);
-      window.dispatchEvent(new Event('lista_lists_updated'));
+      syncRecommendationItemAdded(createdItem, catalogItem.title, catalogItem.category);
     }
 
     if (activeTab !== 'recommendations') {
