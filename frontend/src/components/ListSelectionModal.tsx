@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, Plus, FolderPlus, Star, Search, ChevronDown } from 'lucide-react';
 import { Item } from '../types';
@@ -33,6 +33,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFolderId, setFilterFolderId] = useState<string | null>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const triggerHaptic = () => {
     const tg = (window as any).Telegram?.WebApp;
@@ -81,14 +82,28 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     e.preventDefault();
     if (!newListName.trim()) return;
     triggerHaptic();
-    const created = createList(newListName.trim(), selectedFolderId || DEFAULT_FOLDER_ID);
+    const targetFolder = selectedFolderId || DEFAULT_FOLDER_ID;
+    const created = createList(newListName.trim(), targetFolder);
     const updatedLists = getLists();
     setUserLists(updatedLists);
     setSelectedListIds((prev) => [...prev, created.id]);
+
+    // If folder filter is active and doesn't match the new list's folder, update filter so new list is visible
+    if (filterFolderId !== null && filterFolderId !== targetFolder) {
+      setFilterFolderId(targetFolder);
+    }
+
     setNewListName('');
     setSelectedFolderId(DEFAULT_FOLDER_ID);
     setIsFolderDropdownOpen(false);
     setIsCreating(false);
+
+    // Scroll to top so the new list (shown at top of custom lists) is immediately visible
+    setTimeout(() => {
+      if (listContainerRef.current) {
+        listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   const handleSave = () => {
@@ -205,7 +220,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           </div>
         )}
 
-        <div className="max-h-[50vh] overflow-y-auto space-y-2 hide-scrollbar">
+        <div ref={listContainerRef} className="max-h-[50vh] overflow-y-auto space-y-2 hide-scrollbar">
           {/* Favorites List Item */}
           {(() => {
             const favTitle = trans.lists.favorites || 'Избранное';

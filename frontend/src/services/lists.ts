@@ -180,7 +180,9 @@ export function createList(name: string, folderId?: string): UserList {
     createdAt: new Date().toISOString(),
     folderId: folderId || DEFAULT_FOLDER_ID,
   };
-  saveLists([...lists, newList]);
+  const defaultLists = lists.filter((l) => l.isDefault);
+  const customLists = lists.filter((l) => !l.isDefault);
+  saveLists([...defaultLists, newList, ...customLists]);
   return newList;
 }
 
