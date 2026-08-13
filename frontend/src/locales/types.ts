@@ -133,6 +133,10 @@ export interface Translations {
     by_date: string;
     by_year: string;
     no_items_found: string;
+    in_your_collection?: string;
+    in_global_database?: string;
+    search_internet?: string;
+    searching_status?: string;
     director: string;
     cast: string;
     show_more: string;

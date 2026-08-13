@@ -533,7 +533,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 px-1">
                 <FolderCheck className="w-4 h-4 text-accentTeal" />
-                <span>В вашем списке ({sortedItems.length})</span>
+                <span>{(t.details.in_your_collection || 'В вашем списке')} ({sortedItems.length})</span>
               </div>
               <div className="space-y-2.5">
                 {sortedItems.map((item) => (
@@ -557,7 +557,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
               <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
                 <div className="flex items-center gap-1.5">
                   <Globe className="w-4 h-4 text-accentViolet" />
-                  <span>В общей базе LISTA</span>
+                  <span>{t.details.in_global_database || 'В общей базе LISTA'}</span>
                 </div>
               </div>
 
@@ -583,12 +583,12 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
             <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
               <div className="flex items-center gap-1.5">
                 <SearchIcon className="w-4 h-4 text-accentBlue" />
-                <span>Поиск в интернете</span>
+                <span>{t.details.search_internet || 'Поиск в интернете'}</span>
               </div>
               {isSearchingCatalog && (
                 <div className="flex items-center gap-1 text-[11px] text-gray-400 font-normal">
                   <Loader2 className="w-3 h-3 animate-spin text-accentBlue" />
-                  <span>Ищем...</span>
+                  <span>{t.details.searching_status || 'Ищем...'}</span>
                 </div>
               )}
             </div>
