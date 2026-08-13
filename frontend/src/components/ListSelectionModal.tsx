@@ -88,10 +88,8 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     setUserLists(updatedLists);
     setSelectedListIds((prev) => [...prev, created.id]);
 
-    // If folder filter is active and doesn't match the new list's folder, update filter so new list is visible
-    if (filterFolderId !== null && filterFolderId !== targetFolder) {
-      setFilterFolderId(targetFolder);
-    }
+    // Always switch active folder chip to the folder chosen for the new list
+    setFilterFolderId(targetFolder);
 
     setNewListName('');
     setSelectedFolderId(DEFAULT_FOLDER_ID);

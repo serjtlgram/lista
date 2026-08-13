@@ -449,8 +449,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     e.preventDefault();
     if (!newListName.trim()) return;
     triggerHaptic();
-    const created = createList(newListName.trim(), newListFolderId || DEFAULT_FOLDER_ID);
+    const targetFolder = newListFolderId || DEFAULT_FOLDER_ID;
+    const created = createList(newListName.trim(), targetFolder);
     refreshLists();
+    if (targetFolder && targetFolder !== 'all') {
+      setSelectedFolderId(targetFolder);
+    }
     handleSelectTab(created.id);
     setNewListName('');
     setIsCreateModalOpen(false);
