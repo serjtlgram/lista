@@ -35,7 +35,6 @@ import {
   createFolder,
   renameFolder,
   deleteFolder,
-  deleteFolder,
   removeItemFromList,
   FAVORITES_ID,
   UNCATEGORIZED_ID,
