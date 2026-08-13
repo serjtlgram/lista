@@ -52,6 +52,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     if (onSearchQueryChange) onSearchQueryChange(q);
   };
   const [showSearchInput, setShowSearchInput] = useState(true);
+  const [searchMode, setSearchMode] = useState<'title' | 'actor' | 'director'>('title');
   const [sortBy, setSortBy] = useState<'date' | 'year' | 'rating'>(() => {
     const saved = localStorage.getItem('lista_catalog_sort_by');
     if (saved === 'year' || saved === 'rating' || saved === 'date') return saved;
@@ -136,7 +137,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     const timer = setTimeout(async () => {
       try {
         const catFilter = title === 'Все' ? undefined : title;
-        const res = await api.searchCatalog(q, catFilter);
+        const res = await api.searchCatalog(q, catFilter, undefined, searchMode);
         setCatalogResults(res || []);
       } catch (e) {
         console.warn('Search catalog error:', e);
@@ -146,7 +147,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, title]);
+  }, [searchQuery, title, searchMode]);
 
   const normCatKey = (c?: string) => {
     const lc = (c || '').toLowerCase().trim();
@@ -239,6 +240,13 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        if (searchMode === 'actor') {
+          const castStr = `${item.cast || ''} ${item.cast_roles || ''}`.toLowerCase();
+          return castStr.includes(q);
+        }
+        if (searchMode === 'director') {
+          return (item.director || '').toLowerCase().includes(q);
+        }
         return item.title.toLowerCase().includes(q) || (item.genre && item.genre.toLowerCase().includes(q));
       }
 
@@ -308,27 +316,59 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
 
   const availableGenres = useMemo(() => getAvailableGenres(title, t), [title, t]);
 
+  const searchPlaceholder = useMemo(() => {
+    if (searchMode === 'actor') return t.details.search_placeholder_actor;
+    if (searchMode === 'director') return t.details.search_placeholder_director;
+    return t.details.search_placeholder;
+  }, [searchMode, t]);
+
+  const searchModes = [
+    { key: 'title', label: t.details.search_mode_title },
+    { key: 'actor', label: t.details.search_mode_actor },
+    { key: 'director', label: t.details.search_mode_director },
+  ] as const;
+
   return (
     <div className="space-y-3.5">
       {showSearchInput && (
-        <div className="relative w-full">
-          <input
-            type="text"
-            maxLength={100}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.details.search_placeholder}
-            className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 pr-8 text-xs text-white focus:outline-none focus:border-accentViolet"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 focus:outline-none"
-              title="Clear search"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        <div className="space-y-2">
+          {/* Mode Switcher Chips */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {searchModes.map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                onClick={() => setSearchMode(mode.key)}
+                className={`py-1.5 px-2 rounded-xl text-xs font-semibold whitespace-nowrap transition text-center ${
+                  searchMode === mode.key
+                    ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                    : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600 hover:text-white'
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full">
+            <input
+              type="text"
+              maxLength={100}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 pr-8 text-xs text-white focus:outline-none focus:border-accentViolet"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 focus:outline-none"
+                title="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

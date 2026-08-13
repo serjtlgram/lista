@@ -132,12 +132,13 @@ export const api = {
     }
   },
 
-  async searchCatalog(query: string, category?: string, lang?: string): Promise<any[]> {
+  async searchCatalog(query: string, category?: string, lang?: string, mode?: string): Promise<any[]> {
     try {
       if (!query || query.length < 2) return [];
       const currentLang = lang || getStoredLanguage();
       const params = new URLSearchParams({ q: query, lang: currentLang });
       if (category) params.append('category', category);
+      if (mode && mode !== 'title') params.append('mode', mode);
 
       const res = await fetch(`${API_BASE}/api/catalog/search?${params.toString()}`, { headers: getHeaders() });
       if (!res.ok) return [];

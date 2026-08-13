@@ -129,6 +129,11 @@ export interface Translations {
     added_to_my_list: string;
     link_copied: string;
     search_placeholder: string;
+    search_mode_title: string;
+    search_mode_actor: string;
+    search_mode_director: string;
+    search_placeholder_actor: string;
+    search_placeholder_director: string;
     elements_count: string;
     by_date: string;
     by_year: string;
