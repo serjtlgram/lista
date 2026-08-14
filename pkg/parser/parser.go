@@ -1691,153 +1691,194 @@ type EnrichedDetails struct {
 	EpisodesList  string `json:"episodes_list"`  // JSON array of episode objects
 	// Both movies and shows
 	Director   string `json:"director"`   // Director name(s)
+	Cast       string `json:"cast"`       // Cleaned Cyrillic cast list comma-separated
 	CastRoles  string `json:"cast_roles"`  // "Actor — Role" comma-separated, max 8
 	Country    string `json:"country"`     // e.g. "RU", "US"
 	Budget     string `json:"budget"`      // "$120,000,000" or empty if unknown
 	Duration   string `json:"duration"`    // e.g. "45 мин"
 }
 
-// TranslateAndFillWithAI uses Fireworks AI to translate metadata into the requested language and fill gaps.
-func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country string, details *EnrichedDetails) {
+// TranslateAndFillWithAI uses Fireworks AI to translate metadata into the requested language, transliterate Latin names, and fill gaps.
+func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, existingDirector, existingCast, existingDescription string, details *EnrichedDetails) {
 	if fireworksKey == "" || details == nil {
 		return
+	}
+
+	directorContext := details.Director
+	if directorContext == "" && existingDirector != "" {
+		directorContext = existingDirector
+	}
+
+	castRolesContext := details.CastRoles
+	if castRolesContext == "" && existingCast != "" {
+		castRolesContext = existingCast
 	}
 
 	var prompt string
 	switch lang {
 	case "uk":
-		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти та заповнити дані для фільму/серіалу "%s" (%s року виходу, країна: %s) УКРАЇНСЬКОЮ МОВОЮ.
+		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти, перевірити та заповнити дані для фільму/серіалу "%s" (%s року виходу, країна: %s) УКРАЇНСЬКОЮ МОВОЮ.
 
-СУВОРІ ПРАВИЛА ПЕРЕКЛАДУ:
+Контекстні дані картки:
+- Назва: %s
+- Рік виходу: %s
+- Країна: %s
+- Поточний режисер: %s
+- Поточний акторський склад: %s
+- Опис: %s
+
+СУВОРІ ПРАВИЛА:
 1. УСІ ІМЕНА АКТОРІВ, УСІ ІМЕНА ПЕРСОНАЖІВ/РОЛЕЙ ТА ІМ'Я РЕЖИСЕРА ОБОВ'ЯЗКОВО ПЕРЕКЛАДИ УКРАЇНСЬКОЮ МОВОЮ КИРИЛИЦЕЮ!
-   - Англійські та латинські імена акторів, ролей та режисера транслітеруй/переклади (наприклад: 'Greg Plageman' -> 'Грег Плейджман', 'Gary Carr' -> 'Гері Карр').
-   - У полях director та cast_roles НЕ ПОВИННО БУТИ ЖОДНОГО АНГЛІЙСЬКОГО/ЛАТИНСЬКОГО СЛОВА!
-2. Поле cast_roles форматуй так: Актор — Роль, Актор — Роль (до 8 пар).
-3. Переклади air_status українською ("Завершено", "Виходить", "Скасовано").
-4. Тривалість duration вкажи у хвилинах (наприклад: "45 хв").
+   - Якщо в іменах є латиниця (наприклад: 'Darya Pugacheva', 'Greg Plageman'), ОБОВ'ЯЗКОВО транслітеруй/переклади їх на кирилицю ('Дар'я Пугачова', 'Грег Плейджман').
+   - У полях director, cast та cast_roles КАТЕГОРИЧНО ЗАБОРОНЕНО залишати англійські/латинські літери!
+2. Якщо в контексті вже зазначений коректний режисер ("%s"), ЗБЕРЕЖИ його в полі director.
+3. Поле cast_roles: сформуй пари "Актор — Роль, Актор — Роль" (до 8 пар) виключно кирилицею.
+4. Поле cast: повний виправлений список акторів українською мовою через кому (без латиниці і без ролей).
+5. Переклади air_status українською ("Завершено", "Виходить", "Скасовано").
+6. Тривалість duration вкажи у хвилинах (наприклад: "92 хв").
 
-Поверни ВИКЛЮЧНО JSON без разметки:
+Поверни ВИКЛЮЧНО JSON без розмітки:
 {
   "director": "Ім'я Режисера",
+  "cast": "Актор 1, Актор 2, Актор 3",
   "cast_roles": "Актор — Роль, Актор — Роль",
   "budget": "Бюджет",
   "air_status": "Завершено",
-  "duration": "45 хв",
+  "duration": "92 хв",
   "seasons": 0,
   "episodes_total": 0
 }
 
 Вхідні дані:
-Назва: %s
-Рік виходу: %s
-Країна: %s
 director: %s
 cast_roles: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "es":
 		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película/serie "%s" (año %s, país: %s) EN ESPAÑOL.
 
+Contexto de la tarjeta:
+- Título: %s
+- Año: %s
+- País: %s
+- Director actual: %s
+- Reparto actual: %s
+- Descripción: %s
+
 REGLAS OBLIGATORIAS:
-1. Traduce todos los nombres de actores, personajes/roles y del director al español. ¡NO dejes nombres en inglés!
-2. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
-3. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
-4. La duración duration debe estar en minutos (ejemplo: "45 min").
+1. Traduce todos los nombres de actores, personajes/roles y del director al español. ¡NO dejes nombres en inglés si hay traducción/transcripción!
+2. Si ya se conoce el director correcto ("%s"), consérvalo en el campo director.
+3. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
+4. Formato de cast: lista de actores separados por comas.
+5. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
+6. La duración duration debe estar en minutos (ejemplo: "92 min").
 
 Devuelve ÚNICAMENTE un objeto JSON:
 {
   "director": "Nombre del director",
+  "cast": "Actor 1, Actor 2, Actor 3",
   "cast_roles": "Actor — Rol, Actor — Rol",
   "budget": "Presupuesto",
   "air_status": "Finalizada",
-  "duration": "45 min",
+  "duration": "92 min",
   "seasons": 0,
   "episodes_total": 0
 }
 
 Datos de entrada:
-Título: %s
-Año de estreno: %s
-País: %s
 director: %s
 cast_roles: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "en":
-		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to translate and complete metadata for "%s" (%s release year, country: %s) IN ENGLISH.
+		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to complete and clean metadata for "%s" (%s release year, country: %s) IN ENGLISH.
+
+Card Context:
+- Title: %s
+- Year: %s
+- Country: %s
+- Current Director: %s
+- Current Cast: %s
+- Description: %s
 
 MANDATORY RULES:
 1. All actor names, character/role names, and director names must be in English / Latin script.
-2. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
-3. Translate air_status to English ("Ended", "Returning Series", "Canceled").
-4. Set duration in minutes (e.g. "45 min").
+2. If the correct director is known ("%s"), preserve it in the director field.
+3. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
+4. Format cast as: comma-separated list of actors.
+5. Translate air_status to English ("Ended", "Returning Series", "Canceled").
+6. Set duration in minutes (e.g. "92 min").
 
 Return ONLY a JSON object:
 {
   "director": "Director Name",
+  "cast": "Actor 1, Actor 2, Actor 3",
   "cast_roles": "Actor — Role, Actor — Role",
   "budget": "Budget",
   "air_status": "Ended",
-  "duration": "45 min",
+  "duration": "92 min",
   "seasons": 0,
   "episodes_total": 0
 }
 
 Input Data:
-Title: %s
-Release Year: %s
-Country: %s
 director: %s
 cast_roles: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	default: // "ru" or any other
-		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя единственная задача — перевести и заполнить данные для фильма/сериала "%s" (%s года выхода, страна: %s) НА РУССКИЙ ЯЗЫК.
+		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя задача — проверить, дополнить и перевести данные для фильма/сериала "%s" (%s года выхода, страна: %s) НА РУССКИЙ ЯЗЫК.
 
-СТРОГИЕ ПРАВИЛА ПЕРЕВОДА:
-1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖИ/РОЛИ И ИМЕНА РЕЖИССЁРОВ/СОЗДАТЕЛЕЙ (director) ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
-   - Английские и латинские имена режиссёров/создателей ОБЯЗАТЕЛЬНО транслитерируй/переведи на русский. Если режиссёров несколько, перечисли их всех через запятую (например: 'Guy Ritchie' -> 'Гай Ричи', 'Greg Plageman' -> 'Грег Плейджман', 'Joel Coen, Ethan Coen' -> 'Джоэл Коэн, Итан Коэн').
-   - Английские и латинские имена актёров транслитерируй/переведи на русский (например: 'Gary Carr' -> 'Гэри Карр', 'Austin Rising' -> 'Остин Райзинг', 'Chloe Grace Moretz' -> 'Хлоя Грейс Морец').
-   - Имена персонажей И ИХ ПРОЗВИЩА ОБЯЗАТЕЛЬНО переведи на русский кириллицей (например: 'Vova Suvorov Adidas' -> 'Вова Суворов «Адидас»', 'Andrey Vasilyev Palto' -> 'Андрей Васильев «Пальто»', 'Flynne Fisher' -> 'Флинн Фишер', 'Wilf Netherton' -> 'Уилф Нетертон').
-   - В строках director и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
-2. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар).
-3. Переведи статус air_status на русский (например: "Завершён", "Выходит", "Отменён").
-4. Длительность duration укажи в минутах (например: "45 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
+Контекстные данные карточки:
+- Название: %s
+- Год выхода: %s
+- Страна: %s
+- Текущий режиссер: %s
+- Текущий список актеров: %s
+- Описание: %s
+
+СТРОГИЕ ПРАВИЛА:
+1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖЕЙ/РОЛЕЙ И ИМЯ РЕЖИССЁРА ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
+   - Если в списке актёров или режиссёров есть имена на латинице (например: 'Darya Pugacheva' -> 'Дарья Пугачева', 'Petr Rykov' -> 'Петр Рыков', 'Greg Plageman' -> 'Грег Плейджман'), ОБЯЗАТЕЛЬНО транслитерируй/переведи их на русский язык!
+   - В строках director, cast и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
+2. Если в карточке уже указан корректный режиссер ("%s"), ОБЯЗАТЕЛЬНО СОХРАНИ его в поле director на русском языке.
+3. Поле cast: сформируй исправленный чистый список актёров фильма на русском языке через запятую (без латиницы и без указания ролей, например: "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко").
+4. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар) на русском языке.
+5. Переведи статус air_status на русский (например: "Завершён", "Выходит", "Отменён").
+6. Длительность duration укажи в минутах (например: "92 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
 
 Ответь ИСКЛЮЧИТЕЛЬНО в формате JSON без markdown:
 {
-  "director": "Грег Плейджман",
-  "cast_roles": "Актёр — Роль, Актёр — Роль",
-  "budget": "120 млн $",
+  "director": "Александр Селиверстов",
+  "cast": "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко, Валерия Кожевникова, Светлана Степанковская",
+  "cast_roles": "Иван Забелин — Роль, Дарья Пугачева — Роль",
+  "budget": "",
   "air_status": "Завершён",
-  "duration": "45 мин",
+  "duration": "92 мин",
   "seasons": 0,
   "episodes_total": 0
 }
 
 Входные данные:
-Название: %s
-Год выхода: %s
-Страна: %s
 director: %s
 cast_roles: %s
 budget: %s
 air_status: %s
 duration: %s
 seasons: %d
-episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, details.Director, details.CastRoles, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
+episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 	}
 
 	reqBodyMap := map[string]interface{}{
@@ -1889,6 +1930,7 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 		rawContent := strings.TrimSpace(fireworksResp.Choices[0].Message.Content)
 		var parsed struct {
 			Director      string `json:"director"`
+			Cast          string `json:"cast"`
 			CastRoles     string `json:"cast_roles"`
 			Budget        string `json:"budget"`
 			AirStatus     string `json:"air_status"`
@@ -1900,6 +1942,9 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 		if err := json.Unmarshal([]byte(rawContent), &parsed); err == nil {
 			if parsed.Director != "" {
 				details.Director = parsed.Director
+			}
+			if parsed.Cast != "" {
+				details.Cast = parsed.Cast
 			}
 			if parsed.CastRoles != "" {
 				details.CastRoles = parsed.CastRoles
@@ -2154,8 +2199,23 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 	return result
 }
 
-// searchTMDbForID finds a TMDB ID by title+year, returns (id, mediaType).
+func normalizeTitleForMatch(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "ё", "е")
+	reYear := regexp.MustCompile(`[\(\[\{]\s*\d{4}\s*[\)\]\}]`)
+	s = reYear.ReplaceAllString(s, "")
+	rePunct := regexp.MustCompile(`[^\p{L}\p{N}\s]`)
+	s = rePunct.ReplaceAllString(s, "")
+	return strings.Join(strings.Fields(s), " ")
+}
+
+// searchTMDbForID finds a TMDB ID by title+year with strict title matching, returns (id, mediaType).
 func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string, langParam string) (int, string) {
+	normQuery := normalizeTitleForMatch(title)
+	if normQuery == "" {
+		return 0, ""
+	}
+
 	queryURL := fmt.Sprintf(
 		"https://api.themoviedb.org/3/search/multi?language=%s&query=%s",
 		langParam, url.QueryEscape(title),
@@ -2182,12 +2242,17 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 
 	var searchRes struct {
 		Results []struct {
-			ID           int     `json:"id"`
-			MediaType    string  `json:"media_type"`
-			ReleaseDate  string  `json:"release_date"`
-			FirstAirDate string  `json:"first_air_date"`
-			Popularity   float64 `json:"popularity"`
-			VoteCount    int     `json:"vote_count"`
+			ID            int      `json:"id"`
+			MediaType     string   `json:"media_type"`
+			Title         string   `json:"title"`
+			OriginalTitle string   `json:"original_title"`
+			Name          string   `json:"name"`
+			OriginalName  string   `json:"original_name"`
+			ReleaseDate   string   `json:"release_date"`
+			FirstAirDate  string   `json:"first_air_date"`
+			Popularity    float64  `json:"popularity"`
+			VoteCount     int      `json:"vote_count"`
+			OriginCountry []string `json:"origin_country"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&searchRes); err != nil {
@@ -2199,11 +2264,26 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 	var maxScore float64 = -1.0
 
 	yearInt, _ := strconv.Atoi(year)
-	// First pass: match year and media type hint, selecting highest popularity / vote count candidate
+	// First pass: strict title match, year match, and media type hint
 	for _, item := range searchRes.Results {
 		if item.MediaType != "movie" && item.MediaType != "tv" {
 			continue
 		}
+
+		normT1 := normalizeTitleForMatch(item.Title)
+		normT2 := normalizeTitleForMatch(item.OriginalTitle)
+		normT3 := normalizeTitleForMatch(item.Name)
+		normT4 := normalizeTitleForMatch(item.OriginalName)
+
+		titleMatches := (normT1 != "" && normT1 == normQuery) ||
+			(normT2 != "" && normT2 == normQuery) ||
+			(normT3 != "" && normT3 == normQuery) ||
+			(normT4 != "" && normT4 == normQuery)
+
+		if !titleMatches {
+			continue
+		}
+
 		itemYear := ""
 		if len(item.ReleaseDate) >= 4 {
 			itemYear = item.ReleaseDate[:4]
@@ -2226,9 +2306,28 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 		return bestID, bestType
 	}
 
-	// Second pass: any match by popularity
+	// Fallback pass: strict title match even if year is unverified
 	for _, item := range searchRes.Results {
-		if item.MediaType == "movie" || item.MediaType == "tv" {
+		if item.MediaType != "movie" && item.MediaType != "tv" {
+			continue
+		}
+
+		normT1 := normalizeTitleForMatch(item.Title)
+		normT2 := normalizeTitleForMatch(item.OriginalTitle)
+		normT3 := normalizeTitleForMatch(item.Name)
+		normT4 := normalizeTitleForMatch(item.OriginalName)
+
+		titleMatches := (normT1 != "" && normT1 == normQuery) ||
+			(normT2 != "" && normT2 == normQuery) ||
+			(normT3 != "" && normT3 == normQuery) ||
+			(normT4 != "" && normT4 == normQuery)
+
+		if !titleMatches {
+			continue
+		}
+
+		typeMatch := hint == "" || item.MediaType == hint
+		if typeMatch {
 			score := item.Popularity + float64(item.VoteCount)
 			if score > maxScore {
 				maxScore = score
@@ -2240,6 +2339,7 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 	if bestID > 0 {
 		return bestID, bestType
 	}
+
 	return 0, ""
 }
 

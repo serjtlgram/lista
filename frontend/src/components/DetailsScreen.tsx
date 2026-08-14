@@ -829,6 +829,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if (result.air_status) updates.air_status = result.air_status;
                       if (result.episodes_list) updates.episodes_list = result.episodes_list;
                       if (result.cast_roles) updates.cast_roles = result.cast_roles;
+                      if ((result as any).cast) updates.cast = (result as any).cast;
 
                       if (result.budget) updates.budget = result.budget;
                       if (result.duration) updates.duration = result.duration;

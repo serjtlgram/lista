@@ -1136,13 +1136,13 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the item from DB to get title, year, category, duration, country, director
-	var title, category, releaseYear, currentDuration, currentCountry, currentDirector string
+	// Fetch the item from DB to get title, year, category, duration, country, director, cast, description
+	var title, category, releaseYear, currentDuration, currentCountry, currentDirector, currentCast, currentDescription string
 	var alreadyEnriched bool
 	err := h.DB.Pool.QueryRow(r.Context(),
-		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(director, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(director, ''), COALESCE(cast_members, ''), COALESCE(description, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
 		itemID, user.ID,
-	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &currentDirector, &alreadyEnriched)
+	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &currentDirector, &currentCast, &currentDescription, &alreadyEnriched)
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
 		return
@@ -1158,7 +1158,7 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	// Fetch enriched data
 	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang)
 	if enriched == nil {
-		// TMDB failed or returned nothing (e.g., API key is invalid/missing). Let's create an empty object and let AI guess!
+		// TMDB failed or returned nothing (e.g. strict title mismatch or missing in TMDB). Let's create an empty object and let AI fill with context!
 		enriched = &parser.EnrichedDetails{}
 	}
 
@@ -1166,11 +1166,11 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		enriched.Director = currentDirector
 	}
 
-	// Call AI to translate and fill missing data with context (title, releaseYear, currentCountry)
-	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, releaseYear, currentCountry, enriched)
+	// Call AI to translate and fill missing data with full context (title, releaseYear, currentCountry, currentDirector, currentCast, currentDescription)
+	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, releaseYear, currentCountry, currentDirector, currentCast, currentDescription, enriched)
 
 	// If after AI it's STILL basically empty, then return no_data
-	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Budget == "" && enriched.Duration == "" && enriched.Country == "" {
+	if enriched.Seasons == 0 && enriched.EpisodesTotal == 0 && enriched.AirStatus == "" && enriched.EpisodesList == "" && enriched.CastRoles == "" && enriched.Cast == "" && enriched.Budget == "" && enriched.Duration == "" && enriched.Country == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "no_data", "ai_enriched": true})
 		// Still mark as enriched so button becomes disabled
@@ -1209,6 +1209,11 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	if enriched.CastRoles != "" {
 		updateQuery += fmt.Sprintf(", cast_roles = $%d", argIdx)
 		updateArgs = append(updateArgs, enriched.CastRoles)
+		argIdx++
+	}
+	if enriched.Cast != "" {
+		updateQuery += fmt.Sprintf(", cast_members = $%d", argIdx)
+		updateArgs = append(updateArgs, enriched.Cast)
 		argIdx++
 	}
 
@@ -1263,6 +1268,9 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		"episodes_list":  enriched.EpisodesList,
 		"cast_roles":     enriched.CastRoles,
 		"budget":         enriched.Budget,
+	}
+	if enriched.Cast != "" {
+		ret["cast"] = enriched.Cast
 	}
 	if directorUpdated || enriched.Director != "" {
 		ret["director"] = enriched.Director
