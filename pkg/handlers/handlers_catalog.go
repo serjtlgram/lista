@@ -267,49 +267,74 @@ func rankCatalogResults(items []models.CatalogSearchResult, q string, mode strin
 	return items
 }
 
+func matchPersonStrict(membersStr string, qTrim string) (bool, int) {
+	if qTrim == "" {
+		return true, 1
+	}
+	words := strings.Fields(qTrim)
+	if len(words) == 0 {
+		return true, 1
+	}
+
+	individuals := strings.FieldsFunc(membersStr, func(r rune) bool {
+		return r == ',' || r == ';' || r == '/' || r == '\n'
+	})
+
+	for idx, individual := range individuals {
+		indClean := strings.ToLower(strings.TrimSpace(individual))
+		if indClean == "" {
+			continue
+		}
+		if indClean == qTrim {
+			if idx == 0 {
+				return true, 1
+			}
+			if idx <= 2 {
+				return true, 2
+			}
+			return true, 3
+		}
+		allWordsInPerson := true
+		for _, w := range words {
+			if len(w) >= 2 && !strings.Contains(indClean, w) {
+				allWordsInPerson = false
+				break
+			}
+		}
+		if allWordsInPerson {
+			if idx == 0 {
+				return true, 1
+			}
+			if idx <= 2 {
+				return true, 2
+			}
+			return true, 3
+		}
+	}
+
+	mLower := strings.ToLower(membersStr)
+	if strings.Contains(mLower, qTrim) {
+		return true, 3
+	}
+
+	return false, 10
+}
+
 func calcItemRelevance(item models.CatalogSearchResult, q string, mode string) int {
 	qTrim := strings.ToLower(strings.TrimSpace(q))
 	if mode == "actor" {
-		cLower := strings.ToLower(item.Cast)
-		words := strings.Fields(qTrim)
-		if len(words) == 0 {
-			return 1
-		}
-		allFound := true
-		for _, w := range words {
-			if len(w) >= 2 && !strings.Contains(cLower, w) {
-				allFound = false
-				break
-			}
-		}
-		if !allFound {
+		matched, score := matchPersonStrict(item.Cast, qTrim)
+		if !matched {
 			return 10
 		}
-		if strings.Contains(cLower, qTrim) {
-			return 1
-		}
-		return 2
+		return score
 	}
 	if mode == "director" {
-		dLower := strings.ToLower(item.Director)
-		words := strings.Fields(qTrim)
-		if len(words) == 0 {
-			return 1
-		}
-		allFound := true
-		for _, w := range words {
-			if len(w) >= 2 && !strings.Contains(dLower, w) {
-				allFound = false
-				break
-			}
-		}
-		if !allFound {
+		matched, score := matchPersonStrict(item.Director, qTrim)
+		if !matched {
 			return 10
 		}
-		if strings.Contains(dLower, qTrim) {
-			return 1
-		}
-		return 2
+		return score
 	}
 
 	// mode == "title"

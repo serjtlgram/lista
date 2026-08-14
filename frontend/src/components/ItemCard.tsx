@@ -19,6 +19,8 @@ interface ItemCardProps {
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   showCheckbox?: boolean;
   t?: Translations;
+  searchMode?: string;
+  searchQuery?: string;
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({
@@ -29,6 +31,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   onRemoveFromList,
   onUpdateItem,
   t,
+  searchMode,
+  searchQuery,
 }) => {
   const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
   const isPlanned = item.status === 'planned' || item.status === 'в планах' || item.status === 'у планах' || item.status === 'отложено';
@@ -74,10 +78,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       partsLine1.push(item.release_year);
     }
 
-    // 3. Director / Author
+    // 3. Director / Author / Matched Actor
     let displayedAuthor = '';
     const rawAuthorOrDirector = item.director || item.author || '';
-    if ((isSeries || isMovie) && rawAuthorOrDirector) {
+
+    if (searchMode === 'actor' && item.cast) {
+      const actors = item.cast.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean);
+      let matchedActor = '';
+      if (searchQuery) {
+        const words = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 2);
+        matchedActor = actors.find(a => words.every(w => a.toLowerCase().includes(w))) || '';
+      }
+      const targetActor = matchedActor || actors[0] || '';
+      if (targetActor) {
+        displayedAuthor = `в ролях: ${targetActor}`;
+      }
+    } else if ((isSeries || isMovie) && rawAuthorOrDirector) {
       const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
       if (directors[0]) {
         const dirLabel = t ? t.details.director || 'реж.' : 'реж.';

@@ -263,6 +263,33 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     return 1;
   };
 
+  const calcPersonStrictScore = (membersStr: string, queryStr: string): [boolean, number] => {
+    const qTrim = queryStr.toLowerCase().trim();
+    if (!qTrim) return [true, 1];
+    const words = qTrim.split(/\s+/).filter((w) => w.length >= 2);
+    if (words.length === 0) return [true, 1];
+
+    const individuals = membersStr.split(/[,;\/\n]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    for (let i = 0; i < individuals.length; i++) {
+      const ind = individuals[i];
+      if (ind === qTrim) {
+        return [true, i === 0 ? 1 : i <= 2 ? 2 : 3];
+      }
+      if (words.every((w) => ind.includes(w))) {
+        return [true, i === 0 ? 1 : i <= 2 ? 2 : 3];
+      }
+    }
+    if (membersStr.toLowerCase().includes(qTrim)) {
+      return [true, 3];
+    }
+    return [false, 10];
+  };
+
+  const matchPersonStrictFrontend = (membersStr: string, queryStr: string): boolean => {
+    const [matched] = calcPersonStrictScore(membersStr, queryStr);
+    return matched;
+  };
+
   const { sortedItems, dbCatalogResults, onlineCatalogResults } = useMemo(() => {
     const userExactKeys = new Set<string>();
     const userVideoTitleYearKeys = new Set<string>();
@@ -319,13 +346,18 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       }
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         if (searchMode === 'actor') {
-          const castStr = `${item.cast || ''} ${item.cast_roles || ''}`.toLowerCase();
-          return castStr.includes(q);
+          const castStr = `${item.cast || ''} ${item.cast_roles || ''}`;
+          return matchPersonStrictFrontend(castStr, q);
         }
         if (searchMode === 'director') {
-          return (item.director || '').toLowerCase().includes(q);
+          return matchPersonStrictFrontend(item.director || '', q);
+        }
+        const words = q.split(/\s+/).filter((w) => w.length >= 2);
+        if (words.length > 0) {
+          const titleStr = item.title.toLowerCase();
+          return words.every((w) => titleStr.includes(w)) || (item.genre && item.genre.toLowerCase().includes(q));
         }
         return item.title.toLowerCase().includes(q) || (item.genre && item.genre.toLowerCase().includes(q));
       }
@@ -338,16 +370,14 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       if (qTrim) {
         const getScore = (it: Item) => {
           if (searchMode === 'actor') {
-            const castStr = `${it.cast || ''} ${it.cast_roles || ''}`.toLowerCase();
-            if (castStr === qTrim) return 1;
-            if (castStr.startsWith(qTrim)) return 2;
-            return 3;
+            const castStr = `${it.cast || ''} ${it.cast_roles || ''}`;
+            const [, score] = calcPersonStrictScore(castStr, qTrim);
+            return score;
           }
           if (searchMode === 'director') {
-            const dir = (it.director || '').toLowerCase();
-            if (dir === qTrim) return 1;
-            if (dir.startsWith(qTrim)) return 2;
-            return 3;
+            const dir = it.director || '';
+            const [, score] = calcPersonStrictScore(dir, qTrim);
+            return score;
           }
           const tLower = (it.title || '').toLowerCase();
           if (tLower === qTrim) return 1;
@@ -664,6 +694,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
               onToggleStatus={() => onToggleStatus(item)}
               onUpdateItem={onUpdateItem}
               t={t}
+              searchMode={searchMode}
+              searchQuery={searchQuery}
             />
           ))}
 
@@ -693,6 +725,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                     onToggleStatus={() => onToggleStatus(item)}
                     onUpdateItem={onUpdateItem}
                     t={t}
+                    searchMode={searchMode}
+                    searchQuery={searchQuery}
                   />
                 ))}
               </div>
@@ -719,6 +753,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                       onSelect={() => onSelectItem(mapped)}
                       onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
                       t={t}
+                      searchMode={searchMode}
+                      searchQuery={searchQuery}
                     />
                   );
                 })}
@@ -752,6 +788,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                       onSelect={() => onSelectItem(mapped)}
                       onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
                       t={t}
+                      searchMode={searchMode}
+                      searchQuery={searchQuery}
                     />
                   );
                 })}
