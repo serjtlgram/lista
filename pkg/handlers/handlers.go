@@ -581,7 +581,8 @@ func (h *Handler) GetItems(w http.ResponseWriter, r *http.Request) {
 		)
 		if err == nil {
 			if strings.HasPrefix(item.PosterURL, "data:image/") || len(item.PosterURL) > 300 {
-				item.PosterURL = fmt.Sprintf("%s/api/poster/%s", baseURL, item.ID)
+				v := item.UpdatedAt.Unix()
+				item.PosterURL = fmt.Sprintf("%s/api/poster/%s?v=%d", baseURL, item.ID, v)
 			}
 			item.RawInput = ""
 			items = append(items, item)
@@ -889,8 +890,9 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 
-	if strings.HasPrefix(createdItem.PosterURL, "data:image/") {
-		createdItem.PosterURL = fmt.Sprintf("%s/api/poster/%s", baseURL, createdItem.ID)
+	if strings.HasPrefix(createdItem.PosterURL, "data:image/") || len(createdItem.PosterURL) > 300 {
+		v := createdItem.UpdatedAt.Unix()
+		createdItem.PosterURL = fmt.Sprintf("%s/api/poster/%s?v=%d", baseURL, createdItem.ID, v)
 	}
 	createdItem.RawInput = ""
 
@@ -964,13 +966,15 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.PosterURL != nil {
 		pURL := strings.TrimSpace(*req.PosterURL)
-		if pURL != "" {
-			pURL = parser.OptimizePosterURL(nil, pURL)
+		if !strings.Contains(pURL, "/api/poster/"+itemID) {
+			if pURL != "" {
+				pURL = parser.OptimizePosterURL(nil, pURL)
+			}
+			pURL = limitStrLen(pURL, 100000)
+			query += fmt.Sprintf(", poster_url = $%d", argIdx)
+			args = append(args, pURL)
+			argIdx++
 		}
-		pURL = limitStrLen(pURL, 100000)
-		query += fmt.Sprintf(", poster_url = $%d", argIdx)
-		args = append(args, pURL)
-		argIdx++
 	}
 	if req.Description != nil {
 		*req.Description = limitStrLen(*req.Description, 1000)
@@ -1500,6 +1504,16 @@ func (h *Handler) GetPublicItem(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
 		return
+	}
+
+	if strings.HasPrefix(item.PosterURL, "data:image/") || len(item.PosterURL) > 300 {
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
+		v := item.UpdatedAt.Unix()
+		item.PosterURL = fmt.Sprintf("%s/api/poster/%s?v=%d", baseURL, item.ID, v)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

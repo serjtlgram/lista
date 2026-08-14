@@ -695,12 +695,14 @@ function safeBase64Decode(str: string): any {
   const handleSaveItem = async (itemData: Partial<Item>) => {
     triggerHaptic();
     if (editingItem) {
-      setItems((prev) => prev.map((i) => (i.id === editingItem.id ? { ...i, ...itemData } as Item : i)));
-      setSelectedItem((prev) => (prev && prev.id === editingItem.id ? { ...prev, ...itemData } as Item : prev));
+      const nowIso = new Date().toISOString();
+      const updatedLocalItem = { ...editingItem, ...itemData, updated_at: nowIso } as Item;
+      setItems((prev) => prev.map((i) => (i.id === editingItem.id ? updatedLocalItem : i)));
+      setSelectedItem((prev) => (prev && prev.id === editingItem.id ? updatedLocalItem : prev));
 
       setRecommendationListInfo((prev) => {
         if (!prev || !prev.addedItems) return prev;
-        const updatedAdded = prev.addedItems.map((ai) => (ai.id === editingItem.id ? { ...ai, ...itemData } as Item : ai));
+        const updatedAdded = prev.addedItems.map((ai) => (ai.id === editingItem.id ? updatedLocalItem : ai));
         return { ...prev, addedItems: updatedAdded };
       });
 

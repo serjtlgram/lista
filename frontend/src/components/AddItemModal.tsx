@@ -3,7 +3,7 @@ import { X, ChevronDown, Check, Sparkles, Search } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
 import { api } from '../services/api';
-import { getNextPlaceholderPoster } from '../services/posters';
+import { getNextPlaceholderPoster, isMissingOrDummyPoster } from '../services/posters';
 import { getTranslatedGenreFull, getAvailableGenres } from '../services/genres';
 
 interface AddItemModalProps {
@@ -33,6 +33,7 @@ const compressPosterImage = (url: string): Promise<string> => {
 
     try {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         clearTimeout(timer);
         try {
@@ -95,7 +96,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const [releaseYear, setReleaseYear] = useState(editingItem?.release_year || '');
   const [country, setCountry] = useState(editingItem?.country || '');
-  const [posterUrl, setPosterUrl] = useState(editingItem?.poster_url || '');
+  const [posterUrl, setPosterUrl] = useState(
+    editingItem?.poster_url && !isMissingOrDummyPoster(editingItem.poster_url) ? editingItem.poster_url : ''
+  );
   const [youtubeUrl, setYoutubeUrl] = useState(editingItem?.youtube_url || '');
   const [description, setDescription] = useState(editingItem?.description || '');
   const [director, setDirector] = useState(editingItem?.director || '');
@@ -148,7 +151,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setGenre(getTranslatedGenreFull(editingItem.genre, t));
       setReleaseYear(editingItem.release_year || '');
       setCountry(editingItem.country || '');
-      setPosterUrl(editingItem.poster_url || '');
+      setPosterUrl(
+        editingItem.poster_url && !isMissingOrDummyPoster(editingItem.poster_url) ? editingItem.poster_url : ''
+      );
       setYoutubeUrl(editingItem.youtube_url || '');
       setDescription(editingItem.description || '');
       setDirector(editingItem.director || '');

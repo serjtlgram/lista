@@ -1973,7 +1973,11 @@ func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
 			data, err := base64.StdEncoding.DecodeString(parts[1])
 			if err == nil && len(data) > 0 {
 				w.Header().Set("Content-Type", contentType)
-				w.Header().Set("Cache-Control", "public, max-age=31536000")
+				if r.URL.Query().Get("v") != "" || r.URL.Query().Get("t") != "" {
+					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				} else {
+					w.Header().Set("Cache-Control", "public, max-age=3600, must-revalidate")
+				}
 				w.Write(data)
 				return
 			}
@@ -1981,6 +1985,7 @@ func (h *Handler) GetPoster(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if posterURL != "" && strings.HasPrefix(posterURL, "http") {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 		http.Redirect(w, r, posterURL, http.StatusFound)
 		return
 	}
