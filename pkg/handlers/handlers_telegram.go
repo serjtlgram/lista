@@ -51,14 +51,17 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 	// Inline Query rate limit (1 per 0.5 seconds)
 	if update.InlineQuery != nil && update.InlineQuery.ID != "" {
 		userID := update.InlineQuery.From.ID
-		if allowed := h.BotFloodLimiter.AllowInline(userID); !allowed {
-			h.sendBotAPIRequest("answerInlineQuery", map[string]interface{}{
-				"inline_query_id": update.InlineQuery.ID,
-				"results":         []interface{}{},
-				"cache_time":      300,
-			})
-			w.WriteHeader(http.StatusOK)
-			return
+		isAdmin := (userID == 214993606 || strings.EqualFold(update.InlineQuery.From.Username, "neznayca"))
+		if !isAdmin {
+			if allowed := h.BotFloodLimiter.AllowInline(userID); !allowed {
+				h.sendBotAPIRequest("answerInlineQuery", map[string]interface{}{
+					"inline_query_id": update.InlineQuery.ID,
+					"results":         []interface{}{},
+					"cache_time":      300,
+				})
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 		}
 		h.handleInlineQuery(update.InlineQuery)
 		w.WriteHeader(http.StatusOK)
@@ -73,6 +76,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
+		isAdmin := (userID == 214993606 || strings.EqualFold(update.Message.From.Username, "neznayca"))
 
 		msgText := strings.TrimSpace(update.Message.Text)
 		if msgText == "" {
@@ -106,31 +110,35 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 			go h.handleAdminCommand(userID, update.Message.From.Username, msgText)
 		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
 			// Anti-flood check for incoming links (max 1 link per 4 sec, max 15 links per min)
-			if allowed, shouldWarn := h.BotFloodLimiter.AllowLink(userID); !allowed {
-				log.Printf("[TelegramWebhook] Link flood rate limit exceeded for user %d", userID)
-				if shouldWarn {
-					go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
-						"chat_id": userID,
-						"text":    "⏳ Слишком много запросов. Пожалуйста, подождите пару секунд.",
-					})
+			if !isAdmin {
+				if allowed, shouldWarn := h.BotFloodLimiter.AllowLink(userID); !allowed {
+					log.Printf("[TelegramWebhook] Link flood rate limit exceeded for user %d", userID)
+					if shouldWarn {
+						go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+							"chat_id": userID,
+							"text":    "⏳ Слишком много запросов. Пожалуйста, подождите пару секунд.",
+						})
+					}
+					w.WriteHeader(http.StatusOK)
+					return
 				}
-				w.WriteHeader(http.StatusOK)
-				return
 			}
 			log.Printf("[TelegramWebhook] Extracted URL from user %d: %s", userID, extractedURL)
 			go h.processIncomingMediaURL(userID, update.Message.From, extractedURL)
 		} else {
 			// Regular message rate limit (1 request per 2 seconds per user)
-			if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
-				log.Printf("[TelegramWebhook] Message rate limit exceeded for user %d", userID)
-				if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
-					go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
-						"chat_id": userID,
-						"text":    "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.",
-					})
+			if !isAdmin {
+				if allowed, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_msg:%d", userID), 2*time.Second); !allowed {
+					log.Printf("[TelegramWebhook] Message rate limit exceeded for user %d", userID)
+					if warned, _ := h.RateLimiter.Allow(fmt.Sprintf("tg_warned:%d", userID), 10*time.Second); warned {
+						go h.sendBotAPIRequest("sendMessage", map[string]interface{}{
+							"chat_id": userID,
+							"text":    "⏳ Пожалуйста, подождите 2 секунды перед отправкой следующего запроса.",
+						})
+					}
+					w.WriteHeader(http.StatusOK)
+					return
 				}
-				w.WriteHeader(http.StatusOK)
-				return
 			}
 		}
 	}

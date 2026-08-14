@@ -84,24 +84,39 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const isCurrentUserAdmin = (): boolean => {
+    try {
+      const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser?.id === 214993606) return true;
+      if (tgUser?.username && ['neznayca', 'znayca'].includes(tgUser.username.toLowerCase())) return true;
+    } catch (e) {}
+    return false;
+  };
+
   const fetchRecommendations = async (force: boolean = false) => {
     if (!force && cachedResults && cachedResults.length > 0) {
       return;
     }
 
-    if (force) {
-      const now = Date.now();
-      const lastRefreshKey = `lista_rec_last_refresh_${listId}`;
-      const lastTime = parseInt(localStorage.getItem(lastRefreshKey) || '0', 10);
-      const elapsedSec = Math.floor((now - lastTime) / 1000);
-      const COOLDOWN_SEC = 300; // 5 minutes
+    const isAdmin = isCurrentUserAdmin();
 
-      if (lastTime > 0 && elapsedSec < COOLDOWN_SEC) {
-        const remaining = COOLDOWN_SEC - elapsedSec;
-        const remMin = Math.floor(remaining / 60);
-        const remSec = remaining % 60;
-        showToast(`Подождите ${remMin} мин. ${remSec} сек. перед повторным обновлением.`);
-        return;
+    if (force) {
+      if (!isAdmin) {
+        const now = Date.now();
+        const lastRefreshKey = `lista_rec_last_refresh_${listId}`;
+        const lastTime = parseInt(localStorage.getItem(lastRefreshKey) || '0', 10);
+        const elapsedSec = Math.floor((now - lastTime) / 1000);
+        const COOLDOWN_SEC = 300; // 5 minutes
+
+        if (lastTime > 0 && elapsedSec < COOLDOWN_SEC) {
+          const remaining = COOLDOWN_SEC - elapsedSec;
+          const remMin = Math.floor(remaining / 60);
+          const remSec = remaining % 60;
+          showToast(`Подождите ${remMin} мин. ${remSec} сек. перед повторным обновлением.`);
+          return;
+        }
+      } else {
+        localStorage.removeItem(`lista_rec_last_refresh_${listId}`);
       }
 
       setAddedItems([]);
@@ -149,7 +164,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       );
 
       if (results && results.length > 0) {
-        if (force) {
+        if (force && !isAdmin) {
           localStorage.setItem(`lista_rec_last_refresh_${listId}`, Date.now().toString());
         }
         const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;

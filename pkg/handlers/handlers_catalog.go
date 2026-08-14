@@ -24,35 +24,44 @@ import (
 // GET /api/catalog/search?q=Title&category=Category
 func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	rateKey := getRateLimitKey(r)
-
-	// 1. Check AutoJail
-	if h.AutoJail != nil {
-		if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "rate_limit_exceeded",
-				"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
-			})
-			return
-		}
+	isAdmin := false
+	if user, ok := auth.GetUserFromContext(r); ok && user != nil {
+		isAdmin = (user.ID == 214993606 || strings.EqualFold(user.Username, "neznayca"))
+	}
+	if !isAdmin && rateKey == "user_214993606" {
+		isAdmin = true
 	}
 
-	// 2. Search Rate Limiter: max 20 requests per minute per user/IP
-	if h.SearchLimiter != nil {
-		if allowed, wait := h.SearchLimiter.AllowSearch(rateKey); !allowed {
-			if h.AutoJail != nil {
-				h.AutoJail.Record429(rateKey)
+	if !isAdmin {
+		// 1. Check AutoJail
+		if h.AutoJail != nil {
+			if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "rate_limit_exceeded",
+					"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
+				})
+				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":               "Слишком много поисковых запросов. Пожалуйста, подождите немного перед следующим поиском.",
-				"retry_after_seconds": int(wait.Seconds()),
-			})
-			return
+		}
+
+		// 2. Search Rate Limiter: max 20 requests per minute per user/IP
+		if h.SearchLimiter != nil {
+			if allowed, wait := h.SearchLimiter.AllowSearch(rateKey); !allowed {
+				if h.AutoJail != nil {
+					h.AutoJail.Record429(rateKey)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":               "Слишком много поисковых запросов. Пожалуйста, подождите немного перед следующим поиском.",
+					"retry_after_seconds": int(wait.Seconds()),
+				})
+				return
+			}
 		}
 	}
 

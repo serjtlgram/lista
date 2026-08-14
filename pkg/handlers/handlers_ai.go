@@ -409,37 +409,47 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 7. ВАЖНО: Список должен состоять строго из 30 позиций. Выдай ровно 30 названий.`,
 		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
-	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user)
+	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
 	rateKey := getRateLimitKey(r)
-	if h.AutoJail != nil {
-		if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "rate_limit_exceeded",
-				"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
-			})
-			return
-		}
+	isAdmin := false
+	if user, ok := auth.GetUserFromContext(r); ok && user != nil {
+		isAdmin = (user.ID == 214993606 || strings.EqualFold(user.Username, "neznayca"))
+	}
+	if !isAdmin && (rateKey == "user_214993606" || userID == 214993606) {
+		isAdmin = true
 	}
 
-	if h.RecommendationsLimiter != nil && userID != 0 {
-		if allowed, errCode, msg, retryAfter := h.RecommendationsLimiter.CheckAndConsume(userID); !allowed {
-			if h.AutoJail != nil {
-				h.AutoJail.Record429(rateKey)
+	if !isAdmin {
+		if h.AutoJail != nil {
+			if jailed, rem := h.AutoJail.IsJailed(rateKey); jailed {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Retry-After", strconv.Itoa(int(rem.Seconds())))
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "rate_limit_exceeded",
+					"message": fmt.Sprintf("Доступ временно ограничен за превышение лимитов. Пожалуйста, подождите %d мин.", int(rem.Minutes())+1),
+				})
+				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			if retryAfter > 0 {
-				w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+		}
+
+		if h.RecommendationsLimiter != nil && userID != 0 {
+			if allowed, errCode, msg, retryAfter := h.RecommendationsLimiter.CheckAndConsume(userID); !allowed {
+				if h.AutoJail != nil {
+					h.AutoJail.Record429(rateKey)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if retryAfter > 0 {
+					w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+				}
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":               errCode,
+					"message":             msg,
+					"retry_after_seconds": int(retryAfter.Seconds()),
+				})
+				return
 			}
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":               errCode,
-				"message":             msg,
-				"retry_after_seconds": int(retryAfter.Seconds()),
-			})
-			return
 		}
 	}
 
