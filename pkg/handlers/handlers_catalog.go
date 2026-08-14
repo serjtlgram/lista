@@ -766,6 +766,31 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 
 	var results []models.CatalogSearchResult
 
+	// Cross-media deduplication for "all" / default category (Movie <-> Series duplicate titles)
+	if catEn == "all" || catEn == "" {
+		seenMovieTitles := make(map[string]bool)
+		for _, m := range movieBucket {
+			tKey := strings.ToLower(strings.TrimSpace(m.Title))
+			if tKey != "" {
+				if m.ReleaseYear != "" {
+					seenMovieTitles[tKey+"::"+m.ReleaseYear] = true
+				}
+				seenMovieTitles[tKey] = true
+			}
+		}
+		var cleanShowBucket []models.CatalogSearchResult
+		for _, s := range showBucket {
+			tKey := strings.ToLower(strings.TrimSpace(s.Title))
+			if tKey != "" {
+				if s.ReleaseYear != "" && seenMovieTitles[tKey+"::"+s.ReleaseYear] {
+					continue
+				}
+			}
+			cleanShowBucket = append(cleanShowBucket, s)
+		}
+		showBucket = cleanShowBucket
+	}
+
 	// Rich deep limits when searching by actor or director
 	if mode == "actor" || mode == "director" {
 		if catEn == "movie" {

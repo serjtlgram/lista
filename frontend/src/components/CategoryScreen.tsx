@@ -264,12 +264,44 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   };
 
   const { sortedItems, dbCatalogResults, onlineCatalogResults } = useMemo(() => {
-    const userItemKeys = new Set(
-      items.map((i) => `${(i.title || '').trim().toLowerCase()}::${normCatKey(i.category)}`)
-    );
-    const externalCatalogResults = catalogResults.filter(
-      (c) => !userItemKeys.has(`${(c.title || '').trim().toLowerCase()}::${normCatKey(c.category)}`)
-    );
+    const userExactKeys = new Set<string>();
+    const userVideoTitleYearKeys = new Set<string>();
+
+    items.forEach((i) => {
+      const titleClean = (i.title || '').trim().toLowerCase();
+      const catNorm = normCatKey(i.category);
+      if (!titleClean) return;
+      userExactKeys.add(`${titleClean}::${catNorm}`);
+      if (catNorm === 'movie' || catNorm === 'series') {
+        const yearClean = (i.release_year || '').trim();
+        if (yearClean) {
+          userVideoTitleYearKeys.add(`${titleClean}::${yearClean}`);
+        }
+        userVideoTitleYearKeys.add(titleClean);
+      }
+    });
+
+    const externalCatalogResults = catalogResults.filter((c) => {
+      const titleClean = (c.title || '').trim().toLowerCase();
+      const catNorm = normCatKey(c.category);
+      if (!titleClean) return false;
+
+      // 1. Exact match by category
+      if (userExactKeys.has(`${titleClean}::${catNorm}`)) return false;
+
+      // 2. Cross-media match for movie/series already in user's collection
+      if (catNorm === 'movie' || catNorm === 'series') {
+        const yearClean = (c.release_year || '').trim();
+        if (yearClean && userVideoTitleYearKeys.has(`${titleClean}::${yearClean}`)) {
+          return false;
+        }
+        if (userVideoTitleYearKeys.has(titleClean)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
 
     const dbResults = externalCatalogResults.filter((c) => c.source !== 'online');
     const onlineResults = externalCatalogResults.filter((c) => c.source === 'online');
