@@ -114,7 +114,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults, targetLang, mode)
 
 	// 5. Merge results adhering strictly to category order & limits
-	finalResults := mergeSearchResults(dbResults, onlineResults, catEn, targetLang, mode)
+	finalResults := mergeSearchResults(dbResults, onlineResults, catEn, targetLang, mode, q)
 
 	// Cache final results
 	h.SearchCache.Set(cacheKey, finalResults)
@@ -143,13 +143,23 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 	if strings.TrimSpace(q) != "" {
 		trimmedQ := strings.ToLower(strings.TrimSpace(q))
 		if mode == "actor" {
-			query += fmt.Sprintf(" AND LOWER(cast_members) LIKE $%d", argIdx)
-			args = append(args, "%"+trimmedQ+"%")
-			argIdx++
+			words := strings.Fields(trimmedQ)
+			for _, w := range words {
+				if len(w) >= 2 {
+					query += fmt.Sprintf(" AND LOWER(cast_members) LIKE $%d", argIdx)
+					args = append(args, "%"+w+"%")
+					argIdx++
+				}
+			}
 		} else if mode == "director" {
-			query += fmt.Sprintf(" AND LOWER(director) LIKE $%d", argIdx)
-			args = append(args, "%"+trimmedQ+"%")
-			argIdx++
+			words := strings.Fields(trimmedQ)
+			for _, w := range words {
+				if len(w) >= 2 {
+					query += fmt.Sprintf(" AND LOWER(director) LIKE $%d", argIdx)
+					args = append(args, "%"+w+"%")
+					argIdx++
+				}
+			}
 		} else {
 			query += fmt.Sprintf(" AND LOWER(title) LIKE $%d", argIdx)
 			args = append(args, "%"+trimmedQ+"%")
@@ -216,8 +226,16 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 		}
 	}
 
-	results = rankCatalogResults(results, q, mode)
-	return results
+	var filteredResults []models.CatalogSearchResult
+	for _, res := range results {
+		if (mode == "actor" || mode == "director") && calcItemRelevance(res, q, mode) >= 10 {
+			continue
+		}
+		filteredResults = append(filteredResults, res)
+	}
+
+	filteredResults = rankCatalogResults(filteredResults, q, mode)
+	return filteredResults
 }
 
 func rankCatalogResults(items []models.CatalogSearchResult, q string, mode string) []models.CatalogSearchResult {
@@ -250,45 +268,62 @@ func rankCatalogResults(items []models.CatalogSearchResult, q string, mode strin
 }
 
 func calcItemRelevance(item models.CatalogSearchResult, q string, mode string) int {
-	tLower := strings.ToLower(strings.TrimSpace(item.Title))
+	qTrim := strings.ToLower(strings.TrimSpace(q))
 	if mode == "actor" {
 		cLower := strings.ToLower(item.Cast)
-		if cLower == q {
+		words := strings.Fields(qTrim)
+		if len(words) == 0 {
 			return 1
 		}
-		if strings.HasPrefix(cLower, q) {
-			return 2
+		allFound := true
+		for _, w := range words {
+			if len(w) >= 2 && !strings.Contains(cLower, w) {
+				allFound = false
+				break
+			}
 		}
-		if strings.Contains(cLower, q) {
-			return 3
+		if !allFound {
+			return 10
 		}
-		return 5
+		if strings.Contains(cLower, qTrim) {
+			return 1
+		}
+		return 2
 	}
 	if mode == "director" {
 		dLower := strings.ToLower(item.Director)
-		if dLower == q {
+		words := strings.Fields(qTrim)
+		if len(words) == 0 {
 			return 1
 		}
-		if strings.HasPrefix(dLower, q) {
-			return 2
+		allFound := true
+		for _, w := range words {
+			if len(w) >= 2 && !strings.Contains(dLower, w) {
+				allFound = false
+				break
+			}
 		}
-		if strings.Contains(dLower, q) {
-			return 3
+		if !allFound {
+			return 10
 		}
-		return 5
+		if strings.Contains(dLower, qTrim) {
+			return 1
+		}
+		return 2
 	}
 
 	// mode == "title"
-	if tLower == q {
+	tLower := strings.ToLower(strings.TrimSpace(item.Title))
+	if tLower == qTrim {
 		return 1
 	}
-	if strings.HasPrefix(tLower, q) {
+	if strings.HasPrefix(tLower, qTrim) {
 		return 2
 	}
-	if strings.Contains(tLower, " "+q) || strings.Contains(tLower, "«"+q) || strings.Contains(tLower, "\""+q) {
+	if strings.Contains(tLower, " "+qTrim) || strings.Contains(tLower, "«"+qTrim) || strings.Contains(tLower, "\""+qTrim) {
 		return 3
 	}
-	if strings.Contains(tLower, q) {
+	if strings.Contains(tLower, qTrim) {
 		return 4
 	}
 	return 5
@@ -616,10 +651,10 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 	return items
 }
 
-func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn string, targetLang string, modes ...string) []models.CatalogSearchResult {
-	mode := "title"
-	if len(modes) > 0 && modes[0] != "" {
-		mode = modes[0]
+func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn string, targetLang string, mode string, queries ...string) []models.CatalogSearchResult {
+	q := ""
+	if len(queries) > 0 {
+		q = queries[0]
 	}
 
 	movieBucket := []models.CatalogSearchResult{}
@@ -640,6 +675,9 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 	}
 
 	for _, item := range allRaw {
+		if (mode == "actor" || mode == "director") && q != "" && calcItemRelevance(item, q, mode) >= 10 {
+			continue
+		}
 		normCat := mapCategoryToEn(item.Category)
 		titleKey := strings.ToLower(strings.TrimSpace(item.Title))
 		if titleKey == "" {
@@ -1341,20 +1379,8 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 
 	var personData struct {
 		Results []struct {
-			ID       int    `json:"id"`
-			Name     string `json:"name"`
-			KnownFor []struct {
-				ID           int     `json:"id"`
-				Title        string  `json:"title"`
-				Name         string  `json:"name"`
-				MediaType    string  `json:"media_type"`
-				PosterPath   string  `json:"poster_path"`
-				Overview     string  `json:"overview"`
-				ReleaseDate  string  `json:"release_date"`
-				FirstAirDate string  `json:"first_air_date"`
-				VoteAverage  float64 `json:"vote_average"`
-				GenreIDs     []int   `json:"genre_ids"`
-			} `json:"known_for"`
+			ID   int    `json:"id"`
+			Name string `json:"name"`
 		} `json:"results"`
 	}
 
@@ -1363,12 +1389,43 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 	}
 
 	personID := personData.Results[0].ID
+	matchedPersonName := personData.Results[0].Name
+	if matchedPersonName == "" {
+		matchedPersonName = personName
+	}
 	if personID <= 0 {
 		return list
 	}
 
-	// 2. Discover filmography (Movies and/or TV shows)
-	type tmdbRawMedia struct {
+	// 2. Fetch combined_credits
+	creditsURL := fmt.Sprintf(
+		"https://api.themoviedb.org/3/person/%d/combined_credits?language=%s",
+		personID,
+		url.QueryEscape(targetLang),
+	)
+	if len(tmdbKey) < 50 {
+		creditsURL += "&api_key=" + tmdbKey
+	}
+
+	reqCred, errCred := http.NewRequest("GET", creditsURL, nil)
+	if errCred != nil {
+		return list
+	}
+	if len(tmdbKey) >= 50 {
+		reqCred.Header.Set("Authorization", "Bearer "+tmdbKey)
+	}
+	reqCred.Header.Set("accept", "application/json")
+
+	respCred, errCred := client.Do(reqCred)
+	if errCred != nil || respCred == nil || respCred.StatusCode != http.StatusOK {
+		if respCred != nil {
+			respCred.Body.Close()
+		}
+		return list
+	}
+	defer respCred.Body.Close()
+
+	type tmdbCreditMedia struct {
 		ID           int     `json:"id"`
 		Title        string  `json:"title"`
 		Name         string  `json:"name"`
@@ -1378,51 +1435,57 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 		ReleaseDate  string  `json:"release_date"`
 		FirstAirDate string  `json:"first_air_date"`
 		VoteAverage  float64 `json:"vote_average"`
+		VoteCount    int     `json:"vote_count"`
+		Popularity   float64 `json:"popularity"`
 		GenreIDs     []int   `json:"genre_ids"`
+		Job          string  `json:"job"`
+		Department   string  `json:"department"`
+		Character    string  `json:"character"`
 	}
 
-	var rawMediaList []tmdbRawMedia
+	var creditsData struct {
+		Cast []tmdbCreditMedia `json:"cast"`
+		Crew []tmdbCreditMedia `json:"crew"`
+	}
+
+	if err := json.NewDecoder(respCred.Body).Decode(&creditsData); err != nil {
+		return list
+	}
+
+	var rawMediaList []tmdbCreditMedia
 	seenMediaIDs := make(map[string]bool)
 
-	fetchDiscover := func(endpoint string, mType string) {
-		discoverURL := fmt.Sprintf(
-			"https://api.themoviedb.org/3/%s?language=%s&sort_by=popularity.desc&page=1",
-			endpoint,
-			url.QueryEscape(targetLang),
-		)
-		if mode == "actor" {
-			discoverURL += fmt.Sprintf("&with_cast=%d", personID)
-		} else if mode == "director" {
-			discoverURL += fmt.Sprintf("&with_crew=%d", personID)
-		}
-		if len(tmdbKey) < 50 {
-			discoverURL += "&api_key=" + tmdbKey
-		}
-
-		reqD, errD := http.NewRequest("GET", discoverURL, nil)
-		if errD != nil {
-			return
-		}
-		if len(tmdbKey) >= 50 {
-			reqD.Header.Set("Authorization", "Bearer "+tmdbKey)
-		}
-		reqD.Header.Set("accept", "application/json")
-
-		respD, errD := client.Do(reqD)
-		if errD != nil || respD == nil || respD.StatusCode != http.StatusOK {
-			if respD != nil {
-				respD.Body.Close()
+	if mode == "actor" {
+		for _, m := range creditsData.Cast {
+			mType := m.MediaType
+			if mType == "" {
+				mType = "movie"
 			}
-			return
+			if targetCat == "movie" && mType != "movie" {
+				continue
+			}
+			if (targetCat == "show" || targetCat == "tv") && mType != "tv" {
+				continue
+			}
+			dedupKey := fmt.Sprintf("%s_%d", mType, m.ID)
+			if !seenMediaIDs[dedupKey] {
+				seenMediaIDs[dedupKey] = true
+				rawMediaList = append(rawMediaList, m)
+			}
 		}
-		defer respD.Body.Close()
-
-		var discData struct {
-			Results []tmdbRawMedia `json:"results"`
-		}
-		if err := json.NewDecoder(respD.Body).Decode(&discData); err == nil {
-			for _, m := range discData.Results {
-				m.MediaType = mType
+	} else if mode == "director" {
+		for _, m := range creditsData.Crew {
+			if strings.EqualFold(m.Job, "Director") || strings.EqualFold(m.Department, "Directing") {
+				mType := m.MediaType
+				if mType == "" {
+					mType = "movie"
+				}
+				if targetCat == "movie" && mType != "movie" {
+					continue
+				}
+				if (targetCat == "show" || targetCat == "tv") && mType != "tv" {
+					continue
+				}
 				dedupKey := fmt.Sprintf("%s_%d", mType, m.ID)
 				if !seenMediaIDs[dedupKey] {
 					seenMediaIDs[dedupKey] = true
@@ -1432,44 +1495,22 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 		}
 	}
 
-	// Fetch movies if targetCat is movie, all, or empty
-	if targetCat == "movie" || targetCat == "all" || targetCat == "" {
-		fetchDiscover("discover/movie", "movie")
-	}
-	// Fetch TV shows if targetCat is show, tv, all, or empty
-	if targetCat == "show" || targetCat == "tv" || targetCat == "all" || targetCat == "" {
-		fetchDiscover("discover/tv", "tv")
-	}
-
-	// Fallback to known_for items if discover returned no items
-	if len(rawMediaList) == 0 && len(personData.Results[0].KnownFor) > 0 {
-		for _, kf := range personData.Results[0].KnownFor {
-			mType := kf.MediaType
-			if mType == "" {
-				mType = "movie"
-			}
-			dedupKey := fmt.Sprintf("%s_%d", mType, kf.ID)
-			if !seenMediaIDs[dedupKey] {
-				seenMediaIDs[dedupKey] = true
-				rawMediaList = append(rawMediaList, tmdbRawMedia{
-					ID:           kf.ID,
-					Title:        kf.Title,
-					Name:         kf.Name,
-					MediaType:    mType,
-					PosterPath:   kf.PosterPath,
-					Overview:     kf.Overview,
-					ReleaseDate:  kf.ReleaseDate,
-					FirstAirDate: kf.FirstAirDate,
-					VoteAverage:  kf.VoteAverage,
-					GenreIDs:     kf.GenreIDs,
-				})
-			}
-		}
-	}
-
 	if len(rawMediaList) == 0 {
 		return list
 	}
+
+	// Sort by popularity and votes descending
+	sort.SliceStable(rawMediaList, func(i, j int) bool {
+		hasVotesI := rawMediaList[i].VoteCount > 0
+		hasVotesJ := rawMediaList[j].VoteCount > 0
+		if hasVotesI != hasVotesJ {
+			return hasVotesI
+		}
+		if rawMediaList[i].Popularity != rawMediaList[j].Popularity {
+			return rawMediaList[i].Popularity > rawMediaList[j].Popularity
+		}
+		return rawMediaList[i].VoteAverage > rawMediaList[j].VoteAverage
+	})
 
 	// 3. Process and enrich items concurrently
 	type tmdbRes struct {
@@ -1481,7 +1522,7 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 
 	candidateCount := 0
 	for i, r := range rawMediaList {
-		if candidateCount >= 30 {
+		if candidateCount >= 35 {
 			break
 		}
 		title := r.Title
@@ -1536,6 +1577,14 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 			pubRating = fmt.Sprintf("%.1f", r.VoteAverage)
 		}
 
+		initCast := ""
+		initDirector := ""
+		if mode == "actor" {
+			initCast = matchedPersonName
+		} else if mode == "director" {
+			initDirector = matchedPersonName
+		}
+
 		baseItem := models.CatalogSearchResult{
 			ID:           itemID,
 			Title:        title,
@@ -1545,6 +1594,8 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 			PosterURL:    poster,
 			Description:  r.Overview,
 			PublicRating: pubRating,
+			Director:     initDirector,
+			Cast:         initCast,
 			Source:       "online",
 		}
 
@@ -1557,6 +1608,9 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 				}
 				if details.Cast != "" {
 					bItem.Cast = details.Cast
+					if mode == "actor" && matchedPersonName != "" && !strings.Contains(strings.ToLower(bItem.Cast), strings.ToLower(matchedPersonName)) {
+						bItem.Cast = matchedPersonName + ", " + bItem.Cast
+					}
 				}
 				if details.Duration != "" {
 					bItem.Duration = details.Duration

@@ -79,7 +79,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     const rawAuthorOrDirector = item.director || item.author || '';
     if ((isSeries || isMovie) && rawAuthorOrDirector) {
       const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
-      displayedAuthor = directors[0] || '';
+      if (directors[0]) {
+        const dirLabel = t ? t.details.director || 'реж.' : 'реж.';
+        displayedAuthor = `${dirLabel}: ${directors[0]}`;
+      }
     } else if (item.author) {
       displayedAuthor = item.author;
     }
