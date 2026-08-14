@@ -91,16 +91,15 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       }
       const targetActor = matchedActor || actors[0] || '';
       if (targetActor) {
-        displayedAuthor = `в ролях: ${targetActor}`;
+        displayedAuthor = targetActor.replace(/^(?:в\s+ролях|режисс[её]р|реж\.?|акт[её]р(?:иса)?|actor|actress|cast)\s*:\s*/i, '').trim();
       }
     } else if ((isSeries || isMovie) && rawAuthorOrDirector) {
       const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
       if (directors[0]) {
-        const dirLabel = t ? t.details.director || 'реж.' : 'реж.';
-        displayedAuthor = `${dirLabel}: ${directors[0]}`;
+        displayedAuthor = directors[0].replace(/^(?:режисс[её]р|реж\.?|director|автор|author)\s*:\s*/i, '').trim();
       }
     } else if (item.author) {
-      displayedAuthor = item.author;
+      displayedAuthor = item.author.replace(/^(?:автор|author)\s*:\s*/i, '').trim();
     }
     if (displayedAuthor) partsLine1.push(displayedAuthor);
 
