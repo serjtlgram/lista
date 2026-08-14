@@ -171,6 +171,16 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       return;
     }
 
+    // Check if we already have cached results for this exact query & mode on mount
+    try {
+      const saved = sessionStorage.getItem('lista_catalog_search_results');
+      const savedQuery = sessionStorage.getItem('lista_catalog_search_query');
+      const savedMode = sessionStorage.getItem('lista_catalog_search_mode_cached');
+      if (saved && savedQuery === q && savedMode === searchMode && catalogResults.length > 0) {
+        return;
+      }
+    } catch (e) {}
+
     setIsSearchingCatalog(true);
     const timer = setTimeout(async () => {
       try {
@@ -292,6 +302,32 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     });
 
     const sorted = [...filtered].sort((a, b) => {
+      const qTrim = searchQuery.trim().toLowerCase();
+      if (qTrim) {
+        const getScore = (it: Item) => {
+          if (searchMode === 'actor') {
+            const castStr = `${it.cast || ''} ${it.cast_roles || ''}`.toLowerCase();
+            if (castStr === qTrim) return 1;
+            if (castStr.startsWith(qTrim)) return 2;
+            return 3;
+          }
+          if (searchMode === 'director') {
+            const dir = (it.director || '').toLowerCase();
+            if (dir === qTrim) return 1;
+            if (dir.startsWith(qTrim)) return 2;
+            return 3;
+          }
+          const tLower = (it.title || '').toLowerCase();
+          if (tLower === qTrim) return 1;
+          if (tLower.startsWith(qTrim)) return 2;
+          if (tLower.includes(' ' + qTrim) || tLower.includes('«' + qTrim) || tLower.includes('"' + qTrim)) return 3;
+          return 4;
+        };
+        const scoreA = getScore(a);
+        const scoreB = getScore(b);
+        if (scoreA !== scoreB) return scoreA - scoreB;
+      }
+
       const prioA = getTabCategoryPriority(a.category, title);
       const prioB = getTabCategoryPriority(b.category, title);
       if (prioA !== prioB) return prioA - prioB;

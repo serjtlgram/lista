@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,11 +143,11 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 	if strings.TrimSpace(q) != "" {
 		trimmedQ := strings.ToLower(strings.TrimSpace(q))
 		if mode == "actor" {
-			query += fmt.Sprintf(" AND (LOWER(cast_members) LIKE $%d OR LOWER(title) LIKE $%d)", argIdx, argIdx)
+			query += fmt.Sprintf(" AND LOWER(cast_members) LIKE $%d", argIdx)
 			args = append(args, "%"+trimmedQ+"%")
 			argIdx++
 		} else if mode == "director" {
-			query += fmt.Sprintf(" AND (LOWER(director) LIKE $%d OR LOWER(title) LIKE $%d)", argIdx, argIdx)
+			query += fmt.Sprintf(" AND LOWER(director) LIKE $%d", argIdx)
 			args = append(args, "%"+trimmedQ+"%")
 			argIdx++
 		} else {
@@ -168,7 +169,7 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 		query += " AND LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы', 'show', 'shows', 'series', 'сериал', 'сериалы')"
 	}
 
-	query += " ORDER BY LOWER(title), category, created_at DESC LIMIT 30;"
+	query += " ORDER BY LOWER(title), category, created_at DESC LIMIT 50;"
 
 	var results []models.CatalogSearchResult
 	rows, err := h.DB.Pool.Query(ctx, query, args...)
@@ -215,7 +216,82 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 		}
 	}
 
+	results = rankCatalogResults(results, q, mode)
 	return results
+}
+
+func rankCatalogResults(items []models.CatalogSearchResult, q string, mode string) []models.CatalogSearchResult {
+	qTrim := strings.ToLower(strings.TrimSpace(q))
+	if qTrim == "" || len(items) <= 1 {
+		return items
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
+		scoreA := calcItemRelevance(items[i], qTrim, mode)
+		scoreB := calcItemRelevance(items[j], qTrim, mode)
+		if scoreA != scoreB {
+			return scoreA < scoreB // lower score = higher relevance
+		}
+		// Second tie-breaker: rating
+		rA, _ := strconv.ParseFloat(items[i].PublicRating, 64)
+		rB, _ := strconv.ParseFloat(items[j].PublicRating, 64)
+		if rA != rB {
+			return rA > rB
+		}
+		// Third tie-breaker: release year
+		yA, _ := strconv.Atoi(items[i].ReleaseYear)
+		yB, _ := strconv.Atoi(items[j].ReleaseYear)
+		if yA != yB {
+			return yA > yB
+		}
+		return false
+	})
+	return items
+}
+
+func calcItemRelevance(item models.CatalogSearchResult, q string, mode string) int {
+	tLower := strings.ToLower(strings.TrimSpace(item.Title))
+	if mode == "actor" {
+		cLower := strings.ToLower(item.Cast)
+		if cLower == q {
+			return 1
+		}
+		if strings.HasPrefix(cLower, q) {
+			return 2
+		}
+		if strings.Contains(cLower, q) {
+			return 3
+		}
+		return 5
+	}
+	if mode == "director" {
+		dLower := strings.ToLower(item.Director)
+		if dLower == q {
+			return 1
+		}
+		if strings.HasPrefix(dLower, q) {
+			return 2
+		}
+		if strings.Contains(dLower, q) {
+			return 3
+		}
+		return 5
+	}
+
+	// mode == "title"
+	if tLower == q {
+		return 1
+	}
+	if strings.HasPrefix(tLower, q) {
+		return 2
+	}
+	if strings.Contains(tLower, " "+q) || strings.Contains(tLower, "«"+q) || strings.Contains(tLower, "\""+q) {
+		return 3
+	}
+	if strings.Contains(tLower, q) {
+		return 4
+	}
+	return 5
 }
 
 func (h *Handler) enrichDBCatalogResult(item *models.CatalogSearchResult) bool {
@@ -655,29 +731,29 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 	// Rich deep limits when searching by actor or director
 	if mode == "actor" || mode == "director" {
 		if catEn == "movie" {
-			if len(movieBucket) > 30 {
-				movieBucket = movieBucket[:30]
+			if len(movieBucket) > 35 {
+				movieBucket = movieBucket[:35]
 			}
-			if len(showBucket) > 10 {
-				showBucket = showBucket[:10]
+			if len(showBucket) > 15 {
+				showBucket = showBucket[:15]
 			}
 			results = append(results, movieBucket...)
 			results = append(results, showBucket...)
 		} else if catEn == "show" {
-			if len(showBucket) > 30 {
-				showBucket = showBucket[:30]
+			if len(showBucket) > 35 {
+				showBucket = showBucket[:35]
 			}
-			if len(movieBucket) > 10 {
-				movieBucket = movieBucket[:10]
+			if len(movieBucket) > 15 {
+				movieBucket = movieBucket[:15]
 			}
 			results = append(results, showBucket...)
 			results = append(results, movieBucket...)
 		} else { // "all" or default
-			if len(movieBucket) > 25 {
-				movieBucket = movieBucket[:25]
+			if len(movieBucket) > 30 {
+				movieBucket = movieBucket[:30]
 			}
-			if len(showBucket) > 15 {
-				showBucket = showBucket[:15]
+			if len(showBucket) > 20 {
+				showBucket = showBucket[:20]
 			}
 			results = append(results, movieBucket...)
 			results = append(results, showBucket...)
@@ -687,50 +763,50 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 
 	switch catEn {
 	case "movie":
-		if len(movieBucket) > 10 {
-			movieBucket = movieBucket[:10]
+		if len(movieBucket) > 35 {
+			movieBucket = movieBucket[:35]
 		}
-		if len(showBucket) > 5 {
-			showBucket = showBucket[:5]
+		if len(showBucket) > 15 {
+			showBucket = showBucket[:15]
 		}
 		results = append(results, movieBucket...)
 		results = append(results, showBucket...)
 
 	case "show":
-		if len(showBucket) > 10 {
-			showBucket = showBucket[:10]
+		if len(showBucket) > 35 {
+			showBucket = showBucket[:35]
 		}
-		if len(movieBucket) > 5 {
-			movieBucket = movieBucket[:5]
+		if len(movieBucket) > 15 {
+			movieBucket = movieBucket[:15]
 		}
 		results = append(results, showBucket...)
 		results = append(results, movieBucket...)
 
 	case "book":
-		if len(bookBucket) > 15 {
-			bookBucket = bookBucket[:15]
+		if len(bookBucket) > 30 {
+			bookBucket = bookBucket[:30]
 		}
 		results = append(results, bookBucket...)
 
 	case "game":
-		if len(gameBucket) > 15 {
-			gameBucket = gameBucket[:15]
+		if len(gameBucket) > 30 {
+			gameBucket = gameBucket[:30]
 		}
 		results = append(results, gameBucket...)
 
 	default: // "all" or empty
-		// Order: Top 5 Movies -> Top 5 Series -> Top 5 Books -> Top 5 Games
-		if len(movieBucket) > 5 {
-			movieBucket = movieBucket[:5]
+		// Order: Up to 25 Movies -> 25 Series -> 15 Books -> 15 Games
+		if len(movieBucket) > 25 {
+			movieBucket = movieBucket[:25]
 		}
-		if len(showBucket) > 5 {
-			showBucket = showBucket[:5]
+		if len(showBucket) > 25 {
+			showBucket = showBucket[:25]
 		}
-		if len(bookBucket) > 5 {
-			bookBucket = bookBucket[:5]
+		if len(bookBucket) > 15 {
+			bookBucket = bookBucket[:15]
 		}
-		if len(gameBucket) > 5 {
-			gameBucket = gameBucket[:5]
+		if len(gameBucket) > 15 {
+			gameBucket = gameBucket[:15]
 		}
 		results = append(results, movieBucket...)
 		results = append(results, showBucket...)
@@ -751,7 +827,7 @@ func fetchITunesInline(query string, targetCat string) []models.CatalogSearchRes
 		entity = "movie,ebook"
 	}
 
-	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=%s&limit=6&lang=ru_ru", url.QueryEscape(query), entity)
+	apiURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=%s&limit=20&lang=ru_ru", url.QueryEscape(query), entity)
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -901,7 +977,7 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
 		for i, item := range data {
-			if i >= 6 {
+			if i >= 20 {
 				break
 			}
 			show := item.Show
@@ -1093,7 +1169,7 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 
 		candidateCount := 0
 		for i, r := range data.Results {
-			if candidateCount >= 20 {
+			if candidateCount >= 35 {
 				break
 			}
 			title := r.Title
@@ -1614,7 +1690,7 @@ func fetchKinopoiskInline(query string, kpKey string, targetCat string) []models
 
 		candidateCount := 0
 		for i, film := range data.Films {
-			if candidateCount >= 6 {
+			if candidateCount >= 25 {
 				break
 			}
 			title := film.NameRu

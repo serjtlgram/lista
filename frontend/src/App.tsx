@@ -502,10 +502,15 @@ function safeBase64Decode(str: string): any {
 
   const handleBackFromDetails = () => {
     triggerHaptic();
-    setActiveTab(previousTab || 'home');
-    setTimeout(() => {
-      window.scrollTo({ top: savedScrollPosition, behavior: 'instant' });
-    }, 10);
+    const returnTab = previousTab || 'home';
+    setActiveTab(returnTab);
+    const targetY = savedScrollPosition;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: targetY, behavior: 'instant' });
+      setTimeout(() => {
+        window.scrollTo({ top: targetY, behavior: 'instant' });
+      }, 50);
+    });
   };
 
   const handleOpenRecommendations = (listId: string, listTitle: string, listItems: Item[]) => {
