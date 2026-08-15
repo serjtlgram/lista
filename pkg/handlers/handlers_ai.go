@@ -199,7 +199,7 @@ func selectBestCatalogMatch(query string, candidates []models.CatalogSearchResul
 		if c.ReleaseYear != "" {
 			score += 10
 		}
-		if c.Rating != "" || c.PublicRating != "" {
+		if c.PublicRating != "" {
 			score += 5
 		}
 
