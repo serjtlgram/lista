@@ -420,13 +420,22 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	if genresStr == "" {
 		genresStr = "популярные"
 	}
+	yearsStr := strings.Join(uniqYears, ", ")
+	yearsLine := ""
+	if yearsStr != "" {
+		yearsLine = fmt.Sprintf("\nПериод: %s", yearsStr)
+	}
+	countriesStr := strings.Join(uniqCountries, ", ")
+	countriesLine := ""
+	if countriesStr != "" {
+		countriesLine = fmt.Sprintf("\nСтраны: %s", countriesStr)
+	}
 	directorsStr := strings.Join(uniqDirectors, ", ")
-	authorsStr := strings.Join(uniqAuthors, ", ")
-
 	directorsLine := ""
 	if directorsStr != "" {
 		directorsLine = fmt.Sprintf("\nРежиссеры: %s", directorsStr)
 	}
+	authorsStr := strings.Join(uniqAuthors, ", ")
 	authorsLine := ""
 	if authorsStr != "" {
 		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
@@ -435,7 +444,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений.
 Тема списка: "%s"
 Категория: %s
-Жанры: %s%s%s
+Жанры: %s%s%s%s%s
 Текущий список пользователя:
 %s
 
@@ -449,7 +458,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 5. Указывай только основное официальное название произведения на русском языке (без номеров сезонов и без подзаголовков серий, например «Ликвидация», «Крик совы», «Художник», «Метод», «Шеф»).
 6. Строго соблюдай категорию (%s).
 7. Формат ответа: СТРОГО сырой JSON-массив из 25 строк. Пример: ["Название 1", "Название 2", ...]. Без markdown-разметки и без сопроводительного текста.`,
-		listTitleDisplay, catRuName, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
+		listTitleDisplay, catRuName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
 	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
 	rateKey := getRateLimitKey(r)
