@@ -63,7 +63,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   const totalPeriodItems = filteredItems.length;
 
   const completedItems = filteredItems.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
   );
   const watchingItems = filteredItems.filter(
     (i) => ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')
@@ -78,7 +78,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   // Books stats calculation
   const bookItems = filteredItems.filter((i) => normalizeCat(i.category) === 'Книги');
   const completedBooks = bookItems.filter((i) =>
-    ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+    ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
   );
   const readingBooks = bookItems.filter((i) =>
     ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')

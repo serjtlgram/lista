@@ -587,7 +587,7 @@ function safeBase64Decode(str: string): any {
 
   const handleToggleStatus = async (item: Item) => {
     triggerHaptic();
-    const newStatus = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' ? 'planned' : 'completed';
+    const newStatus = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' || item.status === 'Завершён' ? 'planned' : 'completed';
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } as Item : i)));
     setSelectedItem((prev) => (prev?.id === item.id ? { ...prev, status: newStatus } as Item : prev));
 

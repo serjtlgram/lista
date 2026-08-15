@@ -343,7 +343,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       if (!isCategoryMatch(item.category, title)) return false;
 
       if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю' && item.status !== 'Читаю' && item.status !== 'Граю') return false;
-      if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
+      if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Завершён' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
       if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
 
       if (selectedGenres.length > 0) {

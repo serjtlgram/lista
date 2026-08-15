@@ -5,7 +5,7 @@ const SHOW_DEFAULT_EPISODES = 10;
 const SHOW_DEFAULT_EPISODE_MIN = 40;
 
 const isCompleted = (status?: string) =>
-  ['completed', 'Просмотрено', 'Завершено'].includes(status || '');
+  ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(status || '');
 
 const normCat = (s?: string): string => {
   const lc = (s || '').toLowerCase().trim();

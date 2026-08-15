@@ -17,7 +17,7 @@ export const getTranslatedStatus = (st: string, cat: string, t: Translations): s
   const s = (st || '').toLowerCase().trim();
   const c = (cat || '').toLowerCase().trim();
 
-  if (['completed', 'просмотрено', 'завершено', 'посмотрено'].includes(s)) {
+  if (['completed', 'просмотрено', 'завершено', 'завершён', 'посмотрено'].includes(s)) {
     return t.modal.status_completed;
   }
   if (['planned', 'отложено', 'в планах', 'у планах'].includes(s)) {

@@ -34,7 +34,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   searchMode,
   searchQuery,
 }) => {
-  const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено';
+  const isCompleted = item.status === 'completed' || item.status === 'Просмотрено' || item.status === 'Завершено' || item.status === 'Завершён';
   const isPlanned = item.status === 'planned' || item.status === 'в планах' || item.status === 'у планах' || item.status === 'отложено';
   const hasStar = !isPlanned && item.rating > 0;
   const hasMinus = !!onRemoveFromList;

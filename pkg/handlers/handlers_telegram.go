@@ -163,7 +163,7 @@ func mapStatusToRu(status string, category ...string) string {
 			return "🎮 Играю"
 		}
 		return "👁 Смотрю"
-	case "completed", "просмотрено", "завершено", "прочитано":
+	case "completed", "просмотрено", "завершено", "завершён", "прочитано":
 		if cat == "book" {
 			return "✅ Прочитано"
 		} else if cat == "game" {
@@ -461,7 +461,7 @@ func buildTelegramReplyMarkup(catEn string, currentGenre string, currentStatus s
 	// Status Row: tailored for category type
 	isPlanned := currentStatus == "" || currentStatus == "planned" || currentStatus == "в планах" || currentStatus == "у планах"
 	isWatching := currentStatus == "watching" || currentStatus == "смотрю" || currentStatus == "читаю" || currentStatus == "дивлюсь"
-	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "просмотрено" || currentStatus == "прочитано"
+	isCompleted := currentStatus == "completed" || currentStatus == "завершено" || currentStatus == "завершён" || currentStatus == "просмотрено" || currentStatus == "прочитано"
 
 	labelWatching := "👁 Смотрю"
 	labelCompleted := "✅ Завершено"

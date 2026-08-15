@@ -58,7 +58,7 @@ export const ru: Translations = {
     status_watching_movie: 'Смотрю',
     status_watching_book: 'Читаю',
     status_watching_game: 'Играю',
-    status_completed: 'Завершено',
+    status_completed: 'Завершён',
     status_planned: 'В планах',
     advanced_show: '+ Добавить жанр, год, постер и заметки',
     advanced_hide: 'Скрыть дополнительные поля',

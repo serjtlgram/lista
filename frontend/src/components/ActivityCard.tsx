@@ -45,11 +45,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   // Completed items count
   const completedThisMonth = monthItems.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
   ).length;
 
   const completedAllTime = items.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено'].includes(i.status || '')
+    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
   ).length;
 
   // Watch hours — only completed movies/shows, calculated from item durations
