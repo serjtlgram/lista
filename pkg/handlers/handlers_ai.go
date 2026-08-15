@@ -498,7 +498,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
 	}
 
-	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений.
+	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений, которые идеально подходят по духу, смыслу, жанру и категории (%s) к "%s" и похожи на предпочтения пользователя внутри списка.
 Тема списка: "%s"
 Категория: %s
 Жанры: %s%s%s%s%s
@@ -515,7 +515,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 5. Указывай только основное официальное название произведения на русском языке (без номеров сезонов и без подзаголовков серий, например «Ликвидация», «Крик совы», «Художник», «Метод», «Шеф»).
 6. Строго соблюдай категорию (%s).
 7. Формат ответа: СТРОГО сырой JSON-массив из 25 строк. Пример: ["Название 1", "Название 2", ...]. Без markdown-разметки и без сопроводительного текста.`,
-		listTitleDisplay, catRuName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
+		catRuName, listTitleDisplay, listTitleDisplay, catRuName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
 	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
 	rateKey := getRateLimitKey(r)
