@@ -162,6 +162,63 @@ func cleanTitlesList(titles []string) []string {
 	return result
 }
 
+func selectBestCatalogMatch(query string, candidates []models.CatalogSearchResult) (models.CatalogSearchResult, bool) {
+	if len(candidates) == 0 {
+		return models.CatalogSearchResult{}, false
+	}
+	normQuery := normalizeTitleForComparison(query)
+
+	bestIdx := -1
+	bestScore := -1
+
+	for i, c := range candidates {
+		if strings.TrimSpace(c.Title) == "" {
+			continue
+		}
+		score := 0
+		normTitle := normalizeTitleForComparison(c.Title)
+
+		// Exact title match gets highest score
+		if normTitle == normQuery {
+			score += 100
+		} else if strings.HasPrefix(normTitle, normQuery) || strings.HasPrefix(normQuery, normTitle) {
+			score += 50
+		}
+
+		// Real poster check: strong bonus if real poster, penalty if placeholder
+		if c.PosterURL != "" && !strings.Contains(c.PosterURL, "no-poster") && !strings.HasPrefix(c.PosterURL, "data:image") {
+			score += 40
+		} else if strings.Contains(c.PosterURL, "no-poster") {
+			score -= 20
+		}
+
+		// Rich metadata bonuses
+		if c.Description != "" {
+			score += 15
+		}
+		if c.ReleaseYear != "" {
+			score += 10
+		}
+		if c.Rating != "" || c.PublicRating != "" {
+			score += 5
+		}
+
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i
+		}
+	}
+
+	if bestIdx >= 0 && bestScore >= 20 {
+		card := candidates[bestIdx]
+		if strings.Contains(card.PosterURL, "no-poster") {
+			card.PosterURL = ""
+		}
+		return card, true
+	}
+	return models.CatalogSearchResult{}, false
+}
+
 // GET /api/lists/{id}/recommendations
 func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request) {
 	user, _ := auth.GetUserFromContext(r)
@@ -651,15 +708,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			defer wg.Done()
 			targetLang := parser.DetectTargetLanguage(tName, "")
 			onlineRes := h.searchOnlineCatalog(tName, catEn, nil, targetLang)
-			if len(onlineRes) > 0 {
-				bestIdx := 0
-				for j, res := range onlineRes {
-					if res.PosterURL != "" && !strings.HasPrefix(res.PosterURL, "data:image") {
-						bestIdx = j
-						break
-					}
-				}
-				resultChan <- enrichedResult{index: idx, card: onlineRes[bestIdx], valid: true}
+			if card, ok := selectBestCatalogMatch(tName, onlineRes); ok {
+				resultChan <- enrichedResult{index: idx, card: card, valid: true}
 				return
 			}
 
@@ -668,22 +718,15 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			baseTitle = strings.TrimSpace(strings.Split(baseTitle, ":")[0])
 			if baseTitle != "" && !strings.EqualFold(baseTitle, tName) {
 				onlineResBase := h.searchOnlineCatalog(baseTitle, catEn, nil, targetLang)
-				if len(onlineResBase) > 0 {
-					bestIdx := 0
-					for j, res := range onlineResBase {
-						if res.PosterURL != "" && !strings.HasPrefix(res.PosterURL, "data:image") {
-							bestIdx = j
-							break
-						}
-					}
-					resultChan <- enrichedResult{index: idx, card: onlineResBase[bestIdx], valid: true}
+				if card, ok := selectBestCatalogMatch(baseTitle, onlineResBase); ok {
+					resultChan <- enrichedResult{index: idx, card: card, valid: true}
 					return
 				}
 			}
 
 			dbRes := h.searchDBCatalog(r.Context(), tName, catEn)
-			if len(dbRes) > 0 {
-				resultChan <- enrichedResult{index: idx, card: dbRes[0], valid: true}
+			if card, ok := selectBestCatalogMatch(tName, dbRes); ok {
+				resultChan <- enrichedResult{index: idx, card: card, valid: true}
 				return
 			}
 
