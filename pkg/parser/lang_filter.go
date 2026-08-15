@@ -77,6 +77,12 @@ var russianExclusiveWords = map[string]bool{
 	"холмс": true, "холмса": true, "холмсе": true,
 	"ватсон": true, "ватсона": true, "ватсоне": true,
 	"баскервилей": true,
+	"игра": true, "игры": true, "игре": true, "игру": true, "игрой": true, "игр": true,
+	"престолов": true, "престол": true, "престолы": true,
+	"дома": true, "доме": true, "домом": true,
+	"матрица": true, "матрицы": true, "матрицу": true, "матрицей": true,
+	"гарри": true,
+	"звездные": true, "звездный": true, "звездная": true, "звездное": true,
 
 	// Common Russian given names / patronymics
 	"игорь": true, "евгений": true, "алексей": true, "николай": true,
