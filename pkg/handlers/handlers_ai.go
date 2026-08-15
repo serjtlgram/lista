@@ -22,7 +22,7 @@ import (
 
 var (
 	reParenBrackets  = regexp.MustCompile(`[\(\[\{][^\)\]\}]*[\)\]\}]`)
-	reSeasonPatterns = regexp.MustCompile(`(?i)(?:[.:\-\—\/|]\s*)?(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book|фильм|film)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+(?:\s*[:.\-\—]\s*.*)?$`)
+	reSeasonPatterns = regexp.MustCompile(`(?i)(?:[.:\-—–/|]\s*)?(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book|фильм|film)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+(?:\s*[:.\-—–]\s*.*)?$`)
 	reTrailingSeason = regexp.MustCompile(`(?i)\s+(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+.*$`)
 	reTrailingDigits = regexp.MustCompile(`(?i)\s+[\dIVXLCDMivxlcdm]+$`)
 )
