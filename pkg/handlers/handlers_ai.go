@@ -567,9 +567,23 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		apiKey = "fw_R9nn6yvzVv8txadL2FLqC2"
 	}
 
-	modelsToTry := []string{
-		"accounts/fireworks/models/minimax-m3",
-		"accounts/fireworks/models/deepseek-v4-flash-0731",
+	type modelConfig struct {
+		name            string
+		reasoningEffort string
+		maxTokens       int
+	}
+
+	modelsToTry := []modelConfig{
+		{
+			name:            "accounts/fireworks/models/deepseek-v4-flash-0731",
+			reasoningEffort: "none",
+			maxTokens:       2048,
+		},
+		{
+			name:            "accounts/fireworks/models/gpt-oss-120b",
+			reasoningEffort: "low",
+			maxTokens:       4096,
+		},
 	}
 
 	var recommendedTitles []string
@@ -578,19 +592,20 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 300*time.Second)
 	defer cancelTotal()
 
-	for _, modelName := range modelsToTry {
+	for _, mCfg := range modelsToTry {
+		modelName := mCfg.name
 		if ctxTotal.Err() != nil {
 			break
 		}
 
 		reqBodyMap := map[string]interface{}{
-			"model": modelName,
+			"model":            modelName,
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
-			"reasoning_effort": "none",
+			"reasoning_effort": mCfg.reasoningEffort,
 			"temperature":      0.2,
-			"max_tokens":       2048,
+			"max_tokens":       mCfg.maxTokens,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
