@@ -26,9 +26,50 @@ const normalizeTitle = (title?: string): string => {
   if (!title) return '';
   let str = title.toLowerCase().trim();
   str = str.replace(/ё/g, 'е');
-  str = str.replace(/[\(\[\{]\s*\d{4}\s*[\)\]\}]/g, '');
-  str = str.replace(/[^\p{L}\p{N}\s]/gu, '');
+  str = str.replace(/[\(\[\{][^\)\]\}]*[\)\]\}]/g, ' ');
+  str = str.replace(/[^\p{L}\p{N}\s]/gu, ' ');
   return str.replace(/\s+/g, ' ').trim();
+};
+
+const extractFranchiseRoots = (title?: string): string[] => {
+  if (!title) return [];
+  let s = title.trim();
+  const roots = new Set<string>();
+
+  s = s.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ').replace(/\{[^}]*\}/g, ' ');
+  s = s.replace(/ё/g, 'е').replace(/Ё/g, 'е');
+
+  const normFull = normalizeTitle(s);
+  if (normFull) roots.add(normFull);
+
+  // Strip season/part/case patterns
+  let stripped = s.replace(
+    /(?:[.:\-\—\/|]\s*)?(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book|фильм|film)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+(?:\s*[:.\-\—]\s*.*)?$/i,
+    ''
+  );
+  stripped = stripped.replace(
+    /\s+(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+.*$/i,
+    ''
+  );
+
+  const parts = stripped.split(/[\.:\-—–\/|,]/).map((p) => p.trim()).filter(Boolean);
+  for (const p of parts) {
+    const pClean = p.replace(/\s+[\dIVXLCDMivxlcdm]+$/i, '');
+    const pNorm = normalizeTitle(pClean);
+    if (pNorm.length >= 3) {
+      roots.add(pNorm);
+    }
+  }
+
+  if (/\s+и\s+/i.test(stripped)) {
+    const beforeAnd = stripped.split(/\s+и\s+/i)[0].trim();
+    const beforeAndNorm = normalizeTitle(beforeAnd);
+    if (beforeAndNorm.length >= 4) {
+      roots.add(beforeAndNorm);
+    }
+  }
+
+  return Array.from(roots);
 };
 
 const isTitleMatch = (t1?: string, t2?: string): boolean => {
@@ -38,12 +79,12 @@ const isTitleMatch = (t1?: string, t2?: string): boolean => {
   if (!norm1 || !norm2) return false;
   if (norm1 === norm2) return true;
 
-  const parts1 = t1.split(/[\/\|\:\-]/).map(normalizeTitle).filter(Boolean);
-  const parts2 = t2.split(/[\/\|\:\-]/).map(normalizeTitle).filter(Boolean);
+  const roots1 = extractFranchiseRoots(t1);
+  const roots2 = extractFranchiseRoots(t2);
 
-  for (const p1 of parts1) {
-    for (const p2 of parts2) {
-      if (p1.length >= 3 && p1 === p2) return true;
+  for (const r1 of roots1) {
+    for (const r2 of roots2) {
+      if (r1.length >= 3 && r1 === r2) return true;
     }
   }
 
@@ -168,9 +209,23 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           localStorage.setItem(`lista_rec_last_refresh_${listId}`, Date.now().toString());
         }
         const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;
-        const cleanResults = results.filter(
-          (c) => !userItemsToFilter.some((userItem) => isTitleMatch(c.title, userItem.title))
-        );
+        const seenFranchiseKeys = new Set<string>();
+        const cleanResults: CatalogItem[] = [];
+        for (const c of results) {
+          if (!c.title || !c.title.trim()) continue;
+          if (userItemsToFilter.some((userItem) => isTitleMatch(c.title, userItem.title))) {
+            continue;
+          }
+          const roots = extractFranchiseRoots(c.title);
+          const primaryKey = roots.length > 0 ? roots[roots.length - 1] : normalizeTitle(c.title);
+          if (primaryKey && seenFranchiseKeys.has(primaryKey)) {
+            continue;
+          }
+          if (primaryKey) {
+            seenFranchiseKeys.add(primaryKey);
+          }
+          cleanResults.push(c);
+        }
         setRecommendations(cleanResults);
         onUpdateCachedResults(cleanResults);
         // Trigger background poster enrichment for items missing poster_url
@@ -377,9 +432,22 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
 
           {(() => {
             const userItemsToFilter = allItems && allItems.length > 0 ? allItems : listItems;
-            const filteredRecommendations = recommendations.filter(
-              (rec) => !userItemsToFilter.some((userItem) => isTitleMatch(rec.title, userItem.title))
-            );
+            const seenRenderKeys = new Set<string>();
+            const filteredRecommendations = recommendations.filter((rec) => {
+              if (!rec.title || !rec.title.trim()) return false;
+              if (userItemsToFilter.some((userItem) => isTitleMatch(rec.title, userItem.title))) {
+                return false;
+              }
+              const roots = extractFranchiseRoots(rec.title);
+              const primaryKey = roots.length > 0 ? roots[roots.length - 1] : normalizeTitle(rec.title);
+              if (primaryKey && seenRenderKeys.has(primaryKey)) {
+                return false;
+              }
+              if (primaryKey) {
+                seenRenderKeys.add(primaryKey);
+              }
+              return true;
+            });
             return (
               <>
                 <div className="flex items-center justify-between px-1 text-xs text-gray-400">

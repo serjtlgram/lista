@@ -20,12 +20,18 @@ import (
 	"lista-backend/pkg/parser"
 )
 
+var (
+	reParenBrackets  = regexp.MustCompile(`[\(\[\{][^\)\]\}]*[\)\]\}]`)
+	reSeasonPatterns = regexp.MustCompile(`(?i)(?:[.:\-\—\/|]\s*)?(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book|фильм|film)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+(?:\s*[:.\-\—]\s*.*)?$`)
+	reTrailingSeason = regexp.MustCompile(`(?i)\s+(?:дело\s*(?:№|no)?|сезон|season|часть|part|эпизод|episode|глава|chapter|vol|volume|выпуск|книга|book)\s*(?:№|no)?\s*[\dIVXLCDMivxlcdm]+.*$`)
+	reTrailingDigits = regexp.MustCompile(`(?i)\s+[\dIVXLCDMivxlcdm]+$`)
+)
+
 func normalizeTitleForComparison(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = strings.ReplaceAll(s, "ё", "е")
 	s = strings.ReplaceAll(s, "Ё", "е")
-	reYears := regexp.MustCompile(`[\(\[\{]\s*\d{4}\s*[\)\]\}]`)
-	s = reYears.ReplaceAllString(s, "")
+	s = reParenBrackets.ReplaceAllString(s, " ")
 	var sb strings.Builder
 	for _, r := range s {
 		// Keep letters, numbers and spaces, ignore punctuation/quotes
@@ -34,6 +40,67 @@ func normalizeTitleForComparison(s string) string {
 		}
 	}
 	return strings.Join(strings.Fields(sb.String()), " ")
+}
+
+func extractFranchiseRoots(title string) []string {
+	trimmed := strings.TrimSpace(title)
+	if trimmed == "" {
+		return nil
+	}
+	s := trimmed
+	s = strings.ReplaceAll(s, "ё", "е")
+	s = strings.ReplaceAll(s, "Ё", "е")
+	s = reParenBrackets.ReplaceAllString(s, " ")
+
+	rootsMap := make(map[string]bool)
+	normFull := normalizeTitleForComparison(s)
+	if normFull != "" {
+		rootsMap[normFull] = true
+	}
+
+	stripped := reSeasonPatterns.ReplaceAllString(s, "")
+	stripped = reTrailingSeason.ReplaceAllString(stripped, "")
+
+	parts := strings.FieldsFunc(stripped, func(r rune) bool {
+		return r == '.' || r == ':' || r == '-' || r == '—' || r == '–' || r == '/' || r == '|' || r == ','
+	})
+	for _, p := range parts {
+		pClean := reTrailingDigits.ReplaceAllString(strings.TrimSpace(p), "")
+		pNorm := normalizeTitleForComparison(pClean)
+		if len(pNorm) >= 3 {
+			rootsMap[pNorm] = true
+		}
+	}
+
+	// Check prefix before " и " (e.g. "Гарри Поттер и...", "Перси Джексон и...")
+	lowerStripped := strings.ToLower(stripped)
+	if idx := strings.Index(lowerStripped, " и "); idx != -1 {
+		prefix := strings.TrimSpace(stripped[:idx])
+		pNorm := normalizeTitleForComparison(prefix)
+		if len(pNorm) >= 4 {
+			rootsMap[pNorm] = true
+		}
+	}
+
+	var res []string
+	for k := range rootsMap {
+		res = append(res, k)
+	}
+	return res
+}
+
+func extractFranchiseKey(title string) string {
+	roots := extractFranchiseRoots(title)
+	if len(roots) == 0 {
+		return normalizeTitleForComparison(title)
+	}
+	best := roots[0]
+	for _, r := range roots {
+		if len(r) >= 3 && (len(r) < len(best) || len(best) < 3) {
+			best = r
+		}
+	}
+	return best
 }
 
 func parseTitlesFromAIResponse(raw string) []string {
@@ -138,24 +205,20 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 	// 1. Collect all user DB titles + incoming titles for deduplication
 	userExistingTitles := make(map[string]bool)
+	userExistingFranchises := make(map[string]bool)
+
 	addExistingTitle := func(title string) {
 		tTrim := strings.TrimSpace(title)
 		if tTrim == "" {
 			return
 		}
+		for _, root := range extractFranchiseRoots(tTrim) {
+			userExistingFranchises[root] = true
+		}
+		userExistingTitles[strings.ToLower(tTrim)] = true
 		norm := normalizeTitleForComparison(tTrim)
 		if norm != "" {
 			userExistingTitles[norm] = true
-		}
-		userExistingTitles[strings.ToLower(tTrim)] = true
-		parts := strings.FieldsFunc(tTrim, func(r rune) bool {
-			return r == '/' || r == '|' || r == ':' || r == '-'
-		})
-		for _, p := range parts {
-			pNorm := normalizeTitleForComparison(p)
-			if len(pNorm) >= 3 {
-				userExistingTitles[pNorm] = true
-			}
 		}
 	}
 
@@ -192,12 +255,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		if norm != "" && userExistingTitles[norm] {
 			return true
 		}
-		parts := strings.FieldsFunc(title, func(r rune) bool {
-			return r == '/' || r == '|' || r == ':' || r == '-'
-		})
-		for _, p := range parts {
-			pNorm := normalizeTitleForComparison(p)
-			if len(pNorm) >= 3 && userExistingTitles[pNorm] {
+		for _, root := range extractFranchiseRoots(title) {
+			if userExistingFranchises[root] {
 				return true
 			}
 		}
@@ -349,22 +408,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	uniqDirectors := cleanTitlesList(directorsFound)
 	uniqAuthors := cleanTitlesList(authorsFound)
 
-	metaStr := ""
-	metaParts := []string{}
-	if len(uniqYears) > 0 {
-		metaParts = append(metaParts, "Годы: "+strings.Join(uniqYears, ", "))
-	}
-	if len(uniqCountries) > 0 {
-		metaParts = append(metaParts, "Страны: "+strings.Join(uniqCountries, ", "))
-	}
-	if len(uniqGenres) > 0 {
-		metaParts = append(metaParts, "Жанры: "+strings.Join(uniqGenres, ", "))
-	}
-	if len(metaParts) > 0 {
-		metaStr = "\nАналитика по входящему списку (" + strings.Join(metaParts, "; ") + ")."
-	}
-	_ = metaStr
-
 	// Build exact user prompt
 	itemsListStr := strings.Join(itemDescriptions, "\n- ")
 	if itemsListStr != "" {
@@ -373,9 +416,10 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		itemsListStr = "- (список пуст, дай общие рекомендации)"
 	}
 
-	yearsStr := strings.Join(uniqYears, ", ")
-	countriesStr := strings.Join(uniqCountries, ", ")
 	genresStr := strings.Join(uniqGenres, ", ")
+	if genresStr == "" {
+		genresStr = "популярные"
+	}
 	directorsStr := strings.Join(uniqDirectors, ", ")
 	authorsStr := strings.Join(uniqAuthors, ", ")
 
@@ -388,26 +432,24 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
 	}
 
-	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и сгенерировать 30 новых рекомендаций.
+	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений.
 Тема списка: "%s"
 Категория: %s
-Годы: %s
-Страны: %s
 Жанры: %s%s%s
 Текущий список пользователя:
 %s
 
-Сгенерируй РОВНО 30 рекомендаций (не больше и не меньше), которые идеально подходят по духу, смыслу, категории (%s), эпохе и жанру к "Теме списка" и похожи на элементы из Текущего списка пользователя.
+Сгенерируй РОВНО 25 рекомендаций (не больше и не меньше), которые идеально подходят по духу, смыслу, жанру и категории (%s) к теме списка и похожи на предпочтения пользователя.
 
 ПРАВИЛА:
-1. Тема списка и текущие элементы задают смысловой вектор, а не ключевые слова для поиска.
-2. Строго соблюдай категорию (%s), историческую эпоху и страны.
-3. Разнообразие: все 30 элементов должны быть самостоятельными произведениями из разных франшиз (без сиквелов, приквелов и спин-оффов).
-4. Категорически ЗАПРЕЩЕНО указывать произведения, которые уже присутствуют во входящем списке пользователя.
-5. Формат ответа: только сырой JSON-массив из 30 строк с официальными русскими названиями. Пример: ["Название 1", "Название 2", ...]. 
-6. Без markdown-разметки и без сопроводительного текста.
-7. ВАЖНО: Список должен состоять строго из 30 позиций. Выдай ровно 30 названий.`,
-		listTitleDisplay, catRuName, yearsStr, countriesStr, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
+1. Рекомендуй ТОЛЬКО РЕАЛЬНО СУЩЕСТВУЮЩИЕ, официально выпущенные произведения (фильмы/сериалы/книги/игры).
+2. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выдумывать несуществующие названия, невышедшие части или фейковые сезоны (например, нельзя придумывать «Дело № 12», «Сезон 5» и т.д.).
+3. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО рекомендовать любые произведения из той же франшизы/вселенной/сериала, которые уже есть в списке пользователя (например, если в списке есть сериал «Мосгаз» или любое его дело/сезон, ЗАПРЕЩЕНО включать любые другие дела или сезоны сериала «Мосгаз»).
+4. РАЗНООБРАЗИЕ: Каждая рекомендация должна быть самостоятельным, отдельным произведением из ДРУГОЙ франшизы. Не включай несколько частей или сезонов одной франшизы.
+5. Указывай только основное официальное название произведения на русском языке (без номеров сезонов и без подзаголовков серий, например «Ликвидация», «Крик совы», «Художник», «Метод», «Шеф»).
+6. Строго соблюдай категорию (%s).
+7. Формат ответа: СТРОГО сырой JSON-массив из 25 строк. Пример: ["Название 1", "Название 2", ...]. Без markdown-разметки и без сопроводительного текста.`,
+		listTitleDisplay, catRuName, genresStr, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
 
 	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
 	rateKey := getRateLimitKey(r)
@@ -461,6 +503,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 	modelsToTry := []string{
 		"accounts/fireworks/models/deepseek-v4-flash-0731",
+		"accounts/fireworks/models/gpt-oss-120b",
 	}
 
 	var recommendedTitles []string
@@ -479,12 +522,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
-			"thinking": map[string]interface{}{
-				"type": "disabled",
-			},
-			"reasoning_effort": "none",
-			"temperature":      0.3,
-			"max_tokens":       2048,
+			"temperature": 0.2,
+			"max_tokens":  4096,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
@@ -494,7 +533,6 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 
 		var resp *http.Response
 		err = func() error {
-			// Each model gets up to 180s (3 minutes) to respond
 			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 180*time.Second)
 			defer cancelModel()
 
@@ -549,13 +587,21 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 					parsedTitles := parseTitlesFromAIResponse(rawContent)
 					if len(parsedTitles) > 0 {
 						var filteredTitles []string
+						seenBatchFranchises := make(map[string]bool)
 						for _, pt := range parsedTitles {
 							if !isTitleAlreadyExisting(pt) {
+								key := extractFranchiseKey(pt)
+								if key != "" && seenBatchFranchises[key] {
+									continue
+								}
+								if key != "" {
+									seenBatchFranchises[key] = true
+								}
 								filteredTitles = append(filteredTitles, pt)
 							}
 						}
 						recommendedTitles = filteredTitles
-						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s (filtered out %d existing)", len(recommendedTitles), modelName, len(parsedTitles)-len(filteredTitles))
+						log.Printf("[FireworksAI] Successfully generated %d recommendations using model %s (filtered out %d existing/duplicates)", len(recommendedTitles), modelName, len(parsedTitles)-len(filteredTitles))
 						break
 					} else {
 						log.Printf("[FireworksAI] Could not parse JSON array from model %s response. rawContent: %s", modelName, rawContent)
@@ -569,7 +615,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// 5. Fallback if AI call failed (REMOVED per user request)
+	// 5. Fallback if AI call failed
 	if len(recommendedTitles) == 0 {
 		log.Printf("[FireworksAI] All models failed or no key set, returning error to client instead of fallback")
 		http.Error(w, "Не удалось получить рекомендации от нейросети. Пожалуйста, попробуйте еще раз.", http.StatusInternalServerError)
@@ -577,13 +623,10 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 6. Enrich recommended titles with external search (TMDb, Kinopoisk, Google Books, Steam, etc.)
-	if len(recommendedTitles) > 20 {
-		recommendedTitles = recommendedTitles[:20]
-	}
-
 	type enrichedResult struct {
 		index int
 		card  models.CatalogSearchResult
+		valid bool
 	}
 
 	resultChan := make(chan enrichedResult, len(recommendedTitles))
@@ -607,23 +650,38 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 						break
 					}
 				}
-				resultChan <- enrichedResult{index: idx, card: onlineRes[bestIdx]}
+				resultChan <- enrichedResult{index: idx, card: onlineRes[bestIdx], valid: true}
 				return
 			}
+
+			// Try searching with cleaned base title (without brackets/subtitles) if initial search returned empty
+			baseTitle := reParenBrackets.ReplaceAllString(tName, "")
+			baseTitle = strings.TrimSpace(strings.Split(baseTitle, ":")[0])
+			if baseTitle != "" && !strings.EqualFold(baseTitle, tName) {
+				onlineResBase := h.searchOnlineCatalog(baseTitle, catEn, nil, targetLang)
+				if len(onlineResBase) > 0 {
+					bestIdx := 0
+					for j, res := range onlineResBase {
+						if res.PosterURL != "" && !strings.HasPrefix(res.PosterURL, "data:image") {
+							bestIdx = j
+							break
+						}
+					}
+					resultChan <- enrichedResult{index: idx, card: onlineResBase[bestIdx], valid: true}
+					return
+				}
+			}
+
 			dbRes := h.searchDBCatalog(r.Context(), tName, catEn)
 			if len(dbRes) > 0 {
-				resultChan <- enrichedResult{index: idx, card: dbRes[0]}
+				resultChan <- enrichedResult{index: idx, card: dbRes[0], valid: true}
 				return
 			}
-			// Fallback card if online search has no match
+
+			// If no match in online catalogs or DB, discard hallucinated/empty card
 			resultChan <- enrichedResult{
 				index: idx,
-				card: models.CatalogSearchResult{
-					Title:       tName,
-					Category:    catEn,
-					Source:      "ai",
-					ReleaseYear: "",
-				},
+				valid: false,
 			}
 		}(i, tClean)
 	}
@@ -631,14 +689,23 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	wg.Wait()
 	close(resultChan)
 
-	cardsMap := make(map[int]models.CatalogSearchResult)
+	cardsMap := make(map[int]enrichedResult)
 	for res := range resultChan {
-		cardsMap[res.index] = res.card
+		cardsMap[res.index] = res
 	}
 
 	var finalCards []models.CatalogSearchResult
+	seenFinalFranchises := make(map[string]bool)
+
 	for i := 0; i < len(recommendedTitles); i++ {
-		if card, ok := cardsMap[i]; ok {
+		if len(finalCards) >= 20 {
+			break
+		}
+		if res, ok := cardsMap[i]; ok && res.valid {
+			card := res.card
+			if card.Title == "" {
+				continue
+			}
 			if card.Category == "" {
 				card.Category = catEn
 			}
@@ -646,6 +713,13 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				card.Country = mapCountryToFlag(card.Country)
 			}
 			if !isTitleAlreadyExisting(card.Title) {
+				key := extractFranchiseKey(card.Title)
+				if key != "" && seenFinalFranchises[key] {
+					continue // Skip duplicate franchise in final cards
+				}
+				if key != "" {
+					seenFinalFranchises[key] = true
+				}
 				finalCards = append(finalCards, card)
 			}
 		}
@@ -658,4 +732,5 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(finalCards)
 }
+
 
