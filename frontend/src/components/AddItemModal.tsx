@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, Check, Sparkles, Search } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
-import { Translations, getTranslatedStatus } from '../services/i18n';
+import { Translations, getTranslatedStatus, getStoredLanguage } from '../services/i18n';
 import { api } from '../services/api';
 import { getNextPlaceholderPoster, isMissingOrDummyPoster } from '../services/posters';
 import { getTranslatedGenreFull, getAvailableGenres } from '../services/genres';
+import { isValidUkrainianCatalogItem } from '../utils/langFilter';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -235,7 +236,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (val.trim().length >= 2) {
       try {
         const results = await api.searchCatalog(val);
-        setQuickSearchResults(results || []);
+        const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
+        const finalResults = isUk && results ? results.filter(isValidUkrainianCatalogItem) : (results || []);
+        setQuickSearchResults(finalResults);
       } catch (e) {
         setQuickSearchResults([]);
       }
@@ -249,8 +252,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (!editingItem && val.trim().length >= 2) {
       try {
         const results = await api.searchCatalog(val, category);
-        setCatalogSuggestions(results || []);
-        setShowSuggestions(results && results.length > 0);
+        const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
+        const finalResults = isUk && results ? results.filter(isValidUkrainianCatalogItem) : (results || []);
+        setCatalogSuggestions(finalResults);
+        setShowSuggestions(finalResults && finalResults.length > 0);
       } catch (e) {
         setCatalogSuggestions([]);
         setShowSuggestions(false);

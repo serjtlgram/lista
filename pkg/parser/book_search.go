@@ -50,6 +50,30 @@ func SearchGoogleBooks(query string) ([]models.CatalogSearchResult, error) {
 	return parseGoogleBooksResponse(resp.Body, "gbooks_ru_")
 }
 
+// SearchGoogleBooksUk queries Google Books API with langRestrict=uk
+func SearchGoogleBooksUk(query string) ([]models.CatalogSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	apiURL := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=%s&langRestrict=uk&maxResults=5", url.QueryEscape(query))
+	if apiKey := os.Getenv("GOOGLE_BOOKS_API_KEY"); apiKey != "" {
+		apiURL += "&key=" + apiKey
+	}
+	resp, err := bookHTTPGet(apiURL, 6)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google books UK API status %d", resp.StatusCode)
+	}
+
+	return parseGoogleBooksResponse(resp.Body, "gbooks_uk_")
+}
+
 // SearchGoogleBooksAny queries Google Books API without language restriction (catches all languages)
 func SearchGoogleBooksAny(query string) ([]models.CatalogSearchResult, error) {
 	query = strings.TrimSpace(query)
@@ -562,13 +586,156 @@ func SearchWikiBooks(query string) ([]models.CatalogSearchResult, error) {
 	return results, nil
 }
 
-// SearchBooksMultiSource queries ALL book sources CONCURRENTLY and returns combined results quickly
-func SearchBooksMultiSource(query string) []models.CatalogSearchResult {
+// SearchWikiBooksUk queries Ukrainian Wikipedia for book articles
+func SearchWikiBooksUk(query string) ([]models.CatalogSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	apiURL := fmt.Sprintf("https://uk.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", url.QueryEscape(query))
+	resp, err := bookHTTPGet(apiURL, 4)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Query struct {
+			Search []struct {
+				Title   string `json:"title"`
+				Snippet string `json:"snippet"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	var results []models.CatalogSearchResult
+	for _, item := range data.Query.Search {
+		if strings.TrimSpace(item.Title) == "" {
+			continue
+		}
+		tLower := strings.ToLower(item.Title)
+		sLower := strings.ToLower(item.Snippet)
+		if !strings.Contains(sLower, "роман") && !strings.Contains(sLower, "книг") && !strings.Contains(sLower, "письмен") && !strings.Contains(tLower, "роман") && !strings.Contains(tLower, "книг") {
+			continue
+		}
+
+		cleanTitle := strings.ReplaceAll(item.Title, " (роман)", "")
+		cleanTitle = strings.ReplaceAll(cleanTitle, " (повість)", "")
+		cleanTitle = strings.ReplaceAll(cleanTitle, " (книга)", "")
+
+		results = append(results, models.CatalogSearchResult{
+			ID:          "wiki_book_uk_" + url.QueryEscape(cleanTitle),
+			Title:       cleanTitle,
+			Category:    "book",
+			Description: stripHTMLTags(item.Snippet),
+			Source:      "online",
+		})
+		if len(results) >= 3 {
+			break
+		}
+	}
+	return results, nil
+}
+
+// SearchBooksMultiSource queries book sources CONCURRENTLY and returns combined results quickly
+func SearchBooksMultiSource(query string, targetLangs ...string) []models.CatalogSearchResult {
+	targetLang := ""
+	if len(targetLangs) > 0 && targetLangs[0] != "" {
+		targetLang = targetLangs[0]
+	}
+	if targetLang == "" {
+		targetLang = DetectTargetLanguage(query, "")
+	}
+
 	type resultSet struct {
 		items []models.CatalogSearchResult
 	}
 
 	cleanedQuery := cleanBookSearchQuery(query)
+
+	if targetLang == "uk-UA" {
+		goroutineCount := 4
+		if cleanedQuery != query && len(cleanedQuery) >= 2 {
+			goroutineCount = 8
+		}
+
+		ch := make(chan resultSet, goroutineCount)
+
+		go func() { items, _ := SearchGoogleBooksUk(query); ch <- resultSet{items} }()
+		go func() { items, _ := SearchGoogleBooksAny(query); ch <- resultSet{items} }()
+		go func() { items, _ := SearchOpenLibrary(query); ch <- resultSet{items} }()
+		go func() { items, _ := SearchWikiBooksUk(query); ch <- resultSet{items} }()
+
+		if cleanedQuery != query && len(cleanedQuery) >= 2 {
+			go func() { items, _ := SearchGoogleBooksUk(cleanedQuery); ch <- resultSet{items} }()
+			go func() { items, _ := SearchGoogleBooksAny(cleanedQuery); ch <- resultSet{items} }()
+			go func() { items, _ := SearchOpenLibrary(cleanedQuery); ch <- resultSet{items} }()
+			go func() { items, _ := SearchWikiBooksUk(cleanedQuery); ch <- resultSet{items} }()
+		}
+
+		timer := time.NewTimer(5 * time.Second)
+		defer timer.Stop()
+
+		var combined []models.CatalogSearchResult
+		seenTitles := make(map[string]int)
+		received := 0
+
+		for received < goroutineCount {
+			select {
+			case res := <-ch:
+				for _, item := range res.items {
+					if !IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
+						continue
+					}
+					key := strings.ToLower(strings.TrimSpace(item.Title))
+					if key == "" {
+						continue
+					}
+					if idx, exists := seenTitles[key]; exists {
+						if combined[idx].Author == "" && item.Author != "" {
+							combined[idx].Author = item.Author
+						}
+						if combined[idx].Genre == "" && item.Genre != "" {
+							combined[idx].Genre = item.Genre
+						}
+						if combined[idx].ISBN == "" && item.ISBN != "" {
+							combined[idx].ISBN = item.ISBN
+						}
+						if combined[idx].Duration == "" && item.Duration != "" {
+							combined[idx].Duration = item.Duration
+						}
+						if combined[idx].Description == "" && item.Description != "" {
+							combined[idx].Description = item.Description
+						}
+						if combined[idx].PosterURL == "" && item.PosterURL != "" {
+							combined[idx].PosterURL = item.PosterURL
+						}
+						if combined[idx].ReleaseYear == "" && item.ReleaseYear != "" {
+							combined[idx].ReleaseYear = item.ReleaseYear
+						}
+						if combined[idx].PublicRating == "" && item.PublicRating != "" {
+							combined[idx].PublicRating = item.PublicRating
+						}
+					} else {
+						seenTitles[key] = len(combined)
+						combined = append(combined, item)
+					}
+				}
+				received++
+			case <-timer.C:
+				return combined
+			}
+		}
+		return combined
+	}
 
 	goroutineCount := 6
 	if cleanedQuery != query && len(cleanedQuery) >= 2 {

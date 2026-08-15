@@ -108,7 +108,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. DB catalog search filtered by category & mode
-	dbResults := h.searchDBCatalog(r.Context(), q, catEn, mode)
+	dbResults := h.searchDBCatalog(r.Context(), q, catEn, mode, targetLang)
 
 	// 4. Online search filtered by category & mode
 	onlineResults := h.searchOnlineCatalog(q, catEn, dbResults, targetLang, mode)
@@ -125,8 +125,12 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, modes ...string) []models.CatalogSearchResult {
 	mode := "title"
+	targetLang := ""
 	if len(modes) > 0 && modes[0] != "" {
 		mode = modes[0]
+	}
+	if len(modes) > 1 && modes[1] != "" {
+		targetLang = modes[1]
 	}
 	if h.DB == nil || h.DB.Pool == nil {
 		return nil
@@ -229,6 +233,9 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 	var filteredResults []models.CatalogSearchResult
 	for _, res := range results {
 		if (mode == "actor" || mode == "director") && calcItemRelevance(res, q, mode) >= 10 {
+			continue
+		}
+		if targetLang == "uk-UA" && !parser.IsValidUkrainianResult(res.Title, res.Description, res.Cast, res.Director) {
 			continue
 		}
 		filteredResults = append(filteredResults, res)
@@ -572,7 +579,7 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 	} else {
 		switch catEn {
 		case "book":
-			items = parser.SearchBooksMultiSource(q)
+			items = parser.SearchBooksMultiSource(q, targetLang)
 
 		case "game":
 			items = parser.SearchGamesMultiSource(q)
@@ -583,8 +590,11 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 				kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "movie")
 			}
 			tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "movie", targetLang)
-			itunes := fetchITunesInline(q, "movie")
-			wiki := fetchWikiInline(q, "movie")
+			var itunes []models.CatalogSearchResult
+			if targetLang != "uk-UA" {
+				itunes = fetchITunesInline(q, "movie")
+			}
+			wiki := fetchWikiInline(q, "movie", targetLang)
 			for _, item := range append(append(append(kinopoisk, tmdb...), itunes...), wiki...) {
 				cat := mapCategoryToEn(item.Category)
 				if cat == "movie" {
@@ -599,8 +609,11 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 				kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "show")
 			}
 			tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "show", targetLang)
-			tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
-			wiki := fetchWikiInline(q, "show")
+			var tvmaze []models.CatalogSearchResult
+			if targetLang != "uk-UA" {
+				tvmaze = fetchTVMazeInline(q, h.TMDBAPIKey)
+			}
+			wiki := fetchWikiInline(q, "show", targetLang)
 			for _, item := range append(append(append(kinopoisk, tmdb...), tvmaze...), wiki...) {
 				cat := mapCategoryToEn(item.Category)
 				if cat == "show" {
@@ -615,10 +628,15 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 				kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
 			}
 			tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all", targetLang)
-			itunes := fetchITunesInline(q, "movie")
-			tvmaze := fetchTVMazeInline(q, h.TMDBAPIKey)
+			var itunes []models.CatalogSearchResult
+			var tvmaze []models.CatalogSearchResult
+			if targetLang != "uk-UA" {
+				itunes = fetchITunesInline(q, "movie")
+				tvmaze = fetchTVMazeInline(q, h.TMDBAPIKey)
+			}
+			wiki := fetchWikiInline(q, "all", targetLang)
 
-			rawList := append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...)
+			rawList := append(append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...), wiki...)
 			for _, item := range rawList {
 				cat := mapCategoryToEn(item.Category)
 				if cat == "movie" || cat == "show" {
@@ -665,6 +683,16 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 	}
 
 	wg.Wait()
+
+	if targetLang == "uk-UA" {
+		var ukItems []models.CatalogSearchResult
+		for _, item := range items {
+			if parser.IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
+				ukItems = append(ukItems, item)
+			}
+		}
+		items = ukItems
+	}
 
 	for i := range items {
 		if items[i].Country != "" {
@@ -846,6 +874,15 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 			results = append(results, movieBucket...)
 			results = append(results, showBucket...)
 		}
+		if targetLang == "uk-UA" {
+			var ukResults []models.CatalogSearchResult
+			for _, it := range results {
+				if parser.IsValidUkrainianResult(it.Title, it.Description, it.Cast, it.Director) {
+					ukResults = append(ukResults, it)
+				}
+			}
+			return ukResults
+		}
 		return results
 	}
 
@@ -900,6 +937,16 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 		results = append(results, showBucket...)
 		results = append(results, bookBucket...)
 		results = append(results, gameBucket...)
+	}
+
+	if targetLang == "uk-UA" {
+		var ukResults []models.CatalogSearchResult
+		for _, it := range results {
+			if parser.IsValidUkrainianResult(it.Title, it.Description, it.Cast, it.Director) {
+				ukResults = append(ukResults, it)
+			}
+		}
+		return ukResults
 	}
 
 	return results
@@ -1113,9 +1160,17 @@ func fetchTVMazeInline(query string, tmdbKey string) []models.CatalogSearchResul
 	return list
 }
 
-func fetchWikiInline(query string, targetCat string) []models.CatalogSearchResult {
+func fetchWikiInline(query string, targetCat string, targetLangs ...string) []models.CatalogSearchResult {
+	targetLang := "ru-RU"
+	if len(targetLangs) > 0 && targetLangs[0] != "" {
+		targetLang = targetLangs[0]
+	}
+	wikiDomain := "ru.wikipedia.org"
+	if targetLang == "uk-UA" || strings.HasPrefix(targetLang, "uk") {
+		wikiDomain = "uk.wikipedia.org"
+	}
 	var list []models.CatalogSearchResult
-	apiURL := fmt.Sprintf("https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", url.QueryEscape(query))
+	apiURL := fmt.Sprintf("https://%s/w/api.php?action=query&list=search&srsearch=%s&utf8=1&format=json", wikiDomain, url.QueryEscape(query))
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -1149,11 +1204,11 @@ func fetchWikiInline(query string, targetCat string) []models.CatalogSearchResul
 
 			cat := "movie"
 			tLower := strings.ToLower(item.Title + " " + cleanDesc)
-			if strings.Contains(tLower, "игра") || strings.Contains(tLower, "game") {
+			if strings.Contains(tLower, "гра") || strings.Contains(tLower, "игра") || strings.Contains(tLower, "game") {
 				cat = "game"
-			} else if strings.Contains(tLower, "книга") || strings.Contains(tLower, "роман") || strings.Contains(tLower, "повесть") {
+			} else if strings.Contains(tLower, "книга") || strings.Contains(tLower, "роман") || strings.Contains(tLower, "повість") || strings.Contains(tLower, "повесть") {
 				cat = "book"
-			} else if strings.Contains(tLower, "сериал") || strings.Contains(tLower, "телесериал") {
+			} else if strings.Contains(tLower, "серіал") || strings.Contains(tLower, "сериал") || strings.Contains(tLower, "телесеріал") || strings.Contains(tLower, "телесериал") {
 				cat = "show"
 			}
 
@@ -1378,6 +1433,9 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 		}
 		for i := 0; i < len(data.Results); i++ {
 			if item, ok := itemsMap[i]; ok {
+				if targetLang == "uk-UA" && !parser.IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
+					continue
+				}
 				list = append(list, item)
 			}
 		}
@@ -1700,6 +1758,9 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 	}
 	for i := 0; i < len(rawMediaList); i++ {
 		if item, ok := itemsMap[i]; ok {
+			if targetLang == "uk-UA" && !parser.IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
+				continue
+			}
 			list = append(list, item)
 		}
 	}

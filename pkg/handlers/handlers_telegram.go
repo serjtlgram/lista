@@ -1400,49 +1400,62 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 	switch categoryFilter {
 	case "book":
 		numSources = 2
-		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "book")} }()
-		go func() { ch <- resStruct{items: parser.SearchBooksMultiSource(cleanQuery)} }()
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "book", "title", targetLang)} }()
+		go func() { ch <- resStruct{items: parser.SearchBooksMultiSource(cleanQuery, targetLang)} }()
 
 	case "game":
 		numSources = 2
-		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "game")} }()
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "game", "title", targetLang)} }()
 		go func() { ch <- resStruct{items: parser.SearchGamesMultiSource(cleanQuery)} }()
 
 	case "movie":
 		if targetLang == "ru-RU" {
 			numSources = 5
 			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "movie")} }()
+		} else if targetLang == "uk-UA" {
+			numSources = 3
 		} else {
 			numSources = 4
 		}
-		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movie")} }()
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movie", "title", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "movie", targetLang)} }()
-		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
-		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "movie")} }()
+		if targetLang != "uk-UA" {
+			go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
+		}
+		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "movie", targetLang)} }()
 
 	case "show":
 		if targetLang == "ru-RU" {
 			numSources = 5
 			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "show")} }()
+		} else if targetLang == "uk-UA" {
+			numSources = 3
 		} else {
 			numSources = 4
 		}
-		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "show")} }()
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "show", "title", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "show", targetLang)} }()
-		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
-		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "show")} }()
+		if targetLang != "uk-UA" {
+			go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
+		}
+		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "show", targetLang)} }()
 
 	default: // Default mode: Movies & Series only
 		if targetLang == "ru-RU" {
 			numSources = 5
 			go func() { ch <- resStruct{items: fetchKinopoiskInline(cleanQuery, h.KinopoiskAPIKey, "all")} }()
+		} else if targetLang == "uk-UA" {
+			numSources = 3
 		} else {
 			numSources = 4
 		}
-		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movies_and_shows")} }()
+		go func() { ch <- resStruct{items: h.searchDBCatalog(ctx, cleanQuery, "movies_and_shows", "title", targetLang)} }()
 		go func() { ch <- resStruct{items: fetchTMDbInline(cleanQuery, h.TMDBAPIKey, "all", targetLang)} }()
-		go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
-		go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
+		if targetLang != "uk-UA" {
+			go func() { ch <- resStruct{items: fetchTVMazeInline(cleanQuery, h.TMDBAPIKey)} }()
+			go func() { ch <- resStruct{items: fetchITunesInline(cleanQuery, "movie")} }()
+		}
+		go func() { ch <- resStruct{items: fetchWikiInline(cleanQuery, "all", targetLang)} }()
 	}
 
 	timer := time.NewTimer(2 * time.Second)
@@ -1465,6 +1478,10 @@ func (h *Handler) searchInlineResults(query string, langCode string) []models.Ca
 					continue
 				}
 				if categoryFilter == "" && (catEn != "movie" && catEn != "show") {
+					continue
+				}
+
+				if targetLang == "uk-UA" && !parser.IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
 					continue
 				}
 

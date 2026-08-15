@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2, X } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
-import { Translations } from '../services/i18n';
+import { Translations, getStoredLanguage } from '../services/i18n';
 import { api } from '../services/api';
 import { getAvailableGenres, getTranslatedGenreFull } from '../services/genres';
+import { isValidUkrainianCatalogItem } from '../utils/langFilter';
 
 interface CategoryScreenProps {
   title: string;
@@ -330,8 +331,13 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       return true;
     });
 
-    const dbResults = externalCatalogResults.filter((c) => c.source !== 'online');
-    const onlineResults = externalCatalogResults.filter((c) => c.source === 'online');
+    const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
+    const dbResults = isUk
+      ? externalCatalogResults.filter((c) => c.source !== 'online' && isValidUkrainianCatalogItem(c))
+      : externalCatalogResults.filter((c) => c.source !== 'online');
+    const onlineResults = isUk
+      ? externalCatalogResults.filter((c) => c.source === 'online' && isValidUkrainianCatalogItem(c))
+      : externalCatalogResults.filter((c) => c.source === 'online');
 
     const filtered = items.filter((item) => {
       if (!isCategoryMatch(item.category, title)) return false;
