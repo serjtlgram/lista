@@ -128,6 +128,8 @@ export const en: Translations = {
     share_app_tagline: 'LISTA — mini-app to save your impressions',
     added_to_my_list: 'Added to your list!',
     link_copied: 'Link copied!',
+    title_copied: 'Title copied!',
+    description_copied: 'Description copied!',
     search_placeholder: 'Search by title or genre...',
     search_mode_title: 'By title',
     search_mode_actor: 'By actor',

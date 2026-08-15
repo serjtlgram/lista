@@ -128,6 +128,8 @@ export interface Translations {
     share_app_tagline: string;
     added_to_my_list: string;
     link_copied: string;
+    title_copied?: string;
+    description_copied?: string;
     search_placeholder: string;
     search_mode_title: string;
     search_mode_actor: string;

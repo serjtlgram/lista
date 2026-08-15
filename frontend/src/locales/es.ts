@@ -128,6 +128,8 @@ export const es: Translations = {
     share_app_tagline: 'LISTA — mini-app para guardar tus impresiones',
     added_to_my_list: '¡Añadido a tu lista!',
     link_copied: '¡Enlace copiado!',
+    title_copied: '¡Título copiado!',
+    description_copied: '¡Descripción copiada!',
     search_placeholder: 'Buscar por título o género...',
     search_mode_title: 'Por título',
     search_mode_actor: 'Por actor',

@@ -128,6 +128,8 @@ export const ru: Translations = {
     share_app_tagline: 'LISTA — мини-приложение для сохранения впечатлений',
     added_to_my_list: 'Добавлено в ваш список!',
     link_copied: 'Ссылка скопирована!',
+    title_copied: 'Название скопировано!',
+    description_copied: 'Описание скопировано!',
     search_placeholder: 'Поиск по названию или жанру...',
     search_mode_title: 'По названию',
     search_mode_actor: 'По актёру',

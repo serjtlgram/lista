@@ -128,6 +128,8 @@ export const uk: Translations = {
     share_app_tagline: 'LISTA — міні-додаток для збереження вражень',
     added_to_my_list: 'Додано до вашого списку!',
     link_copied: 'Посилання скопійовано!',
+    title_copied: 'Назву скопійовано!',
+    description_copied: 'Опис скопійовано!',
     search_placeholder: 'Пошук за назвою або жанром...',
     search_mode_title: 'За назвою',
     search_mode_actor: 'За актором',
