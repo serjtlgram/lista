@@ -72,13 +72,16 @@ func extractFranchiseRoots(title string) []string {
 		}
 	}
 
-	// Check prefix before " и " (e.g. "Гарри Поттер и...", "Перси Джексон и...")
+	// Check prefix before conjunctions (" и ", " and ", " y ", " i ", " та ")
 	lowerStripped := strings.ToLower(stripped)
-	if idx := strings.Index(lowerStripped, " и "); idx != -1 {
-		prefix := strings.TrimSpace(stripped[:idx])
-		pNorm := normalizeTitleForComparison(prefix)
-		if len(pNorm) >= 4 {
-			rootsMap[pNorm] = true
+	conjunctions := []string{" и ", " and ", " y ", " i ", " та "}
+	for _, conj := range conjunctions {
+		if idx := strings.Index(lowerStripped, conj); idx != -1 {
+			prefix := strings.TrimSpace(stripped[:idx])
+			pNorm := normalizeTitleForComparison(prefix)
+			if len(pNorm) >= 4 {
+				rootsMap[pNorm] = true
+			}
 		}
 	}
 
@@ -233,6 +236,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		ItemTitles string `json:"item_titles"`
 		Category   string `json:"category"`
 		Title      string `json:"title"`
+		Lang       string `json:"lang"`
 	}
 	if r.Method == "POST" {
 		_ = json.NewDecoder(r.Body).Decode(&bodyParams)
@@ -253,7 +257,39 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		categoryParam = bodyParams.Category
 	}
 
-	listTitleDisplay := "Мои рекомендации"
+	rawLang := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lang")))
+	if bodyParams.Lang != "" {
+		rawLang = strings.ToLower(strings.TrimSpace(bodyParams.Lang))
+	}
+	if rawLang == "" {
+		rawLang = strings.ToLower(strings.TrimSpace(r.Header.Get("Accept-Language")))
+	}
+	if rawLang == "" && user != nil && user.LanguageCode != "" {
+		rawLang = strings.ToLower(strings.TrimSpace(user.LanguageCode))
+	}
+
+	userLang := "ru"
+	switch {
+	case strings.HasPrefix(rawLang, "en"):
+		userLang = "en"
+	case strings.HasPrefix(rawLang, "es"):
+		userLang = "es"
+	case strings.HasPrefix(rawLang, "uk") || strings.HasPrefix(rawLang, "ua"):
+		userLang = "uk"
+	default:
+		userLang = "ru"
+	}
+
+	defaultListTitle := "Мои рекомендации"
+	if userLang == "en" {
+		defaultListTitle = "My Recommendations"
+	} else if userLang == "es" {
+		defaultListTitle = "Mis Recomendaciones"
+	} else if userLang == "uk" {
+		defaultListTitle = "Мої рекомендації"
+	}
+
+	listTitleDisplay := defaultListTitle
 	if bodyParams.Title != "" {
 		listTitleDisplay = bodyParams.Title
 	} else if tQuery := r.URL.Query().Get("title"); tQuery != "" {
@@ -359,15 +395,15 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 							genresFound = append(genresFound, g)
 						}
 						if cnt != "" {
-							meta = append(meta, "Страна: "+cnt)
+							meta = append(meta, cnt)
 							countriesFound = append(countriesFound, cnt)
 						}
 						if dir != "" {
-							meta = append(meta, "Режиссер: "+dir)
+							meta = append(meta, dir)
 							directorsFound = append(directorsFound, dir)
 						}
 						if aut != "" {
-							meta = append(meta, "Автор: "+aut)
+							meta = append(meta, aut)
 							authorsFound = append(authorsFound, aut)
 						}
 						if len(meta) > 0 {
@@ -394,18 +430,22 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 				parts := strings.Split(inner, ",")
 				for _, p := range parts {
 					p = strings.TrimSpace(p)
-					if strings.HasPrefix(p, "Страна:") {
-						cntVal := strings.TrimSpace(strings.TrimPrefix(p, "Страна:"))
+					pLower := strings.ToLower(p)
+					if strings.HasPrefix(pLower, "страна:") || strings.HasPrefix(pLower, "country:") || strings.HasPrefix(pLower, "país:") || strings.HasPrefix(pLower, "pais:") || strings.HasPrefix(pLower, "країна:") {
+						idx := strings.Index(p, ":")
+						cntVal := strings.TrimSpace(p[idx+1:])
 						if cntVal != "" {
 							countriesFound = append(countriesFound, cntVal)
 						}
-					} else if strings.HasPrefix(p, "Режиссер:") {
-						dirVal := strings.TrimSpace(strings.TrimPrefix(p, "Режиссер:"))
+					} else if strings.HasPrefix(pLower, "режиссер:") || strings.HasPrefix(pLower, "director:") || strings.HasPrefix(pLower, "режисер:") {
+						idx := strings.Index(p, ":")
+						dirVal := strings.TrimSpace(p[idx+1:])
 						if dirVal != "" {
 							directorsFound = append(directorsFound, dirVal)
 						}
-					} else if strings.HasPrefix(p, "Автор:") {
-						autVal := strings.TrimSpace(strings.TrimPrefix(p, "Автор:"))
+					} else if strings.HasPrefix(pLower, "автор:") || strings.HasPrefix(pLower, "author:") || strings.HasPrefix(pLower, "autor:") {
+						idx := strings.Index(p, ":")
+						autVal := strings.TrimSpace(p[idx+1:])
 						if autVal != "" {
 							authorsFound = append(authorsFound, autVal)
 						}
@@ -419,7 +459,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// 2. Determine primary category
+	// 2. Determine primary category in user language
 	catEn := mapCategoryToEn(categoryParam)
 	if catEn == "" || catEn == "all" {
 		if len(categoriesFound) > 0 {
@@ -429,16 +469,60 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	catRuName := "фильмы/сериалы/книги/игры"
-	switch catEn {
-	case "movie":
-		catRuName = "фильмы"
-	case "tv", "show":
-		catRuName = "сериалы"
-	case "book":
-		catRuName = "книги"
-	case "game":
-		catRuName = "игры"
+	var catLangName string
+	switch userLang {
+	case "en":
+		switch catEn {
+		case "movie":
+			catLangName = "movies"
+		case "tv", "show":
+			catLangName = "TV series"
+		case "book":
+			catLangName = "books"
+		case "game":
+			catLangName = "games"
+		default:
+			catLangName = "movies/TV series/books/games"
+		}
+	case "es":
+		switch catEn {
+		case "movie":
+			catLangName = "películas"
+		case "tv", "show":
+			catLangName = "series de TV"
+		case "book":
+			catLangName = "libros"
+		case "game":
+			catLangName = "videojuegos"
+		default:
+			catLangName = "películas/series/libros/videojuegos"
+		}
+	case "uk":
+		switch catEn {
+		case "movie":
+			catLangName = "фільми"
+		case "tv", "show":
+			catLangName = "серіали"
+		case "book":
+			catLangName = "книги"
+		case "game":
+			catLangName = "ігри"
+		default:
+			catLangName = "фільми/серіали/книги/ігри"
+		}
+	default: // "ru"
+		switch catEn {
+		case "movie":
+			catLangName = "фильмы"
+		case "tv", "show":
+			catLangName = "сериалы"
+		case "book":
+			catLangName = "книги"
+		case "game":
+			catLangName = "игры"
+		default:
+			catLangName = "фильмы/сериалы/книги/игры"
+		}
 	}
 
 	// Deduplicate found metadata for prompt
@@ -465,40 +549,171 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 	uniqDirectors := cleanTitlesList(directorsFound)
 	uniqAuthors := cleanTitlesList(authorsFound)
 
-	// Build exact user prompt
-	itemsListStr := strings.Join(itemDescriptions, "\n- ")
-	if itemsListStr != "" {
-		itemsListStr = "- " + itemsListStr
-	} else {
-		itemsListStr = "- (список пуст, дай общие рекомендации)"
+	// Build exact user prompt with language-specific text
+	var itemsListStr, genresStr, yearsLine, countriesLine, directorsLine, authorsLine string
+
+	switch userLang {
+	case "en":
+		itemsListStr = strings.Join(itemDescriptions, "\n- ")
+		if itemsListStr != "" {
+			itemsListStr = "- " + itemsListStr
+		} else {
+			itemsListStr = "- (list is empty, give general recommendations)"
+		}
+		genresStr = strings.Join(uniqGenres, ", ")
+		if genresStr == "" {
+			genresStr = "popular"
+		}
+		if len(uniqYears) > 0 {
+			yearsLine = fmt.Sprintf("\nPeriod: %s", strings.Join(uniqYears, ", "))
+		}
+		if len(uniqCountries) > 0 {
+			countriesLine = fmt.Sprintf("\nCountries: %s", strings.Join(uniqCountries, ", "))
+		}
+		if len(uniqDirectors) > 0 {
+			directorsLine = fmt.Sprintf("\nDirectors: %s", strings.Join(uniqDirectors, ", "))
+		}
+		if len(uniqAuthors) > 0 {
+			authorsLine = fmt.Sprintf("\nAuthors: %s", strings.Join(uniqAuthors, ", "))
+		}
+
+	case "es":
+		itemsListStr = strings.Join(itemDescriptions, "\n- ")
+		if itemsListStr != "" {
+			itemsListStr = "- " + itemsListStr
+		} else {
+			itemsListStr = "- (la lista está vacía, proporciona recomendaciones generales)"
+		}
+		genresStr = strings.Join(uniqGenres, ", ")
+		if genresStr == "" {
+			genresStr = "populares"
+		}
+		if len(uniqYears) > 0 {
+			yearsLine = fmt.Sprintf("\nPeríodo: %s", strings.Join(uniqYears, ", "))
+		}
+		if len(uniqCountries) > 0 {
+			countriesLine = fmt.Sprintf("\nPaíses: %s", strings.Join(uniqCountries, ", "))
+		}
+		if len(uniqDirectors) > 0 {
+			directorsLine = fmt.Sprintf("\nDirectores: %s", strings.Join(uniqDirectors, ", "))
+		}
+		if len(uniqAuthors) > 0 {
+			authorsLine = fmt.Sprintf("\nAutores: %s", strings.Join(uniqAuthors, ", "))
+		}
+
+	case "uk":
+		itemsListStr = strings.Join(itemDescriptions, "\n- ")
+		if itemsListStr != "" {
+			itemsListStr = "- " + itemsListStr
+		} else {
+			itemsListStr = "- (список порожній, надай загальні рекомендації)"
+		}
+		genresStr = strings.Join(uniqGenres, ", ")
+		if genresStr == "" {
+			genresStr = "популярні"
+		}
+		if len(uniqYears) > 0 {
+			yearsLine = fmt.Sprintf("\nПеріод: %s", strings.Join(uniqYears, ", "))
+		}
+		if len(uniqCountries) > 0 {
+			countriesLine = fmt.Sprintf("\nКраїни: %s", strings.Join(uniqCountries, ", "))
+		}
+		if len(uniqDirectors) > 0 {
+			directorsLine = fmt.Sprintf("\nРежисери: %s", strings.Join(uniqDirectors, ", "))
+		}
+		if len(uniqAuthors) > 0 {
+			authorsLine = fmt.Sprintf("\nАвтори: %s", strings.Join(uniqAuthors, ", "))
+		}
+
+	default: // "ru"
+		itemsListStr = strings.Join(itemDescriptions, "\n- ")
+		if itemsListStr != "" {
+			itemsListStr = "- " + itemsListStr
+		} else {
+			itemsListStr = "- (список пуст, дай общие рекомендации)"
+		}
+		genresStr = strings.Join(uniqGenres, ", ")
+		if genresStr == "" {
+			genresStr = "популярные"
+		}
+		if len(uniqYears) > 0 {
+			yearsLine = fmt.Sprintf("\nПериод: %s", strings.Join(uniqYears, ", "))
+		}
+		if len(uniqCountries) > 0 {
+			countriesLine = fmt.Sprintf("\nСтраны: %s", strings.Join(uniqCountries, ", "))
+		}
+		if len(uniqDirectors) > 0 {
+			directorsLine = fmt.Sprintf("\nРежиссеры: %s", strings.Join(uniqDirectors, ", "))
+		}
+		if len(uniqAuthors) > 0 {
+			authorsLine = fmt.Sprintf("\nАвторы: %s", strings.Join(uniqAuthors, ", "))
+		}
 	}
 
-	genresStr := strings.Join(uniqGenres, ", ")
-	if genresStr == "" {
-		genresStr = "популярные"
-	}
-	yearsStr := strings.Join(uniqYears, ", ")
-	yearsLine := ""
-	if yearsStr != "" {
-		yearsLine = fmt.Sprintf("\nПериод: %s", yearsStr)
-	}
-	countriesStr := strings.Join(uniqCountries, ", ")
-	countriesLine := ""
-	if countriesStr != "" {
-		countriesLine = fmt.Sprintf("\nСтраны: %s", countriesStr)
-	}
-	directorsStr := strings.Join(uniqDirectors, ", ")
-	directorsLine := ""
-	if directorsStr != "" {
-		directorsLine = fmt.Sprintf("\nРежиссеры: %s", directorsStr)
-	}
-	authorsStr := strings.Join(uniqAuthors, ", ")
-	authorsLine := ""
-	if authorsStr != "" {
-		authorsLine = fmt.Sprintf("\nАвторы: %s", authorsStr)
-	}
+	var prompt string
+	switch userLang {
+	case "en":
+		prompt = fmt.Sprintf(`You are an expert in movies, TV series, books, and games recommendation. Your task: analyze the user context and recommend 25 top works that perfectly match the mood, theme, genre, and category (%s) of "%s" and align with the user's preferences inside their list.
+List topic: "%s"
+Category: %s
+Genres: %s%s%s%s%s
+User's current list:
+%s
 
-	prompt := fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений, которые идеально подходят по духу, смыслу, жанру и категории (%s) к "%s" и похожи на предпочтения пользователя внутри списка.
+Generate EXACTLY 25 recommendations (no more and no less) that perfectly match the spirit, meaning, genre, and category (%s) of the list topic and match the user's preferences.
+
+RULES:
+1. Recommend ONLY REAL, officially released works (movies/TV shows/books/games).
+2. NEVER invent fake titles, unreleased parts, or nonexistent seasons (e.g. do NOT invent "Season 5", "Part 12", etc.).
+3. STRICTLY FORBIDDEN: do not recommend any works from the same franchise/universe/series that are already in the user's list.
+4. DIVERSITY: Each recommendation must be an independent, standalone work from a DIFFERENT franchise. Do not include multiple seasons or sequels of the same franchise.
+5. Provide ONLY the main official title in English (without season numbers or episode subtitles, e.g. "Breaking Bad", "Fargo", "True Detective", "Mindhunter", "Sherlock").
+6. Strictly adhere to category (%s).
+7. Response format: STRICTLY raw JSON array of 25 strings. Example: ["Title 1", "Title 2", ...]. No markdown formatting and no conversational text.`,
+			catLangName, listTitleDisplay, listTitleDisplay, catLangName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catLangName, catLangName)
+
+	case "es":
+		prompt = fmt.Sprintf(`Eres un experto en recomendación de películas, series, libros y videojuegos. Tu tarea: analizar el contexto del usuario y recomendar 25 obras excelentes que se adapten perfectamente por espíritu, significado, género y categoría (%s) a "%s" y reflejen las preferencias del usuario dentro de su lista.
+Tema de la lista: "%s"
+Categoría: %s
+Géneros: %s%s%s%s%s
+Lista actual del usuario:
+%s
+
+Genera EXACTAMENTE 25 recomendaciones (ni más ni menos) que coincidan perfectamente con el espíritu, significado, género y categoría (%s) del tema de la lista y se ajusten a las preferencias del usuario.
+
+REGLAS:
+1. Recomienda ÚNICAMENTE obras REALES, lanzadas oficialmente (películas/series/libros/videojuegos).
+2. ESTÁ TERMINANTEMENTE PROHIBIDO inventar títulos falsos, partes no estrenadas o temporadas inexistentes.
+3. ESTÁ TERMINANTEMENTE PROHIBIDO recomendar cualquier obra de la misma franquicia/universo/serie que ya esté en la lista del usuario.
+4. DIVERSIDAD: Cada recomendación debe ser una obra independiente de una franquicia DIFERENTE. No incluyas múltiples temporadas o secuelas de la misma franquicia.
+5. Indica solo el título principal oficial en español o su título internacional reconocido (sin números de temporada ni subtítulos de episodios, ej. "La casa de papel", "Narcos", "Fargo", "True Detective", "Sherlock").
+6. Respeta estrictamente la categoría (%s).
+7. Formato de respuesta: ESTRICTAMENTE un array JSON crudo de 25 cadenas. Ejemplo: ["Título 1", "Título 2", ...]. Sin formato markdown ni texto adicional.`,
+			catLangName, listTitleDisplay, listTitleDisplay, catLangName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catLangName, catLangName)
+
+	case "uk":
+		prompt = fmt.Sprintf(`Ти — експерт у підборі фільмів, серіалів, книг та ігор. Твоє завдання: проаналізувати контекст користувача та порекомендувати 25 найкращих творів, які ідеально підходять за духом, сенсом, жанром та категорією (%s) до "%s" та схожі на вподобання користувача всередині списку.
+Тема списку: "%s"
+Категорія: %s
+Жанри: %s%s%s%s%s
+Поточний список користувача:
+%s
+
+Згенеруй РІВНО 25 рекомендацій (не більше і не менше), які ідеально підходять за духом, сенсом, жанром та категорією (%s) до теми списку та схожі на вподобання користувача.
+
+ПРАВИЛА:
+1. Рекомендуй ТІЛЬКИ РЕАЛЬНО ІСНУЮЧІ, офіційно випущені твори (фільми/серіали/книги/ігри).
+2. КАТЕГОРИЧНО ЗАБОРОНЕНО вигадувати неіснуючі назви, невипущені частини або фейкові сезони.
+3. КАТЕГОРИЧНО ЗАБОРОНЕНО рекомендувати будь-які твори з тієї самої франшизи/всесвіту/серіалу, які вже є в списку користувача.
+4. РІЗНОМАНІТНІСТЬ: Кожна рекомендація повинна бути самостійним, окремим твором з ІНШОЇ франшизи. Не додавай кілька частин або сезонів однієї франшизи.
+5. Вказуй лише основну офіційну назву твору українською мовою або в оригіналі (без номерів сезонів і підзаголовків серій, наприклад «Слуга народу», «Спіймати Кайдаша», «Шерлок», «Метод», «Фарґо»).
+6. Суворо дотримуйся категорії (%s).
+7. Формат відповіді: СУВОРО сирий JSON-масив із 25 рядків. Приклад: ["Назва 1", "Назва 2", ...]. Без markdown-розмітки та супровідного тексту.`,
+			catLangName, listTitleDisplay, listTitleDisplay, catLangName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catLangName, catLangName)
+
+	default: // "ru"
+		prompt = fmt.Sprintf(`Ты — эксперт в подборе фильмов, сериалов, книг и игр. Твоя задача: проанализировать контекст пользователя и порекомендовать 25 лучших произведений, которые идеально подходят по духу, смыслу, жанру и категории (%s) к "%s" и похожи на предпочтения пользователя внутри списка.
 Тема списка: "%s"
 Категория: %s
 Жанры: %s%s%s%s%s
@@ -515,7 +730,8 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 5. Указывай только основное официальное название произведения на русском языке (без номеров сезонов и без подзаголовков серий, например «Ликвидация», «Крик совы», «Художник», «Метод», «Шеф»).
 6. Строго соблюдай категорию (%s).
 7. Формат ответа: СТРОГО сырой JSON-массив из 25 строк. Пример: ["Название 1", "Название 2", ...]. Без markdown-разметки и без сопроводительного текста.`,
-		catRuName, listTitleDisplay, listTitleDisplay, catRuName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catRuName, catRuName)
+			catLangName, listTitleDisplay, listTitleDisplay, catLangName, genresStr, yearsLine, countriesLine, directorsLine, authorsLine, itemsListStr, catLangName, catLangName)
+	}
 
 	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
 	rateKey := getRateLimitKey(r)
@@ -722,7 +938,7 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		wg.Add(1)
 		go func(idx int, tName string) {
 			defer wg.Done()
-			targetLang := parser.DetectTargetLanguage(tName, "")
+			targetLang := parser.DetectTargetLanguage(tName, userLang)
 			onlineRes := h.searchOnlineCatalog(tName, catEn, nil, targetLang)
 			if card, ok := selectBestCatalogMatch(tName, onlineRes); ok {
 				resultChan <- enrichedResult{index: idx, card: card, valid: true}

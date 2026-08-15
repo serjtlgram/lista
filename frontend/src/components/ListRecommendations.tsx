@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
-import { Translations } from '../services/i18n';
+import { Translations, getStoredLanguage } from '../services/i18n';
 import { api } from '../services/api';
 
 interface ListRecommendationsProps {
@@ -61,8 +61,8 @@ const extractFranchiseRoots = (title?: string): string[] => {
     }
   }
 
-  if (/\s+и\s+/i.test(stripped)) {
-    const beforeAnd = stripped.split(/\s+и\s+/i)[0].trim();
+  if (/\s+(?:и|and|y|i|та)\s+/i.test(stripped)) {
+    const beforeAnd = stripped.split(/\s+(?:и|and|y|i|та)\s+/i)[0].trim();
     const beforeAndNorm = normalizeTitle(beforeAnd);
     if (beforeAndNorm.length >= 4) {
       roots.add(beforeAndNorm);
@@ -168,15 +168,16 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
     setError(null);
 
     try {
+      const userLang = getStoredLanguage() || 'ru';
       const itemIds = listItems.map((i) => i.id).filter(Boolean);
       const itemTitles = listItems.map((i) => {
         let desc = i.title;
         const details: string[] = [];
         if (i.release_year) details.push(i.release_year);
         if (i.genre) details.push(i.genre);
-        if (i.country) details.push(`Страна: ${i.country}`);
-        if (i.director) details.push(`Режиссер: ${i.director}`);
-        if (i.author) details.push(`Автор: ${i.author}`);
+        if (i.country) details.push(userLang === 'en' ? `Country: ${i.country}` : userLang === 'es' ? `País: ${i.country}` : userLang === 'uk' ? `Країна: ${i.country}` : `Страна: ${i.country}`);
+        if (i.director) details.push(userLang === 'en' ? `Director: ${i.director}` : userLang === 'es' ? `Director: ${i.director}` : userLang === 'uk' ? `Режисер: ${i.director}` : `Режиссер: ${i.director}`);
+        if (i.author) details.push(userLang === 'en' ? `Author: ${i.author}` : userLang === 'es' ? `Autor: ${i.author}` : userLang === 'uk' ? `Автор: ${i.author}` : `Автор: ${i.author}`);
         if (details.length > 0) desc += ` [${details.join(', ')}]`;
         return desc;
       }).filter(Boolean);
@@ -201,7 +202,8 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         itemIds,
         itemTitles,
         primaryCategory,
-        listTitle
+        listTitle,
+        userLang
       );
 
       if (results && results.length > 0) {

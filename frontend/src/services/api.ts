@@ -208,17 +208,20 @@ export const api = {
     itemIds?: string[],
     itemTitles?: string[],
     category?: string,
-    title?: string
+    title?: string,
+    lang?: string
   ): Promise<CatalogItem[]> {
     try {
+      const userLang = lang || getStoredLanguage() || 'ru';
       const body = {
         item_ids: itemIds && itemIds.length > 0 ? itemIds.join(',') : '',
         item_titles: itemTitles && itemTitles.length > 0 ? itemTitles.join('|') : '',
         category: category || '',
-        title: title || ''
+        title: title || '',
+        lang: userLang
       };
 
-      const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations`, {
+      const res = await fetch(`${API_BASE}/api/lists/${listId}/recommendations?lang=${encodeURIComponent(userLang)}`, {
         method: 'POST',
         headers: {
           ...getHeaders(),
