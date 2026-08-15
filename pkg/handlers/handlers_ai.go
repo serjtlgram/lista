@@ -541,24 +541,23 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 		}
 
 		var resp *http.Response
-		err = func() error {
-			ctxModel, cancelModel := context.WithTimeout(ctxTotal, 180*time.Second)
-			defer cancelModel()
+		var respBody []byte
+		var readErr error
 
-			req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
-			if err != nil {
-				return err
-			}
-
-			req.Header.Set("Accept", "application/json")
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+apiKey)
-
-			resp, err = httpClient.Do(req)
-			return err
-		}()
-
+		ctxModel, cancelModel := context.WithTimeout(ctxTotal, 180*time.Second)
+		req, err := http.NewRequestWithContext(ctxModel, "POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
 		if err != nil {
+			cancelModel()
+			continue
+		}
+
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+
+		resp, err = httpClient.Do(req)
+		if err != nil {
+			cancelModel()
 			log.Printf("[FireworksAI] Model %s chat completions error: %v", modelName, err)
 			if ctxTotal.Err() != nil {
 				log.Printf("[FireworksAI] Total timeout reached (%v), aborting further model queries.", ctxTotal.Err())
@@ -567,8 +566,9 @@ func (h *Handler) GetListRecommendations(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-		respBody, readErr := io.ReadAll(resp.Body)
+		respBody, readErr = io.ReadAll(resp.Body)
 		resp.Body.Close()
+		cancelModel()
 
 		if resp.StatusCode == http.StatusOK && readErr == nil {
 			var fireworksResp struct {
