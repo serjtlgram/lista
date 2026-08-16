@@ -295,7 +295,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
   }, [cachedAddedItems]);
 
   const mapCatalogToItem = (c: CatalogItem): Item => ({
-    id: c.id || '',
+    id: c.id || ('rec_' + (c.title || 'item').replace(/\s+/g, '_') + '_' + (c.release_year || '')),
     user_id: 0,
     title: c.title,
     category: c.category || 'Фильмы',

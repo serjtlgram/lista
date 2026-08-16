@@ -387,16 +387,25 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   // Automatic background metadata enrichment on opening details view
   useEffect(() => {
-    const isBook = ['book', 'books', 'книги', 'книга'].includes((item.category || '').toLowerCase().trim());
-    const isMissingData = !item.public_rating || !item.description || !item.country || (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
+    const catLower = (item.category || '').toLowerCase().trim();
+    const isBook = ['book', 'books', 'книги', 'книга'].includes(catLower);
+    const isMovieOrShow = ['movie', 'movies', 'show', 'shows', 'series', 'фильм', 'фильмы', 'сериал', 'сериалы'].includes(catLower);
 
-    if (isMissingData && onUpdateItem && !enrichedItemIds.current.has(item.id)) {
-      enrichedItemIds.current.add(item.id);
+    const isMissingData =
+      !item.public_rating ||
+      !item.description ||
+      !item.country ||
+      (isMovieOrShow && (!item.director || !item.cast || !item.duration || !item.genre)) ||
+      (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
+
+    const itemKey = item.id || item.title;
+    if (isMissingData && onUpdateItem && itemKey && !enrichedItemIds.current.has(itemKey)) {
+      enrichedItemIds.current.add(itemKey);
       api
         .searchCatalog(item.title, item.category)
         .then((results) => {
           if (results && results.length > 0) {
-            const match = results.find(r => (!item.country && r.country) || r.public_rating || r.author || r.isbn) || results[0];
+            const match = results.find(r => (!item.country && r.country) || r.director || r.cast || r.public_rating || r.author || r.isbn) || results[0];
             if (match) {
               const updates: Partial<Item> = {};
               if (!item.public_rating && match.public_rating) updates.public_rating = match.public_rating;
@@ -405,6 +414,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               if (!item.genre && match.genre) updates.genre = getTranslatedGenreFull(match.genre, t, item.category);
               if (!item.release_year && match.release_year) updates.release_year = match.release_year;
               if (!item.country && (match as any).country) updates.country = (match as any).country;
+              if (!item.director && match.director) updates.director = match.director;
+              if (!item.cast && match.cast) updates.cast = match.cast;
+              if (!item.duration && match.duration) updates.duration = match.duration;
+              if (!item.youtube_url && match.youtube_url) updates.youtube_url = match.youtube_url;
 
               if (isBook) {
                 if (!item.author && match.author) updates.author = match.author;
@@ -415,7 +428,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 }
               }
 
-              if (Object.keys(updates).length > 0) {
+              if (Object.keys(updates).length > 0 && item.id) {
                 onUpdateItem(item.id, updates);
               }
             }
@@ -423,7 +436,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         })
         .catch(() => {});
     }
-  }, [item.id, item.title, item.category, item.public_rating, item.description, item.author, item.isbn, item.duration, item.genre, item.country]);
+  }, [item.id, item.title, item.category, item.public_rating, item.description, item.author, item.isbn, item.duration, item.genre, item.country, item.director, item.cast]);
 
   const [isListModalOpen, setIsListModalOpen] = useState(false);
 

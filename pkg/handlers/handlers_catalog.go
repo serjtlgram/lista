@@ -1428,11 +1428,11 @@ func fetchTMDbInline(query string, tmdbKey string, targetCat string, targetLang 
 						bItem.PublicRating = details.PublicRating
 					}
 					if details.Country != "" {
-						bItem.Country = details.Country
+						bItem.Country = mapCountryToFlag(details.Country)
 					}
 				}
 				resCh <- tmdbRes{idx: idx, item: bItem}
-			}(i, r.ID, r.MediaType, baseItem)
+			}(i, r.ID, mediaType, baseItem)
 		}
 
 		wg.Wait()
