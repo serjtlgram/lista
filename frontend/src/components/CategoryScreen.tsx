@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2, X } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
@@ -82,35 +82,29 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     localStorage.setItem('lista_catalog_sort_order', sortOrder);
   }, [sortOrder]);
 
+  const searchReqSeq = useRef(0);
   const [catalogResults, setCatalogResults] = useState<CatalogItem[]>(() => {
     try {
-      const saved = sessionStorage.getItem('lista_catalog_search_results');
-      const savedQuery = sessionStorage.getItem('lista_catalog_search_query');
-      const savedMode = sessionStorage.getItem('lista_catalog_search_mode_cached');
+      const savedRaw = sessionStorage.getItem('lista_catalog_cache_v2');
       const currentQ = (onSearchQueryChange ? searchQueryProp : internalQuery).trim();
       const currentM = localStorage.getItem('lista_catalog_search_mode') || 'title';
-      if (saved && savedQuery === currentQ && savedMode === currentM) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const currentCat = title || 'Все';
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (
+          parsed &&
+          parsed.query === currentQ &&
+          parsed.mode === currentM &&
+          parsed.category === currentCat &&
+          Array.isArray(parsed.results) &&
+          parsed.results.length > 0
+        ) {
+          return parsed.results;
+        }
       }
     } catch (e) {}
     return [];
   });
-
-  useEffect(() => {
-    try {
-      const q = searchQuery.trim();
-      if (q.length >= 1 && catalogResults.length > 0) {
-        sessionStorage.setItem('lista_catalog_search_results', JSON.stringify(catalogResults));
-        sessionStorage.setItem('lista_catalog_search_query', q);
-        sessionStorage.setItem('lista_catalog_search_mode_cached', searchMode);
-      } else if (q.length < 1) {
-        sessionStorage.removeItem('lista_catalog_search_results');
-        sessionStorage.removeItem('lista_catalog_search_query');
-        sessionStorage.removeItem('lista_catalog_search_mode_cached');
-      }
-    } catch (e) {}
-  }, [catalogResults, searchQuery, searchMode]);
 
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(() => {
@@ -163,22 +157,37 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     ? canonicalCategories.filter((cat) => normalizedActiveSet.has(cat))
     : canonicalCategories;
 
-  // Search catalog in DB when searchQuery changes (500ms debounce, length >= 1)
+  // Search catalog in DB when searchQuery changes (400ms debounce, length >= 1)
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 1) {
       setCatalogResults([]);
       setIsSearchingCatalog(false);
+      try {
+        sessionStorage.removeItem('lista_catalog_cache_v2');
+      } catch (e) {}
       return;
     }
 
-    // Check if we already have cached results for this exact query & mode on mount
+    const currentReqId = ++searchReqSeq.current;
+
+    // Check if we already have valid cached results for this exact query & mode & category
     try {
-      const saved = sessionStorage.getItem('lista_catalog_search_results');
-      const savedQuery = sessionStorage.getItem('lista_catalog_search_query');
-      const savedMode = sessionStorage.getItem('lista_catalog_search_mode_cached');
-      if (saved && savedQuery === q && savedMode === searchMode && catalogResults.length > 0) {
-        return;
+      const savedRaw = sessionStorage.getItem('lista_catalog_cache_v2');
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (
+          parsed &&
+          parsed.query === q &&
+          parsed.mode === searchMode &&
+          parsed.category === title &&
+          Array.isArray(parsed.results) &&
+          parsed.results.length > 0
+        ) {
+          setCatalogResults(parsed.results);
+          setIsSearchingCatalog(false);
+          return;
+        }
       }
     } catch (e) {}
 
@@ -187,13 +196,34 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       try {
         const catFilter = title === 'Все' ? undefined : title;
         const res = await api.searchCatalog(q, catFilter, undefined, searchMode);
-        setCatalogResults(res || []);
+        
+        // Discard stale responses if a newer search was initiated
+        if (searchReqSeq.current !== currentReqId) {
+          return;
+        }
+
+        const items = res || [];
+        setCatalogResults(items);
+        try {
+          if (items.length > 0) {
+            sessionStorage.setItem('lista_catalog_cache_v2', JSON.stringify({
+              query: q,
+              mode: searchMode,
+              category: title,
+              results: items,
+            }));
+          } else {
+            sessionStorage.removeItem('lista_catalog_cache_v2');
+          }
+        } catch (e) {}
       } catch (e) {
         console.warn('Search catalog error:', e);
       } finally {
-        setIsSearchingCatalog(false);
+        if (searchReqSeq.current === currentReqId) {
+          setIsSearchingCatalog(false);
+        }
       }
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchQuery, title, searchMode]);
@@ -270,18 +300,21 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     const words = qTrim.split(/\s+/).filter((w) => w.length >= 2);
     if (words.length === 0) return [true, 1];
 
-    const individuals = membersStr.split(/[,;\/\n]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const individuals = (membersStr || '').split(/[,;\/\n]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
     for (let i = 0; i < individuals.length; i++) {
       const ind = individuals[i];
       if (ind === qTrim) {
         return [true, i === 0 ? 1 : i <= 2 ? 2 : 3];
       }
-      if (words.every((w) => ind.includes(w))) {
+
+      const indTokens = ind.split(/[\s\-.]+/).map(t => t.trim()).filter(Boolean);
+      const allWordsMatch = words.every(qw => {
+        return indTokens.some(token => token.startsWith(qw) || qw.startsWith(token) || token === qw);
+      });
+
+      if (allWordsMatch) {
         return [true, i === 0 ? 1 : i <= 2 ? 2 : 3];
       }
-    }
-    if (membersStr.toLowerCase().includes(qTrim)) {
-      return [true, 3];
     }
     return [false, 10];
   };
@@ -326,6 +359,25 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         if (userVideoTitleYearKeys.has(titleClean)) {
           return false;
         }
+      }
+
+      // 3. Category match against current tab
+      if (!isCategoryMatch(c.category, title)) return false;
+
+      // 4. Strict search query matching against current search mode
+      const q = searchQuery.trim().toLowerCase();
+      if (q) {
+        if (searchMode === 'actor') {
+          return matchPersonStrictFrontend(c.cast || '', q);
+        }
+        if (searchMode === 'director') {
+          return matchPersonStrictFrontend(c.director || '', q);
+        }
+        const words = q.split(/\s+/).filter((w) => w.length >= 2);
+        if (words.length > 0) {
+          return words.every((w) => titleClean.includes(w)) || (c.genre && c.genre.toLowerCase().includes(q));
+        }
+        return titleClean.includes(q) || (c.genre && c.genre.toLowerCase().includes(q));
       }
 
       return true;

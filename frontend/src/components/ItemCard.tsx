@@ -87,7 +87,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       let matchedActor = '';
       if (searchQuery) {
         const words = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 2);
-        matchedActor = actors.find(a => words.every(w => a.toLowerCase().includes(w))) || '';
+        if (words.length > 0) {
+          matchedActor = actors.find(a => {
+            const aTokens = a.toLowerCase().split(/[\s\-.]+/).map(t => t.trim()).filter(Boolean);
+            return words.every(w => aTokens.some(tok => tok.startsWith(w) || w.startsWith(tok) || tok === w));
+          }) || '';
+        }
       }
       const targetActor = matchedActor || actors[0] || '';
       if (targetActor) {

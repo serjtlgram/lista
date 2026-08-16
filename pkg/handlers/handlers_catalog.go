@@ -301,14 +301,30 @@ func matchPersonStrict(membersStr string, qTrim string) (bool, int) {
 			}
 			return true, 3
 		}
-		allWordsInPerson := true
+
+		indTokens := strings.FieldsFunc(indClean, func(r rune) bool {
+			return r == ' ' || r == '-' || r == '\t' || r == '.' || r == '(' || r == ')'
+		})
+
+		allWordsMatch := true
 		for _, w := range words {
-			if len(w) >= 2 && !strings.Contains(indClean, w) {
-				allWordsInPerson = false
+			if len(w) < 2 {
+				continue
+			}
+			wordMatched := false
+			for _, token := range indTokens {
+				if strings.HasPrefix(token, w) || strings.HasPrefix(w, token) || token == w {
+					wordMatched = true
+					break
+				}
+			}
+			if !wordMatched {
+				allWordsMatch = false
 				break
 			}
 		}
-		if allWordsInPerson {
+
+		if allWordsMatch {
 			if idx == 0 {
 				return true, 1
 			}
@@ -317,11 +333,6 @@ func matchPersonStrict(membersStr string, qTrim string) (bool, int) {
 			}
 			return true, 3
 		}
-	}
-
-	mLower := strings.ToLower(membersStr)
-	if strings.Contains(mLower, qTrim) {
-		return true, 3
 	}
 
 	return false, 10
@@ -847,29 +858,29 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 	// Rich deep limits when searching by actor or director
 	if mode == "actor" || mode == "director" {
 		if catEn == "movie" {
-			if len(movieBucket) > 35 {
-				movieBucket = movieBucket[:35]
+			if len(movieBucket) > 45 {
+				movieBucket = movieBucket[:45]
 			}
-			if len(showBucket) > 15 {
-				showBucket = showBucket[:15]
+			if len(showBucket) > 20 {
+				showBucket = showBucket[:20]
 			}
 			results = append(results, movieBucket...)
 			results = append(results, showBucket...)
 		} else if catEn == "show" {
-			if len(showBucket) > 35 {
-				showBucket = showBucket[:35]
+			if len(showBucket) > 45 {
+				showBucket = showBucket[:45]
 			}
-			if len(movieBucket) > 15 {
-				movieBucket = movieBucket[:15]
+			if len(movieBucket) > 20 {
+				movieBucket = movieBucket[:20]
 			}
 			results = append(results, showBucket...)
 			results = append(results, movieBucket...)
 		} else { // "all" or default
-			if len(movieBucket) > 30 {
-				movieBucket = movieBucket[:30]
+			if len(movieBucket) > 40 {
+				movieBucket = movieBucket[:40]
 			}
-			if len(showBucket) > 20 {
-				showBucket = showBucket[:20]
+			if len(showBucket) > 25 {
+				showBucket = showBucket[:25]
 			}
 			results = append(results, movieBucket...)
 			results = append(results, showBucket...)
@@ -1630,7 +1641,7 @@ func fetchTMDbPersonDiscover(personName string, tmdbKey string, targetCat string
 
 	candidateCount := 0
 	for i, r := range rawMediaList {
-		if candidateCount >= 35 {
+		if candidateCount >= 60 {
 			break
 		}
 		title := r.Title
