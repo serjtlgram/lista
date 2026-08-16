@@ -98,6 +98,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       if (targetActor) {
         displayedAuthor = targetActor.replace(/^(?:в\s+ролях|режисс[её]р|реж\.?|акт[её]р(?:иса)?|actor|actress|cast)\s*:\s*/i, '').trim();
       }
+    } else if (searchMode === 'director' && item.director) {
+      const directors = item.director.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean);
+      let matchedDir = '';
+      if (searchQuery) {
+        const words = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 2);
+        if (words.length > 0) {
+          matchedDir = directors.find(d => {
+            const dTokens = d.toLowerCase().split(/[\s\-.]+/).map(t => t.trim()).filter(Boolean);
+            return words.every(w => dTokens.some(tok => tok.startsWith(w) || w.startsWith(tok) || tok === w));
+          }) || '';
+        }
+      }
+      const targetDir = matchedDir || directors[0] || '';
+      if (targetDir) {
+        displayedAuthor = targetDir.replace(/^(?:режисс[её]р|реж\.?|director|автор|author)\s*:\s*/i, '').trim();
+      }
     } else if ((isSeries || isMovie) && rawAuthorOrDirector) {
       const directors = rawAuthorOrDirector.split(',').map(s => s.trim()).filter(Boolean);
       if (directors[0]) {
