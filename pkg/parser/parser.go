@@ -1733,7 +1733,7 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
    - У рядках director, cast та cast_roles не допускається наявність англійських або латинських літер. Усі імена мають складатися виключно з кирилиці.
 2. Збереження даних: Якщо в контексті вже зазначений коректний режисер ("%s"), збережи його в полі director українською мовою.
 3. Поле cast: Сформуй чистий список акторів фільму українською мовою через кому, без латиниці та без ролей.
-4. Поле cast_roles: Форматуй строго за шаблоном "Актор — Роль, Актор — Роль" (максимум до 8 пар) виключно кирилицею.
+4. Поле cast_roles: Форматуй строго за шаблоном "Актор — Роль, Актор — Роль" (максимум до 8 пар) виключно кирилицею. Важливо! Визначити правильну роль кожного актора і прописати її навпроти актора замість слова "Роль"! Крім дійсної ролі нічого писати не потрібно, вигадувати не можна.
 5. Статус: Переклади air_status українською мовою ("Завершено", "Виходить", "Скасовано").
 6. Тривалість: Вкажи duration у хвилинах (наприклад: "92 хв").
 
@@ -1773,7 +1773,7 @@ Contexto de la tarjeta:
 Reglas obligatorias:
 1. Traduce todos los nombres de actores, personajes/roles y del director al español. No dejes nombres en inglés si hay traducción o transcripción.
 2. Si ya se conoce el director correcto ("%s"), consérvalo en el campo director.
-3. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
+3. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares). ¡Importante! Determina el rol real de cada actor y escríbelo junto al actor en lugar de la palabra "Rol". No inventes roles ni agregues texto extra.
 4. Formato de cast: lista de actores separados por comas.
 5. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
 6. La duración duration debe estar en minutos (ejemplo: "92 min").
@@ -1814,7 +1814,7 @@ Card Context:
 Mandatory Rules:
 1. All actor names, character/role names, and director names must be in English / Latin script.
 2. If the correct director is known ("%s"), preserve it in the director field.
-3. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
+3. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs). Important! Determine the actual role/character for each actor and write it next to the actor instead of the literal word "Role". Do not fabricate roles.
 4. Format cast as: comma-separated list of actors.
 5. Translate air_status to English ("Ended", "Returning Series", "Canceled").
 6. Set duration in minutes (e.g. "92 min").
@@ -1858,7 +1858,7 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
    - В строках director, cast и cast_roles не допускается наличие английских букв или латиницы. Все имена должны состоять исключительно из кириллицы.
 2. Сохранение данных: Если в карточке уже указан корректный режиссер ("%s"), сохрани его в поле director на русском языке.
 3. Поле cast: Сформируй чистый список актёров фильма на русском языке через запятую, без латиницы и без указания ролей (например: "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко").
-4. Поле cast_roles: Форматируй строго по шаблону "Актёр — Роль, Актёр — Роль" (максимум до 8 пар) на русском языке.
+4. Поле cast_roles: Форматируй строго по шаблону "Актёр — Роль, Актёр — Роль" (максимум до 8 пар) на русском языке. Важно! Определить правильную роль каждого актёра и прописать её напротив актёра вместо слова "Роль"! Кроме действительной роли ничего писать не нужно, выдумывать нельзя.
 5. Статус: Переведи значение air_status на русский язык (например: "Завершён", "Выходит", "Отменён").
 6. Длительность: Укажи значение duration в минутах (например: "92 мин"). Если поле пустое или содержит "-", укажи среднее время серии или фильма в минутах.
 
