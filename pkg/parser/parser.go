@@ -1891,7 +1891,6 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
-		"reasoning_effort": "low",
 		"temperature":     0.1,
 		"max_tokens":      1024,
 	}
