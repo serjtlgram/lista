@@ -1717,7 +1717,7 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
 	var prompt string
 	switch lang {
 	case "uk":
-		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє єдине завдання — перекласти, перевірити та заповнити дані для фільму/серіалу "%s" (%s року виходу, країна: %s) УКРАЇНСЬКОЮ МОВОЮ.
+		prompt = fmt.Sprintf(`Ти — експерт з метаданих фільмів та серіалів. Твоє завдання — перекласти, перевірити та заповнити дані для фільму або серіалу "%s" (%s року виходу, країна: %s) українською мовою.
 
 Контекстні дані картки:
 - Назва: %s
@@ -1727,17 +1727,18 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
 - Поточний акторський склад: %s
 - Опис: %s
 
-СУВОРІ ПРАВИЛА:
-1. УСІ ІМЕНА АКТОРІВ, УСІ ІМЕНА ПЕРСОНАЖІВ/РОЛЕЙ ТА ІМ'Я РЕЖИСЕРА ОБОВ'ЯЗКОВО ПЕРЕКЛАДИ УКРАЇНСЬКОЮ МОВОЮ КИРИЛИЦЕЮ!
-   - Якщо в іменах є латиниця (наприклад: 'Darya Pugacheva', 'Greg Plageman'), ОБОВ'ЯЗКОВО транслітеруй/переклади їх на кирилицю ('Дар'я Пугачова', 'Грег Плейджман').
-   - У полях director, cast та cast_roles КАТЕГОРИЧНО ЗАБОРОНЕНО залишати англійські/латинські літери!
-2. Якщо в контексті вже зазначений коректний режисер ("%s"), ЗБЕРЕЖИ його в полі director.
-3. Поле cast_roles: сформуй пари "Актор — Роль, Актор — Роль" (до 8 пар) виключно кирилицею.
-4. Поле cast: повний виправлений список акторів українською мовою через кому (без латиниці і без ролей).
-5. Переклади air_status українською ("Завершено", "Виходить", "Скасовано").
-6. Тривалість duration вкажи у хвилинах (наприклад: "92 хв").
+Правила обробки:
+1. Мовний стандарт: Усі імена акторів, імена персонажів (ролей) та ім'я режисера мають бути перекладені українською мовою (строго кирилиця).
+   - Якщо в іменах присутня латиниця (наприклад: 'Darya Pugacheva', 'Greg Plageman'), обов'язково транслітеруй або переклади їх на кирилицю ('Дар'я Пугачова', 'Грег Плейджман').
+   - У рядках director, cast та cast_roles не допускається наявність англійських або латинських літер. Усі імена мають складатися виключно з кирилиці.
+2. Збереження даних: Якщо в контексті вже зазначений коректний режисер ("%s"), збережи його в полі director українською мовою.
+3. Поле cast: Сформуй чистий список акторів фільму українською мовою через кому, без латиниці та без ролей.
+4. Поле cast_roles: Форматуй строго за шаблоном "Актор — Роль, Актор — Роль" (максимум до 8 пар) виключно кирилицею.
+5. Статус: Переклади air_status українською мовою ("Завершено", "Виходить", "Скасовано").
+6. Тривалість: Вкажи duration у хвилинах (наприклад: "92 хв").
 
-Поверни ВИКЛЮЧНО JSON без розмітки:
+Вимоги до формату відповіді:
+Поверни результат виключно у форматі валідного JSON без розмітки:
 {
   "director": "Ім'я Режисера",
   "cast": "Актор 1, Актор 2, Актор 3",
@@ -1749,7 +1750,7 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
   "episodes_total": 0
 }
 
-Вхідні дані:
+Вхідні дані для обробки:
 director: %s
 cast_roles: %s
 budget: %s
@@ -1759,7 +1760,7 @@ seasons: %d
 episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "es":
-		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película/serie "%s" (año %s, país: %s) EN ESPAÑOL.
+		prompt = fmt.Sprintf(`Eres un experto en metadatos de películas y series. Tu tarea es traducir y completar los datos para la película o serie "%s" (año %s, país: %s) en español.
 
 Contexto de la tarjeta:
 - Título: %s
@@ -1769,15 +1770,16 @@ Contexto de la tarjeta:
 - Reparto actual: %s
 - Descripción: %s
 
-REGLAS OBLIGATORIAS:
-1. Traduce todos los nombres de actores, personajes/roles y del director al español. ¡NO dejes nombres en inglés si hay traducción/transcripción!
+Reglas obligatorias:
+1. Traduce todos los nombres de actores, personajes/roles y del director al español. No dejes nombres en inglés si hay traducción o transcripción.
 2. Si ya se conoce el director correcto ("%s"), consérvalo en el campo director.
 3. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares).
 4. Formato de cast: lista de actores separados por comas.
 5. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
 6. La duración duration debe estar en minutos (ejemplo: "92 min").
 
-Devuelve ÚNICAMENTE un objeto JSON:
+Formato de respuesta:
+Devuelve únicamente un objeto JSON válido sin markdown:
 {
   "director": "Nombre del director",
   "cast": "Actor 1, Actor 2, Actor 3",
@@ -1799,7 +1801,7 @@ seasons: %d
 episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	case "en":
-		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to complete and clean metadata for "%s" (%s release year, country: %s) IN ENGLISH.
+		prompt = fmt.Sprintf(`You are a movie and TV show metadata expert. Your task is to complete and clean metadata for "%s" (%s release year, country: %s) in English.
 
 Card Context:
 - Title: %s
@@ -1809,7 +1811,7 @@ Card Context:
 - Current Cast: %s
 - Description: %s
 
-MANDATORY RULES:
+Mandatory Rules:
 1. All actor names, character/role names, and director names must be in English / Latin script.
 2. If the correct director is known ("%s"), preserve it in the director field.
 3. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs).
@@ -1817,7 +1819,8 @@ MANDATORY RULES:
 5. Translate air_status to English ("Ended", "Returning Series", "Canceled").
 6. Set duration in minutes (e.g. "92 min").
 
-Return ONLY a JSON object:
+Response Format:
+Return only a valid JSON object without markdown:
 {
   "director": "Director Name",
   "cast": "Actor 1, Actor 2, Actor 3",
@@ -1839,7 +1842,7 @@ seasons: %d
 episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 
 	default: // "ru" or any other
-		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя задача — проверить, дополнить и перевести данные для фильма/сериала "%s" (%s года выхода, страна: %s) НА РУССКИЙ ЯЗЫК.
+		prompt = fmt.Sprintf(`Ты — эксперт по метаданным фильмов и сериалов. Твоя задача — проверить, дополнить и перевести данные для фильма или сериала "%s" (%s года выхода, страна: %s) на русский язык.
 
 Контекстные данные карточки:
 - Название: %s
@@ -1849,17 +1852,18 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 - Текущий список актеров: %s
 - Описание: %s
 
-СТРОГИЕ ПРАВИЛА:
-1. ВСЕ ИМЕНА АКТЁРОВ, ВСЕ ИМЕНА ПЕРСОНАЖЕЙ/РОЛЕЙ И ИМЯ РЕЖИССЁРА ОБЯЗАТЕЛЬНО ПЕРЕДАЙ НА РУССКОМ ЯЗЫКЕ КИРИЛЛИЦЕЙ!
-   - Если в списке актёров или режиссёров есть имена на латинице (например: 'Darya Pugacheva' -> 'Дарья Пугачева', 'Petr Rykov' -> 'Петр Рыков', 'Greg Plageman' -> 'Грег Плейджман'), ОБЯЗАТЕЛЬНО транслитерируй/переведи их на русский язык!
-   - В строках director, cast и cast_roles КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО оставлять любые английские или латинские буквы! Все имена должны состоять исключительно из кириллицы.
-2. Если в карточке уже указан корректный режиссер ("%s"), ОБЯЗАТЕЛЬНО СОХРАНИ его в поле director на русском языке.
-3. Поле cast: сформируй исправленный чистый список актёров фильма на русском языке через запятую (без латиницы и без указания ролей, например: "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко").
-4. Поле cast_roles форматируй строго так: Актёр — Роль, Актёр — Роль (до 8 пар) на русском языке.
-5. Переведи статус air_status на русский (например: "Завершён", "Выходит", "Отменён").
-6. Длительность duration укажи в минутах (например: "92 мин"). Если она пустая или "-", укажи среднее время серии или фильма в минутах.
+Правила обработки:
+1. Языковой стандарт: Все имена актёров, имена персонажей (ролей) и имя режиссёра должны быть переведены на русский язык (строго кириллица).
+   - Если в списке актёров или режиссёров присутствуют имена на латинице (например: 'Darya Pugacheva' -> 'Дарья Пугачева', 'Petr Rykov' -> 'Петр Рыков', 'Greg Plageman' -> 'Грег Плейджман'), выполни их точную транслитерацию или перевод.
+   - В строках director, cast и cast_roles не допускается наличие английских букв или латиницы. Все имена должны состоять исключительно из кириллицы.
+2. Сохранение данных: Если в карточке уже указан корректный режиссер ("%s"), сохрани его в поле director на русском языке.
+3. Поле cast: Сформируй чистый список актёров фильма на русском языке через запятую, без латиницы и без указания ролей (например: "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко").
+4. Поле cast_roles: Форматируй строго по шаблону "Актёр — Роль, Актёр — Роль" (максимум до 8 пар) на русском языке.
+5. Статус: Переведи значение air_status на русский язык (например: "Завершён", "Выходит", "Отменён").
+6. Длительность: Укажи значение duration в минутах (например: "92 мин"). Если поле пустое или содержит "-", укажи среднее время серии или фильма в минутах.
 
-Ответь ИСКЛЮЧИТЕЛЬНО в формате JSON без markdown:
+Требования к формату ответа:
+Верни результат исключительно в формате валидного JSON без использования markdown-разметки (без тегов кода):
 {
   "director": "Александр Селиверстов",
   "cast": "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко, Валерия Кожевникова, Светлана Степанковская",
@@ -1871,7 +1875,7 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
   "episodes_total": 0
 }
 
-Входные данные:
+Входные данные для обработки:
 director: %s
 cast_roles: %s
 budget: %s
@@ -1882,7 +1886,7 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 	}
 
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/gpt-oss-120b",
+		"model": "accounts/fireworks/models/minimax-m3",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
