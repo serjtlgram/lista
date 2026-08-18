@@ -848,6 +848,11 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 
 	modelsToTry := []modelConfig{
 		{
+			name:            "accounts/fireworks/models/minimax-m3",
+			reasoningEffort: "none",
+			maxTokens:       2048,
+		},
+		{
 			name:            "accounts/fireworks/models/deepseek-v4-flash-0731",
 			reasoningEffort: "none",
 			maxTokens:       2048,
@@ -872,13 +877,15 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 		}
 
 		reqBodyMap := map[string]interface{}{
-			"model":            modelName,
+			"model": modelName,
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
-			"reasoning_effort": mCfg.reasoningEffort,
-			"temperature":      0.55,
-			"max_tokens":       mCfg.maxTokens,
+			"temperature": 0.55,
+			"max_tokens":  mCfg.maxTokens,
+		}
+		if mCfg.reasoningEffort != "" && mCfg.reasoningEffort != "none" {
+			reqBodyMap["reasoning_effort"] = mCfg.reasoningEffort
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
