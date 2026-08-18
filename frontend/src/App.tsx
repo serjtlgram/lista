@@ -35,7 +35,7 @@ import {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details' | 'recommendations'>('home');
-  const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile'>('home');
+  const [previousTab, setPreviousTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'recommendations'>('home');
   const [savedScrollPosition, setSavedScrollPosition] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
@@ -732,7 +732,24 @@ function safeBase64Decode(str: string): any {
     triggerHaptic();
     setItems((prev) => prev.filter(i => i.id !== id));
     setSelectedItem(null);
-    setActiveTab('home');
+    const returnTab = previousTab || 'home';
+    setActiveTab(returnTab);
+    const targetY = savedScrollPosition;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: targetY, behavior: 'instant' });
+      setTimeout(() => {
+        window.scrollTo({ top: targetY, behavior: 'instant' });
+      }, 50);
+    });
+
+    setRecommendationListInfo((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        items: prev.items ? prev.items.filter((i) => i.id !== id) : prev.items,
+        addedItems: prev.addedItems ? prev.addedItems.filter((i) => i.id !== id) : prev.addedItems,
+      };
+    });
 
     // Clean up favorites and user lists
     const favs = getFavoriteIds();
