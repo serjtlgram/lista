@@ -169,8 +169,20 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
 
     try {
       const userLang = getStoredLanguage() || 'ru';
-      const itemIds = listItems.map((i) => i.id).filter(Boolean);
-      const itemTitles = listItems.map((i) => {
+      const top15Items = listItems.slice(0, 15);
+      const itemIds = top15Items.map((i) => i.id).filter(Boolean);
+      const itemsData = top15Items.map((i) => ({
+        id: i.id,
+        title: i.title,
+        category: i.category,
+        release_year: i.release_year,
+        genre: i.genre,
+        country: i.country,
+        director: i.director,
+        author: i.author,
+        description: i.description || ''
+      }));
+      const itemTitles = top15Items.map((i) => {
         let desc = i.title;
         const details: string[] = [];
         if (i.release_year) details.push(i.release_year);
@@ -203,7 +215,8 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         itemTitles,
         primaryCategory,
         listTitle,
-        userLang
+        userLang,
+        itemsData
       );
 
       if (results && results.length > 0) {

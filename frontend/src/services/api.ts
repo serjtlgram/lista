@@ -209,13 +209,15 @@ export const api = {
     itemTitles?: string[],
     category?: string,
     title?: string,
-    lang?: string
+    lang?: string,
+    itemsData?: any[]
   ): Promise<CatalogItem[]> {
     try {
       const userLang = lang || getStoredLanguage() || 'ru';
       const body = {
         item_ids: itemIds && itemIds.length > 0 ? itemIds.join(',') : '',
         item_titles: itemTitles && itemTitles.length > 0 ? itemTitles.join('|') : '',
+        items_data: itemsData || [],
         category: category || '',
         title: title || '',
         lang: userLang

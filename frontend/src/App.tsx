@@ -46,7 +46,7 @@ export function App() {
     localStorage.setItem('lista_catalog_category_filter', selectedCategory);
   }, [selectedCategory]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; cachedResults?: CatalogItem[]; addedItems?: Item[] } | null>(null);
+  const [recommendationListInfo, setRecommendationListInfo] = useState<{ id: string; title: string; items: Item[]; contextKey?: string; cachedResults?: CatalogItem[]; addedItems?: Item[] } | null>(null);
 
   const [language, setLanguage] = useState<Language>(getStoredLanguage());
   const [theme, setTheme] = useState<string>(getStoredTheme());
@@ -515,11 +515,15 @@ function safeBase64Decode(str: string): any {
 
   const handleOpenRecommendations = (listId: string, listTitle: string, listItems: Item[]) => {
     triggerHaptic();
+    const userLang = getStoredLanguage() || 'ru';
+    const itemIdsKey = listItems.map((i) => i.id).join(',');
+    const newContextKey = `${listId}_${itemIdsKey}_${userLang}`;
+
     setRecommendationListInfo((prev) => {
-      if (prev && prev.id === listId) {
+      if (prev && prev.id === listId && prev.contextKey === newContextKey) {
         return { ...prev, title: listTitle, items: listItems };
       }
-      return { id: listId, title: listTitle, items: listItems, cachedResults: undefined, addedItems: undefined };
+      return { id: listId, title: listTitle, items: listItems, contextKey: newContextKey, cachedResults: undefined, addedItems: undefined };
     });
     if (activeTab !== 'details' && activeTab !== 'recommendations') {
       setPreviousTab(activeTab as any);

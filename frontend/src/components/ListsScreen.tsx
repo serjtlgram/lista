@@ -388,31 +388,6 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     return false;
   };
 
-  const handleGetRecommendations = () => {
-    if (cooldownLeft > 0) return;
-    triggerHaptic('medium');
-
-    const isFast = isFastUser();
-    const cooldownMs = isFast ? 2000 : 60000;
-    const cooldownSec = isFast ? 2 : 60;
-
-    const cooldownExpiresAt = Date.now() + cooldownMs;
-    localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());
-    setCooldownLeft(cooldownSec);
-
-    if (onOpenRecommendations) {
-      onOpenRecommendations(
-        currentList.id,
-        currentList.id === UNCATEGORIZED_ID 
-          ? t.lists.uncategorized || 'Неразобрано' 
-          : currentList.isDefault 
-            ? t.lists.favorites 
-            : currentList.name,
-        listItems
-      );
-    }
-  };
-
   const sortedListItems = [...listItems].sort((a, b) => {
     if (sortBy === 'year') {
       const yearStrA = (a.release_year || '').toString();
@@ -444,6 +419,31 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     }
     return 0;
   });
+
+  const handleGetRecommendations = () => {
+    if (cooldownLeft > 0) return;
+    triggerHaptic('medium');
+
+    const isFast = isFastUser();
+    const cooldownMs = isFast ? 2000 : 60000;
+    const cooldownSec = isFast ? 2 : 60;
+
+    const cooldownExpiresAt = Date.now() + cooldownMs;
+    localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());
+    setCooldownLeft(cooldownSec);
+
+    if (onOpenRecommendations) {
+      onOpenRecommendations(
+        currentList.id,
+        currentList.id === UNCATEGORIZED_ID 
+          ? t.lists.uncategorized || 'Неразобрано' 
+          : currentList.isDefault 
+            ? t.lists.favorites 
+            : currentList.name,
+        sortedListItems.slice(0, 15)
+      );
+    }
+  };
 
   const handleCreateList = (e: React.FormEvent) => {
     e.preventDefault();
