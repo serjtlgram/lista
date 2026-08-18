@@ -790,11 +790,11 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 			catLangName, listTitleDisplay, catLangName, itemsListStr, catLangName)
 	}
 
-	// 4. Rate Limiting & Quotas (5 min cooldown, max 5 per day per user - bypassed for @neznayca)
+	// 4. Rate Limiting & Quotas (10 min cooldown, max 3 per hour per user - bypassed for admin)
 	rateKey := getRateLimitKey(r)
 	isAdmin := false
 	if user, ok := auth.GetUserFromContext(r); ok && user != nil {
-		isAdmin = (user.ID == 214993606 || strings.EqualFold(user.Username, "neznayca"))
+		isAdmin = (user.ID == 214993606 || strings.EqualFold(user.Username, "neznayca") || strings.EqualFold(user.Username, "znayca"))
 	}
 	if !isAdmin && (rateKey == "user_214993606" || userID == 214993606) {
 		isAdmin = true

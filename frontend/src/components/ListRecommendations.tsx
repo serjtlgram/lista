@@ -147,7 +147,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         const lastRefreshKey = `lista_rec_last_refresh_${listId}`;
         const lastTime = parseInt(localStorage.getItem(lastRefreshKey) || '0', 10);
         const elapsedSec = Math.floor((now - lastTime) / 1000);
-        const COOLDOWN_SEC = 300; // 5 minutes
+        const COOLDOWN_SEC = 600; // 10 minutes
 
         if (lastTime > 0 && elapsedSec < COOLDOWN_SEC) {
           const remaining = COOLDOWN_SEC - elapsedSec;

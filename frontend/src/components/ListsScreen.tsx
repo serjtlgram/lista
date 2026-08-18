@@ -425,8 +425,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     triggerHaptic('medium');
 
     const isFast = isFastUser();
-    const cooldownMs = isFast ? 2000 : 60000;
-    const cooldownSec = isFast ? 2 : 60;
+    const cooldownMs = isFast ? 2000 : 600000; // 10 minutes for regular users
+    const cooldownSec = isFast ? 2 : 600;
 
     const cooldownExpiresAt = Date.now() + cooldownMs;
     localStorage.setItem(`lista_recommend_cooldown_${currentList.id}`, cooldownExpiresAt.toString());
@@ -1084,10 +1084,25 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                   ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
                   : 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
               }`}
-              title={cooldownLeft > 0 ? (t.lists.ai_cooldown || `Повтор через {seconds}с`).replace('{seconds}', String(cooldownLeft)) : (t.lists.ai_recommendations || 'ИИ-рекомендации')}
+              title={
+                cooldownLeft > 0
+                  ? (t.lists.ai_cooldown || `Повтор через {seconds}с`).replace(
+                      '{seconds}',
+                      cooldownLeft >= 60
+                        ? `${Math.floor(cooldownLeft / 60)}м ${cooldownLeft % 60}с`
+                        : `${cooldownLeft}с`
+                    )
+                  : (t.lists.ai_recommendations || 'ИИ-рекомендации')
+              }
             >
               <Wand2 className={`w-4 h-4 ${cooldownLeft > 0 ? 'opacity-50 animate-pulse' : 'text-amber-400'}`} />
-              {cooldownLeft > 0 && <span className="text-[10px] font-mono font-bold text-amber-400/90">{cooldownLeft}s</span>}
+              {cooldownLeft > 0 && (
+                <span className="text-[10px] font-mono font-bold text-amber-400/90">
+                  {cooldownLeft >= 60
+                    ? `${Math.floor(cooldownLeft / 60)}:${String(cooldownLeft % 60).padStart(2, '0')}`
+                    : `${cooldownLeft}s`}
+                </span>
+              )}
             </button>
 
             {/* Add items button (icon-only) */}

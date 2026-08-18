@@ -220,27 +220,26 @@ func (aj *AutoJail) startCleanup() {
 }
 
 // -------------------------------------------------------------------------
-// RECOMMENDATIONS QUOTA & COOLDOWN
+// RECOMMENDATIONS QUOTA & COOLDOWN (10 min cooldown, max 3 per hour)
 // -------------------------------------------------------------------------
 
 type userRecQuota struct {
 	lastGenTime time.Time
-	dailyCount  int
-	currentDay  string // YYYY-MM-DD UTC
+	history     []time.Time // timestamps of generations within the last 1 hour
 }
 
 type RecommendationsLimiter struct {
-	mu        sync.Mutex
-	quotas    map[int64]*userRecQuota
-	maxPerDay int
-	cooldown  time.Duration
+	mu         sync.Mutex
+	quotas     map[int64]*userRecQuota
+	maxPerHour int
+	cooldown   time.Duration
 }
 
-func NewRecommendationsLimiter(maxPerDay int, cooldown time.Duration) *RecommendationsLimiter {
+func NewRecommendationsLimiter(maxPerHour int, cooldown time.Duration) *RecommendationsLimiter {
 	rl := &RecommendationsLimiter{
-		quotas:    make(map[int64]*userRecQuota),
-		maxPerDay: maxPerDay, // 5
-		cooldown:  cooldown,  // 5 * time.Minute
+		quotas:     make(map[int64]*userRecQuota),
+		maxPerHour: maxPerHour, // 3
+		cooldown:   cooldown,   // 10 * time.Minute
 	}
 	go rl.startCleanup()
 	return rl
@@ -257,55 +256,66 @@ func (rl *RecommendationsLimiter) CheckAndConsume(userID int64) (allowed bool, e
 	defer rl.mu.Unlock()
 
 	now := time.Now().UTC()
-	today := now.Format("2006-01-02")
 
 	q, exists := rl.quotas[userID]
 	if !exists {
 		rl.quotas[userID] = &userRecQuota{
 			lastGenTime: now,
-			dailyCount:  1,
-			currentDay:  today,
+			history:     []time.Time{now},
 		}
 		return true, "", "", 0
 	}
 
-	// Reset daily count on a new calendar day (UTC)
-	if q.currentDay != today {
-		q.currentDay = today
-		q.dailyCount = 0
+	// Filter history to last 1 hour
+	oneHourAgo := now.Add(-1 * time.Hour)
+	var recentHistory []time.Time
+	for _, t := range q.history {
+		if t.After(oneHourAgo) {
+			recentHistory = append(recentHistory, t)
+		}
+	}
+	q.history = recentHistory
+
+	// 1. Check 10-minute cooldown
+	if !q.lastGenTime.IsZero() {
+		elapsed := now.Sub(q.lastGenTime)
+		if elapsed < rl.cooldown {
+			remaining := rl.cooldown - elapsed
+			remMin := int(remaining.Minutes())
+			remSec := int(remaining.Seconds()) % 60
+			return false, "rate_limit_exceeded",
+				fmt.Sprintf("Рекомендации можно обновлять не чаще 1 раза в 10 минут. Пожалуйста, подождите %d мин. %d сек.", remMin, remSec),
+				remaining
+		}
 	}
 
-	// 1. Check cooldown (5 minutes)
-	elapsed := now.Sub(q.lastGenTime)
-	if elapsed < rl.cooldown {
-		remaining := rl.cooldown - elapsed
-		remMin := int(remaining.Minutes())
-		remSec := int(remaining.Seconds()) % 60
-		return false, "rate_limit_exceeded",
-			fmt.Sprintf("Рекомендации можно обновлять не чаще 1 раза в 5 минут. Пожалуйста, подождите %d мин. %d сек.", remMin, remSec),
-			remaining
-	}
-
-	// 2. Check daily quota (5 generations per day)
-	if q.dailyCount >= rl.maxPerDay {
-		return false, "daily_limit_exceeded",
-			fmt.Sprintf("Достигнут лимит генераций рекомендаций на сегодня (%d из %d). Лимит обновится завтра.", q.dailyCount, rl.maxPerDay),
-			24 * time.Hour
+	// 2. Check max 3 generations per hour
+	if len(recentHistory) >= rl.maxPerHour {
+		oldest := recentHistory[0]
+		remainingHour := time.Hour - now.Sub(oldest)
+		if remainingHour <= 0 {
+			remainingHour = time.Minute
+		}
+		remMin := int(remainingHour.Minutes())
+		remSec := int(remainingHour.Seconds()) % 60
+		return false, "hourly_limit_exceeded",
+			fmt.Sprintf("Достигнут лимит генераций рекомендаций (максимум %d раза в час). Пожалуйста, подождите %d мин. %d сек.", rl.maxPerHour, remMin, remSec),
+			remainingHour
 	}
 
 	q.lastGenTime = now
-	q.dailyCount++
+	q.history = append(q.history, now)
 	return true, "", "", 0
 }
 
 func (rl *RecommendationsLimiter) startCleanup() {
-	ticker := time.NewTicker(2 * time.Hour)
+	ticker := time.NewTicker(30 * time.Minute)
 	for range ticker.C {
 		rl.mu.Lock()
 		now := time.Now().UTC()
-		today := now.Format("2006-01-02")
+		oneHourAgo := now.Add(-1 * time.Hour)
 		for id, q := range rl.quotas {
-			if q.currentDay != today && now.Sub(q.lastGenTime) > 48*time.Hour {
+			if now.Sub(q.lastGenTime) > 2*time.Hour && (len(q.history) == 0 || q.history[len(q.history)-1].Before(oneHourAgo)) {
 				delete(rl.quotas, id)
 			}
 		}

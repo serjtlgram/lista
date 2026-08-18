@@ -56,7 +56,7 @@ func NewHandler(database *db.DB, botToken string, youtubeAPIKey string, tmdbAPIK
 		BotSecretToken:         botSecretToken,
 		RateLimiter:            ratelimit.NewRateLimiter(5*time.Minute, 10*time.Minute),
 		AutoJail:               ratelimit.NewAutoJail(),
-		RecommendationsLimiter: ratelimit.NewRecommendationsLimiter(5, 5*time.Minute),
+		RecommendationsLimiter: ratelimit.NewRecommendationsLimiter(3, 10*time.Minute),
 		SearchLimiter:          ratelimit.NewSearchLimiter(20, 1*time.Minute),
 		BotFloodLimiter:        ratelimit.NewBotFloodLimiter(),
 		OutboundLimiter:        ratelimit.NewOutboundLimiter(),
