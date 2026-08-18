@@ -877,15 +877,13 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 		}
 
 		reqBodyMap := map[string]interface{}{
-			"model": modelName,
+			"model":            modelName,
 			"messages": []map[string]string{
 				{"role": "user", "content": prompt},
 			},
-			"temperature": 0.55,
-			"max_tokens":  mCfg.maxTokens,
-		}
-		if mCfg.reasoningEffort != "" && mCfg.reasoningEffort != "none" {
-			reqBodyMap["reasoning_effort"] = mCfg.reasoningEffort
+			"reasoning_effort": mCfg.reasoningEffort,
+			"temperature":      0.55,
+			"max_tokens":       mCfg.maxTokens,
 		}
 
 		bodyBytes, err := json.Marshal(reqBodyMap)
