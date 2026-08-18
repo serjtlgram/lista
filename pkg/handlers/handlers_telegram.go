@@ -1027,8 +1027,7 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			SELECT id, username, first_name, last_name, created_at, updated_at
 			FROM users
 			WHERE id != 0
-			ORDER BY created_at ASC
-			LIMIT 50;
+			ORDER BY created_at ASC;
 		`)
 		if err != nil {
 			log.Printf("[AdminCommand] List error: %v", err)
@@ -1037,9 +1036,8 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 		defer rows.Close()
 
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи приложения (%d):</b>\n\n", totalUsers))
+		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи (%d):</b>\n\n", totalUsers))
 
-		idx := 1
 		for rows.Next() {
 			var id int64
 			var uname, fName, lName string
@@ -1049,33 +1047,33 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 				continue
 			}
 
-			fullName := strings.TrimSpace(fName + " " + lName)
-			if fullName == "" {
-				fullName = "Пользователь"
-			}
-			cleanFullName := html.EscapeString(fullName)
-			cleanUname := html.EscapeString(strings.TrimSpace(uname))
-
-			var userLink string
-			if cleanUname != "" {
-				userLink = fmt.Sprintf("<a href=\"https://t.me/%s\">@%s</a> (%s)", cleanUname, cleanUname, cleanFullName)
+			uname = strings.TrimSpace(strings.TrimPrefix(uname, "@"))
+			var userDisplay string
+			if uname != "" {
+				userDisplay = "@" + html.EscapeString(uname)
 			} else {
-				userLink = fmt.Sprintf("<a href=\"tg://user?id=%d\">%s</a> (ID: <code>%d</code>)", id, cleanFullName, id)
+				fullName := strings.TrimSpace(fName + " " + lName)
+				if fullName == "" {
+					fullName = fmt.Sprintf("ID:%d", id)
+				}
+				userDisplay = html.EscapeString(fullName)
 			}
 
-			firstIn := createdAt.Format("02.01.2006 15:04")
-			lastIn := updatedAt.Format("02.01.2006 15:04")
+			firstIn := fmt.Sprintf("%d.%d.%02d", createdAt.Day(), int(createdAt.Month()), createdAt.Year()%100)
+			lastIn := fmt.Sprintf("%d.%d.%02d", updatedAt.Day(), int(updatedAt.Month()), updatedAt.Year()%100)
 
-			entry := fmt.Sprintf("%d. %s\n   🗓 <b>Первый вход:</b> <code>%s</code>\n   🕒 <b>Последний вход:</b> <code>%s</code>\n\n", idx, userLink, firstIn, lastIn)
+			entry := fmt.Sprintf("%s %s-%s\n", userDisplay, firstIn, lastIn)
 
 			if sb.Len()+len(entry) > 3900 {
-				break
+				h.sendAdminBotMessage(userID, sb.String())
+				sb.Reset()
 			}
 			sb.WriteString(entry)
-			idx++
 		}
 
-		h.sendAdminBotMessage(userID, sb.String())
+		if sb.Len() > 0 {
+			h.sendAdminBotMessage(userID, sb.String())
+		}
 	}
 }
 
