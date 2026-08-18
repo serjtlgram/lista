@@ -98,8 +98,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       if (targetActor) {
         displayedAuthor = targetActor.replace(/^(?:в\s+ролях|режисс[её]р|реж\.?|акт[её]р(?:иса)?|actor|actress|cast)\s*:\s*/i, '').trim();
       }
-    } else if (searchMode === 'director' && item.director) {
-      const directors = item.director.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean);
+    } else if (searchMode === 'director' && (item.director || item.author)) {
+      const dirOrAuthor = (item.director || item.author || '').trim();
+      const directors = dirOrAuthor.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean);
       let matchedDir = '';
       if (searchQuery) {
         const words = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 2);

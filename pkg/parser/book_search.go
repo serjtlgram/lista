@@ -816,3 +816,98 @@ func SearchBooksMultiSource(query string, targetLangs ...string) []models.Catalo
 
 	return combined
 }
+
+// SearchBooksByAuthorMultiSource queries book sources for books by a specific author
+func SearchBooksByAuthorMultiSource(authorQuery string, targetLangs ...string) []models.CatalogSearchResult {
+	targetLang := ""
+	if len(targetLangs) > 0 && targetLangs[0] != "" {
+		targetLang = targetLangs[0]
+	}
+	if targetLang == "" {
+		targetLang = DetectTargetLanguage(authorQuery, "")
+	}
+
+	type resultSet struct {
+		items []models.CatalogSearchResult
+	}
+
+	cleanedQuery := cleanBookSearchQuery(authorQuery)
+
+	goroutineCount := 6
+	ch := make(chan resultSet, goroutineCount)
+
+	inauthorQuery := fmt.Sprintf("inauthor:\"%s\"", cleanedQuery)
+	authorOLQuery := fmt.Sprintf("author:\"%s\"", cleanedQuery)
+
+	if targetLang == "uk-UA" {
+		go func() { items, _ := SearchGoogleBooksUk(inauthorQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchGoogleBooksAny(inauthorQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchOpenLibrary(authorOLQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchWikiBooksUk(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchGoogleBooksUk(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchOpenLibrary(cleanedQuery); ch <- resultSet{items} }()
+	} else {
+		go func() { items, _ := SearchGoogleBooks(inauthorQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchGoogleBooksAny(inauthorQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchOpenLibrary(authorOLQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchFantLab(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchITunesEBooks(cleanedQuery); ch <- resultSet{items} }()
+		go func() { items, _ := SearchWikiBooks(cleanedQuery); ch <- resultSet{items} }()
+	}
+
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+
+	var combined []models.CatalogSearchResult
+	seenTitles := make(map[string]int)
+	received := 0
+
+	for received < goroutineCount {
+		select {
+		case res := <-ch:
+			for _, item := range res.items {
+				if targetLang == "uk-UA" && !IsValidUkrainianResult(item.Title, item.Description, item.Cast, item.Director) {
+					continue
+				}
+				key := strings.ToLower(strings.TrimSpace(item.Title))
+				if key == "" {
+					continue
+				}
+				if idx, exists := seenTitles[key]; exists {
+					if combined[idx].Author == "" && item.Author != "" {
+						combined[idx].Author = item.Author
+					}
+					if combined[idx].Genre == "" && item.Genre != "" {
+						combined[idx].Genre = item.Genre
+					}
+					if combined[idx].ISBN == "" && item.ISBN != "" {
+						combined[idx].ISBN = item.ISBN
+					}
+					if combined[idx].Duration == "" && item.Duration != "" {
+						combined[idx].Duration = item.Duration
+					}
+					if combined[idx].Description == "" && item.Description != "" {
+						combined[idx].Description = item.Description
+					}
+					if combined[idx].PosterURL == "" && item.PosterURL != "" {
+						combined[idx].PosterURL = item.PosterURL
+					}
+					if combined[idx].ReleaseYear == "" && item.ReleaseYear != "" {
+						combined[idx].ReleaseYear = item.ReleaseYear
+					}
+					if combined[idx].PublicRating == "" && item.PublicRating != "" {
+						combined[idx].PublicRating = item.PublicRating
+					}
+				} else {
+					seenTitles[key] = len(combined)
+					combined = append(combined, item)
+				}
+			}
+			received++
+		case <-timer.C:
+			return combined
+		}
+	}
+
+	return combined
+}

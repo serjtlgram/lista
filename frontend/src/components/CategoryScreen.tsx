@@ -157,10 +157,18 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     ? canonicalCategories.filter((cat) => normalizedActiveSet.has(cat))
     : canonicalCategories;
 
+  const tLowerCat = (title || '').toLowerCase().trim();
+  const isCategoryBooks = ['book', 'books', 'книги', 'книга'].includes(tLowerCat);
+  const isCategoryGames = ['game', 'games', 'игры', 'игра'].includes(tLowerCat);
+
+  const isActorUnsupported = searchMode === 'actor' && (isCategoryBooks || isCategoryGames);
+  const isDirectorUnsupported = searchMode === 'director' && isCategoryGames;
+  const isSearchBlockedForCategory = isActorUnsupported || isDirectorUnsupported;
+
   // Search catalog in DB when searchQuery changes (400ms debounce, length >= 1)
   useEffect(() => {
     const q = searchQuery.trim();
-    if (q.length < 1) {
+    if (q.length < 1 || isSearchBlockedForCategory) {
       setCatalogResults([]);
       setIsSearchingCatalog(false);
       try {
@@ -226,7 +234,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, title, searchMode]);
+  }, [searchQuery, title, searchMode, isSearchBlockedForCategory]);
 
   const normCatKey = (c?: string) => {
     const lc = (c || '').toLowerCase().trim();
@@ -239,7 +247,6 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
 
   const isCategoryMatch = (itemCat: string, tabTitle: string): boolean => {
     const tLower = (tabTitle || '').toLowerCase().trim();
-    if (tLower === 'все' || tLower === 'all' || !tLower) return true;
     const cLower = (itemCat || '').toLowerCase().trim();
 
     const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower);
@@ -247,23 +254,34 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
     const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
 
-    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower)) {
+    const isTabAll = tLower === 'все' || tLower === 'all' || !tLower;
+    const isTabMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(tLower);
+    const isTabShow = ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower);
+    const isTabBook = ['book', 'books', 'книги', 'книга'].includes(tLower);
+    const isTabGame = ['game', 'games', 'игры', 'игра'].includes(tLower);
+
+    if (searchMode === 'actor') {
+      if (isTabBook || isTabGame) return false;
       return isMovie || isShow;
     }
-    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
-      return isShow || isMovie;
+
+    if (searchMode === 'director') {
+      if (isTabGame) return false;
+      if (isTabBook) return isBook;
+      return isMovie || isShow;
     }
-    if (['book', 'books', 'книги', 'книга'].includes(tLower)) {
-      return isBook;
-    }
-    if (['game', 'games', 'игры', 'игра'].includes(tLower)) {
-      return isGame;
-    }
+
+    // searchMode === 'title' (or normal browsing)
+    if (isTabAll) return true;
+    if (isTabMovie) return isMovie;
+    if (isTabShow) return isShow;
+    if (isTabBook) return isBook;
+    if (isTabGame) return isGame;
+
     return true;
   };
 
-  const getTabCategoryPriority = (itemCat: string, tabTitle: string): number => {
-    const tLower = (tabTitle || '').toLowerCase().trim();
+  const getTabCategoryPriority = (itemCat: string, tabTitle?: string): number => {
     const cLower = (itemCat || '').toLowerCase().trim();
 
     const isMovie = ['movie', 'movies', 'фильмы', 'фильм'].includes(cLower);
@@ -271,27 +289,11 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     const isBook = ['book', 'books', 'книги', 'книга'].includes(cLower);
     const isGame = ['game', 'games', 'игры', 'игра'].includes(cLower);
 
-    if (tLower === 'все' || tLower === 'all' || !tLower) {
-      if (isMovie) return 1;
-      if (isShow) return 2;
-      if (isBook) return 3;
-      if (isGame) return 4;
-      return 5;
-    }
-
-    if (['movie', 'movies', 'фильмы', 'фильм'].includes(tLower)) {
-      if (isMovie) return 1;
-      if (isShow) return 2;
-      return 3;
-    }
-
-    if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(tLower)) {
-      if (isShow) return 1;
-      if (isMovie) return 2;
-      return 3;
-    }
-
-    return 1;
+    if (isMovie) return 1;
+    if (isShow) return 2;
+    if (isBook) return 3;
+    if (isGame) return 4;
+    return 5;
   };
 
   const calcPersonStrictScore = (membersStr: string, queryStr: string): [boolean, number] => {
@@ -371,7 +373,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
           return matchPersonStrictFrontend(c.cast || '', q);
         }
         if (searchMode === 'director') {
-          return matchPersonStrictFrontend(c.director || '', q);
+          const authorOrDir = catNorm === 'book' ? (c.author || c.director || '') : (c.director || '');
+          return matchPersonStrictFrontend(authorOrDir, q);
         }
         const words = q.split(/\s+/).filter((w) => w.length >= 2);
         if (words.length > 0) {
@@ -384,12 +387,24 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     });
 
     const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
-    const dbResults = isUk
+    const rawDbResults = isUk
       ? externalCatalogResults.filter((c) => c.source !== 'online' && isValidUkrainianCatalogItem(c))
       : externalCatalogResults.filter((c) => c.source !== 'online');
-    const onlineResults = isUk
+    const rawOnlineResults = isUk
       ? externalCatalogResults.filter((c) => c.source === 'online' && isValidUkrainianCatalogItem(c))
       : externalCatalogResults.filter((c) => c.source === 'online');
+
+    const sortCatalogByPriority = (list: CatalogItem[]) => {
+      return [...list].sort((a, b) => {
+        const prioA = getTabCategoryPriority(a.category || '');
+        const prioB = getTabCategoryPriority(b.category || '');
+        if (prioA !== prioB) return prioA - prioB;
+        return 0;
+      });
+    };
+
+    const dbResults = sortCatalogByPriority(rawDbResults);
+    const onlineResults = sortCatalogByPriority(rawOnlineResults);
 
     const filtered = items.filter((item) => {
       if (!isCategoryMatch(item.category, title)) return false;
@@ -410,7 +425,9 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
           return matchPersonStrictFrontend(castStr, q);
         }
         if (searchMode === 'director') {
-          return matchPersonStrictFrontend(item.director || '', q);
+          const isBook = normCatKey(item.category) === 'book';
+          const authorOrDir = isBook ? (item.author || item.director || '') : (item.director || '');
+          return matchPersonStrictFrontend(authorOrDir, q);
         }
         const words = q.split(/\s+/).filter((w) => w.length >= 2);
         if (words.length > 0) {
@@ -424,6 +441,10 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     });
 
     const sorted = [...filtered].sort((a, b) => {
+      const prioA = getTabCategoryPriority(a.category, title);
+      const prioB = getTabCategoryPriority(b.category, title);
+      if (prioA !== prioB) return prioA - prioB;
+
       const qTrim = searchQuery.trim().toLowerCase();
       if (qTrim) {
         const getScore = (it: Item) => {
@@ -433,8 +454,9 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
             return score;
           }
           if (searchMode === 'director') {
-            const dir = it.director || '';
-            const [, score] = calcPersonStrictScore(dir, qTrim);
+            const isBook = normCatKey(it.category) === 'book';
+            const dirOrAuthor = isBook ? (it.author || it.director || '') : (it.director || '');
+            const [, score] = calcPersonStrictScore(dirOrAuthor, qTrim);
             return score;
           }
           const tLower = (it.title || '').toLowerCase();
@@ -447,10 +469,6 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         const scoreB = getScore(b);
         if (scoreA !== scoreB) return scoreA - scoreB;
       }
-
-      const prioA = getTabCategoryPriority(a.category, title);
-      const prioB = getTabCategoryPriority(b.category, title);
-      if (prioA !== prioB) return prioA - prioB;
 
       if (sortBy === 'year') {
         const yearStrA = (a.release_year || '').toString();
@@ -485,7 +503,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       dbCatalogResults: dbResults,
       onlineCatalogResults: onlineResults,
     };
-  }, [items, catalogResults, title, activeFilterKey, selectedGenres, searchQuery, sortBy, sortOrder, t]);
+  }, [items, catalogResults, title, activeFilterKey, selectedGenres, searchQuery, sortBy, sortOrder, t, searchMode]);
 
   const mapCatalogToItem = (c: CatalogItem): Item => ({
     id: c.id || `cat_${c.title}`,
@@ -514,9 +532,15 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
 
   const searchPlaceholder = useMemo(() => {
     if (searchMode === 'actor') return t.details.search_placeholder_actor;
-    if (searchMode === 'director') return t.details.search_placeholder_director;
+    if (searchMode === 'director') {
+      const tLower = (title || '').toLowerCase().trim();
+      if (['book', 'books', 'книги', 'книга'].includes(tLower)) {
+        return t.details.search_placeholder_author || 'Введите имя автора...';
+      }
+      return t.details.search_placeholder_director;
+    }
     return t.details.search_placeholder;
-  }, [searchMode, t]);
+  }, [searchMode, title, t]);
 
   const searchModes = [
     { key: 'title', label: t.details.search_mode_title },
@@ -655,7 +679,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       )}
 
       {/* Subheader count & working sort buttons when not actively searching */}
-      {!isSearchActive && (
+      {!isSearchActive && !isSearchBlockedForCategory && (
         <div className="flex items-center justify-between text-xs text-gray-400 pt-0.5">
           <span>{sortedItems.length} {t.details.elements_count}</span>
           <div className="flex items-center gap-3">
@@ -740,7 +764,18 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       )}
 
       {/* Content Rendering */}
-      {!isSearchActive ? (
+      {isSearchBlockedForCategory ? (
+        <div className="glass-card p-6 rounded-2xl text-center space-y-2 border border-cardBorder my-3">
+          <div className="w-10 h-10 mx-auto rounded-full bg-accentViolet/20 flex items-center justify-center text-accentViolet">
+            <SearchIcon className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-medium text-gray-200 px-2">
+            {isActorUnsupported
+              ? (t.details.search_actor_category_hint || 'Выберите категорию «Фильмы» или «Сериалы», чтобы найти, где играл актёр')
+              : (t.details.search_director_games_hint || 'Выберите категорию «Фильмы», «Сериалы» или «Книги» для поиска по режиссёру или автору')}
+          </p>
+        </div>
+      ) : !isSearchActive ? (
         /* Normal View (User Items List) */
         <div className="space-y-2.5">
           {sortedItems.map((item) => (

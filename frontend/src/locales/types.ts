@@ -136,6 +136,9 @@ export interface Translations {
     search_mode_director: string;
     search_placeholder_actor: string;
     search_placeholder_director: string;
+    search_placeholder_author?: string;
+    search_actor_category_hint?: string;
+    search_director_games_hint?: string;
     elements_count: string;
     by_date: string;
     by_year: string;

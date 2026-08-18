@@ -79,6 +79,9 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 	catEn := mapCategoryToEn(category)
+	if strings.EqualFold(catEn, "все") || strings.EqualFold(catEn, "all") || catEn == "" {
+		catEn = "all"
+	}
 
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	if mode != "actor" && mode != "director" {
@@ -92,7 +95,7 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 	targetLang := parser.DetectTargetLanguage(q, langParam)
 
 	// If no category specified or "all", check if search query contains category trigger words
-	if catEn == "" || catEn == "all" {
+	if catEn == "all" {
 		if parsedCat, cleanedQ := parseSearchQuery(q); parsedCat != "" {
 			catEn = parsedCat
 			q = cleanedQ
@@ -136,6 +139,13 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 		return nil
 	}
 
+	if mode == "actor" && (catEn == "book" || catEn == "game") {
+		return nil
+	}
+	if mode == "director" && catEn == "game" {
+		return nil
+	}
+
 	query := `
 		SELECT DISTINCT ON (LOWER(title), category) id::text, title, category, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country
 		FROM items
@@ -159,9 +169,15 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 			words := strings.Fields(trimmedQ)
 			for _, w := range words {
 				if len(w) >= 2 {
-					query += fmt.Sprintf(" AND LOWER(director) LIKE $%d", argIdx)
-					args = append(args, "%"+w+"%")
-					argIdx++
+					if catEn == "book" {
+						query += fmt.Sprintf(" AND (LOWER(author) LIKE $%d OR LOWER(director) LIKE $%d)", argIdx, argIdx)
+						args = append(args, "%"+w+"%")
+						argIdx++
+					} else {
+						query += fmt.Sprintf(" AND LOWER(director) LIKE $%d", argIdx)
+						args = append(args, "%"+w+"%")
+						argIdx++
+					}
 				}
 			}
 		} else {
@@ -179,8 +195,12 @@ func (h *Handler) searchDBCatalog(ctx context.Context, q string, catEn string, m
 		query += " AND LOWER(category) IN ('book', 'books', 'книга', 'книги')"
 	} else if catEn == "game" {
 		query += " AND LOWER(category) IN ('game', 'games', 'игра', 'игры')"
-	} else if catEn == "movies_and_shows" || catEn == "" {
+	} else if catEn == "movies_and_shows" {
 		query += " AND LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы', 'show', 'shows', 'series', 'сериал', 'сериалы')"
+	} else if catEn == "all" || catEn == "" {
+		if mode == "actor" || mode == "director" {
+			query += " AND LOWER(category) IN ('movie', 'movies', 'фильм', 'фильмы', 'show', 'shows', 'series', 'сериал', 'сериалы')"
+		}
 	}
 
 	query += " ORDER BY LOWER(title), category, created_at DESC LIMIT 50;"
@@ -349,6 +369,9 @@ func calcItemRelevance(item models.CatalogSearchResult, q string, mode string) i
 	}
 	if mode == "director" {
 		matched, score := matchPersonStrict(item.Director, qTrim)
+		if !matched && item.Author != "" {
+			matched, score = matchPersonStrict(item.Author, qTrim)
+		}
 		if !matched {
 			return 10
 		}
@@ -571,7 +594,8 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 	var items []models.CatalogSearchResult
 
 	parsedCat, cleanedQ := parseSearchQuery(q)
-	if catEn == "" || catEn == "all" {
+	if catEn == "" || catEn == "all" || catEn == "все" {
+		catEn = "all"
 		if parsedCat != "" {
 			catEn = parsedCat
 			q = cleanedQ
@@ -582,11 +606,20 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 		targetLang = parser.DetectTargetLanguage(q, "")
 	}
 
-	if mode == "actor" || mode == "director" {
+	if mode == "actor" {
 		if catEn == "book" || catEn == "game" {
 			return nil
 		}
 		items = fetchTMDbPersonDiscover(q, h.TMDBAPIKey, catEn, targetLang, mode)
+	} else if mode == "director" {
+		if catEn == "game" {
+			return nil
+		}
+		if catEn == "book" {
+			items = parser.SearchBooksByAuthorMultiSource(q, targetLang)
+		} else {
+			items = fetchTMDbPersonDiscover(q, h.TMDBAPIKey, catEn, targetLang, mode)
+		}
 	} else {
 		switch catEn {
 		case "book":
@@ -633,28 +666,67 @@ func (h *Handler) searchOnlineCatalog(q string, catEn string, dbResults []models
 				}
 			}
 
-		default: // "all" or empty -> Movies and TV series
-			var kinopoisk []models.CatalogSearchResult
-			if targetLang == "ru-RU" {
-				kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
-			}
-			tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all", targetLang)
-			var itunes []models.CatalogSearchResult
-			var tvmaze []models.CatalogSearchResult
-			if targetLang != "uk-UA" {
-				itunes = fetchITunesInline(q, "movie")
-				tvmaze = fetchTVMazeInline(q, h.TMDBAPIKey)
-			}
-			wiki := fetchWikiInline(q, "all", targetLang)
+		default: // "all" or empty -> Movies, Shows, Books, Games in parallel
+			var wg sync.WaitGroup
+			var mu sync.Mutex
 
-			rawList := append(append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...), wiki...)
-			for _, item := range rawList {
-				cat := mapCategoryToEn(item.Category)
-				if cat == "movie" || cat == "show" {
-					item.Source = "online"
-					items = append(items, item)
+			var movieAndShows []models.CatalogSearchResult
+			var books []models.CatalogSearchResult
+			var games []models.CatalogSearchResult
+
+			// 1. Movies & Shows
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				var kinopoisk []models.CatalogSearchResult
+				if targetLang == "ru-RU" {
+					kinopoisk = fetchKinopoiskInline(q, h.KinopoiskAPIKey, "all")
 				}
-			}
+				tmdb := fetchTMDbInline(q, h.TMDBAPIKey, "all", targetLang)
+				var itunes []models.CatalogSearchResult
+				var tvmaze []models.CatalogSearchResult
+				if targetLang != "uk-UA" {
+					itunes = fetchITunesInline(q, "movie")
+					tvmaze = fetchTVMazeInline(q, h.TMDBAPIKey)
+				}
+				wiki := fetchWikiInline(q, "all", targetLang)
+
+				rawList := append(append(append(append(kinopoisk, tmdb...), itunes...), tvmaze...), wiki...)
+				var list []models.CatalogSearchResult
+				for _, item := range rawList {
+					cat := mapCategoryToEn(item.Category)
+					if cat == "movie" || cat == "show" {
+						item.Source = "online"
+						list = append(list, item)
+					}
+				}
+				mu.Lock()
+				movieAndShows = list
+				mu.Unlock()
+			}()
+
+			// 2. Books
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				bList := parser.SearchBooksMultiSource(q, targetLang)
+				mu.Lock()
+				books = bList
+				mu.Unlock()
+			}()
+
+			// 3. Games
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				gList := parser.SearchGamesMultiSource(q)
+				mu.Lock()
+				games = gList
+				mu.Unlock()
+			}()
+
+			wg.Wait()
+			items = append(append(movieAndShows, books...), games...)
 		}
 	}
 
@@ -857,7 +929,18 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 
 	// Rich deep limits when searching by actor or director
 	if mode == "actor" || mode == "director" {
-		if catEn == "movie" {
+		if mode == "actor" && (catEn == "book" || catEn == "game") {
+			return nil
+		}
+		if mode == "director" && catEn == "game" {
+			return nil
+		}
+		if mode == "director" && catEn == "book" {
+			if len(bookBucket) > 30 {
+				bookBucket = bookBucket[:30]
+			}
+			results = append(results, bookBucket...)
+		} else if catEn == "movie" {
 			if len(movieBucket) > 45 {
 				movieBucket = movieBucket[:45]
 			}
@@ -902,21 +985,13 @@ func mergeSearchResults(dbItems, onlineItems []models.CatalogSearchResult, catEn
 		if len(movieBucket) > 35 {
 			movieBucket = movieBucket[:35]
 		}
-		if len(showBucket) > 15 {
-			showBucket = showBucket[:15]
-		}
 		results = append(results, movieBucket...)
-		results = append(results, showBucket...)
 
 	case "show":
 		if len(showBucket) > 35 {
 			showBucket = showBucket[:35]
 		}
-		if len(movieBucket) > 15 {
-			movieBucket = movieBucket[:15]
-		}
 		results = append(results, showBucket...)
-		results = append(results, movieBucket...)
 
 	case "book":
 		if len(bookBucket) > 30 {
