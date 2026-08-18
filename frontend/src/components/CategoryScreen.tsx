@@ -553,13 +553,13 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       {showSearchInput && (
         <div className="space-y-2">
           {/* Mode Switcher Chips */}
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
             {searchModes.map((mode) => (
               <button
                 key={mode.key}
                 type="button"
                 onClick={() => setSearchMode(mode.key)}
-                className={`py-1.5 px-2 rounded-xl text-xs font-semibold whitespace-nowrap transition text-center ${
+                className={`py-1.5 px-3.5 rounded-full text-xs font-semibold whitespace-nowrap transition text-center ${
                   searchMode === mode.key
                     ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
                     : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600 hover:text-white'
