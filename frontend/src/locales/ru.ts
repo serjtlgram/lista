@@ -35,6 +35,7 @@ export const ru: Translations = {
   guide: {
     modal_title: 'Как пользоваться LISTA',
     modal_subtitle: 'Полный гид по возможностям и функциям приложения',
+    quick_nav: 'Быстрый переход к разделам',
     sections: {
       lists_folders: {
         badge: 'Организация',

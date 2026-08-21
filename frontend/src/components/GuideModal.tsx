@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   X,
   BookOpen,
@@ -11,6 +11,8 @@ import {
   Palette,
   Check,
   Lightbulb,
+  ChevronRight,
+  Compass,
 } from 'lucide-react';
 import { Translations } from '../services/i18n';
 
@@ -22,6 +24,7 @@ interface GuideModalProps {
 
 export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) => {
   const [isLight, setIsLight] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const update = () => setIsLight(document.body.classList.contains('light'));
@@ -43,6 +46,14 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
   const handleClose = () => {
     triggerHaptic();
     onClose();
+  };
+
+  const scrollToSection = (key: string) => {
+    triggerHaptic();
+    const el = document.getElementById(`guide-section-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const sectionsConfig = [
@@ -99,11 +110,11 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-md bg-cardDark border-t sm:border border-cardBorder rounded-t-[32px] sm:rounded-3xl flex flex-col max-h-[88vh] sm:max-h-[85vh] animate-slide-up shadow-2xl overflow-hidden"
+        className="w-full max-w-md bg-cardDark border-t sm:border border-cardBorder rounded-t-[32px] sm:rounded-3xl flex flex-col h-[93vh] max-h-[93vh] sm:h-auto sm:max-h-[88vh] animate-slide-up shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: isLight
@@ -138,7 +149,59 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
         </div>
 
         {/* Scrollable Guide Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Quick Navigation / Table of Contents */}
+          <div
+            className="glass-card rounded-2xl p-3.5 space-y-2.5 border"
+            style={{
+              borderColor: isLight ? 'rgba(108, 92, 231, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+              background: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.04)',
+            }}
+          >
+            <div className="flex items-center gap-2 text-xs font-bold text-white px-0.5">
+              <Compass className="w-4 h-4 text-accentViolet" />
+              <span>{t.guide.quick_nav}</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {sectionsConfig.map((sec) => {
+                const Icon = sec.icon;
+                const item = sec.data;
+                if (!item) return null;
+                return (
+                  <button
+                    key={sec.key}
+                    onClick={() => scrollToSection(sec.key)}
+                    className="w-full p-2.5 rounded-xl flex items-center justify-between text-left transition active:scale-[0.98] border hover:border-accentViolet/50"
+                    style={{
+                      background: isLight ? 'rgba(108, 92, 231, 0.04)' : 'rgba(255, 255, 255, 0.03)',
+                      borderColor: isLight ? 'rgba(108, 92, 231, 0.1)' : 'rgba(255, 255, 255, 0.06)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: sec.iconBg, color: sec.iconColor }}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="truncate">
+                        <div className="text-xs font-bold text-gray-200 truncate">
+                          {item.title}
+                        </div>
+                        <div className="text-[10px] text-gray-400 truncate">
+                          {item.badge}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-accentViolet shrink-0 ml-1" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detailed Guide Sections */}
           {sectionsConfig.map((sec) => {
             const Icon = sec.icon;
             const item = sec.data;
@@ -146,8 +209,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
 
             return (
               <div
+                id={`guide-section-${sec.key}`}
                 key={sec.key}
-                className="glass-card rounded-2xl p-4 space-y-3 transition border"
+                className="glass-card rounded-2xl p-4 space-y-3 transition border scroll-mt-2"
                 style={{
                   borderColor: isLight ? 'rgba(108, 92, 231, 0.12)' : 'rgba(255, 255, 255, 0.08)',
                   background: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.03)',

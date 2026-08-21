@@ -35,6 +35,7 @@ export const en: Translations = {
   guide: {
     modal_title: 'How to Use LISTA',
     modal_subtitle: 'Your complete guide to features, tricks, and possibilities',
+    quick_nav: 'Quick Navigation',
     sections: {
       lists_folders: {
         badge: 'Organization',

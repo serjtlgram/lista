@@ -35,6 +35,7 @@ export interface Translations {
   guide: {
     modal_title: string;
     modal_subtitle: string;
+    quick_nav: string;
     sections: {
       lists_folders: {
         badge: string;
