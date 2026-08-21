@@ -29,6 +29,93 @@ export const es: Translations = {
     min_categories_alert: '¡Se deben seleccionar al menos 2 categorías!',
     app_version: 'Versión de la App',
     user_id: 'ID de Usuario',
+    how_to_use: 'Cómo usar LISTA',
+    how_to_use_subtitle: 'Guía de uso y consejos útiles',
+  },
+  guide: {
+    modal_title: 'Cómo usar LISTA',
+    modal_subtitle: 'Tu guía completa sobre funciones, trucos y posibilidades',
+    sections: {
+      lists_folders: {
+        badge: 'Organización',
+        title: 'Listas y Carpetas Temáticas',
+        description: 'Organiza tus películas, series, libros y juegos en listas y carpetas personalizadas.',
+        bullets: [
+          'Crear Listas: Ve a la pestaña "Listas" y toca "+ Nueva lista". Elige un nombre y color.',
+          'Carpetas Temáticas: Agrupa tus listas en carpetas (ej. "Anime", "Ciencia Ficción", "Para el finde") con "+ Nueva Carpeta".',
+          'Pestaña Sin Clasificar: Los elementos no asignados a ninguna lista se reúnen en una sección especial para ordenarlos fácilmente.',
+          'Compartir con Amigos: Comparte cualquier lista en 1 toque — tus amigos podrán verla e importarla en un clic.',
+        ],
+        tip: '💡 Dentro de cualquier lista, toca "Recomendaciones IA" para recibir sugerencias basadas en el contenido de esa lista.',
+      },
+      adding_search: {
+        badge: 'Búsqueda y Añadir',
+        title: 'Añadir Rápido y Búsqueda en la Base',
+        description: 'No necesitas escribir todo manualmente — LISTA incluye una gran base de datos de entretenimiento.',
+        bullets: [
+          'Botón Rápido (+): Toca el botón flotante "+" en Inicio o Catálogo para crear un nuevo registro.',
+          'Autocompletado Inteligente: Empieza a escribir el título — selecciona el resultado y se completarán póster, año, géneros, duración y sinopsis.',
+          'Buscar por Creadores: En el Catálogo puedes buscar por título, actores, directores o autores de libros.',
+        ],
+        tip: '💡 Si un elemento no está en el catálogo, cambia a "Búsqueda en internet" o completa los campos manualmente.',
+      },
+      telegram_bot: {
+        badge: 'Bot de Telegram',
+        title: 'Bot @manytgbot y Modo Inline',
+        description: 'LISTA se integra directamente con Telegram para guardar contenido al instante.',
+        bullets: [
+          'Enviar enlaces al bot: Envía cualquier enlace (IMDb, Filmaffinity, YouTube, Steam) a @manytgbot — reconocerá el título y lo añadirá a tu biblioteca.',
+          'Enviar texto simple: Escribe un título directamente al bot ("Interstellar", "The Witcher 3") para guardarlo en segundos.',
+          'Búsqueda Inline en cualquier chat: En cualquier conversación de Telegram, escribe @manytgbot <título> para enviar tarjetas interactivas a tus amigos.',
+        ],
+        tip: '💡 El modo inline funciona en chats privados, grupos y canales sin necesidad de abrir la aplicación.',
+      },
+      item_details: {
+        badge: 'Detalles del Elemento',
+        title: 'Estados, Calificaciones y Metadatos',
+        description: 'Lleva un control minucioso de lo que ves, lees y juegas.',
+        bullets: [
+          'Estados de Seguimiento: "En planes" (quiero ver/leer), "Viendo / Leyendo / Jugando" (en progreso), "Completado" (finalizado).',
+          'Calificaciones 1–10: Valora tus títulos completados para alimentar tus estadísticas y recomendaciones.',
+          'Metadatos Completos: Géneros, duración exacta / episodios / páginas, año, país, reparto, director/autor.',
+          'Tráilers y Notas: Mira tráilers de YouTube directamente en la app y anota tus impresiones personales.',
+        ],
+        tip: '💡 Para calificar un elemento, cambia su estado a "Viendo/Leyendo" o "Completado".',
+      },
+      ai_features: {
+        badge: 'Con IA',
+        title: 'Enriquecimiento IA y Recomendaciones',
+        description: 'La inteligencia artificial complementa datos y descubre nuevas obras para ti.',
+        bullets: [
+          'Botón "✨ Enriquecer con IA": Si a una tarjeta le falta sinopsis, director, año, reparto o póster — pulsa el botón de IA para completarlo al instante.',
+          'Recomendaciones IA de Listas: La red neuronal evalúa tus listas y genera sugerencias a medida con explicaciones claras.',
+        ],
+        tip: '💡 Las recomendaciones se adaptan automáticamente al idioma de tu interfaz.',
+      },
+      statistics: {
+        badge: 'Analíticas',
+        title: 'Estadísticas y Control de Tiempo',
+        description: 'Comprende tus hábitos con métricas e informes visuales.',
+        bullets: [
+          'Control de Tiempo: Horas totales invertidas en películas y series, y páginas leídas.',
+          'Racha de Actividad: El contador de días seguidos te motiva a disfrutar de tus aficiones a diario.',
+          'Gráficos y Distribución: Gráfico circular por categorías (Películas, Series, Libros, Juegos), barras de progreso semanal/mensual y puntuación media.',
+        ],
+        tip: '💡 Cuanto más precisa sea la duración o episodios/páginas que indiques, más exacta será tu estadística.',
+      },
+      customization: {
+        badge: 'Interfaz',
+        title: 'Temas, Idiomas y Personalización',
+        description: 'Adapta LISTA a tu estilo y dispositivo.',
+        bullets: [
+          '4 Idiomas de Interfaz: Soporte completo para ucraniano, inglés, español y ruso.',
+          '8 Temas de Color: Desde oscuros profundos (OLED Black, Midnight Navy, Cyber Neon) hasta claros elegantes (Clean White, Powdery, Mint, Ice Neon).',
+          'Categorías en Inicio: Elige qué categorías mostrar en la pantalla principal para un acceso rápido.',
+        ],
+        tip: '💡 Todas tus preferencias se sincronizan en todos tus dispositivos mediante Telegram Cloud Storage.',
+      },
+    },
+    got_it: 'Entendido',
   },
   activity: {
     this_month: 'Este Mes',

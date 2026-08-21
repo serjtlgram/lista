@@ -1,7 +1,8 @@
-import React from 'react';
-import { Globe, Sun, Moon, Grid, ShieldCheck, User as UserIcon, ChevronRight, BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe, Sun, Moon, Grid, ShieldCheck, User as UserIcon, ChevronRight, BarChart3, BookOpen } from 'lucide-react';
 import { Language, Translations } from '../services/i18n';
 import { UserProfile } from '../types';
+import { GuideModal } from './GuideModal';
 
 interface ProfileScreenProps {
   profile: UserProfile | null;
@@ -26,6 +27,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onGoToStats,
   t,
 }) => {
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+
   const userName =
     (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.first_name ||
     profile?.user?.first_name ||
@@ -73,6 +76,62 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="flex items-center gap-1 mt-1 text-[11px] text-accentTeal font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Lista User</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Navigation Card (Raised to Top) */}
+      {onGoToStats && (
+        <div
+          onClick={onGoToStats}
+          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-[0.97] shadow-md group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  {t.stats.title}
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  {t.lists.go_to_stats || 'Перейти к подробной статистике'}
+                </p>
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* How to Use Navigation Card (Directly Below Statistics) */}
+      <div
+        onClick={() => {
+          const tg = (window as any).Telegram?.WebApp;
+          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+          setIsGuideOpen(true);
+        }}
+        className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentTeal/15 via-accentViolet/10 to-transparent border border-accentTeal/30 hover:border-accentTeal transition active:scale-[0.97] shadow-md group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-accentTeal/20 text-accentTeal flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                {t.profile.how_to_use}
+              </h3>
+              <p className="text-[11px] text-gray-400">
+                {t.profile.how_to_use_subtitle}
+              </p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentTeal flex items-center justify-center group-hover:bg-accentTeal group-hover:text-white transition">
+            <ChevronRight className="w-4 h-4" />
           </div>
         </div>
       </div>
@@ -242,38 +301,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </button>
       </div>
 
-      {/* Statistics Navigation Card */}
-      {onGoToStats && (
-        <div
-          onClick={onGoToStats}
-          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-[0.97] shadow-md group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  {t.stats.title}
-                </h3>
-                <p className="text-[11px] text-gray-400">
-                  {t.lists.go_to_stats || 'Перейти к подробной статистике'}
-                </p>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Footer Info */}
       <div className="text-center pt-2 text-[11px] text-gray-500 space-y-0.5">
         <p>Lista App v1.2.0</p>
         <p>@manytgbot</p>
       </div>
+
+      {/* User Guide Modal */}
+      <GuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        t={t}
+      />
     </div>
   );
 };

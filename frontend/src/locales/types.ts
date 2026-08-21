@@ -29,6 +29,64 @@ export interface Translations {
     min_categories_alert: string;
     app_version: string;
     user_id: string;
+    how_to_use: string;
+    how_to_use_subtitle: string;
+  };
+  guide: {
+    modal_title: string;
+    modal_subtitle: string;
+    sections: {
+      lists_folders: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      adding_search: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      telegram_bot: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      item_details: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      ai_features: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      statistics: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+      customization: {
+        badge: string;
+        title: string;
+        description: string;
+        bullets: string[];
+        tip: string;
+      };
+    };
+    got_it: string;
   };
   activity: {
     this_month: string;

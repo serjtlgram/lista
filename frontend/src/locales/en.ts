@@ -29,6 +29,93 @@ export const en: Translations = {
     min_categories_alert: 'At least 2 categories must be selected!',
     app_version: 'App Version',
     user_id: 'User ID',
+    how_to_use: 'How to Use',
+    how_to_use_subtitle: 'User guide and helpful tips',
+  },
+  guide: {
+    modal_title: 'How to Use LISTA',
+    modal_subtitle: 'Your complete guide to features, tricks, and possibilities',
+    sections: {
+      lists_folders: {
+        badge: 'Organization',
+        title: 'Lists & Thematic Folders',
+        description: 'Organize your movies, series, books, and games into custom lists and folders.',
+        bullets: [
+          'Create Lists: Go to the "Lists" tab and tap "+ New List". Choose a name and custom icon/color.',
+          'Thematic Folders: Group lists into folders (e.g. "Anime", "Sci-Fi", "Weekend Gaming") with "+ New Folder".',
+          'Uncategorized Tab: Items not assigned to any custom list are gathered in a dedicated tab for easy triage.',
+          'Share with Friends: Share any list in 1 tap — friends can view and import it into their app with one click.',
+        ],
+        tip: '💡 Inside any list, tap "AI Recommendations" to get personalized suggestions based on what is in that list!',
+      },
+      adding_search: {
+        badge: 'Search & Add',
+        title: 'Quick Add & Database Search',
+        description: 'No need to type details manually — LISTA includes a huge shared entertainment database.',
+        bullets: [
+          'Quick Add Button (+): Tap the floating "+" button on Home or Catalog to create a new entry.',
+          'Smart Auto-Fill: Start typing a title — select from the results, and poster, year, genres, duration, and plot fill in instantly.',
+          'Search by Creators: In Catalog, you can search not only by title, but also by actors, directors, or authors.',
+        ],
+        tip: '💡 If an item is not found in the local catalog, toggle to "Web Search" or fill in fields manually.',
+      },
+      telegram_bot: {
+        badge: 'Telegram Bot',
+        title: 'Bot @manytgbot & Inline Mode',
+        description: 'LISTA is deeply integrated with Telegram for frictionless on-the-go saving.',
+        bullets: [
+          'Send links to Bot: Send any link (IMDb, Kinopoisk, YouTube, Goodreads/Litres, Steam) to @manytgbot — it parses and adds the item to your library.',
+          'Send plain text: Type a title directly to the bot ("Interstellar", "The Witcher 3") to find and save it in seconds.',
+          'Inline Search in any chat: In any Telegram conversation, type @manytgbot <query> (e.g. @manytgbot Matrix) to send interactive cards directly.',
+        ],
+        tip: '💡 Inline mode works anywhere — in direct messages, group chats, and channels without opening the app!',
+      },
+      item_details: {
+        badge: 'Item Details',
+        title: 'Statuses, Ratings & Metadata',
+        description: 'Keep precise track of what you watch, read, and play.',
+        bullets: [
+          'Tracking Statuses: "Planned" (want to check out), "Watching / Reading / Playing" (in progress), "Completed" (finished).',
+          'Ratings 1–10: Rate completed titles to feed your personal statistics and recommendations.',
+          'Rich Metadata: Genres, exact duration / episode count / pages, release year, country, cast, director/author.',
+          'Trailers & Notes: Watch YouTube trailers right inside the app and record your personal impressions.',
+        ],
+        tip: '💡 To set a rating, switch the item status to "Watching/Reading" or "Completed".',
+      },
+      ai_features: {
+        badge: 'AI Powered',
+        title: 'AI Enrichment & Smart Recommendations',
+        description: 'Artificial intelligence enriches details and discovers hidden gems for you.',
+        bullets: [
+          'Button "✨ Enrich via AI": If a card lacks synopsis, director, release year, cast, or poster — tap the AI button for instant autofill.',
+          'AI List Recommendations: The neural network evaluates your list and generates tailored recommendations with clear rationale.',
+        ],
+        tip: '💡 Recommendations adapt automatically to your interface language and preferences.',
+      },
+      statistics: {
+        badge: 'Analytics',
+        title: 'Statistics & Time Tracking',
+        description: 'Understand your entertainment habits with insightful metrics.',
+        bullets: [
+          'Time Tracking: Total hours spent on movies & shows, and total pages read.',
+          'Activity Streak: Day streak counter inspires you to keep enjoying your favorite hobbies.',
+          'Charts & Breakdown: Category distribution donuts (Movies, Shows, Books, Games), weekly/monthly progress bars, and average score.',
+        ],
+        tip: '💡 The more accurate duration or episodes/pages you input, the more exact your watch/read time analytics.',
+      },
+      customization: {
+        badge: 'Interface',
+        title: 'Themes, Languages & Personalization',
+        description: 'Tailor LISTA to your aesthetic and devices.',
+        bullets: [
+          '4 Interface Languages: Full support for Ukrainian, English, Spanish, and Russian.',
+          '8 Color Themes: From deep dark (OLED Black, Midnight Navy, Cyber Neon) to crisp light (Clean White, Powdery, Mint, Ice Neon).',
+          'Home Categories: Choose which category chips to display on your home screen for quick access.',
+        ],
+        tip: '💡 All profile preferences sync seamlessly across your devices via Telegram Cloud Storage.',
+      },
+    },
+    got_it: 'Got it',
   },
   activity: {
     this_month: 'This Month',
