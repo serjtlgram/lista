@@ -1156,17 +1156,17 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	lang := r.URL.Query().Get("lang")
 
 	// Fetch enriched data
-	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang)
+	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang, h.FireworksAPIKey, currentDirector, currentCast, currentDescription)
 	if enriched == nil {
 		// TMDB failed or returned nothing (e.g. strict title mismatch or missing in TMDB). Let's create an empty object and let AI fill with context!
 		enriched = &parser.EnrichedDetails{}
 	}
 
-	if enriched.Director == "" && currentDirector != "" {
+	if currentDirector != "" {
 		enriched.Director = currentDirector
 	}
 
-	// Call AI to translate and fill missing data with full context (title, releaseYear, currentCountry, currentDirector, currentCast, currentDescription)
+	// Call AI to translate, transliterate and fill missing data with full context
 	parser.TranslateAndFillWithAI(h.FireworksAPIKey, lang, title, releaseYear, currentCountry, currentDirector, currentCast, currentDescription, enriched)
 
 	// If after AI it's STILL basically empty, then return no_data
@@ -1275,7 +1275,11 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 	if directorUpdated || enriched.Director != "" {
 		ret["director"] = enriched.Director
 	}
-	if durationUpdated || enriched.Duration != "" {
+	if durationUpdated {
+		ret["duration"] = enriched.Duration
+	} else if currentDuration != "" {
+		ret["duration"] = currentDuration
+	} else if enriched.Duration != "" {
 		ret["duration"] = enriched.Duration
 	}
 	if countryUpdated || enriched.Country != "" {

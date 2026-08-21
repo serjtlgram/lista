@@ -892,7 +892,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       if ((result as any).cast) updates.cast = (result as any).cast;
 
                       if (result.budget) updates.budget = result.budget;
-                      if (result.duration) updates.duration = result.duration;
+                      if (result.duration && (!item.duration || item.duration === '-' || item.duration === '0' || item.duration.includes('1619'))) {
+                        updates.duration = result.duration;
+                      }
                       if ((result as any).director) updates.director = (result as any).director;
                       if (result.country && !item.country) updates.country = result.country;
                       onUpdateItem(item.id, updates);

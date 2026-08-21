@@ -1704,9 +1704,9 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
 		return
 	}
 
-	directorContext := details.Director
-	if directorContext == "" && existingDirector != "" {
-		directorContext = existingDirector
+	directorContext := existingDirector
+	if directorContext == "" {
+		directorContext = details.Director
 	}
 
 	castRolesContext := details.CastRoles
@@ -1729,9 +1729,9 @@ func TranslateAndFillWithAI(fireworksKey, lang, title, releaseYear, country, exi
 
 Правила обробки:
 1. Мовний стандарт: Усі імена акторів, імена персонажів (ролей) та ім'я режисера мають бути перекладені українською мовою (строго кирилиця).
-   - Якщо в іменах присутня латиниця (наприклад: 'Darya Pugacheva', 'Greg Plageman'), обов'язково транслітеруй або переклади їх на кирилицю ('Дар'я Пугачова', 'Грег Плейджман').
+   - Якщо в іменах присутня латиниця (наприклад: 'Timur Bekmambetov', 'Christopher Nolan', 'Greg Plageman'), обов'язково транслітеруй або переклади їх на українську кирилицю ('Тимур Бекмамбетов', 'Крістофер Нолан', 'Грег Плейджман').
    - У рядках director, cast та cast_roles не допускається наявність англійських або латинських літер. Усі імена мають складатися виключно з кирилиці.
-2. Збереження даних: Якщо в контексті вже зазначений коректний режисер ("%s"), збережи його в полі director українською мовою.
+2. Режисер: Якщо в карточці вже зазначений режисер ("%s"), обов'язково збережи його в полі director. Якщо він вказаний латиницею (англійською) або російською, обов'язково переклади/транслітеруй його ім'я українською мовою (наприклад: 'Тимур Бекмамбетов', 'Крістофер Нолан'). Не замінюй відомого режисера картки на інших людей.
 3. Поле cast: Сформуй чистий список акторів фільму українською мовою через кому, без латиниці та без ролей.
 4. Поле cast_roles: Форматуй строго за шаблоном "Актор — Роль, Актор — Роль" (максимум до 8 пар) виключно кирилицею. Важливо! Визначити правильну роль кожного актора і прописати її навпроти актора замість слова "Роль"! Крім дійсної ролі нічого писати не потрібно, вигадувати не можна.
 5. Статус: Переклади air_status українською мовою ("Завершено", "Виходить", "Скасовано").
@@ -1772,7 +1772,7 @@ Contexto de la tarjeta:
 
 Reglas obligatorias:
 1. Traduce todos los nombres de actores, personajes/roles y del director al español. No dejes nombres en inglés si hay traducción o transcripción.
-2. Si ya se conoce el director correcto ("%s"), consérvalo en el campo director.
+2. Si ya se conoce el director ("%s"), consérvalo en el campo director (traduce/transcribe si es necesario). No lo reemplaces por otra persona.
 3. Formato de cast_roles: Actor — Rol, Actor — Rol (máximo 8 pares). ¡Importante! Determina el rol real de cada actor y escríbelo junto al actor en lugar de la palabra "Rol". No inventes roles ni agregues texto extra.
 4. Formato de cast: lista de actores separados por comas.
 5. Traduce air_status al español ("Finalizada", "En emisión", "Cancelada").
@@ -1813,7 +1813,7 @@ Card Context:
 
 Mandatory Rules:
 1. All actor names, character/role names, and director names must be in English / Latin script.
-2. If the correct director is known ("%s"), preserve it in the director field.
+2. If the director is known ("%s"), preserve it in the director field (transliterate to Latin/English if in Cyrillic). Do not replace the director with other people.
 3. Format cast_roles as: Actor — Role, Actor — Role (up to 8 pairs). Important! Determine the actual role/character for each actor and write it next to the actor instead of the literal word "Role". Do not fabricate roles.
 4. Format cast as: comma-separated list of actors.
 5. Translate air_status to English ("Ended", "Returning Series", "Canceled").
@@ -1854,9 +1854,9 @@ episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, d
 
 Правила обработки:
 1. Языковой стандарт: Все имена актёров, имена персонажей (ролей) и имя режиссёра должны быть переведены на русский язык (строго кириллица).
-   - Если в списке актёров или режиссёров присутствуют имена на латинице (например: 'Darya Pugacheva' -> 'Дарья Пугачева', 'Petr Rykov' -> 'Петр Рыков', 'Greg Plageman' -> 'Грег Плейджман'), выполни их точную транслитерацию или перевод.
+   - Если в списке актёров или режиссёров присутствуют имена на латинице (например: 'Timur Bekmambetov' -> 'Тимур Бекмамбетов', 'Christopher Nolan' -> 'Кристофер Нолан', 'Greg Plageman' -> 'Грег Плейджман'), выполни их точную транслитерацию или перевод на русский язык.
    - В строках director, cast и cast_roles не допускается наличие английских букв или латиницы. Все имена должны состоять исключительно из кириллицы.
-2. Сохранение данных: Если в карточке уже указан корректный режиссер ("%s"), сохрани его в поле director на русском языке.
+2. Режиссер: Если в карточке указан текущий режиссер ("%s"), обязательно сохрани его в поле director. Если он указан на латинице (английском), обязательно выполни его перевод/транслитерацию на русский язык (кириллицу). Не заменяй известного режиссера карточки на других людей.
 3. Поле cast: Сформируй чистый список актёров фильма на русском языке через запятую, без латиницы и без указания ролей (например: "Иван Забелин, Дарья Пугачева, Петр Рыков, Лукерья Ильяшенко").
 4. Поле cast_roles: Форматируй строго по шаблону "Актёр — Роль, Актёр — Роль" (максимум до 8 пар) на русском языке. Важно! Определить правильную роль каждого актёра и прописать её напротив актёра вместо слова "Роль"! Кроме действительной роли ничего писать не нужно, выдумывать нельзя.
 5. Статус: Переведи значение air_status на русский язык (например: "Завершён", "Выходит", "Отменён").
@@ -1984,9 +1984,79 @@ type EpisodeInfo struct {
 	RuntimeMin  int    `json:"runtime"`
 }
 
+// ResolveOriginalTitleWithAI determines the original / English title of a movie or TV show using AI when localized title is not found in TMDB
+func ResolveOriginalTitleWithAI(fireworksKey, title, year, director, cast, description string) string {
+	if fireworksKey == "" || strings.TrimSpace(title) == "" {
+		return ""
+	}
+
+	prompt := fmt.Sprintf(`You are a film and TV database expert.
+Given this movie or TV show:
+- Title: %s
+- Year: %s
+- Director: %s
+- Cast: %s
+- Description: %s
+
+Identify the official original or international English title (e.g. for "Казнить нельзя помиловать" 2026 with Chris Pratt directed by Timur Bekmambetov, the original title is "Mercy").
+Return only a valid JSON object without markdown:
+{
+  "original_title": "Mercy"
+}
+If the title is already in its original language or no different title exists, return empty string in original_title.`, title, year, director, cast, description)
+
+	reqBodyMap := map[string]interface{}{
+		"model": "accounts/fireworks/models/minimax-m3",
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"response_format": map[string]string{"type": "json_object"},
+		"temperature":     0.1,
+		"max_tokens":      256,
+	}
+
+	bodyBytes, _ := json.Marshal(reqBodyMap)
+	req, err := http.NewRequest("POST", "https://api.fireworks.ai/inference/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return ""
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+fireworksKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return ""
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var fireworksResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(respBody, &fireworksResp); err == nil && len(fireworksResp.Choices) > 0 {
+		var parsed struct {
+			OriginalTitle string `json:"original_title"`
+		}
+		if err := json.Unmarshal([]byte(strings.TrimSpace(fireworksResp.Choices[0].Message.Content)), &parsed); err == nil {
+			return strings.TrimSpace(parsed.OriginalTitle)
+		}
+	}
+	return ""
+}
+
 // FetchEnrichedDetails searches TMDB by title+year, then pulls extended fields.
 // Returns nil if nothing useful was found.
-func FetchEnrichedDetails(tmdbKey string, title string, year string, category string, lang string) *EnrichedDetails {
+func FetchEnrichedDetails(tmdbKey string, title string, year string, category string, lang string, fireworksKey string, existingDirector string, existingCast string, existingDescription string) *EnrichedDetails {
 	if tmdbKey == "" || strings.TrimSpace(title) == "" {
 		return nil
 	}
@@ -2013,6 +2083,12 @@ func FetchEnrichedDetails(tmdbKey string, title string, year string, category st
 
 	// --- Step 1: search TMDB for the TMDB ID ---
 	tmdbID, mediaType := searchTMDbForID(client, tmdbKey, title, year, mediaTypeHint, langParam)
+	if tmdbID == 0 && fireworksKey != "" {
+		origTitle := ResolveOriginalTitleWithAI(fireworksKey, title, year, existingDirector, existingCast, existingDescription)
+		if origTitle != "" && !strings.EqualFold(origTitle, title) {
+			tmdbID, mediaType = searchTMDbForID(client, tmdbKey, origTitle, year, mediaTypeHint, langParam)
+		}
+	}
 	if tmdbID == 0 {
 		return nil
 	}
@@ -2212,7 +2288,7 @@ func normalizeTitleForMatch(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// searchTMDbForID finds a TMDB ID by title+year with strict title matching, returns (id, mediaType).
+// searchTMDbForID finds a TMDB ID by title+year with strict title and year matching, returns (id, mediaType).
 func searchTMDbForID(client *http.Client, tmdbKey string, title string, year string, hint string, langParam string) (int, string) {
 	normQuery := normalizeTitleForMatch(title)
 	if normQuery == "" {
@@ -2267,7 +2343,7 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 	var maxScore float64 = -1.0
 
 	yearInt, _ := strconv.Atoi(year)
-	// First pass: strict title match, year match, and media type hint
+	// Pass: strict title match, year match (if year is specified), and media type hint
 	for _, item := range searchRes.Results {
 		if item.MediaType != "movie" && item.MediaType != "tv" {
 			continue
@@ -2294,7 +2370,7 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 			itemYear = item.FirstAirDate[:4]
 		}
 		itemYearInt, _ := strconv.Atoi(itemYear)
-		yearMatch := yearInt == 0 || itemYear == year || (yearInt > 0 && abs(itemYearInt-yearInt) <= 1)
+		yearMatch := yearInt == 0 || (itemYearInt > 0 && abs(itemYearInt-yearInt) <= 1)
 		typeMatch := hint == "" || item.MediaType == hint
 		if yearMatch && typeMatch {
 			score := item.Popularity + float64(item.VoteCount)
@@ -2309,38 +2385,40 @@ func searchTMDbForID(client *http.Client, tmdbKey string, title string, year str
 		return bestID, bestType
 	}
 
-	// Fallback pass: strict title match even if year is unverified
-	for _, item := range searchRes.Results {
-		if item.MediaType != "movie" && item.MediaType != "tv" {
-			continue
-		}
+	// Only if year was NOT provided (yearInt == 0), allow matching without year constraint
+	if yearInt == 0 {
+		for _, item := range searchRes.Results {
+			if item.MediaType != "movie" && item.MediaType != "tv" {
+				continue
+			}
 
-		normT1 := normalizeTitleForMatch(item.Title)
-		normT2 := normalizeTitleForMatch(item.OriginalTitle)
-		normT3 := normalizeTitleForMatch(item.Name)
-		normT4 := normalizeTitleForMatch(item.OriginalName)
+			normT1 := normalizeTitleForMatch(item.Title)
+			normT2 := normalizeTitleForMatch(item.OriginalTitle)
+			normT3 := normalizeTitleForMatch(item.Name)
+			normT4 := normalizeTitleForMatch(item.OriginalName)
 
-		titleMatches := (normT1 != "" && normT1 == normQuery) ||
-			(normT2 != "" && normT2 == normQuery) ||
-			(normT3 != "" && normT3 == normQuery) ||
-			(normT4 != "" && normT4 == normQuery)
+			titleMatches := (normT1 != "" && normT1 == normQuery) ||
+				(normT2 != "" && normT2 == normQuery) ||
+				(normT3 != "" && normT3 == normQuery) ||
+				(normT4 != "" && normT4 == normQuery)
 
-		if !titleMatches {
-			continue
-		}
+			if !titleMatches {
+				continue
+			}
 
-		typeMatch := hint == "" || item.MediaType == hint
-		if typeMatch {
-			score := item.Popularity + float64(item.VoteCount)
-			if score > maxScore {
-				maxScore = score
-				bestID = item.ID
-				bestType = item.MediaType
+			typeMatch := hint == "" || item.MediaType == hint
+			if typeMatch {
+				score := item.Popularity + float64(item.VoteCount)
+				if score > maxScore {
+					maxScore = score
+					bestID = item.ID
+					bestType = item.MediaType
+				}
 			}
 		}
-	}
-	if bestID > 0 {
-		return bestID, bestType
+		if bestID > 0 {
+			return bestID, bestType
+		}
 	}
 
 	return 0, ""
