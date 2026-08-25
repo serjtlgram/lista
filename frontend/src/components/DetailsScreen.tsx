@@ -897,6 +897,18 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                       }
                       if ((result as any).director) updates.director = (result as any).director;
                       if (result.country && !item.country) updates.country = result.country;
+
+                      // Book fields
+                      if ((result as any).isbn) updates.isbn = (result as any).isbn;
+                      if ((result as any).author && !item.author) updates.author = (result as any).author;
+                      if ((result as any).description && (result as any).description !== item.description) {
+                        updates.description = (result as any).description;
+                      }
+                      if ((result as any).genre && !item.genre) updates.genre = (result as any).genre;
+                      if ((result as any).release_year && !item.release_year) updates.release_year = (result as any).release_year;
+                      if ((result as any).poster_url && !item.poster_url) updates.poster_url = (result as any).poster_url;
+                      if ((result as any).public_rating && !item.public_rating) updates.public_rating = (result as any).public_rating;
+
                       onUpdateItem(item.id, updates);
                       setToastMessage(t.details.ai_data_updated || '✨ Данные обновлены!');
                     } else {

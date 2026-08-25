@@ -1136,15 +1136,167 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the item from DB to get title, year, category, duration, country, director, cast, description
-	var title, category, releaseYear, currentDuration, currentCountry, currentDirector, currentCast, currentDescription string
+	// Fetch the item from DB to get title, year, category, duration, country, director, cast, description, author, isbn, genre, poster_url, public_rating
+	var title, category, releaseYear, currentDuration, currentCountry, currentDirector, currentCast, currentDescription, currentAuthor, currentISBN, currentGenre, currentPosterURL, currentPublicRating string
 	var alreadyEnriched bool
 	err := h.DB.Pool.QueryRow(r.Context(),
-		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(director, ''), COALESCE(cast_members, ''), COALESCE(description, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
+		"SELECT title, category, release_year, COALESCE(duration, ''), COALESCE(country, ''), COALESCE(director, ''), COALESCE(cast_members, ''), COALESCE(description, ''), COALESCE(author, ''), COALESCE(isbn, ''), COALESCE(genre, ''), COALESCE(poster_url, ''), COALESCE(public_rating, ''), COALESCE(ai_enriched, FALSE) FROM items WHERE id = $1 AND user_id = $2",
 		itemID, user.ID,
-	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &currentDirector, &currentCast, &currentDescription, &alreadyEnriched)
+	).Scan(&title, &category, &releaseYear, &currentDuration, &currentCountry, &currentDirector, &currentCast, &currentDescription, &currentAuthor, &currentISBN, &currentGenre, &currentPosterURL, &currentPublicRating, &alreadyEnriched)
 	if err != nil {
 		http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
+		return
+	}
+
+	lang := r.URL.Query().Get("lang")
+
+	// Dedicated enrichment for Books category (ISBN, page count, disclaimer cleanup)
+	if mapCategoryToEn(category) == "book" {
+		enrichedBook := parser.FetchEnrichedBookDetails(title, currentAuthor, currentISBN, releaseYear, lang, currentDescription, currentDuration, h.FireworksAPIKey)
+		if enrichedBook == nil {
+			enrichedBook = &parser.EnrichedBookDetails{}
+		}
+
+		// Also clean existing description if it contained disclaimers
+		cleanedExistingDesc := parser.CleanBookDescription(currentDescription)
+
+		updateQuery := "UPDATE items SET ai_enriched = TRUE, updated_at = CURRENT_TIMESTAMP"
+		updateArgs := []interface{}{itemID, user.ID}
+		argIdx := 3
+
+		isbnUpdated := false
+		if enrichedBook.ISBN != "" && enrichedBook.ISBN != currentISBN {
+			updateQuery += fmt.Sprintf(", isbn = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.ISBN)
+			argIdx++
+			isbnUpdated = true
+		}
+
+		authorUpdated := false
+		if enrichedBook.Author != "" && currentAuthor == "" {
+			updateQuery += fmt.Sprintf(", author = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.Author)
+			argIdx++
+			authorUpdated = true
+		}
+
+		descUpdated := false
+		targetDesc := enrichedBook.Description
+		if targetDesc == "" && cleanedExistingDesc != currentDescription {
+			targetDesc = cleanedExistingDesc
+		}
+		if targetDesc != "" && targetDesc != currentDescription {
+			updateQuery += fmt.Sprintf(", description = $%d", argIdx)
+			updateArgs = append(updateArgs, targetDesc)
+			argIdx++
+			descUpdated = true
+		}
+
+		genreUpdated := false
+		if enrichedBook.Genre != "" && currentGenre == "" {
+			updateQuery += fmt.Sprintf(", genre = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.Genre)
+			argIdx++
+			genreUpdated = true
+		}
+
+		yearUpdated := false
+		if enrichedBook.ReleaseYear != "" && releaseYear == "" {
+			updateQuery += fmt.Sprintf(", release_year = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.ReleaseYear)
+			argIdx++
+			yearUpdated = true
+		}
+
+		posterUpdated := false
+		if enrichedBook.PosterURL != "" && currentPosterURL == "" {
+			updateQuery += fmt.Sprintf(", poster_url = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.PosterURL)
+			argIdx++
+			posterUpdated = true
+		}
+
+		ratingUpdated := false
+		if enrichedBook.PublicRating != "" && currentPublicRating == "" {
+			updateQuery += fmt.Sprintf(", public_rating = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.PublicRating)
+			argIdx++
+			ratingUpdated = true
+		}
+
+		countryUpdated := false
+		if enrichedBook.Country != "" && currentCountry == "" {
+			mappedCountry := mapCountryToFlag(enrichedBook.Country)
+			if mappedCountry != "" {
+				updateQuery += fmt.Sprintf(", country = $%d", argIdx)
+				updateArgs = append(updateArgs, mappedCountry)
+				argIdx++
+				countryUpdated = true
+			}
+		}
+
+		// Page count / duration: ONLY write if no page count exists currently
+		durationUpdated := false
+		if enrichedBook.Duration != "" && (currentDuration == "" || currentDuration == "-" || currentDuration == "0" || strings.Contains(currentDuration, "1619")) {
+			updateQuery += fmt.Sprintf(", duration = $%d", argIdx)
+			updateArgs = append(updateArgs, enrichedBook.Duration)
+			argIdx++
+			durationUpdated = true
+		}
+
+		updateQuery += " WHERE id = $1 AND user_id = $2"
+
+		_, err = h.DB.Pool.Exec(r.Context(), updateQuery, updateArgs...)
+		if err != nil {
+			log.Printf("[EnrichItem][Book] DB error for item %s: %v", itemID, err)
+			http.Error(w, `{"error":"failed to save enriched book data"}`, http.StatusInternalServerError)
+			return
+		}
+
+		ret := map[string]interface{}{
+			"status":      "ok",
+			"ai_enriched": true,
+		}
+		if isbnUpdated || enrichedBook.ISBN != "" {
+			ret["isbn"] = enrichedBook.ISBN
+		} else if currentISBN != "" {
+			ret["isbn"] = currentISBN
+		}
+		if authorUpdated || enrichedBook.Author != "" {
+			ret["author"] = enrichedBook.Author
+		} else if currentAuthor != "" {
+			ret["author"] = currentAuthor
+		}
+		if descUpdated {
+			ret["description"] = targetDesc
+		} else if targetDesc != "" {
+			ret["description"] = targetDesc
+		} else if cleanedExistingDesc != "" {
+			ret["description"] = cleanedExistingDesc
+		}
+		if durationUpdated {
+			ret["duration"] = enrichedBook.Duration
+		} else if currentDuration != "" {
+			ret["duration"] = currentDuration
+		}
+		if genreUpdated || enrichedBook.Genre != "" {
+			ret["genre"] = enrichedBook.Genre
+		}
+		if yearUpdated || enrichedBook.ReleaseYear != "" {
+			ret["release_year"] = enrichedBook.ReleaseYear
+		}
+		if posterUpdated || enrichedBook.PosterURL != "" {
+			ret["poster_url"] = enrichedBook.PosterURL
+		}
+		if ratingUpdated || enrichedBook.PublicRating != "" {
+			ret["public_rating"] = enrichedBook.PublicRating
+		}
+		if countryUpdated || enrichedBook.Country != "" {
+			ret["country"] = mapCountryToFlag(enrichedBook.Country)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ret)
 		return
 	}
 
@@ -1152,8 +1304,6 @@ func (h *Handler) EnrichItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"TMDB API key not configured"}`, http.StatusServiceUnavailable)
 		return
 	}
-
-	lang := r.URL.Query().Get("lang")
 
 	// Fetch enriched data
 	enriched := parser.FetchEnrichedDetails(h.TMDBAPIKey, title, releaseYear, category, lang, h.FireworksAPIKey, currentDirector, currentCast, currentDescription)
