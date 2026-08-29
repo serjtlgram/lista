@@ -335,14 +335,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* 1. Nordic Yule Dark */}
             <button
               onClick={() => onThemeChange('dark-nordic')}
-              title="Nordic Yule (Dark)"
-              className={`w-6 h-6 rounded-full bg-[#0D1114] border-2 flex items-center justify-center transition-all ${
+              title="Новогодняя / Nordic Yule (Dark)"
+              className={`w-6 h-6 rounded-full bg-[#0D1412] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'dark-nordic'
-                  ? 'border-[#E5A93C] scale-110 shadow-md shadow-[#E5A93C]/40 ring-1 ring-[#E5A93C]/50'
+                  ? 'border-[#E63946] scale-110 shadow-md shadow-[#E63946]/40 ring-1 ring-[#E63946]/50'
                   : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#E5A93C]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#E63946]"></div>
             </button>
 
             {/* 2. Talavera & Marigold Dark */}
@@ -358,17 +358,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <div className="w-2.5 h-2.5 rounded-full bg-[#F06418]"></div>
             </button>
 
-            {/* 3. Amber Terminal Dark */}
+            {/* 3. Deep Ocean Dark */}
             <button
               onClick={() => onThemeChange('dark-terminal')}
-              title="Amber Terminal (Dark)"
-              className={`w-6 h-6 rounded-full bg-[#050505] border-2 flex items-center justify-center transition-all ${
+              title="Deep Ocean (Dark)"
+              className={`w-6 h-6 rounded-full bg-[#060B14] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'dark-terminal'
-                  ? 'border-[#FF9E00] scale-110 shadow-md shadow-[#FF9E00]/40 ring-1 ring-[#FF9E00]/50'
+                  ? 'border-[#0EA5E9] scale-110 shadow-md shadow-[#0EA5E9]/40 ring-1 ring-[#0EA5E9]/50'
                   : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#FF9E00]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0EA5E9]"></div>
             </button>
 
             {/* 4. Industrial Brutalism Dark */}
@@ -390,14 +390,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* 1. Nordic Yule Light */}
             <button
               onClick={() => onThemeChange('light-nordic')}
-              title="Nordic Yule (Light)"
-              className={`w-6 h-6 rounded-full bg-[#F5F7F6] border-2 flex items-center justify-center transition-all ${
+              title="Новогодняя / Nordic Yule (Light)"
+              className={`w-6 h-6 rounded-full bg-[#F5F8F7] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'light-nordic'
-                  ? 'border-[#245842] scale-110 shadow-md shadow-[#245842]/40 ring-1 ring-[#245842]/50'
+                  ? 'border-[#D92638] scale-110 shadow-md shadow-[#D92638]/40 ring-1 ring-[#D92638]/50'
                   : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#245842]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#D92638]"></div>
             </button>
 
             {/* 2. Talavera & Marigold Light */}
@@ -413,17 +413,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <div className="w-2.5 h-2.5 rounded-full bg-[#D96216]"></div>
             </button>
 
-            {/* 3. Amber Terminal Light */}
+            {/* 3. Deep Ocean Light */}
             <button
               onClick={() => onThemeChange('light-terminal')}
-              title="Amber Terminal (Light)"
-              className={`w-6 h-6 rounded-full bg-[#F3EDE2] border-2 flex items-center justify-center transition-all ${
+              title="Deep Ocean (Light)"
+              className={`w-6 h-6 rounded-full bg-[#F0F6FA] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'light-terminal'
-                  ? 'border-[#A83B24] scale-110 shadow-md shadow-[#A83B24]/40 ring-1 ring-[#A83B24]/50'
+                  ? 'border-[#0284C7] scale-110 shadow-md shadow-[#0284C7]/40 ring-1 ring-[#0284C7]/50'
                   : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#A83B24]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0284C7]"></div>
             </button>
 
             {/* 4. Industrial Brutalism Light */}

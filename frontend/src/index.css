@@ -103,12 +103,12 @@
 
   /* ── Row 2: Thematic Dark Themes ── */
   body.dark-nordic {
-    --color-bgDark: #0D1114;
-    --color-cardDark: #151B1F;
-    --color-cardBorder: #222B32;
-    --color-accentViolet: 229 169 60; /* #E5A93C Candlelight Amber / Gold */
-    background-color: #0D1114;
-    color: #F2F6F4;
+    --color-bgDark: #0D1412;
+    --color-cardDark: #141F1C;
+    --color-cardBorder: #22332D;
+    --color-accentViolet: 230 57 70; /* #E63946 Festive Christmas Ruby Red */
+    background-color: #0D1412;
+    color: #F7FAFA;
   }
 
   body.dark-talavera {
@@ -121,12 +121,12 @@
   }
 
   body.dark-terminal {
-    --color-bgDark: #050505;
-    --color-cardDark: #0F0E0B;
-    --color-cardBorder: #2B2312;
-    --color-accentViolet: 255 158 0; /* #FF9E00 Amber Phosphor */
-    background-color: #050505;
-    color: #FFB000;
+    --color-bgDark: #060B14;
+    --color-cardDark: #0C1524;
+    --color-cardBorder: #1A2942;
+    --color-accentViolet: 14 165 233; /* #0EA5E9 Electric Ocean Azure */
+    background-color: #060B14;
+    color: #F0F6FC;
   }
 
   body.dark-brutalism {
@@ -140,12 +140,12 @@
 
   /* ── Row 2: Thematic Light Themes ── */
   body.light-nordic {
-    --color-bgDark: #EBEFEA;
+    --color-bgDark: #EAF0EE;
     --color-cardDark: #FFFFFF;
-    --color-cardBorder: #D3DDD7;
-    --color-accentViolet: 36 88 66; /* #245842 Pine Green */
-    background-color: #F5F7F6;
-    color: #112119;
+    --color-cardBorder: #D2E0DA;
+    --color-accentViolet: 217 38 56; /* #D92638 Christmas Crimson Red */
+    background-color: #F5F8F7;
+    color: #11221B;
   }
 
   body.light-talavera {
@@ -158,12 +158,12 @@
   }
 
   body.light-terminal {
-    --color-bgDark: #E9DFCF;
-    --color-cardDark: #FCF9F2;
-    --color-cardBorder: #D8CDBC;
-    --color-accentViolet: 168 59 36; /* #A83B24 Rust Red */
-    background-color: #F3EDE2;
-    color: #181511;
+    --color-bgDark: #E2ECF5;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #C8DBEA;
+    --color-accentViolet: 2 132 199; /* #0284C7 Deep Ocean Cobalt */
+    background-color: #F0F6FA;
+    color: #0C1E36;
   }
 
   body.light-brutalism {
@@ -210,8 +210,8 @@ body.dark-neon .glass-card {
 }
 
 body.dark-nordic .glass-card {
-  background: linear-gradient(180deg, rgba(21, 27, 31, 0.9) 0%, rgba(13, 17, 20, 0.95) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, rgba(20, 31, 28, 0.92) 0%, rgba(13, 20, 18, 0.96) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.5);
 }
 
 body.dark-talavera .glass-card {
@@ -220,8 +220,8 @@ body.dark-talavera .glass-card {
 }
 
 body.dark-terminal .glass-card {
-  background: linear-gradient(180deg, rgba(15, 14, 11, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 158, 0, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, rgba(12, 21, 36, 0.92) 0%, rgba(6, 11, 20, 0.96) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(14, 165, 233, 0.08);
 }
 
 body.dark-brutalism .glass-card {
@@ -256,11 +256,9 @@ body.light-mint .bg-cardDark,
 body.light-neon .bg-cardDark,
 body.light-nordic .bg-cardDark,
 body.light-talavera .bg-cardDark,
+body.light-terminal .bg-cardDark,
 body.light-brutalism .bg-cardDark {
   background-color: #FFFFFF !important;
-}
-body.light-terminal .bg-cardDark {
-  background-color: #FCF9F2 !important;
 }
 
 body.light .bg-bgDark {
@@ -276,13 +274,13 @@ body.light-neon .bg-bgDark {
   background-color: #ECFEFF !important;
 }
 body.light-nordic .bg-bgDark {
-  background-color: #EBEFEA !important;
+  background-color: #EAF0EE !important;
 }
 body.light-talavera .bg-bgDark {
   background-color: #EFE9DC !important;
 }
 body.light-terminal .bg-bgDark {
-  background-color: #E9DFCF !important;
+  background-color: #E2ECF5 !important;
 }
 body.light-brutalism .bg-bgDark {
   background-color: #D8DCE2 !important;
@@ -301,13 +299,13 @@ body.light-neon .border-cardBorder {
   border-color: #CFFAFE !important;
 }
 body.light-nordic .border-cardBorder {
-  border-color: #D3DDD7 !important;
+  border-color: #D2E0DA !important;
 }
 body.light-talavera .border-cardBorder {
   border-color: #DED3C1 !important;
 }
 body.light-terminal .border-cardBorder {
-  border-color: #D8CDBC !important;
+  border-color: #C8DBEA !important;
 }
 body.light-brutalism .border-cardBorder {
   border-color: #BFC6CE !important;
@@ -326,13 +324,13 @@ body.light-neon .bg-cardBorder {
   background-color: #CFFAFE !important;
 }
 body.light-nordic .bg-cardBorder {
-  background-color: #D3DDD7 !important;
+  background-color: #D2E0DA !important;
 }
 body.light-talavera .bg-cardBorder {
   background-color: #DED3C1 !important;
 }
 body.light-terminal .bg-cardBorder {
-  background-color: #D8CDBC !important;
+  background-color: #C8DBEA !important;
 }
 body.light-brutalism .bg-cardBorder {
   background-color: #BFC6CE !important;
@@ -356,7 +354,7 @@ body.light-neon .text-gray-100 {
 }
 body.light-nordic .text-white,
 body.light-nordic .text-gray-100 {
-  color: #112119 !important;
+  color: #11221B !important;
 }
 body.light-talavera .text-white,
 body.light-talavera .text-gray-100 {
@@ -364,7 +362,7 @@ body.light-talavera .text-gray-100 {
 }
 body.light-terminal .text-white,
 body.light-terminal .text-gray-100 {
-  color: #181511 !important;
+  color: #0C1E36 !important;
 }
 body.light-brutalism .text-white,
 body.light-brutalism .text-gray-100 {
@@ -384,13 +382,13 @@ body.light-neon .text-gray-200 {
   color: #0F766E !important;
 }
 body.light-nordic .text-gray-200 {
-  color: #283B32 !important;
+  color: #243E33 !important;
 }
 body.light-talavera .text-gray-200 {
   color: #333742 !important;
 }
 body.light-terminal .text-gray-200 {
-  color: #332E26 !important;
+  color: #1A3250 !important;
 }
 body.light-brutalism .text-gray-200 {
   color: #1E293B !important;
@@ -409,13 +407,13 @@ body.light-neon .text-gray-300 {
   color: #0E7490 !important;
 }
 body.light-nordic .text-gray-300 {
-  color: #42584E !important;
+  color: #3C5A4D !important;
 }
 body.light-talavera .text-gray-300 {
   color: #555047 !important;
 }
 body.light-terminal .text-gray-300 {
-  color: #544C3F !important;
+  color: #2E4D70 !important;
 }
 body.light-brutalism .text-gray-300 {
   color: #334155 !important;
@@ -434,13 +432,13 @@ body.light-neon .text-gray-400 {
   color: #0891B2 !important;
 }
 body.light-nordic .text-gray-400 {
-  color: #61796F !important;
+  color: #5C7D70 !important;
 }
 body.light-talavera .text-gray-400 {
   color: #7A7264 !important;
 }
 body.light-terminal .text-gray-400 {
-  color: #7D7260 !important;
+  color: #4E7094 !important;
 }
 body.light-brutalism .text-gray-400 {
   color: #64748B !important;
@@ -459,33 +457,16 @@ body.light-neon .text-gray-500 {
   color: #06B6D4 !important;
 }
 body.light-nordic .text-gray-500 {
-  color: #879D94 !important;
+  color: #88A69A !important;
 }
 body.light-talavera .text-gray-500 {
   color: #A19888 !important;
 }
 body.light-terminal .text-gray-500 {
-  color: #A39682 !important;
+  color: #7E9DBF !important;
 }
 body.light-brutalism .text-gray-500 {
   color: #94A3B8 !important;
-}
-
-/* Amber Terminal Dark Monochromatic overrides */
-body.dark-terminal .text-gray-100 {
-  color: #FFB000 !important;
-}
-body.dark-terminal .text-gray-200 {
-  color: #E09A00 !important;
-}
-body.dark-terminal .text-gray-300 {
-  color: #B87B00 !important;
-}
-body.dark-terminal .text-gray-400 {
-  color: #8A5C00 !important;
-}
-body.dark-terminal .text-gray-500 {
-  color: #664400 !important;
 }
 
 /* Active Accent Elements */
@@ -535,14 +516,6 @@ body.dark-brutalism .bg-accentViolet *,
 body.dark-brutalism button.bg-accentViolet,
 body.dark-brutalism button.bg-accentViolet * {
   color: #0F172A !important;
-}
-
-/* Dark Terminal Amber buttons high-contrast black text */
-body.dark-terminal .bg-accentViolet,
-body.dark-terminal .bg-accentViolet *,
-body.dark-terminal button.bg-accentViolet,
-body.dark-terminal button.bg-accentViolet * {
-  color: #000000 !important;
 }
 
 /* Banner area overlay text & status button MUST stay bright white in Light Mode */
@@ -603,7 +576,7 @@ body.light-neon [class*="hover:bg-bgDark"]:hover {
 }
 body.light-nordic .hover\:bg-bgDark:hover,
 body.light-nordic [class*="hover:bg-bgDark"]:hover {
-  background-color: #EBEFEA !important;
+  background-color: #EAF0EE !important;
 }
 body.light-talavera .hover\:bg-bgDark:hover,
 body.light-talavera [class*="hover:bg-bgDark"]:hover {
@@ -611,7 +584,7 @@ body.light-talavera [class*="hover:bg-bgDark"]:hover {
 }
 body.light-terminal .hover\:bg-bgDark:hover,
 body.light-terminal [class*="hover:bg-bgDark"]:hover {
-  background-color: #E9DFCF !important;
+  background-color: #E2ECF5 !important;
 }
 body.light-brutalism .hover\:bg-bgDark:hover,
 body.light-brutalism [class*="hover:bg-bgDark"]:hover {
@@ -636,7 +609,7 @@ body.light-brutalism [class*="hover:bg-cardDark"]:hover {
 }
 body.light-terminal .hover\:bg-cardDark:hover,
 body.light-terminal [class*="hover:bg-cardDark"]:hover {
-  background-color: #FCF9F2 !important;
+  background-color: #FFFFFF !important;
 }
 
 /* Dropdown menu & Suggestions contrast rules for Light Mode */
@@ -659,12 +632,6 @@ body.light-brutalism .suggestion-popup-container {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-}
-
-body.light-terminal .dropdown-menu-container,
-body.light-terminal .suggestion-popup-container {
-  background-color: #FCF9F2 !important;
-  border-color: #D8CDBC !important;
 }
 
 body.light .suggestion-item,
@@ -691,13 +658,13 @@ body.light-neon .suggestion-item:hover {
   background-color: #ECFEFF !important;
 }
 body.light-nordic .suggestion-item:hover {
-  background-color: #EBEFEA !important;
+  background-color: #EAF0EE !important;
 }
 body.light-talavera .suggestion-item:hover {
   background-color: #EFE9DC !important;
 }
 body.light-terminal .suggestion-item:hover {
-  background-color: #E9DFCF !important;
+  background-color: #E2ECF5 !important;
 }
 body.light-brutalism .suggestion-item:hover {
   background-color: #D8DCE2 !important;
@@ -716,13 +683,13 @@ body.light-neon .suggestion-item .suggestion-title {
   color: #164E63 !important;
 }
 body.light-nordic .suggestion-item .suggestion-title {
-  color: #112119 !important;
+  color: #11221B !important;
 }
 body.light-talavera .suggestion-item .suggestion-title {
   color: #1A1D24 !important;
 }
 body.light-terminal .suggestion-item .suggestion-title {
-  color: #181511 !important;
+  color: #0C1E36 !important;
 }
 body.light-brutalism .suggestion-item .suggestion-title {
   color: #0F172A !important;
@@ -741,13 +708,13 @@ body.light-neon .suggestion-item .suggestion-sub {
   color: #0891B2 !important;
 }
 body.light-nordic .suggestion-item .suggestion-sub {
-  color: #61796F !important;
+  color: #5C7D70 !important;
 }
 body.light-talavera .suggestion-item .suggestion-sub {
   color: #7A7264 !important;
 }
 body.light-terminal .suggestion-item .suggestion-sub {
-  color: #7D7260 !important;
+  color: #4E7094 !important;
 }
 body.light-brutalism .suggestion-item .suggestion-sub {
   color: #64748B !important;
@@ -777,13 +744,13 @@ body.light-neon .dropdown-option-inactive {
   color: #0E7490 !important;
 }
 body.light-nordic .dropdown-option-inactive {
-  color: #42584E !important;
+  color: #3C5A4D !important;
 }
 body.light-talavera .dropdown-option-inactive {
   color: #555047 !important;
 }
 body.light-terminal .dropdown-option-inactive {
-  color: #544C3F !important;
+  color: #2E4D70 !important;
 }
 body.light-brutalism .dropdown-option-inactive {
   color: #334155 !important;
@@ -806,16 +773,16 @@ body.light-neon .dropdown-option-inactive:hover {
   color: #164E63 !important;
 }
 body.light-nordic .dropdown-option-inactive:hover {
-  background-color: #EBEFEA !important;
-  color: #112119 !important;
+  background-color: #EAF0EE !important;
+  color: #11221B !important;
 }
 body.light-talavera .dropdown-option-inactive:hover {
   background-color: #EFE9DC !important;
   color: #1A1D24 !important;
 }
 body.light-terminal .dropdown-option-inactive:hover {
-  background-color: #E9DFCF !important;
-  color: #181511 !important;
+  background-color: #E2ECF5 !important;
+  color: #0C1E36 !important;
 }
 body.light-brutalism .dropdown-option-inactive:hover {
   background-color: #D8DCE2 !important;
@@ -890,13 +857,6 @@ body.light-brutalism textarea {
   border-color: #CBD5E1 !important;
 }
 
-body.light-terminal input,
-body.light-terminal select,
-body.light-terminal textarea {
-  background-color: #FCF9F2 !important;
-  border-color: #D8CDBC !important;
-}
-
 body.light input,
 body.light select,
 body.light textarea {
@@ -920,7 +880,7 @@ body.light-neon textarea {
 body.light-nordic input,
 body.light-nordic select,
 body.light-nordic textarea {
-  color: #112119 !important;
+  color: #11221B !important;
 }
 body.light-talavera input,
 body.light-talavera select,
@@ -930,7 +890,7 @@ body.light-talavera textarea {
 body.light-terminal input,
 body.light-terminal select,
 body.light-terminal textarea {
-  color: #181511 !important;
+  color: #0C1E36 !important;
 }
 body.light-brutalism input,
 body.light-brutalism select,

@@ -260,17 +260,17 @@ export function App() {
         else if (theme === 'dark-black') bg = '#000000';
         else if (theme === 'dark-navy') bg = '#020617';
         else if (theme === 'dark-neon') bg = '#050505';
-        else if (theme === 'dark-nordic') bg = '#0D1114';
+        else if (theme === 'dark-nordic') bg = '#0D1412';
         else if (theme === 'dark-talavera') bg = '#0A0A0B';
-        else if (theme === 'dark-terminal') bg = '#050505';
+        else if (theme === 'dark-terminal') bg = '#060B14';
         else if (theme === 'dark-brutalism') bg = '#141416';
         else if (theme === 'light') bg = '#F8FAFC';
         else if (theme === 'light-powdery') bg = '#FFF5F5';
         else if (theme === 'light-mint') bg = '#F8FAF8';
         else if (theme === 'light-neon') bg = '#F8FAFC';
-        else if (theme === 'light-nordic') bg = '#F5F7F6';
+        else if (theme === 'light-nordic') bg = '#F5F8F7';
         else if (theme === 'light-talavera') bg = '#F8F5EE';
-        else if (theme === 'light-terminal') bg = '#F3EDE2';
+        else if (theme === 'light-terminal') bg = '#F0F6FA';
         else if (theme === 'light-brutalism') bg = '#E4E7EB';
         
         tg.setHeaderColor(bg);
