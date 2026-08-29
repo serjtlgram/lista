@@ -1082,7 +1082,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               className={`p-2 rounded-xl border transition active:scale-[0.97] shrink-0 flex items-center justify-center gap-1 font-bold text-xs ${
                 cooldownLeft > 0
                   ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
-                  : 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
+                  : 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
               }`}
               title={
                 cooldownLeft > 0

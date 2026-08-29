@@ -1,15 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   
-  /* Default Dark Theme Variables */
-  --color-bgDark: #0B0D14;
-  --color-cardDark: #161922;
-  --color-cardBorder: #232734;
-  --color-accentViolet: 108 92 231; /* #6C5CE7 */
+  /* Default Dark Theme Variables (Nordic Yule Dark) */
+  --color-bgDark: #0D1114;
+  --color-cardDark: #151B1F;
+  --color-cardBorder: #222B32;
+  --color-accentViolet: 229 169 60; /* #E5A93C */
 }
 
 @layer base {
@@ -18,72 +19,90 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    background-color: #0B0D14;
-    color: #FFFFFF;
+    background-color: #0D1114;
+    color: #F2F6F4;
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
   }
 
-  body.light {
-    --color-bgDark: #F1F5F9;
+  /* ── 1. Nordic Yule ── */
+  body.dark-nordic,
+  body.dark {
+    --color-bgDark: #0D1114;
+    --color-cardDark: #151B1F;
+    --color-cardBorder: #222B32;
+    --color-accentViolet: 229 169 60; /* #E5A93C Candlelight Amber / Gold */
+    background-color: #0D1114;
+    color: #F2F6F4;
+  }
+
+  body.light,
+  body.light-nordic {
+    --color-bgDark: #EBEFEA;
     --color-cardDark: #FFFFFF;
-    --color-cardBorder: #E2E8F0;
-    --color-accentViolet: 108 92 231; /* #6C5CE7 */
-    background-color: #F8FAFC;
-    color: #0F172A;
+    --color-cardBorder: #D3DDD7;
+    --color-accentViolet: 36 88 66; /* #245842 Pine Green */
+    background-color: #F5F7F6;
+    color: #112119;
   }
 
-  body.light-powdery {
-    --color-bgDark: #FFF0F5;
+  /* ── 2. Talavera & Marigold ── */
+  body.dark-talavera {
+    --color-bgDark: #0A0A0B;
+    --color-cardDark: #141416;
+    --color-cardBorder: #26262C;
+    --color-accentViolet: 240 100 24; /* #F06418 Marigold Flame */
+    background-color: #0A0A0B;
+    color: #FAF7EE;
+  }
+
+  body.light-talavera {
+    --color-bgDark: #EFE9DC;
     --color-cardDark: #FFFFFF;
-    --color-cardBorder: #FBCFE8;
-    --color-accentViolet: 214 51 132; /* #D63384 */
-    background-color: #FFF5F5;
-    color: #4A154B;
+    --color-cardBorder: #DED3C1;
+    --color-accentViolet: 217 98 22; /* #D96216 Cempasúchil Orange */
+    background-color: #F8F5EE;
+    color: #1A1D24;
   }
 
-  body.light-mint {
-    --color-bgDark: #F0FDF4;
-    --color-cardDark: #FFFFFF;
-    --color-cardBorder: #BBF7D0;
-    --color-accentViolet: 5 150 105; /* #059669 */
-    background-color: #F8FAF8;
-    color: #064E3B;
-  }
-
-  body.dark-black {
-    --color-bgDark: #09090b;
-    --color-cardDark: #0a0a0a;
-    --color-cardBorder: #1a1a1a;
-    --color-accentViolet: 16 185 129; /* #10B981 */
-    background-color: #000000;
-  }
-
-  body.dark-navy {
-    --color-bgDark: #0f172a;
-    --color-cardDark: #1e293b;
-    --color-cardBorder: #334155;
-    --color-accentViolet: 245 158 11; /* #F59E0B */
-    background-color: #020617;
-  }
-
-  body.dark-neon {
+  /* ── 3. Amber Terminal ── */
+  body.dark-terminal {
     --color-bgDark: #050505;
-    --color-cardDark: #101010;
-    --color-cardBorder: #222222;
-    --color-accentViolet: 236 72 153; /* #EC4899 - Neon Pink */
+    --color-cardDark: #0F0E0B;
+    --color-cardBorder: #2B2312;
+    --color-accentViolet: 255 158 0; /* #FF9E00 Amber Phosphor */
     background-color: #050505;
+    color: #FFB000;
   }
 
-  body.light-neon {
-    --color-bgDark: #ECFEFF;
+  body.light-terminal {
+    --color-bgDark: #E9DFCF;
+    --color-cardDark: #FCF9F2;
+    --color-cardBorder: #D8CDBC;
+    --color-accentViolet: 168 59 36; /* #A83B24 Rust Red */
+    background-color: #F3EDE2;
+    color: #181511;
+  }
+
+  /* ── 4. Industrial Brutalism ── */
+  body.dark-brutalism {
+    --color-bgDark: #141416;
+    --color-cardDark: #202024;
+    --color-cardBorder: #35353B;
+    --color-accentViolet: 234 179 8; /* #EAB308 Lemon Hazard Yellow */
+    background-color: #141416;
+    color: #FFFFFF;
+  }
+
+  body.light-brutalism {
+    --color-bgDark: #D8DCE2;
     --color-cardDark: #FFFFFF;
-    --color-cardBorder: #CFFAFE;
-    --color-accentViolet: 6 182 212; /* #06B6D4 - Cyan */
-    background-color: #F8FAFC;
-    color: #164E63;
+    --color-cardBorder: #BFC6CE;
+    --color-accentViolet: 11 94 215; /* #0B5ED7 Industrial Cobalt Blue */
+    background-color: #E4E7EB;
+    color: #0F172A;
   }
 }
 
@@ -96,179 +115,235 @@
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgba(22, 25, 34, 0.9) 0%, rgba(16, 18, 25, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(21, 27, 31, 0.9) 0%, rgba(13, 17, 20, 0.95) 100%);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-nordic .glass-card,
+body.dark .glass-card {
+  background: linear-gradient(180deg, rgba(21, 27, 31, 0.9) 0%, rgba(13, 17, 20, 0.95) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-talavera .glass-card {
+  background: linear-gradient(180deg, rgba(20, 20, 22, 0.92) 0%, rgba(10, 10, 11, 0.96) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(240, 100, 24, 0.08);
+}
+
+body.dark-terminal .glass-card {
+  background: linear-gradient(180deg, rgba(15, 14, 11, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 158, 0, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.7);
+}
+
+body.dark-brutalism .glass-card {
+  background: linear-gradient(180deg, rgba(32, 32, 36, 0.92) 0%, rgba(20, 20, 22, 0.96) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), 0 4px 20px -2px rgba(0, 0, 0, 0.5);
 }
 
 body.light .glass-card,
-body.light-powdery .glass-card,
-body.light-mint .glass-card,
-body.light-neon .glass-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 1), 0 4px 16px -2px rgba(148, 163, 184, 0.2);
-}
-
-body.dark-black .glass-card {
-  background: linear-gradient(180deg, rgba(15, 15, 15, 0.9) 0%, rgba(5, 5, 5, 0.95) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.6);
-}
-
-body.dark-navy .glass-card {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-}
-
-body.dark-neon .glass-card {
-  background: linear-gradient(180deg, rgba(16, 16, 16, 0.8) 0%, rgba(5, 5, 5, 0.9) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(236, 72, 153, 0.15);
+body.light-nordic .glass-card,
+body.light-talavera .glass-card,
+body.light-terminal .glass-card,
+body.light-brutalism .glass-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 250, 250, 0.92) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 1), 0 4px 16px -2px rgba(100, 116, 139, 0.12);
 }
 
 .nav-item.active {
-  color: #6C5CE7;
+  color: rgb(var(--color-accentViolet));
 }
 .nav-item.active svg {
-  stroke: #6C5CE7;
+  stroke: rgb(var(--color-accentViolet));
 }
 
 /* Light Mode Overrides */
 body.light .bg-cardDark,
-body.light-powdery .bg-cardDark,
-body.light-mint .bg-cardDark,
-body.light-neon .bg-cardDark {
+body.light-nordic .bg-cardDark,
+body.light-talavera .bg-cardDark,
+body.light-brutalism .bg-cardDark {
   background-color: #FFFFFF !important;
 }
-
-body.light .bg-bgDark {
-  background-color: #F1F5F9 !important;
-}
-body.light-powdery .bg-bgDark {
-  background-color: #FFF0F5 !important;
-}
-body.light-mint .bg-bgDark {
-  background-color: #F0FDF4 !important;
-}
-body.light-neon .bg-bgDark {
-  background-color: #ECFEFF !important;
+body.light-terminal .bg-cardDark {
+  background-color: #FCF9F2 !important;
 }
 
-body.light .border-cardBorder {
-  border-color: #E2E8F0 !important;
+body.light .bg-bgDark,
+body.light-nordic .bg-bgDark {
+  background-color: #EBEFEA !important;
 }
-body.light-powdery .border-cardBorder {
-  border-color: #FBCFE8 !important;
+body.light-talavera .bg-bgDark {
+  background-color: #EFE9DC !important;
 }
-body.light-mint .border-cardBorder {
-  border-color: #BBF7D0 !important;
+body.light-terminal .bg-bgDark {
+  background-color: #E9DFCF !important;
 }
-body.light-neon .border-cardBorder {
-  border-color: #CFFAFE !important;
+body.light-brutalism .bg-bgDark {
+  background-color: #D8DCE2 !important;
 }
 
-body.light .bg-cardBorder {
-  background-color: #E2E8F0 !important;
+body.light .border-cardBorder,
+body.light-nordic .border-cardBorder {
+  border-color: #D3DDD7 !important;
 }
-body.light-powdery .bg-cardBorder {
-  background-color: #FBCFE8 !important;
+body.light-talavera .border-cardBorder {
+  border-color: #DED3C1 !important;
 }
-body.light-mint .bg-cardBorder {
-  background-color: #BBF7D0 !important;
+body.light-terminal .border-cardBorder {
+  border-color: #D8CDBC !important;
 }
-body.light-neon .bg-cardBorder {
-  background-color: #CFFAFE !important;
+body.light-brutalism .border-cardBorder {
+  border-color: #BFC6CE !important;
+}
+
+body.light .bg-cardBorder,
+body.light-nordic .bg-cardBorder {
+  background-color: #D3DDD7 !important;
+}
+body.light-talavera .bg-cardBorder {
+  background-color: #DED3C1 !important;
+}
+body.light-terminal .bg-cardBorder {
+  background-color: #D8CDBC !important;
+}
+body.light-brutalism .bg-cardBorder {
+  background-color: #BFC6CE !important;
 }
 
 body.light .text-white,
-body.light .text-gray-100 {
+body.light .text-gray-100,
+body.light-nordic .text-white,
+body.light-nordic .text-gray-100 {
+  color: #112119 !important;
+}
+body.light-talavera .text-white,
+body.light-talavera .text-gray-100 {
+  color: #1A1D24 !important;
+}
+body.light-terminal .text-white,
+body.light-terminal .text-gray-100 {
+  color: #181511 !important;
+}
+body.light-brutalism .text-white,
+body.light-brutalism .text-gray-100 {
   color: #0F172A !important;
 }
-body.light-powdery .text-white,
-body.light-powdery .text-gray-100 {
-  color: #4A154B !important;
-}
-body.light-mint .text-white,
-body.light-mint .text-gray-100 {
-  color: #064E3B !important;
-}
-body.light-neon .text-white,
-body.light-neon .text-gray-100 {
-  color: #164E63 !important;
-}
 
-body.light .text-gray-200 {
+body.light .text-gray-200,
+body.light-nordic .text-gray-200 {
+  color: #283B32 !important;
+}
+body.light-talavera .text-gray-200 {
+  color: #333742 !important;
+}
+body.light-terminal .text-gray-200 {
+  color: #332E26 !important;
+}
+body.light-brutalism .text-gray-200 {
   color: #1E293B !important;
 }
-body.light-powdery .text-gray-200 {
-  color: #701A75 !important;
-}
-body.light-mint .text-gray-200 {
-  color: #065F46 !important;
-}
-body.light-neon .text-gray-200 {
-  color: #0F766E !important;
-}
 
-body.light .text-gray-300 {
+body.light .text-gray-300,
+body.light-nordic .text-gray-300 {
+  color: #42584E !important;
+}
+body.light-talavera .text-gray-300 {
+  color: #555047 !important;
+}
+body.light-terminal .text-gray-300 {
+  color: #544C3F !important;
+}
+body.light-brutalism .text-gray-300 {
   color: #334155 !important;
 }
-body.light-powdery .text-gray-300 {
-  color: #86198F !important;
-}
-body.light-mint .text-gray-300 {
-  color: #047857 !important;
-}
-body.light-neon .text-gray-300 {
-  color: #0E7490 !important;
-}
 
-body.light .text-gray-400 {
+body.light .text-gray-400,
+body.light-nordic .text-gray-400 {
+  color: #61796F !important;
+}
+body.light-talavera .text-gray-400 {
+  color: #7A7264 !important;
+}
+body.light-terminal .text-gray-400 {
+  color: #7D7260 !important;
+}
+body.light-brutalism .text-gray-400 {
   color: #64748B !important;
 }
-body.light-powdery .text-gray-400 {
-  color: #A21CAF !important;
-}
-body.light-mint .text-gray-400 {
-  color: #059669 !important;
-}
-body.light-neon .text-gray-400 {
-  color: #0891B2 !important;
-}
 
-body.light .text-gray-500 {
+body.light .text-gray-500,
+body.light-nordic .text-gray-500 {
+  color: #879D94 !important;
+}
+body.light-talavera .text-gray-500 {
+  color: #A19888 !important;
+}
+body.light-terminal .text-gray-500 {
+  color: #A39682 !important;
+}
+body.light-brutalism .text-gray-500 {
   color: #94A3B8 !important;
 }
-body.light-powdery .text-gray-500 {
-  color: #D946EF !important;
+
+/* Amber Terminal Dark Monochromatic overrides */
+body.dark-terminal .text-gray-100 {
+  color: #FFB000 !important;
 }
-body.light-mint .text-gray-500 {
-  color: #10B981 !important;
+body.dark-terminal .text-gray-200 {
+  color: #E09A00 !important;
 }
-body.light-neon .text-gray-500 {
-  color: #06B6D4 !important;
+body.dark-terminal .text-gray-300 {
+  color: #B87B00 !important;
+}
+body.dark-terminal .text-gray-400 {
+  color: #8A5C00 !important;
+}
+body.dark-terminal .text-gray-500 {
+  color: #664400 !important;
 }
 
-/* Ensure text and icons on active filled accent elements remain crisp white in Light Mode */
+/* Active Accent Elements */
 body.light .bg-accentViolet,
 body.light .bg-accentViolet *,
 body.light button.bg-accentViolet,
 body.light button.bg-accentViolet *,
+body.light-nordic .bg-accentViolet,
+body.light-nordic .bg-accentViolet *,
+body.light-nordic button.bg-accentViolet,
+body.light-nordic button.bg-accentViolet *,
+body.light-talavera .bg-accentViolet,
+body.light-talavera .bg-accentViolet *,
+body.light-talavera button.bg-accentViolet,
+body.light-talavera button.bg-accentViolet *,
+body.light-terminal .bg-accentViolet,
+body.light-terminal .bg-accentViolet *,
+body.light-terminal button.bg-accentViolet,
+body.light-terminal button.bg-accentViolet *,
+body.light-brutalism .bg-accentViolet,
+body.light-brutalism .bg-accentViolet *,
+body.light-brutalism button.bg-accentViolet,
+body.light-brutalism button.bg-accentViolet *,
 body.light .bg-accentTeal.text-white,
 body.light .bg-accentAmber.text-white,
 body.light .bg-accentBlue.text-white,
 body.light .bg-accentPink.text-white,
-body.light .bg-accentGreen.text-white,
-body.light-powdery .bg-accentViolet,
-body.light-powdery .bg-accentViolet *,
-body.light-powdery button.bg-accentViolet,
-body.light-powdery button.bg-accentViolet *,
-body.light-mint .bg-accentViolet,
-body.light-mint .bg-accentViolet *,
-body.light-mint button.bg-accentViolet,
-body.light-mint button.bg-accentViolet *,
-body.light-neon .bg-accentViolet,
-body.light-neon .bg-accentViolet *,
-body.light-neon button.bg-accentViolet,
-body.light-neon button.bg-accentViolet * {
+body.light .bg-accentGreen.text-white {
   color: #FFFFFF !important;
+}
+
+/* Dark Brutalism Lemon Yellow buttons high-contrast black text */
+body.dark-brutalism .bg-accentViolet,
+body.dark-brutalism .bg-accentViolet *,
+body.dark-brutalism button.bg-accentViolet,
+body.dark-brutalism button.bg-accentViolet * {
+  color: #0F172A !important;
+}
+
+/* Dark Terminal Amber buttons high-contrast black text */
+body.dark-terminal .bg-accentViolet,
+body.dark-terminal .bg-accentViolet *,
+body.dark-terminal button.bg-accentViolet,
+body.dark-terminal button.bg-accentViolet * {
+  color: #000000 !important;
 }
 
 /* Banner area overlay text & status button MUST stay bright white in Light Mode */
@@ -279,206 +354,248 @@ body.light .banner-text-content p,
 body.light .status-pill-banner,
 body.light .status-pill-banner *,
 body.light .status-pill-banner span,
-body.light-powdery .banner-text-content,
-body.light-powdery .banner-text-content *,
-body.light-powdery .status-pill-banner,
-body.light-powdery .status-pill-banner *,
-body.light-mint .banner-text-content,
-body.light-mint .banner-text-content *,
-body.light-mint .status-pill-banner,
-body.light-mint .status-pill-banner *,
-body.light-neon .banner-text-content,
-body.light-neon .banner-text-content *,
-body.light-neon .status-pill-banner,
-body.light-neon .status-pill-banner * {
+body.light-nordic .banner-text-content,
+body.light-nordic .banner-text-content *,
+body.light-nordic .status-pill-banner,
+body.light-nordic .status-pill-banner *,
+body.light-talavera .banner-text-content,
+body.light-talavera .banner-text-content *,
+body.light-talavera .status-pill-banner,
+body.light-talavera .status-pill-banner *,
+body.light-terminal .banner-text-content,
+body.light-terminal .banner-text-content *,
+body.light-terminal .status-pill-banner,
+body.light-terminal .status-pill-banner *,
+body.light-brutalism .banner-text-content,
+body.light-brutalism .banner-text-content *,
+body.light-brutalism .status-pill-banner,
+body.light-brutalism .status-pill-banner * {
   color: #FFFFFF !important;
 }
 
-/* Light mode hover:bg-bgDark and hover:bg-cardDark overrides */
+/* Light mode hover overrides */
 body.light .hover\:bg-bgDark:hover,
-body.light [class*="hover:bg-bgDark"]:hover {
-  background-color: #F1F5F9 !important;
+body.light [class*="hover:bg-bgDark"]:hover,
+body.light-nordic .hover\:bg-bgDark:hover,
+body.light-nordic [class*="hover:bg-bgDark"]:hover {
+  background-color: #EBEFEA !important;
 }
-body.light-powdery .hover\:bg-bgDark:hover,
-body.light-powdery [class*="hover:bg-bgDark"]:hover {
-  background-color: #FFF0F5 !important;
+body.light-talavera .hover\:bg-bgDark:hover,
+body.light-talavera [class*="hover:bg-bgDark"]:hover {
+  background-color: #EFE9DC !important;
 }
-body.light-mint .hover\:bg-bgDark:hover,
-body.light-mint [class*="hover:bg-bgDark"]:hover {
-  background-color: #F0FDF4 !important;
+body.light-terminal .hover\:bg-bgDark:hover,
+body.light-terminal [class*="hover:bg-bgDark"]:hover {
+  background-color: #E9DFCF !important;
 }
-body.light-neon .hover\:bg-bgDark:hover,
-body.light-neon [class*="hover:bg-bgDark"]:hover {
-  background-color: #ECFEFF !important;
+body.light-brutalism .hover\:bg-bgDark:hover,
+body.light-brutalism [class*="hover:bg-bgDark"]:hover {
+  background-color: #D8DCE2 !important;
 }
 
 body.light .hover\:bg-cardDark:hover,
 body.light [class*="hover:bg-cardDark"]:hover,
-body.light-powdery .hover\:bg-cardDark:hover,
-body.light-powdery [class*="hover:bg-cardDark"]:hover,
-body.light-mint .hover\:bg-cardDark:hover,
-body.light-mint [class*="hover:bg-cardDark"]:hover,
-body.light-neon .hover\:bg-cardDark:hover,
-body.light-neon [class*="hover:bg-cardDark"]:hover {
+body.light-nordic .hover\:bg-cardDark:hover,
+body.light-nordic [class*="hover:bg-cardDark"]:hover,
+body.light-talavera .hover\:bg-cardDark:hover,
+body.light-talavera [class*="hover:bg-cardDark"]:hover,
+body.light-brutalism .hover\:bg-cardDark:hover,
+body.light-brutalism [class*="hover:bg-cardDark"]:hover {
   background-color: #FFFFFF !important;
+}
+body.light-terminal .hover\:bg-cardDark:hover,
+body.light-terminal [class*="hover:bg-cardDark"]:hover {
+  background-color: #FCF9F2 !important;
 }
 
 /* Dropdown menu & Suggestions contrast rules for Light Mode */
 body.light .dropdown-menu-container,
 body.light .suggestion-popup-container,
-body.light-powdery .dropdown-menu-container,
-body.light-powdery .suggestion-popup-container,
-body.light-mint .dropdown-menu-container,
-body.light-mint .suggestion-popup-container,
-body.light-neon .dropdown-menu-container,
-body.light-neon .suggestion-popup-container {
+body.light-nordic .dropdown-menu-container,
+body.light-nordic .suggestion-popup-container,
+body.light-talavera .dropdown-menu-container,
+body.light-talavera .suggestion-popup-container,
+body.light-terminal .dropdown-menu-container,
+body.light-terminal .suggestion-popup-container,
+body.light-brutalism .dropdown-menu-container,
+body.light-brutalism .suggestion-popup-container {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
+body.light-terminal .dropdown-menu-container,
+body.light-terminal .suggestion-popup-container {
+  background-color: #FCF9F2 !important;
+  border-color: #D8CDBC !important;
+}
+
 body.light .suggestion-item,
-body.light-powdery .suggestion-item,
-body.light-mint .suggestion-item,
-body.light-neon .suggestion-item {
+body.light-nordic .suggestion-item,
+body.light-talavera .suggestion-item,
+body.light-terminal .suggestion-item,
+body.light-brutalism .suggestion-item {
   background-color: transparent !important;
 }
 
-body.light .suggestion-item:hover {
-  background-color: #F1F5F9 !important;
+body.light .suggestion-item:hover,
+body.light-nordic .suggestion-item:hover {
+  background-color: #EBEFEA !important;
 }
-body.light-powdery .suggestion-item:hover {
-  background-color: #FFF0F5 !important;
+body.light-talavera .suggestion-item:hover {
+  background-color: #EFE9DC !important;
 }
-body.light-mint .suggestion-item:hover {
-  background-color: #F0FDF4 !important;
+body.light-terminal .suggestion-item:hover {
+  background-color: #E9DFCF !important;
 }
-body.light-neon .suggestion-item:hover {
-  background-color: #ECFEFF !important;
+body.light-brutalism .suggestion-item:hover {
+  background-color: #D8DCE2 !important;
 }
 
-body.light .suggestion-item .suggestion-title {
+body.light .suggestion-item .suggestion-title,
+body.light-nordic .suggestion-item .suggestion-title {
+  color: #112119 !important;
+}
+body.light-talavera .suggestion-item .suggestion-title {
+  color: #1A1D24 !important;
+}
+body.light-terminal .suggestion-item .suggestion-title {
+  color: #181511 !important;
+}
+body.light-brutalism .suggestion-item .suggestion-title {
   color: #0F172A !important;
 }
-body.light-powdery .suggestion-item .suggestion-title {
-  color: #4A154B !important;
-}
-body.light-mint .suggestion-item .suggestion-title {
-  color: #064E3B !important;
-}
-body.light-neon .suggestion-item .suggestion-title {
-  color: #164E63 !important;
-}
 
-body.light .suggestion-item .suggestion-sub {
+body.light .suggestion-item .suggestion-sub,
+body.light-nordic .suggestion-item .suggestion-sub {
+  color: #61796F !important;
+}
+body.light-talavera .suggestion-item .suggestion-sub {
+  color: #7A7264 !important;
+}
+body.light-terminal .suggestion-item .suggestion-sub {
+  color: #7D7260 !important;
+}
+body.light-brutalism .suggestion-item .suggestion-sub {
   color: #64748B !important;
-}
-body.light-powdery .suggestion-item .suggestion-sub {
-  color: #A21CAF !important;
-}
-body.light-mint .suggestion-item .suggestion-sub {
-  color: #059669 !important;
-}
-body.light-neon .suggestion-item .suggestion-sub {
-  color: #0891B2 !important;
 }
 
 body.light .dropdown-option-inactive,
-body.light-powdery .dropdown-option-inactive,
-body.light-mint .dropdown-option-inactive,
-body.light-neon .dropdown-option-inactive {
+body.light-nordic .dropdown-option-inactive,
+body.light-talavera .dropdown-option-inactive,
+body.light-terminal .dropdown-option-inactive,
+body.light-brutalism .dropdown-option-inactive {
   background-color: transparent !important;
 }
 
-body.light .dropdown-option-inactive {
+body.light .dropdown-option-inactive,
+body.light-nordic .dropdown-option-inactive {
+  color: #42584E !important;
+}
+body.light-talavera .dropdown-option-inactive {
+  color: #555047 !important;
+}
+body.light-terminal .dropdown-option-inactive {
+  color: #544C3F !important;
+}
+body.light-brutalism .dropdown-option-inactive {
   color: #334155 !important;
 }
-body.light-powdery .dropdown-option-inactive {
-  color: #86198F !important;
-}
-body.light-mint .dropdown-option-inactive {
-  color: #047857 !important;
-}
-body.light-neon .dropdown-option-inactive {
-  color: #0E7490 !important;
-}
 
-body.light .dropdown-option-inactive:hover {
-  background-color: #F1F5F9 !important;
+body.light .dropdown-option-inactive:hover,
+body.light-nordic .dropdown-option-inactive:hover {
+  background-color: #EBEFEA !important;
+  color: #112119 !important;
+}
+body.light-talavera .dropdown-option-inactive:hover {
+  background-color: #EFE9DC !important;
+  color: #1A1D24 !important;
+}
+body.light-terminal .dropdown-option-inactive:hover {
+  background-color: #E9DFCF !important;
+  color: #181511 !important;
+}
+body.light-brutalism .dropdown-option-inactive:hover {
+  background-color: #D8DCE2 !important;
   color: #0F172A !important;
-}
-body.light-powdery .dropdown-option-inactive:hover {
-  background-color: #FFF0F5 !important;
-  color: #4A154B !important;
-}
-body.light-mint .dropdown-option-inactive:hover {
-  background-color: #F0FDF4 !important;
-  color: #064E3B !important;
-}
-body.light-neon .dropdown-option-inactive:hover {
-  background-color: #ECFEFF !important;
-  color: #164E63 !important;
 }
 
 body.light .dropdown-option-active,
 body.light .dropdown-option-active *,
 body.light .dropdown-option-active span,
-body.light-powdery .dropdown-option-active,
-body.light-powdery .dropdown-option-active *,
-body.light-powdery .dropdown-option-active span,
-body.light-mint .dropdown-option-active,
-body.light-mint .dropdown-option-active *,
-body.light-mint .dropdown-option-active span,
-body.light-neon .dropdown-option-active,
-body.light-neon .dropdown-option-active *,
-body.light-neon .dropdown-option-active span {
+body.light-nordic .dropdown-option-active,
+body.light-nordic .dropdown-option-active *,
+body.light-nordic .dropdown-option-active span,
+body.light-talavera .dropdown-option-active,
+body.light-talavera .dropdown-option-active *,
+body.light-talavera .dropdown-option-active span,
+body.light-terminal .dropdown-option-active,
+body.light-terminal .dropdown-option-active *,
+body.light-terminal .dropdown-option-active span,
+body.light-brutalism .dropdown-option-active,
+body.light-brutalism .dropdown-option-active *,
+body.light-brutalism .dropdown-option-active span {
   background-color: rgb(var(--color-accentViolet)) !important;
   color: #FFFFFF !important;
 }
 
 body.light nav,
-body.light-powdery nav,
-body.light-mint nav,
-body.light-neon nav {
-  background-color: rgba(255, 255, 255, 0.92) !important;
-  box-shadow: 0 10px 30px rgba(148, 163, 184, 0.3) !important;
+body.light-nordic nav,
+body.light-talavera nav,
+body.light-terminal nav,
+body.light-brutalism nav {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 10px 30px rgba(100, 116, 139, 0.2) !important;
 }
 
 body.light input,
 body.light select,
 body.light textarea,
-body.light-powdery input,
-body.light-powdery select,
-body.light-powdery textarea,
-body.light-mint input,
-body.light-mint select,
-body.light-mint textarea,
-body.light-neon input,
-body.light-neon select,
-body.light-neon textarea {
+body.light-nordic input,
+body.light-nordic select,
+body.light-nordic textarea,
+body.light-talavera input,
+body.light-talavera select,
+body.light-talavera textarea,
+body.light-terminal input,
+body.light-terminal select,
+body.light-terminal textarea,
+body.light-brutalism input,
+body.light-brutalism select,
+body.light-brutalism textarea {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
 }
 
+body.light-terminal input,
+body.light-terminal select,
+body.light-terminal textarea {
+  background-color: #FCF9F2 !important;
+  border-color: #D8CDBC !important;
+}
+
 body.light input,
 body.light select,
-body.light textarea {
+body.light textarea,
+body.light-nordic input,
+body.light-nordic select,
+body.light-nordic textarea {
+  color: #112119 !important;
+}
+body.light-talavera input,
+body.light-talavera select,
+body.light-talavera textarea {
+  color: #1A1D24 !important;
+}
+body.light-terminal input,
+body.light-terminal select,
+body.light-terminal textarea {
+  color: #181511 !important;
+}
+body.light-brutalism input,
+body.light-brutalism select,
+body.light-brutalism textarea {
   color: #0F172A !important;
-}
-body.light-powdery input,
-body.light-powdery select,
-body.light-powdery textarea {
-  color: #4A154B !important;
-}
-body.light-mint input,
-body.light-mint select,
-body.light-mint textarea {
-  color: #064E3B !important;
-}
-body.light-neon input,
-body.light-neon select,
-body.light-neon textarea {
-  color: #164E63 !important;
 }
 
 @keyframes slideUp {

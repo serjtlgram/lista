@@ -196,9 +196,13 @@ export function App() {
         });
 
         tg.CloudStorage.getItem('lista_theme', (err: any, val: string) => {
-          if (!err && val && ['dark', 'dark-black', 'dark-navy', 'light', 'light-powdery', 'light-mint'].includes(val)) {
-            setTheme(val);
-            localStorage.setItem('lista_theme', val);
+          if (!err && val) {
+            const valid = ['dark-nordic', 'dark-talavera', 'dark-terminal', 'dark-brutalism', 'light-nordic', 'light-talavera', 'light-terminal', 'light-brutalism', 'dark', 'light'];
+            if (valid.includes(val)) {
+              const mapped = val === 'dark' ? 'dark-nordic' : val === 'light' ? 'light-nordic' : val;
+              setTheme(mapped);
+              localStorage.setItem('lista_theme', mapped);
+            }
           }
         });
       } catch (e) {
@@ -210,30 +214,50 @@ export function App() {
   // Handle theme changes
   useEffect(() => {
     // Clear all previous theme classes
-    document.body.classList.remove('light', 'light-powdery', 'light-mint', 'light-neon', 'dark-black', 'dark-navy', 'dark-neon');
+    document.body.classList.remove(
+      'light',
+      'light-nordic',
+      'light-talavera',
+      'light-terminal',
+      'light-brutalism',
+      'dark',
+      'dark-nordic',
+      'dark-talavera',
+      'dark-terminal',
+      'dark-brutalism',
+      'light-powdery',
+      'light-mint',
+      'light-neon',
+      'dark-black',
+      'dark-navy',
+      'dark-neon'
+    );
     
     if (theme.startsWith('light')) {
       document.body.classList.add('light');
-      if (theme === 'light-powdery') document.body.classList.add('light-powdery');
-      if (theme === 'light-mint') document.body.classList.add('light-mint');
-      if (theme === 'light-neon') document.body.classList.add('light-neon');
+      if (theme === 'light-talavera') document.body.classList.add('light-talavera');
+      else if (theme === 'light-terminal') document.body.classList.add('light-terminal');
+      else if (theme === 'light-brutalism') document.body.classList.add('light-brutalism');
+      else document.body.classList.add('light-nordic');
     } else {
-      if (theme === 'dark-black') document.body.classList.add('dark-black');
-      if (theme === 'dark-navy') document.body.classList.add('dark-navy');
-      if (theme === 'dark-neon') document.body.classList.add('dark-neon');
+      if (theme === 'dark-talavera') document.body.classList.add('dark-talavera');
+      else if (theme === 'dark-terminal') document.body.classList.add('dark-terminal');
+      else if (theme === 'dark-brutalism') document.body.classList.add('dark-brutalism');
+      else document.body.classList.add('dark-nordic');
     }
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       try {
-        let bg = '#0B0D14'; // default dark
-        if (theme === 'dark-black') bg = '#000000';
-        if (theme === 'dark-navy') bg = '#020617';
-        if (theme === 'dark-neon') bg = '#050505';
-        if (theme === 'light') bg = '#F8FAFC';
-        if (theme === 'light-powdery') bg = '#FFF5F5';
-        if (theme === 'light-mint') bg = '#F8FAF8';
-        if (theme === 'light-neon') bg = '#F8FAFC';
+        let bg = '#0D1114'; // default dark-nordic
+        if (theme === 'dark-nordic' || theme === 'dark') bg = '#0D1114';
+        if (theme === 'dark-talavera') bg = '#0A0A0B';
+        if (theme === 'dark-terminal') bg = '#050505';
+        if (theme === 'dark-brutalism') bg = '#141416';
+        if (theme === 'light-nordic' || theme === 'light') bg = '#F5F7F6';
+        if (theme === 'light-talavera') bg = '#F8F5EE';
+        if (theme === 'light-terminal') bg = '#F3EDE2';
+        if (theme === 'light-brutalism') bg = '#E4E7EB';
         
         tg.setHeaderColor(bg);
         tg.setBackgroundColor(bg);

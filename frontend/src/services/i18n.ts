@@ -88,11 +88,22 @@ export const setStoredLanguage = (lang: Language): void => {
 
 export const getStoredTheme = (): string => {
   const stored = localStorage.getItem('lista_theme');
-  if (stored && ['dark', 'dark-black', 'dark-navy', 'dark-neon', 'light', 'light-powdery', 'light-mint', 'light-neon'].includes(stored)) {
+  const validThemes = [
+    'dark-nordic',
+    'dark-talavera',
+    'dark-terminal',
+    'dark-brutalism',
+    'light-nordic',
+    'light-talavera',
+    'light-terminal',
+    'light-brutalism',
+  ];
+  if (stored && validThemes.includes(stored)) {
     return stored;
   }
-  if (stored === 'light') return 'light';
-  return 'dark';
+  if (stored === 'light' || stored === 'light-powdery' || stored === 'light-mint' || stored === 'light-neon') return 'light-nordic';
+  if (stored === 'dark' || stored === 'dark-black' || stored === 'dark-navy' || stored === 'dark-neon') return 'dark-nordic';
+  return 'dark-nordic';
 };
 
 export const setStoredTheme = (theme: string): void => {

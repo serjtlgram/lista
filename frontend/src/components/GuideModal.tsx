@@ -123,7 +123,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
         }}
       >
         {/* Top gradient accent line */}
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #6C5CE7, #a29bfe, #00CEC9, #EC4899)' }} />
+        <div style={{ height: '3px', background: 'linear-gradient(90deg, rgb(var(--color-accentViolet)), rgba(var(--color-accentViolet), 0.5), #00CEC9)' }} />
 
         {/* Modal Header */}
         <div className="px-5 pt-5 pb-3.5 flex items-center justify-between border-b border-cardBorder/50 shrink-0">
@@ -154,7 +154,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t }) =>
           <div
             className="glass-card rounded-2xl p-3.5 space-y-2.5 border"
             style={{
-              borderColor: isLight ? 'rgba(108, 92, 231, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+              borderColor: isLight ? 'rgba(var(--color-accentViolet), 0.2)' : 'rgba(255, 255, 255, 0.1)',
               background: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.04)',
             }}
           >

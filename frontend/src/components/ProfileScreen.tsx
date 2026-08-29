@@ -179,7 +179,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onThemeChange(currentTheme.startsWith('dark') ? currentTheme : 'dark')}
+            onClick={() => {
+              if (currentTheme.startsWith('dark')) return;
+              const darkMap: Record<string, string> = {
+                'light-nordic': 'dark-nordic',
+                'light-talavera': 'dark-talavera',
+                'light-terminal': 'dark-terminal',
+                'light-brutalism': 'dark-brutalism',
+                'light': 'dark-nordic',
+              };
+              onThemeChange(darkMap[currentTheme] || 'dark-nordic');
+            }}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
               currentTheme.startsWith('dark')
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
@@ -191,7 +201,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </button>
 
           <button
-            onClick={() => onThemeChange(currentTheme.startsWith('light') ? currentTheme : 'light')}
+            onClick={() => {
+              if (currentTheme.startsWith('light')) return;
+              const lightMap: Record<string, string> = {
+                'dark-nordic': 'light-nordic',
+                'dark-talavera': 'light-talavera',
+                'dark-terminal': 'light-terminal',
+                'dark-brutalism': 'light-brutalism',
+                'dark': 'light-nordic',
+              };
+              onThemeChange(lightMap[currentTheme] || 'light-nordic');
+            }}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
               currentTheme.startsWith('light')
                 ? 'bg-accentViolet text-white border-accentViolet shadow-md shadow-accentViolet/30'
@@ -207,73 +227,111 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Dark variants */}
           <div className="flex justify-center gap-2 sm:gap-3">
+            {/* 1. Nordic Yule Dark */}
             <button
-              onClick={() => onThemeChange('dark')}
-              className={`w-6 h-6 rounded-full bg-[#0B0D14] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'dark' ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('dark-nordic')}
+              title="Nordic Yule (Dark)"
+              className={`w-6 h-6 rounded-full bg-[#0D1114] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-nordic' || currentTheme === 'dark'
+                  ? 'border-[#E5A93C] scale-110 shadow-md shadow-[#E5A93C]/40 ring-1 ring-[#E5A93C]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#E5A93C]"></div>
             </button>
+
+            {/* 2. Talavera & Marigold Dark */}
             <button
-              onClick={() => onThemeChange('dark-black')}
-              className={`w-6 h-6 rounded-full bg-[#000000] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'dark-black' ? 'border-[#10B981] scale-110 shadow-md shadow-[#10B981]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('dark-talavera')}
+              title="Talavera & Marigold (Dark)"
+              className={`w-6 h-6 rounded-full bg-[#0A0A0B] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-talavera'
+                  ? 'border-[#F06418] scale-110 shadow-md shadow-[#F06418]/40 ring-1 ring-[#F06418]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#F06418]"></div>
             </button>
+
+            {/* 3. Amber Terminal Dark */}
             <button
-              onClick={() => onThemeChange('dark-navy')}
-              className={`w-6 h-6 rounded-full bg-[#0f172a] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'dark-navy' ? 'border-[#F59E0B] scale-110 shadow-md shadow-[#F59E0B]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
-              }`}
-            >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
-            </button>
-            <button
-              onClick={() => onThemeChange('dark-neon')}
+              onClick={() => onThemeChange('dark-terminal')}
+              title="Amber Terminal (Dark)"
               className={`w-6 h-6 rounded-full bg-[#050505] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'dark-neon' ? 'border-[#EC4899] scale-110 shadow-md shadow-[#EC4899]/30' : 'border-gray-600 opacity-50 hover:opacity-100'
+                currentTheme === 'dark-terminal'
+                  ? 'border-[#FF9E00] scale-110 shadow-md shadow-[#FF9E00]/40 ring-1 ring-[#FF9E00]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#EC4899]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#FF9E00]"></div>
+            </button>
+
+            {/* 4. Industrial Brutalism Dark */}
+            <button
+              onClick={() => onThemeChange('dark-brutalism')}
+              title="Industrial Brutalism (Dark)"
+              className={`w-6 h-6 rounded-full bg-[#141416] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-brutalism'
+                  ? 'border-[#EAB308] scale-110 shadow-md shadow-[#EAB308]/40 ring-1 ring-[#EAB308]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EAB308]"></div>
             </button>
           </div>
           
           {/* Light variants */}
           <div className="flex justify-center gap-2 sm:gap-3">
+            {/* 1. Nordic Yule Light */}
             <button
-              onClick={() => onThemeChange('light')}
-              className={`w-6 h-6 rounded-full bg-[#F8FAFC] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'light' ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('light-nordic')}
+              title="Nordic Yule (Light)"
+              className={`w-6 h-6 rounded-full bg-[#F5F7F6] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-nordic' || currentTheme === 'light'
+                  ? 'border-[#245842] scale-110 shadow-md shadow-[#245842]/40 ring-1 ring-[#245842]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#245842]"></div>
             </button>
+
+            {/* 2. Talavera & Marigold Light */}
             <button
-              onClick={() => onThemeChange('light-powdery')}
-              className={`w-6 h-6 rounded-full bg-[#FFF5F5] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'light-powdery' ? 'border-[#D63384] scale-110 shadow-md shadow-[#D63384]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('light-talavera')}
+              title="Talavera & Marigold (Light)"
+              className={`w-6 h-6 rounded-full bg-[#F8F5EE] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-talavera'
+                  ? 'border-[#D96216] scale-110 shadow-md shadow-[#D96216]/40 ring-1 ring-[#D96216]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#D63384]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#D96216]"></div>
             </button>
+
+            {/* 3. Amber Terminal Light */}
             <button
-              onClick={() => onThemeChange('light-mint')}
-              className={`w-6 h-6 rounded-full bg-[#F0FDF4] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'light-mint' ? 'border-[#059669] scale-110 shadow-md shadow-[#059669]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('light-terminal')}
+              title="Amber Terminal (Light)"
+              className={`w-6 h-6 rounded-full bg-[#F3EDE2] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-terminal'
+                  ? 'border-[#A83B24] scale-110 shadow-md shadow-[#A83B24]/40 ring-1 ring-[#A83B24]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#059669]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#A83B24]"></div>
             </button>
+
+            {/* 4. Industrial Brutalism Light */}
             <button
-              onClick={() => onThemeChange('light-neon')}
-              className={`w-6 h-6 rounded-full bg-[#ECFEFF] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'light-neon' ? 'border-[#06B6D4] scale-110 shadow-md shadow-[#06B6D4]/30' : 'border-gray-400 opacity-50 hover:opacity-100'
+              onClick={() => onThemeChange('light-brutalism')}
+              title="Industrial Brutalism (Light)"
+              className={`w-6 h-6 rounded-full bg-[#E4E7EB] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-brutalism'
+                  ? 'border-[#0B5ED7] scale-110 shadow-md shadow-[#0B5ED7]/40 ring-1 ring-[#0B5ED7]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#06B6D4]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0B5ED7]"></div>
             </button>
           </div>
         </div>
