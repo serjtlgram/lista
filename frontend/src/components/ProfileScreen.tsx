@@ -182,13 +182,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => {
               if (currentTheme.startsWith('dark')) return;
               const darkMap: Record<string, string> = {
+                'light': 'dark',
+                'light-powdery': 'dark-black',
+                'light-mint': 'dark-navy',
+                'light-neon': 'dark-neon',
                 'light-nordic': 'dark-nordic',
                 'light-talavera': 'dark-talavera',
                 'light-terminal': 'dark-terminal',
                 'light-brutalism': 'dark-brutalism',
-                'light': 'dark-nordic',
               };
-              onThemeChange(darkMap[currentTheme] || 'dark-nordic');
+              onThemeChange(darkMap[currentTheme] || 'dark');
             }}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
               currentTheme.startsWith('dark')
@@ -204,13 +207,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => {
               if (currentTheme.startsWith('light')) return;
               const lightMap: Record<string, string> = {
+                'dark': 'light',
+                'dark-black': 'light-powdery',
+                'dark-navy': 'light-mint',
+                'dark-neon': 'light-neon',
                 'dark-nordic': 'light-nordic',
                 'dark-talavera': 'light-talavera',
                 'dark-terminal': 'light-terminal',
                 'dark-brutalism': 'light-brutalism',
-                'dark': 'light-nordic',
               };
-              onThemeChange(lightMap[currentTheme] || 'light-nordic');
+              onThemeChange(lightMap[currentTheme] || 'light');
             }}
             className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition border ${
               currentTheme.startsWith('light')
@@ -223,16 +229,115 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </button>
         </div>
 
-        {/* Color Theme Selector Circles */}
+        {/* Row 1: Classic Themes */}
         <div className="grid grid-cols-2 gap-2 pt-1">
-          {/* Dark variants */}
+          {/* Dark Classic variants */}
+          <div className="flex justify-center gap-2 sm:gap-3">
+            <button
+              onClick={() => onThemeChange('dark')}
+              title="Classic Dark"
+              className={`w-6 h-6 rounded-full bg-[#0B0D14] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark'
+                  ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/40 ring-1 ring-[#6C5CE7]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('dark-black')}
+              title="Onyx Black"
+              className={`w-6 h-6 rounded-full bg-[#000000] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-black'
+                  ? 'border-[#10B981] scale-110 shadow-md shadow-[#10B981]/40 ring-1 ring-[#10B981]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('dark-navy')}
+              title="Deep Navy"
+              className={`w-6 h-6 rounded-full bg-[#0f172a] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-navy'
+                  ? 'border-[#F59E0B] scale-110 shadow-md shadow-[#F59E0B]/40 ring-1 ring-[#F59E0B]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('dark-neon')}
+              title="Cyber Neon"
+              className={`w-6 h-6 rounded-full bg-[#050505] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'dark-neon'
+                  ? 'border-[#EC4899] scale-110 shadow-md shadow-[#EC4899]/40 ring-1 ring-[#EC4899]/50'
+                  : 'border-gray-600 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EC4899]"></div>
+            </button>
+          </div>
+          
+          {/* Light Classic variants */}
+          <div className="flex justify-center gap-2 sm:gap-3">
+            <button
+              onClick={() => onThemeChange('light')}
+              title="Classic Light"
+              className={`w-6 h-6 rounded-full bg-[#F8FAFC] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light'
+                  ? 'border-[#6C5CE7] scale-110 shadow-md shadow-[#6C5CE7]/40 ring-1 ring-[#6C5CE7]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6C5CE7]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-powdery')}
+              title="Soft Rose"
+              className={`w-6 h-6 rounded-full bg-[#FFF5F5] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-powdery'
+                  ? 'border-[#D63384] scale-110 shadow-md shadow-[#D63384]/40 ring-1 ring-[#D63384]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#D63384]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-mint')}
+              title="Fresh Mint"
+              className={`w-6 h-6 rounded-full bg-[#F0FDF4] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-mint'
+                  ? 'border-[#059669] scale-110 shadow-md shadow-[#059669]/40 ring-1 ring-[#059669]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#059669]"></div>
+            </button>
+            <button
+              onClick={() => onThemeChange('light-neon')}
+              title="Ice Cyan"
+              className={`w-6 h-6 rounded-full bg-[#ECFEFF] border-2 flex items-center justify-center transition-all ${
+                currentTheme === 'light-neon'
+                  ? 'border-[#06B6D4] scale-110 shadow-md shadow-[#06B6D4]/40 ring-1 ring-[#06B6D4]/50'
+                  : 'border-gray-400 opacity-50 hover:opacity-100'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#06B6D4]"></div>
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Thematic Themes */}
+        <div className="grid grid-cols-2 gap-2 pt-0.5">
+          {/* Dark Thematic variants */}
           <div className="flex justify-center gap-2 sm:gap-3">
             {/* 1. Nordic Yule Dark */}
             <button
               onClick={() => onThemeChange('dark-nordic')}
               title="Nordic Yule (Dark)"
               className={`w-6 h-6 rounded-full bg-[#0D1114] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'dark-nordic' || currentTheme === 'dark'
+                currentTheme === 'dark-nordic'
                   ? 'border-[#E5A93C] scale-110 shadow-md shadow-[#E5A93C]/40 ring-1 ring-[#E5A93C]/50'
                   : 'border-gray-600 opacity-50 hover:opacity-100'
               }`}
@@ -243,7 +348,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* 2. Talavera & Marigold Dark */}
             <button
               onClick={() => onThemeChange('dark-talavera')}
-              title="Talavera & Marigold (Dark)"
+              title="Día de Muertos (Dark)"
               className={`w-6 h-6 rounded-full bg-[#0A0A0B] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'dark-talavera'
                   ? 'border-[#F06418] scale-110 shadow-md shadow-[#F06418]/40 ring-1 ring-[#F06418]/50'
@@ -280,14 +385,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </button>
           </div>
           
-          {/* Light variants */}
+          {/* Light Thematic variants */}
           <div className="flex justify-center gap-2 sm:gap-3">
             {/* 1. Nordic Yule Light */}
             <button
               onClick={() => onThemeChange('light-nordic')}
               title="Nordic Yule (Light)"
               className={`w-6 h-6 rounded-full bg-[#F5F7F6] border-2 flex items-center justify-center transition-all ${
-                currentTheme === 'light-nordic' || currentTheme === 'light'
+                currentTheme === 'light-nordic'
                   ? 'border-[#245842] scale-110 shadow-md shadow-[#245842]/40 ring-1 ring-[#245842]/50'
                   : 'border-gray-400 opacity-50 hover:opacity-100'
               }`}
@@ -298,7 +403,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* 2. Talavera & Marigold Light */}
             <button
               onClick={() => onThemeChange('light-talavera')}
-              title="Talavera & Marigold (Light)"
+              title="Día de Muertos (Light)"
               className={`w-6 h-6 rounded-full bg-[#F8F5EE] border-2 flex items-center justify-center transition-all ${
                 currentTheme === 'light-talavera'
                   ? 'border-[#D96216] scale-110 shadow-md shadow-[#D96216]/40 ring-1 ring-[#D96216]/50'

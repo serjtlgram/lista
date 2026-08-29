@@ -197,11 +197,27 @@ export function App() {
 
         tg.CloudStorage.getItem('lista_theme', (err: any, val: string) => {
           if (!err && val) {
-            const valid = ['dark-nordic', 'dark-talavera', 'dark-terminal', 'dark-brutalism', 'light-nordic', 'light-talavera', 'light-terminal', 'light-brutalism', 'dark', 'light'];
+            const valid = [
+              'dark',
+              'dark-black',
+              'dark-navy',
+              'dark-neon',
+              'light',
+              'light-powdery',
+              'light-mint',
+              'light-neon',
+              'dark-nordic',
+              'dark-talavera',
+              'dark-terminal',
+              'dark-brutalism',
+              'light-nordic',
+              'light-talavera',
+              'light-terminal',
+              'light-brutalism',
+            ];
             if (valid.includes(val)) {
-              const mapped = val === 'dark' ? 'dark-nordic' : val === 'light' ? 'light-nordic' : val;
-              setTheme(mapped);
-              localStorage.setItem('lista_theme', mapped);
+              setTheme(val);
+              localStorage.setItem('lista_theme', val);
             }
           }
         });
@@ -216,48 +232,46 @@ export function App() {
     // Clear all previous theme classes
     document.body.classList.remove(
       'light',
+      'light-powdery',
+      'light-mint',
+      'light-neon',
       'light-nordic',
       'light-talavera',
       'light-terminal',
       'light-brutalism',
       'dark',
+      'dark-black',
+      'dark-navy',
+      'dark-neon',
       'dark-nordic',
       'dark-talavera',
       'dark-terminal',
-      'dark-brutalism',
-      'light-powdery',
-      'light-mint',
-      'light-neon',
-      'dark-black',
-      'dark-navy',
-      'dark-neon'
+      'dark-brutalism'
     );
     
-    if (theme.startsWith('light')) {
-      document.body.classList.add('light');
-      if (theme === 'light-talavera') document.body.classList.add('light-talavera');
-      else if (theme === 'light-terminal') document.body.classList.add('light-terminal');
-      else if (theme === 'light-brutalism') document.body.classList.add('light-brutalism');
-      else document.body.classList.add('light-nordic');
-    } else {
-      if (theme === 'dark-talavera') document.body.classList.add('dark-talavera');
-      else if (theme === 'dark-terminal') document.body.classList.add('dark-terminal');
-      else if (theme === 'dark-brutalism') document.body.classList.add('dark-brutalism');
-      else document.body.classList.add('dark-nordic');
-    }
+    // Apply selected theme class
+    document.body.classList.add(theme);
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       try {
-        let bg = '#0D1114'; // default dark-nordic
-        if (theme === 'dark-nordic' || theme === 'dark') bg = '#0D1114';
-        if (theme === 'dark-talavera') bg = '#0A0A0B';
-        if (theme === 'dark-terminal') bg = '#050505';
-        if (theme === 'dark-brutalism') bg = '#141416';
-        if (theme === 'light-nordic' || theme === 'light') bg = '#F5F7F6';
-        if (theme === 'light-talavera') bg = '#F8F5EE';
-        if (theme === 'light-terminal') bg = '#F3EDE2';
-        if (theme === 'light-brutalism') bg = '#E4E7EB';
+        let bg = '#0B0D14'; // default dark
+        if (theme === 'dark') bg = '#0B0D14';
+        else if (theme === 'dark-black') bg = '#000000';
+        else if (theme === 'dark-navy') bg = '#020617';
+        else if (theme === 'dark-neon') bg = '#050505';
+        else if (theme === 'dark-nordic') bg = '#0D1114';
+        else if (theme === 'dark-talavera') bg = '#0A0A0B';
+        else if (theme === 'dark-terminal') bg = '#050505';
+        else if (theme === 'dark-brutalism') bg = '#141416';
+        else if (theme === 'light') bg = '#F8FAFC';
+        else if (theme === 'light-powdery') bg = '#FFF5F5';
+        else if (theme === 'light-mint') bg = '#F8FAF8';
+        else if (theme === 'light-neon') bg = '#F8FAFC';
+        else if (theme === 'light-nordic') bg = '#F5F7F6';
+        else if (theme === 'light-talavera') bg = '#F8F5EE';
+        else if (theme === 'light-terminal') bg = '#F3EDE2';
+        else if (theme === 'light-brutalism') bg = '#E4E7EB';
         
         tg.setHeaderColor(bg);
         tg.setBackgroundColor(bg);

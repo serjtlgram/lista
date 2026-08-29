@@ -6,11 +6,11 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   
-  /* Default Dark Theme Variables (Nordic Yule Dark) */
-  --color-bgDark: #0D1114;
-  --color-cardDark: #151B1F;
-  --color-cardBorder: #222B32;
-  --color-accentViolet: 229 169 60; /* #E5A93C */
+  /* Default Dark Theme Variables (Classic Dark) */
+  --color-bgDark: #0B0D14;
+  --color-cardDark: #161922;
+  --color-cardBorder: #232734;
+  --color-accentViolet: 108 92 231; /* #6C5CE7 */
 }
 
 @layer base {
@@ -19,17 +19,90 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    background-color: #0D1114;
-    color: #F2F6F4;
+    background-color: #0B0D14;
+    color: #FFFFFF;
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
   }
 
-  /* ── 1. Nordic Yule ── */
-  body.dark-nordic,
+  /* ── Row 1: Classic Dark Themes ── */
   body.dark {
+    --color-bgDark: #0B0D14;
+    --color-cardDark: #161922;
+    --color-cardBorder: #232734;
+    --color-accentViolet: 108 92 231; /* #6C5CE7 */
+    background-color: #0B0D14;
+    color: #FFFFFF;
+  }
+
+  body.dark-black {
+    --color-bgDark: #09090b;
+    --color-cardDark: #0a0a0a;
+    --color-cardBorder: #1a1a1a;
+    --color-accentViolet: 16 185 129; /* #10B981 */
+    background-color: #000000;
+    color: #FFFFFF;
+  }
+
+  body.dark-navy {
+    --color-bgDark: #0f172a;
+    --color-cardDark: #1e293b;
+    --color-cardBorder: #334155;
+    --color-accentViolet: 245 158 11; /* #F59E0B */
+    background-color: #020617;
+    color: #FFFFFF;
+  }
+
+  body.dark-neon {
+    --color-bgDark: #050505;
+    --color-cardDark: #101010;
+    --color-cardBorder: #222222;
+    --color-accentViolet: 236 72 153; /* #EC4899 */
+    background-color: #050505;
+    color: #FFFFFF;
+  }
+
+  /* ── Row 1: Classic Light Themes ── */
+  body.light {
+    --color-bgDark: #F1F5F9;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #E2E8F0;
+    --color-accentViolet: 108 92 231; /* #6C5CE7 */
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  body.light-powdery {
+    --color-bgDark: #FFF0F5;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #FBCFE8;
+    --color-accentViolet: 214 51 132; /* #D63384 */
+    background-color: #FFF5F5;
+    color: #4A154B;
+  }
+
+  body.light-mint {
+    --color-bgDark: #F0FDF4;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #BBF7D0;
+    --color-accentViolet: 5 150 105; /* #059669 */
+    background-color: #F8FAF8;
+    color: #064E3B;
+  }
+
+  body.light-neon {
+    --color-bgDark: #ECFEFF;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #CFFAFE;
+    --color-accentViolet: 6 182 212; /* #06B6D4 */
+    background-color: #F8FAFC;
+    color: #164E63;
+  }
+
+  /* ── Row 2: Thematic Dark Themes ── */
+  body.dark-nordic {
     --color-bgDark: #0D1114;
     --color-cardDark: #151B1F;
     --color-cardBorder: #222B32;
@@ -38,17 +111,6 @@
     color: #F2F6F4;
   }
 
-  body.light,
-  body.light-nordic {
-    --color-bgDark: #EBEFEA;
-    --color-cardDark: #FFFFFF;
-    --color-cardBorder: #D3DDD7;
-    --color-accentViolet: 36 88 66; /* #245842 Pine Green */
-    background-color: #F5F7F6;
-    color: #112119;
-  }
-
-  /* ── 2. Talavera & Marigold ── */
   body.dark-talavera {
     --color-bgDark: #0A0A0B;
     --color-cardDark: #141416;
@@ -56,6 +118,34 @@
     --color-accentViolet: 240 100 24; /* #F06418 Marigold Flame */
     background-color: #0A0A0B;
     color: #FAF7EE;
+  }
+
+  body.dark-terminal {
+    --color-bgDark: #050505;
+    --color-cardDark: #0F0E0B;
+    --color-cardBorder: #2B2312;
+    --color-accentViolet: 255 158 0; /* #FF9E00 Amber Phosphor */
+    background-color: #050505;
+    color: #FFB000;
+  }
+
+  body.dark-brutalism {
+    --color-bgDark: #141416;
+    --color-cardDark: #202024;
+    --color-cardBorder: #35353B;
+    --color-accentViolet: 234 179 8; /* #EAB308 Lemon Hazard Yellow */
+    background-color: #141416;
+    color: #FFFFFF;
+  }
+
+  /* ── Row 2: Thematic Light Themes ── */
+  body.light-nordic {
+    --color-bgDark: #EBEFEA;
+    --color-cardDark: #FFFFFF;
+    --color-cardBorder: #D3DDD7;
+    --color-accentViolet: 36 88 66; /* #245842 Pine Green */
+    background-color: #F5F7F6;
+    color: #112119;
   }
 
   body.light-talavera {
@@ -67,16 +157,6 @@
     color: #1A1D24;
   }
 
-  /* ── 3. Amber Terminal ── */
-  body.dark-terminal {
-    --color-bgDark: #050505;
-    --color-cardDark: #0F0E0B;
-    --color-cardBorder: #2B2312;
-    --color-accentViolet: 255 158 0; /* #FF9E00 Amber Phosphor */
-    background-color: #050505;
-    color: #FFB000;
-  }
-
   body.light-terminal {
     --color-bgDark: #E9DFCF;
     --color-cardDark: #FCF9F2;
@@ -84,16 +164,6 @@
     --color-accentViolet: 168 59 36; /* #A83B24 Rust Red */
     background-color: #F3EDE2;
     color: #181511;
-  }
-
-  /* ── 4. Industrial Brutalism ── */
-  body.dark-brutalism {
-    --color-bgDark: #141416;
-    --color-cardDark: #202024;
-    --color-cardBorder: #35353B;
-    --color-accentViolet: 234 179 8; /* #EAB308 Lemon Hazard Yellow */
-    background-color: #141416;
-    color: #FFFFFF;
   }
 
   body.light-brutalism {
@@ -115,12 +185,31 @@
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgba(21, 27, 31, 0.9) 0%, rgba(13, 17, 20, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(22, 25, 34, 0.9) 0%, rgba(16, 18, 25, 0.95) 100%);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
 }
 
-body.dark-nordic .glass-card,
 body.dark .glass-card {
+  background: linear-gradient(180deg, rgba(22, 25, 34, 0.9) 0%, rgba(16, 18, 25, 0.95) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-black .glass-card {
+  background: linear-gradient(180deg, rgba(15, 15, 15, 0.9) 0%, rgba(5, 5, 5, 0.95) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-navy .glass-card {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-neon .glass-card {
+  background: linear-gradient(180deg, rgba(16, 16, 16, 0.8) 0%, rgba(5, 5, 5, 0.9) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(236, 72, 153, 0.15);
+}
+
+body.dark-nordic .glass-card {
   background: linear-gradient(180deg, rgba(21, 27, 31, 0.9) 0%, rgba(13, 17, 20, 0.95) 100%);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
 }
@@ -140,13 +229,17 @@ body.dark-brutalism .glass-card {
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), 0 4px 20px -2px rgba(0, 0, 0, 0.5);
 }
 
+/* Light Mode Glass Cards */
 body.light .glass-card,
+body.light-powdery .glass-card,
+body.light-mint .glass-card,
+body.light-neon .glass-card,
 body.light-nordic .glass-card,
 body.light-talavera .glass-card,
 body.light-terminal .glass-card,
 body.light-brutalism .glass-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 250, 250, 0.92) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 1), 0 4px 16px -2px rgba(100, 116, 139, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.9) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 1), 0 4px 16px -2px rgba(148, 163, 184, 0.2);
 }
 
 .nav-item.active {
@@ -158,6 +251,9 @@ body.light-brutalism .glass-card {
 
 /* Light Mode Overrides */
 body.light .bg-cardDark,
+body.light-powdery .bg-cardDark,
+body.light-mint .bg-cardDark,
+body.light-neon .bg-cardDark,
 body.light-nordic .bg-cardDark,
 body.light-talavera .bg-cardDark,
 body.light-brutalism .bg-cardDark {
@@ -167,7 +263,18 @@ body.light-terminal .bg-cardDark {
   background-color: #FCF9F2 !important;
 }
 
-body.light .bg-bgDark,
+body.light .bg-bgDark {
+  background-color: #F1F5F9 !important;
+}
+body.light-powdery .bg-bgDark {
+  background-color: #FFF0F5 !important;
+}
+body.light-mint .bg-bgDark {
+  background-color: #F0FDF4 !important;
+}
+body.light-neon .bg-bgDark {
+  background-color: #ECFEFF !important;
+}
 body.light-nordic .bg-bgDark {
   background-color: #EBEFEA !important;
 }
@@ -181,7 +288,18 @@ body.light-brutalism .bg-bgDark {
   background-color: #D8DCE2 !important;
 }
 
-body.light .border-cardBorder,
+body.light .border-cardBorder {
+  border-color: #E2E8F0 !important;
+}
+body.light-powdery .border-cardBorder {
+  border-color: #FBCFE8 !important;
+}
+body.light-mint .border-cardBorder {
+  border-color: #BBF7D0 !important;
+}
+body.light-neon .border-cardBorder {
+  border-color: #CFFAFE !important;
+}
 body.light-nordic .border-cardBorder {
   border-color: #D3DDD7 !important;
 }
@@ -195,7 +313,18 @@ body.light-brutalism .border-cardBorder {
   border-color: #BFC6CE !important;
 }
 
-body.light .bg-cardBorder,
+body.light .bg-cardBorder {
+  background-color: #E2E8F0 !important;
+}
+body.light-powdery .bg-cardBorder {
+  background-color: #FBCFE8 !important;
+}
+body.light-mint .bg-cardBorder {
+  background-color: #BBF7D0 !important;
+}
+body.light-neon .bg-cardBorder {
+  background-color: #CFFAFE !important;
+}
 body.light-nordic .bg-cardBorder {
   background-color: #D3DDD7 !important;
 }
@@ -210,7 +339,21 @@ body.light-brutalism .bg-cardBorder {
 }
 
 body.light .text-white,
-body.light .text-gray-100,
+body.light .text-gray-100 {
+  color: #0F172A !important;
+}
+body.light-powdery .text-white,
+body.light-powdery .text-gray-100 {
+  color: #4A154B !important;
+}
+body.light-mint .text-white,
+body.light-mint .text-gray-100 {
+  color: #064E3B !important;
+}
+body.light-neon .text-white,
+body.light-neon .text-gray-100 {
+  color: #164E63 !important;
+}
 body.light-nordic .text-white,
 body.light-nordic .text-gray-100 {
   color: #112119 !important;
@@ -228,7 +371,18 @@ body.light-brutalism .text-gray-100 {
   color: #0F172A !important;
 }
 
-body.light .text-gray-200,
+body.light .text-gray-200 {
+  color: #1E293B !important;
+}
+body.light-powdery .text-gray-200 {
+  color: #701A75 !important;
+}
+body.light-mint .text-gray-200 {
+  color: #065F46 !important;
+}
+body.light-neon .text-gray-200 {
+  color: #0F766E !important;
+}
 body.light-nordic .text-gray-200 {
   color: #283B32 !important;
 }
@@ -242,7 +396,18 @@ body.light-brutalism .text-gray-200 {
   color: #1E293B !important;
 }
 
-body.light .text-gray-300,
+body.light .text-gray-300 {
+  color: #334155 !important;
+}
+body.light-powdery .text-gray-300 {
+  color: #86198F !important;
+}
+body.light-mint .text-gray-300 {
+  color: #047857 !important;
+}
+body.light-neon .text-gray-300 {
+  color: #0E7490 !important;
+}
 body.light-nordic .text-gray-300 {
   color: #42584E !important;
 }
@@ -256,7 +421,18 @@ body.light-brutalism .text-gray-300 {
   color: #334155 !important;
 }
 
-body.light .text-gray-400,
+body.light .text-gray-400 {
+  color: #64748B !important;
+}
+body.light-powdery .text-gray-400 {
+  color: #A21CAF !important;
+}
+body.light-mint .text-gray-400 {
+  color: #059669 !important;
+}
+body.light-neon .text-gray-400 {
+  color: #0891B2 !important;
+}
 body.light-nordic .text-gray-400 {
   color: #61796F !important;
 }
@@ -270,7 +446,18 @@ body.light-brutalism .text-gray-400 {
   color: #64748B !important;
 }
 
-body.light .text-gray-500,
+body.light .text-gray-500 {
+  color: #94A3B8 !important;
+}
+body.light-powdery .text-gray-500 {
+  color: #D946EF !important;
+}
+body.light-mint .text-gray-500 {
+  color: #10B981 !important;
+}
+body.light-neon .text-gray-500 {
+  color: #06B6D4 !important;
+}
 body.light-nordic .text-gray-500 {
   color: #879D94 !important;
 }
@@ -306,6 +493,18 @@ body.light .bg-accentViolet,
 body.light .bg-accentViolet *,
 body.light button.bg-accentViolet,
 body.light button.bg-accentViolet *,
+body.light-powdery .bg-accentViolet,
+body.light-powdery .bg-accentViolet *,
+body.light-powdery button.bg-accentViolet,
+body.light-powdery button.bg-accentViolet *,
+body.light-mint .bg-accentViolet,
+body.light-mint .bg-accentViolet *,
+body.light-mint button.bg-accentViolet,
+body.light-mint button.bg-accentViolet *,
+body.light-neon .bg-accentViolet,
+body.light-neon .bg-accentViolet *,
+body.light-neon button.bg-accentViolet,
+body.light-neon button.bg-accentViolet *,
 body.light-nordic .bg-accentViolet,
 body.light-nordic .bg-accentViolet *,
 body.light-nordic button.bg-accentViolet,
@@ -354,6 +553,18 @@ body.light .banner-text-content p,
 body.light .status-pill-banner,
 body.light .status-pill-banner *,
 body.light .status-pill-banner span,
+body.light-powdery .banner-text-content,
+body.light-powdery .banner-text-content *,
+body.light-powdery .status-pill-banner,
+body.light-powdery .status-pill-banner *,
+body.light-mint .banner-text-content,
+body.light-mint .banner-text-content *,
+body.light-mint .status-pill-banner,
+body.light-mint .status-pill-banner *,
+body.light-neon .banner-text-content,
+body.light-neon .banner-text-content *,
+body.light-neon .status-pill-banner,
+body.light-neon .status-pill-banner *,
 body.light-nordic .banner-text-content,
 body.light-nordic .banner-text-content *,
 body.light-nordic .status-pill-banner,
@@ -375,7 +586,21 @@ body.light-brutalism .status-pill-banner * {
 
 /* Light mode hover overrides */
 body.light .hover\:bg-bgDark:hover,
-body.light [class*="hover:bg-bgDark"]:hover,
+body.light [class*="hover:bg-bgDark"]:hover {
+  background-color: #F1F5F9 !important;
+}
+body.light-powdery .hover\:bg-bgDark:hover,
+body.light-powdery [class*="hover:bg-bgDark"]:hover {
+  background-color: #FFF0F5 !important;
+}
+body.light-mint .hover\:bg-bgDark:hover,
+body.light-mint [class*="hover:bg-bgDark"]:hover {
+  background-color: #F0FDF4 !important;
+}
+body.light-neon .hover\:bg-bgDark:hover,
+body.light-neon [class*="hover:bg-bgDark"]:hover {
+  background-color: #ECFEFF !important;
+}
 body.light-nordic .hover\:bg-bgDark:hover,
 body.light-nordic [class*="hover:bg-bgDark"]:hover {
   background-color: #EBEFEA !important;
@@ -395,6 +620,12 @@ body.light-brutalism [class*="hover:bg-bgDark"]:hover {
 
 body.light .hover\:bg-cardDark:hover,
 body.light [class*="hover:bg-cardDark"]:hover,
+body.light-powdery .hover\:bg-cardDark:hover,
+body.light-powdery [class*="hover:bg-cardDark"]:hover,
+body.light-mint .hover\:bg-cardDark:hover,
+body.light-mint [class*="hover:bg-cardDark"]:hover,
+body.light-neon .hover\:bg-cardDark:hover,
+body.light-neon [class*="hover:bg-cardDark"]:hover,
 body.light-nordic .hover\:bg-cardDark:hover,
 body.light-nordic [class*="hover:bg-cardDark"]:hover,
 body.light-talavera .hover\:bg-cardDark:hover,
@@ -411,6 +642,12 @@ body.light-terminal [class*="hover:bg-cardDark"]:hover {
 /* Dropdown menu & Suggestions contrast rules for Light Mode */
 body.light .dropdown-menu-container,
 body.light .suggestion-popup-container,
+body.light-powdery .dropdown-menu-container,
+body.light-powdery .suggestion-popup-container,
+body.light-mint .dropdown-menu-container,
+body.light-mint .suggestion-popup-container,
+body.light-neon .dropdown-menu-container,
+body.light-neon .suggestion-popup-container,
 body.light-nordic .dropdown-menu-container,
 body.light-nordic .suggestion-popup-container,
 body.light-talavera .dropdown-menu-container,
@@ -431,6 +668,9 @@ body.light-terminal .suggestion-popup-container {
 }
 
 body.light .suggestion-item,
+body.light-powdery .suggestion-item,
+body.light-mint .suggestion-item,
+body.light-neon .suggestion-item,
 body.light-nordic .suggestion-item,
 body.light-talavera .suggestion-item,
 body.light-terminal .suggestion-item,
@@ -438,7 +678,18 @@ body.light-brutalism .suggestion-item {
   background-color: transparent !important;
 }
 
-body.light .suggestion-item:hover,
+body.light .suggestion-item:hover {
+  background-color: #F1F5F9 !important;
+}
+body.light-powdery .suggestion-item:hover {
+  background-color: #FFF0F5 !important;
+}
+body.light-mint .suggestion-item:hover {
+  background-color: #F0FDF4 !important;
+}
+body.light-neon .suggestion-item:hover {
+  background-color: #ECFEFF !important;
+}
 body.light-nordic .suggestion-item:hover {
   background-color: #EBEFEA !important;
 }
@@ -452,7 +703,18 @@ body.light-brutalism .suggestion-item:hover {
   background-color: #D8DCE2 !important;
 }
 
-body.light .suggestion-item .suggestion-title,
+body.light .suggestion-item .suggestion-title {
+  color: #0F172A !important;
+}
+body.light-powdery .suggestion-item .suggestion-title {
+  color: #4A154B !important;
+}
+body.light-mint .suggestion-item .suggestion-title {
+  color: #064E3B !important;
+}
+body.light-neon .suggestion-item .suggestion-title {
+  color: #164E63 !important;
+}
 body.light-nordic .suggestion-item .suggestion-title {
   color: #112119 !important;
 }
@@ -466,7 +728,18 @@ body.light-brutalism .suggestion-item .suggestion-title {
   color: #0F172A !important;
 }
 
-body.light .suggestion-item .suggestion-sub,
+body.light .suggestion-item .suggestion-sub {
+  color: #64748B !important;
+}
+body.light-powdery .suggestion-item .suggestion-sub {
+  color: #A21CAF !important;
+}
+body.light-mint .suggestion-item .suggestion-sub {
+  color: #059669 !important;
+}
+body.light-neon .suggestion-item .suggestion-sub {
+  color: #0891B2 !important;
+}
 body.light-nordic .suggestion-item .suggestion-sub {
   color: #61796F !important;
 }
@@ -481,6 +754,9 @@ body.light-brutalism .suggestion-item .suggestion-sub {
 }
 
 body.light .dropdown-option-inactive,
+body.light-powdery .dropdown-option-inactive,
+body.light-mint .dropdown-option-inactive,
+body.light-neon .dropdown-option-inactive,
 body.light-nordic .dropdown-option-inactive,
 body.light-talavera .dropdown-option-inactive,
 body.light-terminal .dropdown-option-inactive,
@@ -488,7 +764,18 @@ body.light-brutalism .dropdown-option-inactive {
   background-color: transparent !important;
 }
 
-body.light .dropdown-option-inactive,
+body.light .dropdown-option-inactive {
+  color: #334155 !important;
+}
+body.light-powdery .dropdown-option-inactive {
+  color: #86198F !important;
+}
+body.light-mint .dropdown-option-inactive {
+  color: #047857 !important;
+}
+body.light-neon .dropdown-option-inactive {
+  color: #0E7490 !important;
+}
 body.light-nordic .dropdown-option-inactive {
   color: #42584E !important;
 }
@@ -502,7 +789,22 @@ body.light-brutalism .dropdown-option-inactive {
   color: #334155 !important;
 }
 
-body.light .dropdown-option-inactive:hover,
+body.light .dropdown-option-inactive:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+body.light-powdery .dropdown-option-inactive:hover {
+  background-color: #FFF0F5 !important;
+  color: #4A154B !important;
+}
+body.light-mint .dropdown-option-inactive:hover {
+  background-color: #F0FDF4 !important;
+  color: #064E3B !important;
+}
+body.light-neon .dropdown-option-inactive:hover {
+  background-color: #ECFEFF !important;
+  color: #164E63 !important;
+}
 body.light-nordic .dropdown-option-inactive:hover {
   background-color: #EBEFEA !important;
   color: #112119 !important;
@@ -523,6 +825,15 @@ body.light-brutalism .dropdown-option-inactive:hover {
 body.light .dropdown-option-active,
 body.light .dropdown-option-active *,
 body.light .dropdown-option-active span,
+body.light-powdery .dropdown-option-active,
+body.light-powdery .dropdown-option-active *,
+body.light-powdery .dropdown-option-active span,
+body.light-mint .dropdown-option-active,
+body.light-mint .dropdown-option-active *,
+body.light-mint .dropdown-option-active span,
+body.light-neon .dropdown-option-active,
+body.light-neon .dropdown-option-active *,
+body.light-neon .dropdown-option-active span,
 body.light-nordic .dropdown-option-active,
 body.light-nordic .dropdown-option-active *,
 body.light-nordic .dropdown-option-active span,
@@ -540,6 +851,9 @@ body.light-brutalism .dropdown-option-active span {
 }
 
 body.light nav,
+body.light-powdery nav,
+body.light-mint nav,
+body.light-neon nav,
 body.light-nordic nav,
 body.light-talavera nav,
 body.light-terminal nav,
@@ -551,6 +865,15 @@ body.light-brutalism nav {
 body.light input,
 body.light select,
 body.light textarea,
+body.light-powdery input,
+body.light-powdery select,
+body.light-powdery textarea,
+body.light-mint input,
+body.light-mint select,
+body.light-mint textarea,
+body.light-neon input,
+body.light-neon select,
+body.light-neon textarea,
 body.light-nordic input,
 body.light-nordic select,
 body.light-nordic textarea,
@@ -576,7 +899,24 @@ body.light-terminal textarea {
 
 body.light input,
 body.light select,
-body.light textarea,
+body.light textarea {
+  color: #0F172A !important;
+}
+body.light-powdery input,
+body.light-powdery select,
+body.light-powdery textarea {
+  color: #4A154B !important;
+}
+body.light-mint input,
+body.light-mint select,
+body.light-mint textarea {
+  color: #064E3B !important;
+}
+body.light-neon input,
+body.light-neon select,
+body.light-neon textarea {
+  color: #164E63 !important;
+}
 body.light-nordic input,
 body.light-nordic select,
 body.light-nordic textarea {

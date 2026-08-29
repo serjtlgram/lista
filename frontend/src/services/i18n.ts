@@ -89,6 +89,16 @@ export const setStoredLanguage = (lang: Language): void => {
 export const getStoredTheme = (): string => {
   const stored = localStorage.getItem('lista_theme');
   const validThemes = [
+    // Classic (Row 1)
+    'dark',
+    'dark-black',
+    'dark-navy',
+    'dark-neon',
+    'light',
+    'light-powdery',
+    'light-mint',
+    'light-neon',
+    // Thematic (Row 2)
     'dark-nordic',
     'dark-talavera',
     'dark-terminal',
@@ -101,9 +111,7 @@ export const getStoredTheme = (): string => {
   if (stored && validThemes.includes(stored)) {
     return stored;
   }
-  if (stored === 'light' || stored === 'light-powdery' || stored === 'light-mint' || stored === 'light-neon') return 'light-nordic';
-  if (stored === 'dark' || stored === 'dark-black' || stored === 'dark-navy' || stored === 'dark-neon') return 'dark-nordic';
-  return 'dark-nordic';
+  return 'dark';
 };
 
 export const setStoredTheme = (theme: string): void => {
