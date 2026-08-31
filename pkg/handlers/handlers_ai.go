@@ -853,8 +853,8 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 	modelsToTry := []modelConfig{
 		{
 			name:            "accounts/fireworks/models/glm-5p3-flash",
-			reasoningEffort: "none",
-			maxTokens:       2048,
+			reasoningEffort: "low",
+			maxTokens:       4096,
 		},
 	}
 

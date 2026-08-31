@@ -32,9 +32,10 @@ async function test() {
     },
     body: JSON.stringify({
       model: 'accounts/fireworks/models/glm-5p3-flash',
+      reasoning_effort: 'low',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
-      max_tokens: 2048
+      max_tokens: 4096
     })
   });
   console.timeEnd('fetch');

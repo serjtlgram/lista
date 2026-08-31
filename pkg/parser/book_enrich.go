@@ -328,13 +328,14 @@ Return only a valid JSON object without markdown:
 
 	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/glm-5p3-flash",
+		"model":            "accounts/fireworks/models/glm-5p3-flash",
+		"reasoning_effort": "low",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
 		"temperature":     0.1,
-		"max_tokens":      1024,
+		"max_tokens":      2048,
 	}
 
 	bodyBytes, _ := json.Marshal(reqBodyMap)
