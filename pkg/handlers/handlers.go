@@ -190,6 +190,10 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 		return nil
 	}
 	ctx := r.Context()
+	langCode := strings.TrimSpace(u.LanguageCode)
+	if acceptLang := strings.TrimSpace(r.Header.Get("Accept-Language")); acceptLang != "" {
+		langCode = acceptLang
+	}
 	query := `
 		INSERT INTO users (
 			id, username, first_name, last_name, photo_url, language_code, is_premium, allows_write_to_pm, visits_count, created_at, updated_at
@@ -201,7 +205,7 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 			first_name = EXCLUDED.first_name,
 			last_name = EXCLUDED.last_name,
 			photo_url = EXCLUDED.photo_url,
-			language_code = EXCLUDED.language_code,
+			language_code = CASE WHEN EXCLUDED.language_code != '' THEN EXCLUDED.language_code ELSE users.language_code END,
 			is_premium = EXCLUDED.is_premium,
 			allows_write_to_pm = EXCLUDED.allows_write_to_pm,
 			visits_count = CASE 
@@ -210,7 +214,7 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 			END,
 			updated_at = CURRENT_TIMESTAMP;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL, u.LanguageCode, u.IsPremium, u.AllowsWriteToPM)
+	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL, langCode, u.IsPremium, u.AllowsWriteToPM)
 	if err != nil {
 		return err
 	}
@@ -219,7 +223,7 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 	// If welcomed was false, this UPDATE changes 1 row to true, giving us execution right to send the message ONCE
 	res, err := h.DB.Pool.Exec(ctx, "UPDATE users SET welcomed = true WHERE id = $1 AND welcomed = false", u.ID)
 	if err == nil && res.RowsAffected() == 1 {
-		go h.sendWelcomeMessage(u.ID, u.LanguageCode)
+		go h.sendWelcomeMessage(u.ID, langCode)
 	}
 
 	return nil

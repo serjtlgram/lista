@@ -524,6 +524,7 @@ function safeBase64Decode(str: string): any {
     triggerHaptic();
     setLanguage(newLang);
     setStoredLanguage(newLang);
+    api.getProfile().catch(() => {});
   };
 
   const handleThemeChange = (newTheme: string) => {

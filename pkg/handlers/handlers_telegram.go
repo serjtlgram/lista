@@ -9,11 +9,13 @@ import (
 	"html"
 	"io"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -89,22 +91,23 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 		log.Printf("[TelegramWebhook] Incoming message from %d: %q", userID, msgText)
 
 		if strings.HasPrefix(msgText, "/start") {
+			langCode := update.Message.From.LanguageCode
 			if h.DB != nil && h.DB.Pool != nil {
 				query := `
-					INSERT INTO users (id, username, first_name, last_name, welcomed, updated_at)
-					VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+					INSERT INTO users (id, username, first_name, last_name, language_code, welcomed, updated_at)
+					VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP)
 					ON CONFLICT (id) DO UPDATE SET
 						username = EXCLUDED.username,
 						first_name = EXCLUDED.first_name,
 						last_name = EXCLUDED.last_name,
+						language_code = CASE WHEN EXCLUDED.language_code != '' THEN EXCLUDED.language_code ELSE users.language_code END,
 						welcomed = true,
 						updated_at = CURRENT_TIMESTAMP;
 				`
-				_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName)
+				_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName, langCode)
 			}
 
 			// Always send welcome message when user explicitly presses /start command
-			langCode := update.Message.From.LanguageCode
 			go h.sendWelcomeMessage(userID, langCode)
 		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stats") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
 			go h.handleAdminCommand(userID, update.Message.From.Username, msgText)
@@ -588,15 +591,16 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 
 	if h.DB != nil && h.DB.Pool != nil && from != nil {
 		userQuery := `
-			INSERT INTO users (id, username, first_name, last_name, updated_at)
-			VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+			INSERT INTO users (id, username, first_name, last_name, language_code, updated_at)
+			VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 			ON CONFLICT (id) DO UPDATE SET
 				username = EXCLUDED.username,
 				first_name = EXCLUDED.first_name,
 				last_name = EXCLUDED.last_name,
+				language_code = CASE WHEN EXCLUDED.language_code != '' THEN EXCLUDED.language_code ELSE users.language_code END,
 				updated_at = CURRENT_TIMESTAMP;
 		`
-		_, _ = h.DB.Pool.Exec(context.Background(), userQuery, from.ID, from.Username, from.FirstName, from.LastName)
+		_, _ = h.DB.Pool.Exec(context.Background(), userQuery, from.ID, from.Username, from.FirstName, from.LastName, from.LanguageCode)
 	}
 
 	var media *parser.ExtractedMedia
@@ -958,7 +962,17 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 
 		var sb strings.Builder
 		sb.WriteString("📊 <b>Общая статистика Lista</b>\n\n")
-		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи:</b> %d чел.\n\n", totalUsers))
+		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи:</b> %d чел.\n", totalUsers))
+		langStats := h.getUserLanguageStats(ctx, totalUsers)
+		for _, ls := range langStats {
+			pctRounded := math.Round(ls.Percentage)
+			if pctRounded < 1 && ls.Percentage > 0 {
+				sb.WriteString(fmt.Sprintf("  • %s: <b>%d</b> <i>(&lt;1%%)</i>\n", ls.Label, ls.Count))
+			} else {
+				sb.WriteString(fmt.Sprintf("  • %s: <b>%d</b> <i>(%.0f%%)</i>\n", ls.Label, ls.Count, pctRounded))
+			}
+		}
+		sb.WriteString("\n")
 
 		sb.WriteString(fmt.Sprintf("👤 <b>Элементы пользователей (всего %s):</b>\n", formatNumberSpace(totalUserItems)))
 		for _, catKey := range []string{"movie", "show", "book", "game"} {
@@ -1013,8 +1027,20 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			return
 		}
 
-		msg := fmt.Sprintf("📊 <b>Статистика пользователей</b>\n\n👥 Всего пользователей в приложении: <b>%d</b>", totalUsers)
-		h.sendAdminBotMessage(userID, msg)
+		langStats := h.getUserLanguageStats(ctx, totalUsers)
+
+		var sb strings.Builder
+		sb.WriteString("📊 <b>Статистика пользователей</b>\n\n")
+		sb.WriteString(fmt.Sprintf("👥 Всего пользователей в приложении: <b>%d</b>\n", totalUsers))
+		for _, ls := range langStats {
+			pctRounded := math.Round(ls.Percentage)
+			if pctRounded < 1 && ls.Percentage > 0 {
+				sb.WriteString(fmt.Sprintf("  • %s: <b>%d</b> <i>(&lt;1%%)</i>\n", ls.Label, ls.Count))
+			} else {
+				sb.WriteString(fmt.Sprintf("  • %s: <b>%d</b> <i>(%.0f%%)</i>\n", ls.Label, ls.Count, pctRounded))
+			}
+		}
+		h.sendAdminBotMessage(userID, sb.String())
 
 	case "/users_list", "/list", "/userslist", "/admin_users":
 		if h.DB == nil || h.DB.Pool == nil {
@@ -1024,7 +1050,7 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
 
 		rows, err := h.DB.Pool.Query(ctx, `
-			SELECT id, username, first_name, last_name, created_at, updated_at
+			SELECT id, username, first_name, last_name, COALESCE(language_code, ''), created_at, updated_at
 			FROM users
 			WHERE id != 0
 			ORDER BY created_at ASC;
@@ -1040,10 +1066,10 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 
 		for rows.Next() {
 			var id int64
-			var uname, fName, lName string
+			var uname, fName, lName, langCode string
 			var createdAt, updatedAt time.Time
 
-			if err := rows.Scan(&id, &uname, &fName, &lName, &createdAt, &updatedAt); err != nil {
+			if err := rows.Scan(&id, &uname, &fName, &lName, &langCode, &createdAt, &updatedAt); err != nil {
 				continue
 			}
 
@@ -1059,10 +1085,19 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 				userDisplay = html.EscapeString(fullName)
 			}
 
+			langFlag := ""
+			if langCode != "" {
+				_, label := formatLanguageLabel(langCode)
+				fields := strings.Fields(label)
+				if len(fields) > 0 {
+					langFlag = fields[0] + " "
+				}
+			}
+
 			firstIn := fmt.Sprintf("%d.%d.%02d", createdAt.Day(), int(createdAt.Month()), createdAt.Year()%100)
 			lastIn := fmt.Sprintf("%d.%d.%02d", updatedAt.Day(), int(updatedAt.Month()), updatedAt.Year()%100)
 
-			entry := fmt.Sprintf("%s %s-%s\n", userDisplay, firstIn, lastIn)
+			entry := fmt.Sprintf("%s%s %s-%s\n", langFlag, userDisplay, firstIn, lastIn)
 
 			if sb.Len()+len(entry) > 3900 {
 				h.sendAdminBotMessage(userID, sb.String())
@@ -1075,6 +1110,168 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			h.sendAdminBotMessage(userID, sb.String())
 		}
 	}
+}
+
+type LanguageStat struct {
+	Code       string
+	Label      string
+	Count      int
+	Percentage float64
+}
+
+func formatLanguageLabel(code string) (string, string) {
+	c := strings.ToLower(strings.TrimSpace(code))
+	if len(c) > 2 && (strings.Contains(c, "-") || strings.Contains(c, "_")) {
+		c = strings.Split(strings.ReplaceAll(c, "_", "-"), "-")[0]
+	}
+	switch c {
+	case "ru":
+		return "ru", "🇷🇺 Русский"
+	case "uk", "ua":
+		return "uk", "🇺🇦 Українська"
+	case "en":
+		return "en", "🇬🇧 English"
+	case "es":
+		return "es", "🇪🇸 Español"
+	case "uz":
+		return "uz", "🇺🇿 O'zbek"
+	case "kk", "kz":
+		return "kk", "🇰🇿 Қазақ"
+	case "be", "by":
+		return "be", "🇧🇾 Беларуская"
+	case "de":
+		return "de", "🇩🇪 Deutsch"
+	case "fr":
+		return "fr", "🇫🇷 Français"
+	case "it":
+		return "it", "🇮🇹 Italiano"
+	case "pl":
+		return "pl", "🇵🇱 Polski"
+	case "tr":
+		return "tr", "🇹🇷 Türkçe"
+	case "pt":
+		return "pt", "🇵🇹 Português"
+	case "zh":
+		return "zh", "🇨🇳 中文"
+	case "ja":
+		return "ja", "🇯🇵 日本語"
+	case "ko":
+		return "ko", "🇰🇷 한국어"
+	case "ar":
+		return "ar", "🇸🇦 العربية"
+	case "he":
+		return "he", "🇮🇱 עברית"
+	case "ge", "ka":
+		return "ka", "🇬🇪 ქართული"
+	case "am", "hy":
+		return "hy", "🇦🇲 Հայերեն"
+	case "az":
+		return "az", "🇦🇿 Azərbaycanca"
+	case "tg":
+		return "tg", "🇹🇯 Тоҷикӣ"
+	case "ky":
+		return "ky", "🇰🇬 Кыргызча"
+	case "ro", "md":
+		return "ro", "🇷🇴 Română"
+	case "bg":
+		return "bg", "🇧🇬 Български"
+	case "cs":
+		return "cs", "🇨🇿 Čeština"
+	case "sk":
+		return "sk", "🇸🇰 Slovenčina"
+	case "sr":
+		return "sr", "🇷🇸 Српски"
+	case "hr":
+		return "hr", "🇭🇷 Hrvatski"
+	case "nl":
+		return "nl", "🇳🇱 Nederlands"
+	case "sv":
+		return "sv", "🇸🇪 Svenska"
+	case "fi":
+		return "fi", "🇫🇮 Suomi"
+	case "no":
+		return "no", "🇳🇴 Norsk"
+	case "da":
+		return "da", "🇩🇰 Dansk"
+	case "el":
+		return "el", "🇬🇷 Ελληνικά"
+	case "hi":
+		return "hi", "🇮🇳 हिन्दी"
+	case "id":
+		return "id", "🇮🇩 Bahasa Indonesia"
+	case "vi":
+		return "vi", "🇻🇳 Tiếng Việt"
+	case "th":
+		return "th", "🇹🇭 ไทย"
+	default:
+		if c == "" || c == "unknown" || c == "null" {
+			return "unknown", "🌐 Не указан"
+		}
+		return c, fmt.Sprintf("🌐 %s", strings.ToUpper(c))
+	}
+}
+
+func (h *Handler) getUserLanguageStats(ctx context.Context, totalUsers int) []LanguageStat {
+	if totalUsers <= 0 || h.DB == nil || h.DB.Pool == nil {
+		return nil
+	}
+
+	rows, err := h.DB.Pool.Query(ctx, `
+		SELECT COALESCE(NULLIF(TRIM(language_code), ''), 'unknown') AS lang, COUNT(*)
+		FROM users
+		WHERE id != 0
+		GROUP BY lang
+		ORDER BY COUNT(*) DESC;
+	`)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	countsMap := make(map[string]int)
+	labelsMap := make(map[string]string)
+	order := []string{}
+
+	for rows.Next() {
+		var rawCode string
+		var cnt int
+		if err := rows.Scan(&rawCode, &cnt); err == nil {
+			normCode, label := formatLanguageLabel(rawCode)
+			if _, exists := countsMap[normCode]; !exists {
+				order = append(order, normCode)
+				labelsMap[normCode] = label
+			}
+			countsMap[normCode] += cnt
+		}
+	}
+
+	// Sort by count DESC, with 'unknown' at the end
+	sort.SliceStable(order, func(i, j int) bool {
+		cI, cJ := countsMap[order[i]], countsMap[order[j]]
+		if cI != cJ {
+			return cI > cJ
+		}
+		if order[i] == "unknown" {
+			return false
+		}
+		if order[j] == "unknown" {
+			return true
+		}
+		return order[i] < order[j]
+	})
+
+	var stats []LanguageStat
+	for _, code := range order {
+		cnt := countsMap[code]
+		pct := float64(cnt*100) / float64(totalUsers)
+		stats = append(stats, LanguageStat{
+			Code:       code,
+			Label:      labelsMap[code],
+			Count:      cnt,
+			Percentage: pct,
+		})
+	}
+	return stats
 }
 
 func formatCategoryLabelWithEmoji(cat string) string {
