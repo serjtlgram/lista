@@ -326,8 +326,9 @@ Return only a valid JSON object without markdown:
 }`, title, author, year, title, author, currentISBN, pages, description)
 	}
 
+	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/minimax-m3",
+		"model": "accounts/fireworks/models/glm-5p3-flash",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},

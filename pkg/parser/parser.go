@@ -1885,8 +1885,9 @@ seasons: %d
 episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 	}
 
+	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/minimax-m3",
+		"model": "accounts/fireworks/models/glm-5p3-flash",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
@@ -2005,8 +2006,9 @@ Return only a valid JSON object without markdown:
 }
 If the title is already in its original language or no different title exists, return empty string in original_title.`, title, year, director, cast, description)
 
+	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model": "accounts/fireworks/models/minimax-m3",
+		"model": "accounts/fireworks/models/glm-5p3-flash",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
