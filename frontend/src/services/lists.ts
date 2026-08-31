@@ -46,6 +46,51 @@ function getDefaultFavoritesList(): UserList {
   };
 }
 
+// Auto-repair swapped svoe/foreign folders & lists if legacy state is detected in localStorage
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem('lista_folders_repaired_v2')) {
+    const rawFolders = localStorage.getItem(FOLDERS_KEY);
+    const rawLists = localStorage.getItem(LISTS_KEY);
+    if (rawFolders) {
+      let folders = JSON.parse(rawFolders);
+      let needsFix = false;
+      if (Array.isArray(folders)) {
+        for (const f of folders) {
+          if (f.id === 'svoe' && (f.name === 'Зарубежное' || f.icon === '🌍')) {
+            needsFix = true;
+            break;
+          }
+          if (f.id === 'foreign' && (f.name === 'RU' || f.name === 'Своё' || f.name === 'Свое')) {
+            needsFix = true;
+            break;
+          }
+        }
+        if (needsFix) {
+          folders = folders.map((f: ListFolder) => {
+            if (f.id === 'svoe') return { ...f, name: 'Своё', icon: '🏠', isDefault: true };
+            if (f.id === 'foreign') return { ...f, name: 'Зарубежное', icon: '🌍', isDefault: true };
+            return f;
+          });
+          localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+
+          if (rawLists) {
+            let lists = JSON.parse(rawLists);
+            if (Array.isArray(lists)) {
+              lists = lists.map((l: UserList) => {
+                if (l.folderId === 'svoe') return { ...l, folderId: 'foreign' };
+                if (l.folderId === 'foreign') return { ...l, folderId: 'svoe' };
+                return l;
+              });
+              localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+            }
+          }
+        }
+      }
+    }
+    localStorage.setItem('lista_folders_repaired_v2', 'true');
+  }
+} catch {}
+
 export function getFolders(): ListFolder[] {
   try {
     const raw = localStorage.getItem(FOLDERS_KEY);
