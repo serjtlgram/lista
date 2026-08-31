@@ -1885,16 +1885,14 @@ seasons: %d
 episodes_total: %d`, title, releaseYear, country, title, releaseYear, country, directorContext, existingCast, existingDescription, directorContext, directorContext, castRolesContext, details.Budget, details.AirStatus, details.Duration, details.Seasons, details.EpisodesTotal)
 	}
 
-	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model":            "accounts/fireworks/models/glm-5p3-flash",
-		"reasoning_effort": "low",
+		"model": "accounts/fireworks/models/minimax-m3",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
 		"temperature":     0.1,
-		"max_tokens":      2048,
+		"max_tokens":      1024,
 	}
 
 	bodyBytes, _ := json.Marshal(reqBodyMap)
@@ -2007,16 +2005,14 @@ Return only a valid JSON object without markdown:
 }
 If the title is already in its original language or no different title exists, return empty string in original_title.`, title, year, director, cast, description)
 
-	// Active model: accounts/fireworks/models/glm-5p3-flash (previously: accounts/fireworks/models/minimax-m3)
 	reqBodyMap := map[string]interface{}{
-		"model":            "accounts/fireworks/models/glm-5p3-flash",
-		"reasoning_effort": "low",
+		"model": "accounts/fireworks/models/minimax-m3",
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"response_format": map[string]string{"type": "json_object"},
 		"temperature":     0.1,
-		"max_tokens":      512,
+		"max_tokens":      256,
 	}
 
 	bodyBytes, _ := json.Marshal(reqBodyMap)

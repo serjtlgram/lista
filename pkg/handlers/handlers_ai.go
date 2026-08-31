@@ -846,15 +846,16 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 		maxTokens       int
 	}
 
-	// Active model: accounts/fireworks/models/glm-5p3-flash
-	// Previous models for rollback reference:
-	// - accounts/fireworks/models/minimax-m3
-	// - accounts/fireworks/models/deepseek-v4-flash-0731
 	modelsToTry := []modelConfig{
 		{
-			name:            "accounts/fireworks/models/glm-5p3-flash",
-			reasoningEffort: "low",
-			maxTokens:       4096,
+			name:            "accounts/fireworks/models/minimax-m3",
+			reasoningEffort: "none",
+			maxTokens:       2048,
+		},
+		{
+			name:            "accounts/fireworks/models/deepseek-v4-flash-0731",
+			reasoningEffort: "none",
+			maxTokens:       2048,
 		},
 	}
 

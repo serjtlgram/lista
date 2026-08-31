@@ -31,11 +31,10 @@ async function test() {
       'Authorization': 'Bearer fw_R9nn6yvzVv8txadL2FLqC2'
     },
     body: JSON.stringify({
-      model: 'accounts/fireworks/models/glm-5p3-flash',
-      reasoning_effort: 'low',
+      model: 'accounts/fireworks/models/minimax-m3',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
-      max_tokens: 4096
+      max_tokens: 2048
     })
   });
   console.timeEnd('fetch');
