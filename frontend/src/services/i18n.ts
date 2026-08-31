@@ -170,3 +170,42 @@ export const formatCategorySingle = (cat: string, t?: Translations): string => {
   if (['game', 'games', 'игры', 'ігри', 'игра', 'гра'].includes(c)) return t ? t.categories.game_single : 'Игра';
   return cat || '';
 };
+
+export const getTranslatedFolderName = (
+  folder?: { id?: string; name?: string; isDefault?: boolean } | null,
+  t?: Translations
+): string => {
+  if (!folder) return '';
+  if (!t) return folder.name || '';
+
+  const id = (folder.id || '').toLowerCase().trim();
+  const name = (folder.name || '').toLowerCase().trim();
+
+  if (
+    id === 'svoe' ||
+    id === 'domestic' ||
+    (folder.isDefault && ['своё', 'свое', 'своє', 'domestic', 'nacional'].includes(name)) ||
+    ['своё', 'свое', 'своє', 'domestic', 'nacional'].includes(name)
+  ) {
+    return t.lists?.folder_svoe || folder.name || 'Своё';
+  }
+
+  if (
+    id === 'foreign' ||
+    (folder.isDefault && ['зарубежное', 'зарубіжне', 'foreign', 'extranjero'].includes(name)) ||
+    ['зарубежное', 'зарубіжне', 'foreign', 'extranjero'].includes(name)
+  ) {
+    return t.lists?.folder_foreign || folder.name || 'Зарубежное';
+  }
+
+  if (
+    id === 'misc' ||
+    id === 'uncategorized' ||
+    (folder.isDefault && ['разное', 'різне', 'miscellaneous', 'varios', 'misc'].includes(name)) ||
+    ['разное', 'різне', 'miscellaneous', 'varios', 'misc'].includes(name)
+  ) {
+    return t.lists?.folder_misc || folder.name || 'Разное';
+  }
+
+  return folder.name || '';
+};

@@ -15,6 +15,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   title,
   message,
   onClose,
+  t,
 }) => {
   const [isLight, setIsLight] = useState(false);
 
@@ -89,7 +90,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             className="w-full py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.97] bg-accentViolet text-white shadow-lg shadow-accentViolet/25"
           >
             <Check className="w-4 h-4" strokeWidth={2.5} />
-            <span>Понятно</span>
+            <span>{t?.guide?.got_it || 'Понятно'}</span>
           </button>
         </div>
       </div>

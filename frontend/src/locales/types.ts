@@ -153,6 +153,7 @@ export interface Translations {
     isbn_placeholder: string;
     select_genre: string;
     select_status: string;
+    poster_label?: string;
   };
   category_modal: {
     title: string;
@@ -349,6 +350,25 @@ export interface Translations {
     folder_settings?: string;
     delete_action?: string;
     select_folder_for_list?: string;
+    folder_svoe?: string;
+    folder_foreign?: string;
     folder_misc?: string;
+    folder_order?: string;
+    folder_order_empty?: string;
+    folder_order_done?: string;
+    ai_selection?: string;
+    recommendations_for?: string;
+    found_new_recommendations?: string;
+    refresh?: string;
+    try_again?: string;
+    in_your_list?: string;
+    ai_analyzing?: string;
+    ai_failed_to_load?: string;
+    ai_error_loading?: string;
+    ai_cooldown_wait?: string;
+    item_added_toast?: string;
+    shared_list_imported?: string;
+    shared_list_saving?: string;
+    add_entire_list?: string;
   };
 }

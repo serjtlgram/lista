@@ -153,7 +153,10 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           const remaining = COOLDOWN_SEC - elapsedSec;
           const remMin = Math.floor(remaining / 60);
           const remSec = remaining % 60;
-          showToast(`Подождите ${remMin} мин. ${remSec} сек. перед повторным обновлением.`);
+          const waitMsg = t.lists?.ai_cooldown_wait
+            ? t.lists.ai_cooldown_wait.replace('{min}', String(remMin)).replace('{sec}', String(remSec))
+            : `Подождите ${remMin} мин. ${remSec} сек. перед повторным обновлением.`;
+          showToast(waitMsg);
           return;
         }
       } else {
@@ -246,10 +249,10 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         // Trigger background poster enrichment for items missing poster_url
         enrichMissingPosters(cleanResults);
       } else {
-        setError('Не удалось загрузить рекомендации.');
+        setError(t.lists?.ai_failed_to_load || 'Не удалось загрузить рекомендации.');
       }
     } catch (err: any) {
-      const msg = err?.message || 'Ошибка при загрузке рекомендаций.';
+      const msg = err?.message || t.lists?.ai_error_loading || 'Ошибка при загрузке рекомендаций.';
       setError(msg);
       showToast(msg);
     } finally {
@@ -346,7 +349,10 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       onUpdateCachedResults(updated);
       return updated;
     });
-    showToast(`«${catItem.title}» добавлено в вашу коллекцию!`);
+    const addedMsg = t.lists?.item_added_toast
+      ? t.lists.item_added_toast.replace('{title}', catItem.title)
+      : `«${catItem.title}» добавлено в вашу коллекцию!`;
+    showToast(addedMsg);
   };
 
   return (
@@ -365,10 +371,10 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
             <Sparkles className="w-3.5 h-3.5 fill-amber-400" />
-            <span>ИИ-подборка</span>
+            <span>{t.lists?.ai_selection || 'ИИ-подборка'}</span>
           </div>
           <h1 className="text-base font-bold text-white truncate">
-            Рекомендации для: <span className="text-accentViolet">{listTitle}</span>
+            {t.lists?.recommendations_for || 'Рекомендации для:'} <span className="text-accentViolet">{listTitle}</span>
           </h1>
         </div>
       </div>
@@ -379,7 +385,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           <div className="glass-card p-4 rounded-2xl flex items-center justify-between border-amber-500/20 bg-amber-500/5">
             <div className="flex items-center gap-2 text-xs text-amber-300 font-medium">
               <Wand2 className="w-4 h-4 animate-spin text-amber-400" />
-              <span>Нейросеть анализирует ваш список и подбирает лучшее...</span>
+              <span>{t.lists?.ai_analyzing || 'Нейросеть анализирует ваш список и подбирает лучшее...'}</span>
             </div>
           </div>
 
@@ -411,7 +417,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accentViolet text-white text-xs font-bold shadow-md hover:bg-opacity-90 transition active:scale-95"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Попробовать снова</span>
+            <span>{t.lists?.try_again || 'Попробовать снова'}</span>
           </button>
         </div>
       ) : (
@@ -419,7 +425,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           {addedItems.length > 0 && (
             <div className="space-y-2.5 mb-6">
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">
-                В вашем списке
+                {t.lists?.in_your_list || 'В вашем списке'}
               </h2>
               {addedItems.map((item) => (
                 <ItemCard
@@ -466,7 +472,11 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
             return (
               <>
                 <div className="flex items-center justify-between px-1 text-xs text-gray-400">
-                  <span>Найдено {filteredRecommendations.length} новых рекомендаций</span>
+                  <span>
+                    {t.lists?.found_new_recommendations
+                      ? t.lists.found_new_recommendations.replace('{count}', String(filteredRecommendations.length))
+                      : `Найдено ${filteredRecommendations.length} новых рекомендаций`}
+                  </span>
                   <button
                     onClick={() => {
                       triggerHaptic();
@@ -475,7 +485,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
                     className="flex items-center gap-1 text-accentViolet font-semibold hover:underline active:scale-95 transition"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Обновить</span>
+                    <span>{t.lists?.refresh || 'Обновить'}</span>
                   </button>
                 </div>
 

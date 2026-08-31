@@ -42,7 +42,7 @@ import {
 } from '../services/lists';
 import { getFavoriteIds, setFavoriteIds, toggleFavorite } from '../services/favorites';
 import { ItemCard } from './ItemCard';
-import { Translations, formatCategorySingle } from '../services/i18n';
+import { Translations, formatCategorySingle, getTranslatedFolderName } from '../services/i18n';
 import { api } from '../services/api';
 
 interface ListsScreenProps {
@@ -489,7 +489,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
   const handleDeleteFolder = () => {
     if (!editingFolder) return;
-    const name = editingFolder.name || (t.lists.folder_this_folder || 'Эту папку');
+    const name = getTranslatedFolderName(editingFolder, t) || (t.lists.folder_this_folder || 'Эту папку');
     const msg = (t.lists.folder_delete_confirm || `Удалить «{name}»? Списки будут перенесены в раздел «Все».`).replace('{name}', name);
     if (window.confirm(msg)) {
       triggerHaptic();
@@ -512,7 +512,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
     refreshLists();
     setIsChangeListFolderModalOpen(false);
     const targetFolderObj = folders.find((f) => f.id === targetFolderId);
-    const msg = (t.lists.list_moved_to_folder || `Список перенесён в папку «{name}»`).replace('{name}', targetFolderObj?.name || (t.lists.folder_misc || 'Разное'));
+    const targetName = targetFolderObj ? getTranslatedFolderName(targetFolderObj, t) : (t.lists.folder_misc || 'Разное');
+    const msg = (t.lists.list_moved_to_folder || `Список перенесён в папку «{name}»`).replace('{name}', targetName);
     showToast(msg);
   };
 
@@ -782,7 +783,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       longPressTimerRef.current = null;
                       triggerHaptic('medium');
                       setEditingFolder(folder);
-                      setFolderRenameValue(folder.name);
+                      setFolderRenameValue(getTranslatedFolderName(folder, t));
                       setIsManageFolderModalOpen(true);
                     }, 400);
                   }}
@@ -800,7 +801,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       : 'bg-cardDark border-cardBorder text-gray-300 hover:border-gray-600'
                   }`}
                 >
-                  <span>{folder.name}</span>
+                  <span>{getTranslatedFolderName(folder, t)}</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-bgDark text-gray-400'
@@ -1512,7 +1513,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-bold text-white">{f.name}</span>
+                          <span className="text-sm font-bold text-white">{getTranslatedFolderName(f, t)}</span>
                         </div>
                         <div
                           className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
@@ -1696,7 +1697,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
             <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
-                <h3 className="text-base font-bold text-white">Порядок папок</h3>
+                <h3 className="text-base font-bold text-white">{t.lists?.folder_order || 'Порядок папок'}</h3>
                 <button onClick={() => setIsSortFoldersModalOpen(false)} className="text-gray-400 hover:text-white transition">
                   <X className="w-5 h-5" />
                 </button>
@@ -1704,13 +1705,13 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
               <div className="flex-1 overflow-y-auto space-y-2 max-h-[50vh] hide-scrollbar pr-1">
                 {folders.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-4">Нет папок для сортировки</p>
+                  <p className="text-xs text-gray-400 text-center py-4">{t.lists?.folder_order_empty || 'Нет папок для сортировки'}</p>
                 ) : (
                   folders.map((folder, index) => (
                     <div key={folder.id} className="flex items-center justify-between p-3 rounded-2xl bg-bgDark border border-cardBorder">
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{folder.icon || '📁'}</span>
-                        <span className="text-xs font-bold text-white">{folder.name}</span>
+                        <span className="text-xs font-bold text-white">{getTranslatedFolderName(folder, t)}</span>
                       </div>
                       <div className="flex flex-col gap-1">
                         <button
@@ -1753,7 +1754,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                 onClick={() => setIsSortFoldersModalOpen(false)}
                 className="w-full py-3 rounded-xl bg-accentViolet text-white font-bold text-xs shadow-lg hover:bg-opacity-90 transition mt-2"
               >
-                Готово
+                {t.lists?.folder_order_done || t.modal.save || 'Готово'}
               </button>
             </div>
           </div>,

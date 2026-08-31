@@ -640,7 +640,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
 
               <div>
-                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">Постер (URL)</label>
+                <label className="text-xs sm:text-[13px] font-semibold text-gray-300 block mb-1">{t.modal.poster_label || 'Постер (URL)'}</label>
                 <input
                   type="text"
                   maxLength={500}

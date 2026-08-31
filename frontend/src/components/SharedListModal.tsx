@@ -133,14 +133,14 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
             {importDone ? (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Список сохранён в вашу библиотеку!</span>
+                <span>{t.lists?.shared_list_imported || 'Список сохранён в вашу библиотеку!'}</span>
               </>
             ) : isImporting ? (
-              <span>Сохранение списка...</span>
+              <span>{t.lists?.shared_list_saving || 'Сохранение списка...'}</span>
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>➕ Добавить весь список себе</span>
+                <span>{t.lists?.add_entire_list || '➕ Добавить весь список себе'}</span>
               </>
             )}
           </button>

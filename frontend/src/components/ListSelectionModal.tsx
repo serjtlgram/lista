@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, Plus, FolderPlus, Star, Search, ChevronDown } from 'lucide-react';
 import { Item } from '../types';
-import { Translations } from '../services/i18n';
+import { Translations, getTranslatedFolderName } from '../services/i18n';
 import { getLists, saveLists, createList, getFolders, DEFAULT_FOLDER_ID, FAVORITES_ID, UserList, ListFolder } from '../services/lists';
 import { getFavoriteIds, setFavoriteIds } from '../services/favorites';
 
@@ -198,7 +198,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                   : 'bg-white/5 border border-cardBorder text-gray-400 hover:text-white hover:border-gray-500'
               }`}
             >
-              Все
+              {trans.lists?.all_folders || 'Все'}
             </button>
             {folders.map((f) => (
               <button
@@ -212,7 +212,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                 }`}
               >
                 <span className="text-xs leading-none">{f.icon || '📁'}</span>
-                <span className="truncate max-w-[80px]">{f.name}</span>
+                <span className="truncate max-w-[80px]">{getTranslatedFolderName(f, trans)}</span>
               </button>
             ))}
           </div>
@@ -266,7 +266,8 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
             .filter((l) => filterFolderId === null || (l.folderId || DEFAULT_FOLDER_ID) === filterFolderId)
             .map((list) => {
               const isSelected = selectedListIds.includes(list.id);
-              const folderName = folders.find((f) => f.id === (list.folderId || DEFAULT_FOLDER_ID))?.name || 'Разное';
+              const folderObj = folders.find((f) => f.id === (list.folderId || DEFAULT_FOLDER_ID)) || { id: list.folderId || DEFAULT_FOLDER_ID, name: 'Разное' };
+              const folderName = getTranslatedFolderName(folderObj, trans);
               return (
                 <div
                   key={list.id}
@@ -343,7 +344,9 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                     {trans.lists.folder_label || 'Папка'}:
                   </span>
                   <span className="text-sm">{folders.find((f) => f.id === selectedFolderId)?.icon || '📁'}</span>
-                  <span className="truncate font-bold">{folders.find((f) => f.id === selectedFolderId)?.name || 'Разное'}</span>
+                  <span className="truncate font-bold">
+                    {getTranslatedFolderName(folders.find((f) => f.id === selectedFolderId) || { id: selectedFolderId, name: 'Разное' }, trans)}
+                  </span>
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 shrink-0 ${isFolderDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -369,7 +372,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                       >
                         <span className="flex items-center gap-2 truncate">
                           <span className="text-sm">{f.icon || '📁'}</span>
-                          <span className="truncate font-semibold">{f.name}</span>
+                          <span className="truncate font-semibold">{getTranslatedFolderName(f, trans)}</span>
                         </span>
                         {isSelected && <Check className="w-4 h-4 stroke-[3] shrink-0 text-white" />}
                       </button>
