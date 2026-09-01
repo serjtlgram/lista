@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Star, Award, Film, Tv, Book, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3, Info } from 'lucide-react';
 import { StatsData, UserProfile, Item } from '../types';
 import { Translations } from '../services/i18n';
-import { computeWatchHours, getLastNDays, countItemsPerSlot } from '../utils/watchTime';
+import { computeWatchHours, isCompleted, getLastNDays, countItemsPerSlot } from '../utils/watchTime';
 import { InfoModal } from './InfoModal';
 
 interface StatsScreenProps {
@@ -52,7 +52,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
 
   const filteredItems = items.filter((item) => {
     if (activeTabKey === 'all') return true;
-    const dateStr = item.created_at || item.completed_at;
+    const dateStr = item.completed_at || item.created_at;
     if (!dateStr) return false;
     const diff = (now.getTime() - new Date(dateStr).getTime()) / (1000 * 3600 * 24);
     if (activeTabKey === 'week')  return diff <= 7;
@@ -62,14 +62,12 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
 
   const totalPeriodItems = filteredItems.length;
 
-  const completedItems = filteredItems.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
+  const completedItems = filteredItems.filter((i) => isCompleted(i.status));
+  const watchingItems = filteredItems.filter((i) =>
+    ['watching', 'смотрю', 'в процессе', 'читаю', 'граю'].includes((i.status || '').toLowerCase())
   );
-  const watchingItems = filteredItems.filter(
-    (i) => ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')
-  );
-  const plannedItems = filteredItems.filter(
-    (i) => ['planned', 'Планирую'].includes(i.status || '')
+  const plannedItems = filteredItems.filter((i) =>
+    ['planned', 'планирую', 'отложено', 'в планах', 'у планах'].includes((i.status || '').toLowerCase())
   );
 
   const completedCount = completedItems.length;
@@ -77,14 +75,12 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
 
   // Books stats calculation
   const bookItems = filteredItems.filter((i) => normalizeCat(i.category) === 'Книги');
-  const completedBooks = bookItems.filter((i) =>
-    ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
-  );
+  const completedBooks = bookItems.filter((i) => isCompleted(i.status));
   const readingBooks = bookItems.filter((i) =>
-    ['watching', 'Смотрю', 'В процессе'].includes(i.status || '')
+    ['watching', 'смотрю', 'в процессе', 'читаю'].includes((i.status || '').toLowerCase())
   );
   const plannedBooks = bookItems.filter((i) =>
-    ['planned', 'Планирую'].includes(i.status || '')
+    ['planned', 'планирую', 'в планах', 'у планах'].includes((i.status || '').toLowerCase())
   );
   const totalBookPages = completedBooks.reduce(
     (sum, i) => sum + (parseInt(i.duration || '0', 10) || 0),
@@ -107,7 +103,9 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       return (
         <>
           {d}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.days_short_unit || 'д'}</span>
-          {h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span>
+          {h > 0 ? (
+            <>{h}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.hours_short_unit || 'ч'}</span></>
+          ) : null}
         </>
       );
     }
@@ -117,7 +115,9 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       return (
         <>
           {m}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.months_short_unit || 'м'}</span>
-          {remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span>
+          {remDays > 0 ? (
+            <>{remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span></>
+          ) : null}
         </>
       );
     }
@@ -127,7 +127,9 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     return (
       <>
         {y}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.years_short_unit || 'г'}</span>
-        {m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span>
+        {m > 0 ? (
+          <>{m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span></>
+        ) : null}
       </>
     );
   };

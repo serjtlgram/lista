@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -941,9 +943,15 @@ func (h *Handler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 	if req.Status != nil {
+		enStatus := mapStatusToEn(*req.Status)
 		query += fmt.Sprintf(", status = $%d", argIdx)
-		args = append(args, mapStatusToEn(*req.Status))
+		args = append(args, enStatus)
 		argIdx++
+		if enStatus == "completed" {
+			query += ", completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP)"
+		} else {
+			query += ", completed_at = NULL"
+		}
 	}
 	if req.Rating != nil {
 		query += fmt.Sprintf(", rating = $%d", argIdx)
@@ -1480,10 +1488,29 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var totalMinutes int
+	hRows, err := h.DB.Pool.Query(ctx, `
+		SELECT category, COALESCE(duration, ''), COALESCE(episodes_total, 0), COALESCE(seasons, 0), COALESCE(episodes_list, '')
+		FROM items
+		WHERE user_id = $1 AND status = 'completed'
+	`, user.ID)
+	if err == nil {
+		defer hRows.Close()
+		for hRows.Next() {
+			var cat, dur, epsList string
+			var epsTotal, seasons int
+			if err := hRows.Scan(&cat, &dur, &epsTotal, &seasons, &epsList); err == nil {
+				totalMinutes += calculateItemWatchMinutes(cat, dur, epsTotal, seasons, epsList)
+			}
+		}
+	}
+
+	totalHours := int(math.Round(float64(totalMinutes) / 60.0))
+
 	resp := models.StatsResponse{
 		TotalItems:         total,
 		CompletedItems:     completed,
-		TotalHours:         completed * 2, // estimated
+		TotalHours:         totalHours,
 		MonthlyAdded:       monthlyAdded,
 		GrowthPercentage:   0,
 		CategoryPercentage: catPct,
@@ -1492,6 +1519,191 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func calculateItemWatchMinutes(category string, duration string, episodesTotal int, seasons int, episodesList string) int {
+	cat := strings.ToLower(strings.TrimSpace(category))
+	isMovie := cat == "movie" || cat == "movies" || cat == "фильмы" || cat == "фильм" || cat == "фільм" || cat == "фільми" || cat == "film"
+	isShow := cat == "show" || cat == "shows" || cat == "series" || cat == "сериалы" || cat == "сериал" || cat == "серіал" || cat == "серіали" || cat == "tv"
+	if !isMovie && !isShow {
+		return 0
+	}
+
+	durStr := strings.TrimSpace(duration)
+
+	if isShow {
+		if episodesList != "" {
+			var eps []struct {
+				Runtime int `json:"runtime"`
+			}
+			if err := json.Unmarshal([]byte(episodesList), &eps); err == nil && len(eps) > 0 {
+				knownSum := 0
+				knownCount := 0
+				for _, ep := range eps {
+					if ep.Runtime > 0 {
+						knownSum += ep.Runtime
+						knownCount++
+					}
+				}
+				avgMin := 40
+				if knownCount > 0 {
+					avgMin = knownSum / knownCount
+				}
+				missing := len(eps) - knownCount
+				totalListMin := knownSum + (missing * avgMin)
+				if totalListMin > 0 {
+					return totalListMin
+				}
+			}
+		}
+
+		parsedSeasons := 0
+		parsedEpisodes := 0
+		parsedMinPerEp := 0
+
+		if durStr != "" {
+			var parts []string
+			if strings.Contains(durStr, "•") {
+				parts = strings.Split(durStr, "•")
+			} else {
+				parts = strings.FieldsFunc(durStr, func(r rune) bool {
+					return r == ',' || r == ';' || r == '/'
+				})
+			}
+
+			reSeason := regexp.MustCompile(`(?i)(\d+)\s*(?:сез|sez|season|temporad|t\.|s\.)`)
+			reEpisode := regexp.MustCompile(`(?i)(\d+)\s*(?:сер|ep|eps|episode|series|capitulo|capítulo|sér\.)`)
+			reHrsMins := regexp.MustCompile(`(?i)(?:(\d+)\s*(?:ч|час|h|hr|god|год))\s*(?:(\d+)\s*(?:мин|min|m|хв))?`)
+			reMins := regexp.MustCompile(`(?i)(\d+)\s*(?:мин|min|m|хв|минут|minutes?)`)
+
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p == "" {
+					continue
+				}
+				if m := reSeason.FindStringSubmatch(p); len(m) > 1 && parsedSeasons == 0 {
+					parsedSeasons, _ = strconv.Atoi(m[1])
+					continue
+				}
+				if m := reEpisode.FindStringSubmatch(p); len(m) > 1 && parsedEpisodes == 0 {
+					parsedEpisodes, _ = strconv.Atoi(m[1])
+					continue
+				}
+				if m := reHrsMins.FindStringSubmatch(p); len(m) > 1 && parsedMinPerEp == 0 {
+					h, _ := strconv.Atoi(m[1])
+					mins := 0
+					if len(m) > 2 && m[2] != "" {
+						mins, _ = strconv.Atoi(m[2])
+					}
+					parsedMinPerEp = h*60 + mins
+					continue
+				}
+				if m := reMins.FindStringSubmatch(p); len(m) > 1 && parsedMinPerEp == 0 {
+					parsedMinPerEp, _ = strconv.Atoi(m[1])
+					continue
+				}
+			}
+
+			if parsedEpisodes == 0 {
+				if m := reEpisode.FindStringSubmatch(durStr); len(m) > 1 {
+					parsedEpisodes, _ = strconv.Atoi(m[1])
+				}
+			}
+			if parsedSeasons == 0 {
+				if m := reSeason.FindStringSubmatch(durStr); len(m) > 1 {
+					parsedSeasons, _ = strconv.Atoi(m[1])
+				}
+			}
+			if parsedMinPerEp == 0 {
+				if m := reMins.FindStringSubmatch(durStr); len(m) > 1 {
+					parsedMinPerEp, _ = strconv.Atoi(m[1])
+				}
+			}
+			if parsedMinPerEp == 0 && parsedEpisodes == 0 && parsedSeasons == 0 {
+				digitsOnly := regexp.MustCompile(`\D`).ReplaceAllString(durStr, "")
+				if v, err := strconv.Atoi(digitsOnly); err == nil && v > 0 && v <= 180 {
+					parsedMinPerEp = v
+				}
+			}
+		}
+
+		if parsedMinPerEp > 180 {
+			parsedMinPerEp = 40
+		}
+
+		episodes := episodesTotal
+		if episodes == 0 {
+			episodes = parsedEpisodes
+		}
+		if episodes == 0 && seasons > 0 {
+			episodes = seasons * 10
+		}
+		if episodes == 0 && parsedSeasons > 0 {
+			episodes = parsedSeasons * 10
+		}
+		if episodes == 0 {
+			episodes = 10
+		}
+
+		minPerEp := parsedMinPerEp
+		if minPerEp == 0 {
+			minPerEp = 40
+		}
+
+		return episodes * minPerEp
+	}
+
+	// Movie
+	if durStr == "" {
+		return 120
+	}
+
+	reColon := regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::\d{2})?\b`)
+	if m := reColon.FindStringSubmatch(durStr); len(m) > 2 {
+		h, _ := strconv.Atoi(m[1])
+		mins, _ := strconv.Atoi(m[2])
+		if total := h*60 + mins; total > 0 {
+			return total
+		}
+	}
+
+	reHrsMins := regexp.MustCompile(`(?i)(?:(\d+)\s*(?:ч|час|часа|часов|h|hr|hrs|hours?|год|години|годин|hora|horas))\s*(?:(\d+)\s*(?:мин|минут|минуты|m|min|mins|minutes?|хв|хвилини|хвилин|minuto|minutos))?`)
+	if m := reHrsMins.FindStringSubmatch(durStr); len(m) > 1 {
+		h, _ := strconv.Atoi(m[1])
+		mins := 0
+		if len(m) > 2 && m[2] != "" {
+			mins, _ = strconv.Atoi(m[2])
+		}
+		if total := h*60 + mins; total > 0 {
+			return total
+		}
+	}
+
+	reMins := regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|минуты|min|mins|minutes?|m|хв|хвилини|хвилин|minuto|minutos)`)
+	if m := reMins.FindStringSubmatch(durStr); len(m) > 1 {
+		if mins, err := strconv.Atoi(m[1]); err == nil && mins > 0 {
+			return mins
+		}
+	}
+
+	reHrs := regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hr|hrs|hours?|год|години|годин|hora|horas)`)
+	if m := reHrs.FindStringSubmatch(durStr); len(m) > 1 {
+		if h, err := strconv.Atoi(m[1]); err == nil && h > 0 {
+			return h * 60
+		}
+	}
+
+	digitsOnly := regexp.MustCompile(`\D`).ReplaceAllString(durStr, "")
+	if num, err := strconv.Atoi(digitsOnly); err == nil {
+		if num > 0 && num <= 6 {
+			return num * 60
+		}
+		if num > 6 {
+			return num
+		}
+	}
+
+	return 120
 }
 
 func mapCategoryToRu(cat string) string {

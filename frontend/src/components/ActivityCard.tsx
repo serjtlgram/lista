@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Flame, Plus, CheckCircle2, Info, ChevronRight } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
-import { computeWatchHours, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
+import { computeWatchHours, isCompleted, getLastNDays, countItemsPerSlot, dayStart } from '../utils/watchTime';
 import { InfoModal } from './InfoModal';
 import { ItemCard } from './ItemCard';
 
@@ -32,9 +32,9 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Items added this calendar month
+  // Items added or completed this calendar month
   const monthItems = items.filter((item) => {
-    const dateStr = item.created_at || item.completed_at;
+    const dateStr = item.completed_at || item.created_at;
     if (!dateStr) return false;
     const d = new Date(dateStr);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -44,13 +44,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const allDisplayCount = items.length;
 
   // Completed items count
-  const completedThisMonth = monthItems.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
-  ).length;
-
-  const completedAllTime = items.filter(
-    (i) => ['completed', 'Просмотрено', 'Завершено', 'Завершён'].includes(i.status || '')
-  ).length;
+  const completedThisMonth = monthItems.filter((i) => isCompleted(i.status)).length;
+  const completedAllTime = items.filter((i) => isCompleted(i.status)).length;
 
   // Watch hours — only completed movies/shows, calculated from item durations
   const watchHours = computeWatchHours(items); // all time total
@@ -59,7 +54,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   // Sparkline data for Month (4 weeks of current month)
   const weekCounts = [0, 0, 0, 0];
   monthItems.forEach((item) => {
-    const dateStr = item.created_at || item.completed_at;
+    const dateStr = item.completed_at || item.created_at;
     if (!dateStr) return;
     const day = new Date(dateStr).getDate();
     if (day <= 7) weekCounts[0]++;
@@ -75,7 +70,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   const monthCountsAll = [0, 0, 0, 0];
   items.forEach((item) => {
-    const dateStr = item.created_at || item.completed_at;
+    const dateStr = item.completed_at || item.created_at;
     if (!dateStr) return;
     const itemDate = new Date(dateStr);
     for (let i = 0; i < last4MonthsSlots.length; i++) {

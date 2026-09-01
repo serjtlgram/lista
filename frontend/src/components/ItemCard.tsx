@@ -159,8 +159,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       }
     }
 
-    if (item.episodes && item.episodes > 0 && !epStr) {
-      epStr = `${item.episodes} ${epUnit}`;
+    const totalEps = item.episodes_total || item.episodes;
+    if (totalEps && totalEps > 0 && !epStr) {
+      epStr = `${totalEps} ${epUnit}`;
+    }
+    if (item.seasons && item.seasons > 0 && !szStr) {
+      szStr = `${item.seasons} ${szUnit}`;
     }
 
     if (isSeries) {

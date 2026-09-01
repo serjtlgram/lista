@@ -582,10 +582,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const isBook = catLower.includes('book') || catLower.includes('книг');
 
   // Separate episodes count and duration/pages for display
-  let episodesDisplay = item.episodes ? String(item.episodes) : '';
+  let episodesDisplay = (item.episodes_total || item.episodes) ? String(item.episodes_total || item.episodes) : '';
+  let seasonsDisplay = item.seasons ? String(item.seasons) : '';
   let durationDisplay = '-';
-
-  let seasonsDisplay = '';
 
   if (item.duration) {
     const raw = item.duration;
@@ -595,14 +594,14 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       parts.forEach(p => {
         if (p.includes('сез') || p.includes('s.') || p.includes('t.')) s = p.replace(/\D/g, '');
         else if (p.includes('сер') || p.includes('ep')) e = p.replace(/\D/g, '');
-        else if (p.includes('мин') || p.includes('min')) m = p.replace(/\D/g, '');
+        else if (p.includes('мин') || p.includes('min') || p.includes('хв')) m = p.replace(/\D/g, '');
         else {
           if (!e && !s) e = p.replace(/\D/g, '');
           else if (!m) m = p.replace(/\D/g, '');
         }
       });
-      seasonsDisplay = s;
-      if (!episodesDisplay) episodesDisplay = e;
+      if (s) seasonsDisplay = s;
+      if (e) episodesDisplay = e;
       durationDisplay = m ? `${m} ${isBook ? (t.details.pages_unit || 'стр.') : t.details.minutes_short}` : '-';
     } else {
       const durNum = parseInt(raw.replace(/\D/g, ''), 10);

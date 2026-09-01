@@ -164,26 +164,28 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setNote(editingItem.note || '');
 
       const durStr = editingItem.duration || '';
+      let s = '', e = '', m = '';
       if (durStr.includes('•') || durStr.includes('сер.') || durStr.includes('сез.') || durStr.includes('ep.') || durStr.includes('s.') || durStr.includes('t.')) {
         const parts = durStr.split('•').map(p => p.trim());
-        let s = '', e = '', m = '';
         parts.forEach(p => {
           if (p.includes('сез') || p.includes('s.') || p.includes('t.')) s = p.replace(/\D/g, '');
           else if (p.includes('сер') || p.includes('ep')) e = p.replace(/\D/g, '');
-          else if (p.includes('мин') || p.includes('min')) m = p.replace(/\D/g, '');
+          else if (p.includes('мин') || p.includes('min') || p.includes('хв')) m = p.replace(/\D/g, '');
           else {
             if (!e && !s) e = p.replace(/\D/g, '');
             else if (!m) m = p.replace(/\D/g, '');
           }
         });
-        setSeasonsCount(s);
-        setEpisodesCount(e);
-        setDurationMin(m);
       } else {
-        setDurationMin(durStr.replace(/\D/g, ''));
-        setEpisodesCount('');
-        setSeasonsCount('');
+        m = durStr.replace(/\D/g, '');
       }
+
+      if (!s && editingItem.seasons) s = String(editingItem.seasons);
+      if (!e && (editingItem.episodes_total || editingItem.episodes)) e = String(editingItem.episodes_total || editingItem.episodes);
+
+      setSeasonsCount(s);
+      setEpisodesCount(e);
+      setDurationMin(m);
 
       setShowAdvanced(true);
     } else {
@@ -326,6 +328,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       rating,
       genre: genre.trim(),
       duration: finalDuration.trim(),
+      episodes: isSeries && episodesCount ? parseInt(episodesCount, 10) : undefined,
+      seasons: isSeries && seasonsCount ? parseInt(seasonsCount, 10) : undefined,
+      episodes_total: isSeries && episodesCount ? parseInt(episodesCount, 10) : undefined,
       release_year: releaseYear.trim(),
       country: country.trim(),
       poster_url: finalPoster,
