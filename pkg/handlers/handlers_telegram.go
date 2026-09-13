@@ -109,8 +109,16 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 			// Always send welcome message when user explicitly presses /start command
 			go h.sendWelcomeMessage(userID, langCode)
-		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stats") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
-			go h.handleAdminCommand(userID, update.Message.From.Username, msgText)
+		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stat") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
+			targetChatID := userID
+			if update.Message.Chat != nil && update.Message.Chat.ID != 0 {
+				targetChatID = update.Message.Chat.ID
+			}
+			var uname string
+			if update.Message.From != nil {
+				uname = update.Message.From.Username
+			}
+			go h.handleAdminCommand(targetChatID, userID, uname, msgText)
 		} else if extractedURL := parser.ExtractFirstURL(msgText); extractedURL != "" {
 			// Anti-flood check for incoming links (max 1 link per 4 sec, max 15 links per min)
 			if !isAdmin {
@@ -891,9 +899,19 @@ func (h *Handler) sendBotMessage(userID int64, text string) {
 	h.sendBotAPIRequest("sendMessage", payload)
 }
 
-func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) {
+func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string, cmd string) {
 	usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(username), "@"))
-	if usernameLc != "neznayca" && usernameLc != "znayca" {
+	isAdmin := (userID == 214993606 || usernameLc == "neznayca" || usernameLc == "znayca")
+	if !isAdmin && h.DB != nil && h.DB.Pool != nil {
+		var dbUsername string
+		if err := h.DB.Pool.QueryRow(context.Background(), "SELECT username FROM users WHERE id = $1", userID).Scan(&dbUsername); err == nil {
+			dbUnameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(dbUsername), "@"))
+			if dbUnameLc == "neznayca" || dbUnameLc == "znayca" {
+				isAdmin = true
+			}
+		}
+	}
+	if !isAdmin {
 		return
 	}
 
@@ -902,10 +920,12 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 		cmdLower = cmdLower[:idx]
 	}
 
+	log.Printf("[AdminCommand] Executing %s for user %d (chat: %d, username: %q)", cmdLower, userID, chatID, username)
+
 	ctx := context.Background()
 
 	switch cmdLower {
-	case "/stats":
+	case "/stats", "/stat":
 		if h.DB == nil || h.DB.Pool == nil {
 			return
 		}
@@ -1014,7 +1034,7 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			sb.WriteString(fmt.Sprintf("  • 🐘 <b>Размер всего приложения:</b> <code>%s</code>\n", formatByteSize(totalAppSizeBytes)))
 		}
 
-		h.sendAdminBotMessage(userID, sb.String())
+		h.sendAdminBotMessage(chatID, sb.String())
 
 	case "/users", "/count", "/users_count":
 		if h.DB == nil || h.DB.Pool == nil {
@@ -1040,7 +1060,7 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 				sb.WriteString(fmt.Sprintf("  • %s: <b>%d</b> <i>(%.0f%%)</i>\n", ls.Label, ls.Count, pctRounded))
 			}
 		}
-		h.sendAdminBotMessage(userID, sb.String())
+		h.sendAdminBotMessage(chatID, sb.String())
 
 	case "/users_list", "/list", "/userslist", "/admin_users":
 		if h.DB == nil || h.DB.Pool == nil {
@@ -1100,14 +1120,14 @@ func (h *Handler) handleAdminCommand(userID int64, username string, cmd string) 
 			entry := fmt.Sprintf("%s%s %s-%s\n", langFlag, userDisplay, firstIn, lastIn)
 
 			if sb.Len()+len(entry) > 3900 {
-				h.sendAdminBotMessage(userID, sb.String())
+				h.sendAdminBotMessage(chatID, sb.String())
 				sb.Reset()
 			}
 			sb.WriteString(entry)
 		}
 
 		if sb.Len() > 0 {
-			h.sendAdminBotMessage(userID, sb.String())
+			h.sendAdminBotMessage(chatID, sb.String())
 		}
 	}
 }
@@ -1207,7 +1227,7 @@ func formatLanguageLabel(code string) (string, string) {
 		if c == "" || c == "unknown" || c == "null" {
 			return "unknown", "🌐 Не указан"
 		}
-		return c, fmt.Sprintf("🌐 %s", strings.ToUpper(c))
+		return c, fmt.Sprintf("🌐 %s", html.EscapeString(strings.ToUpper(c)))
 	}
 }
 
@@ -1292,7 +1312,7 @@ func formatCategoryLabelWithEmoji(cat string) string {
 		if cat == "" {
 			return "📁 Прочее"
 		}
-		return "📁 " + strings.Title(cat)
+		return "📁 " + html.EscapeString(strings.Title(cat))
 	}
 }
 
@@ -1325,14 +1345,16 @@ func formatByteSize(b int64) string {
 	return fmt.Sprintf("%.1f %s", float64(b)/float64(div), units[exp])
 }
 
-func (h *Handler) sendAdminBotMessage(userID int64, text string) {
+func (h *Handler) sendAdminBotMessage(targetID int64, text string) {
 	payload := map[string]interface{}{
-		"chat_id":                  userID,
+		"chat_id":                  targetID,
 		"text":                     text,
 		"parse_mode":               "HTML",
 		"disable_web_page_preview": true,
 	}
-	h.sendBotAPIRequest("sendMessage", payload)
+	if err := h.sendBotAPIRequestWithErr("sendMessage", payload); err != nil {
+		log.Printf("[AdminCommand] Failed to send message to %d: %v", targetID, err)
+	}
 }
 
 func (h *Handler) sendBotAPIRequestWithErr(method string, payload interface{}) error {
