@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -42,10 +43,7 @@ func LoadConfig() *Config {
 	youtubeKey := os.Getenv("YOUTUBE_API_KEY")
 	tmdbKey := os.Getenv("TMDB_API_KEY")
 	kinopoiskKey := os.Getenv("KINOPOISK_API_KEY")
-	fireworksKey := os.Getenv("FIREWORKS_API_KEY")
-	if fireworksKey == "" {
-		fireworksKey = "fw_R9nn6yvzVv8txadL2FLqC2"
-	}
+	fireworksKey := strings.TrimSpace(os.Getenv("FIREWORKS_API_KEY"))
 
 	return &Config{
 		Port:                port,

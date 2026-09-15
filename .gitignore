@@ -9,7 +9,14 @@ tracklist-api
 
 # Environment / Secret Files
 .env
+.env.*
+!.env.example
 *.env
+*_env
+server_env
+*.secret
+*.key
+*.token
 
 # Node / Frontend
 node_modules/

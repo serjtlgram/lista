@@ -23,12 +23,18 @@ async function test() {
 4. ИСКЛЮЧЕНИЕ ПОВТОРОВ: Не рекомендуй тайтлы, уже находящиеся в списке выше.
 5. ФОРМАТ ОТВЕТА: Верни СТРОГО валидный JSON-массив из 10 оригинальных официальных названий на русском языке: ["Название 1", "Название 2", ...]. Никакого текста до или после JSON.`;
 
+  const apiKey = process.env.FIREWORKS_API_KEY;
+  if (!apiKey) {
+    console.error('ERROR: FIREWORKS_API_KEY environment variable is not set.');
+    process.exit(1);
+  }
+
   console.time('fetch');
   const res = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer fw_R9nn6yvzVv8txadL2FLqC2'
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model: 'accounts/fireworks/models/minimax-m3',

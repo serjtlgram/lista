@@ -837,7 +837,7 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 	// 5. Query Fireworks AI API
 	apiKey := strings.TrimSpace(h.FireworksAPIKey)
 	if apiKey == "" {
-		apiKey = "fw_R9nn6yvzVv8txadL2FLqC2"
+		log.Printf("[FireworksAI] FIREWORKS_API_KEY is not configured, skipping AI query")
 	}
 
 	type modelConfig struct {
@@ -865,7 +865,8 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 	ctxTotal, cancelTotal := context.WithTimeout(r.Context(), 300*time.Second)
 	defer cancelTotal()
 
-	for _, mCfg := range modelsToTry {
+	if apiKey != "" {
+		for _, mCfg := range modelsToTry {
 		modelName := mCfg.name
 		if ctxTotal.Err() != nil {
 			break
@@ -968,6 +969,7 @@ Devuelve ESTRICTAMENTE JSON crudo y válido sin formato markdown (sin `+"```json
 		} else {
 			log.Printf("[FireworksAI] Model %s chat status %d: %s", modelName, resp.StatusCode, string(respBody))
 		}
+	}
 	}
 
 	// 5. Fallback if AI call failed
