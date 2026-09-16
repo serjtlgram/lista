@@ -216,6 +216,7 @@ export interface Translations {
     open_in_youtube: string;
     public_rating: string;
     to_list_btn: string;
+    copy_link?: string;
     lists_coming_soon: string;
     remove_from_list: string;
     add_first_title: string;

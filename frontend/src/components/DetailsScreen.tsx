@@ -27,7 +27,8 @@ import {
   Popcorn,
   BookMarked,
   Plus,
-  Wand2
+  Wand2,
+  Link
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -575,6 +576,38 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       }
     } catch (e) {
       console.warn('Clipboard write error:', e);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.HapticFeedback) {
+      try {
+        tg.HapticFeedback.notificationOccurred('success');
+      } catch (e) {
+        console.warn('Haptic feedback error:', e);
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setToastMessage(t.details.link_copied || 'Ссылка скопирована!');
+    } catch (e) {
+      console.warn('Clipboard write error:', e);
+      setToastMessage(t.details.link_copied || 'Ссылка скопирована!');
     }
   };
 
@@ -1293,6 +1326,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             <BookMarked className="w-4 h-4 text-amber-400" />
             <span>{t.lists?.in_lists || 'В списках'}</span>
           </span>
+          <button
+            onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+            className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
+          >
+            + {t.lists?.add_items || 'Добавить'}
+          </button>
         </div>
 
         {assignedLists.length > 0 ? (
@@ -1322,19 +1361,13 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             })}
           </div>
         ) : (
-          <div className="text-xs text-gray-500 font-normal italic flex items-center justify-between pt-0.5">
+          <div className="text-xs text-gray-500 font-normal italic pt-0.5">
             <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
-            <button
-              onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-              className="text-xs font-bold text-accentViolet hover:underline ml-2"
-            >
-              + Добавить
-            </button>
           </div>
         )}
       </div>
 
-      {/* Action Buttons: Single Add to List button if shared preview, else 3-Column Action Grid */}
+      {/* Action Buttons: Single Add to List button if shared preview, else 4-Column Action Grid */}
       {isSharedPreview ? (
         <div className="pt-2">
           <button
@@ -1348,11 +1381,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       ) : (
         <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
           <button
-            onClick={() => setIsListModalOpen(true)}
+            onClick={handleCopyLink}
             className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
           >
-            <FolderPlus className="w-4 h-4 mb-1 text-amber-400" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.to_list_btn}</span>
+            <Link className="w-4 h-4 mb-1 text-amber-400" />
+            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.copy_link || 'Ссылка'}</span>
           </button>
           <button
             onClick={() => onEdit(item)}

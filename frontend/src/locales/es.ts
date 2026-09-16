@@ -245,6 +245,7 @@ export const es: Translations = {
     open_in_youtube: 'Abrir en YouTube',
     public_rating: 'Valoración',
     to_list_btn: 'A la lista',
+    copy_link: 'Enlace',
     lists_coming_soon: '¡Las listas de categorías estarán disponibles pronto!',
     remove_from_list: 'Quitar de la lista',
     add_first_title: 'Añade a tu biblioteca',

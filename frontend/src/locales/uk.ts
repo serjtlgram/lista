@@ -245,6 +245,7 @@ export const uk: Translations = {
     open_in_youtube: 'Відкрити в YouTube',
     public_rating: 'Рейтинг',
     to_list_btn: 'До списку',
+    copy_link: 'Посилання',
     lists_coming_soon: 'Списки скоро з\'являться!',
     remove_from_list: 'Вилучити зі списку',
     add_first_title: 'Додайте до власної бібліотеки',
