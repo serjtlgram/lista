@@ -79,7 +79,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
 		usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(update.Message.From.Username), "@"))
-		isAdmin := (userID == 214993606 || userID == 39369914 || usernameLc == "neznayca" || usernameLc == "znayca" || usernameLc == "ndreys")
+		isAdmin := (userID == 214993606 || usernameLc == "neznayca" || usernameLc == "znayca")
 
 		msgText := strings.TrimSpace(update.Message.Text)
 		if msgText == "" {
@@ -902,12 +902,12 @@ func (h *Handler) sendBotMessage(userID int64, text string) {
 
 func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string, cmd string) {
 	usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(username), "@"))
-	isAdmin := (userID == 214993606 || userID == 39369914 || usernameLc == "neznayca" || usernameLc == "znayca" || usernameLc == "ndreys")
+	isAdmin := (userID == 214993606 || usernameLc == "neznayca" || usernameLc == "znayca")
 	if !isAdmin && h.DB != nil && h.DB.Pool != nil {
 		var dbUsername string
 		if err := h.DB.Pool.QueryRow(context.Background(), "SELECT username FROM users WHERE id = $1", userID).Scan(&dbUsername); err == nil {
 			dbUnameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(dbUsername), "@"))
-			if dbUnameLc == "neznayca" || dbUnameLc == "znayca" || dbUnameLc == "ndreys" {
+			if dbUnameLc == "neznayca" || dbUnameLc == "znayca" {
 				isAdmin = true
 			}
 		}
