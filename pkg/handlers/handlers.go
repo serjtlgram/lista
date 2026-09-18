@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -163,6 +164,30 @@ func (h *Handler) InitBotCommandsAndMenu() {
 		},
 	}
 	h.sendBotAPIRequest("setMyCommands", esPayload)
+
+	// 5. Ensure Telegram Webhook is configured and active
+	webhookURL := os.Getenv("WEBHOOK_URL")
+	if webhookURL == "" {
+		webhookURL = "https://129.151.217.58.nip.io/api/telegram/webhook"
+	}
+	webhookPayload := map[string]interface{}{
+		"url":                  webhookURL,
+		"drop_pending_updates": false,
+		"allowed_updates": []string{
+			"message",
+			"callback_query",
+			"inline_query",
+			"chosen_inline_result",
+		},
+	}
+	if h.BotSecretToken != "" {
+		webhookPayload["secret_token"] = h.BotSecretToken
+	}
+	if err := h.sendBotAPIRequestWithErr("setWebhook", webhookPayload); err != nil {
+		log.Printf("[BotWebhookInit] Error registering webhook %s: %v", webhookURL, err)
+	} else {
+		log.Printf("[BotWebhookInit] Webhook successfully registered: %s", webhookURL)
+	}
 }
 
 func (h *Handler) sendBotAPIRequest(method string, payload interface{}) {

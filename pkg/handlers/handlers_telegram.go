@@ -78,7 +78,8 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 	if update.Message != nil && update.Message.From != nil {
 		userID := update.Message.From.ID
-		isAdmin := (userID == 214993606 || strings.EqualFold(update.Message.From.Username, "neznayca"))
+		usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(update.Message.From.Username), "@"))
+		isAdmin := (userID == 214993606 || userID == 39369914 || usernameLc == "neznayca" || usernameLc == "znayca" || usernameLc == "ndreys")
 
 		msgText := strings.TrimSpace(update.Message.Text)
 		if msgText == "" {
@@ -109,7 +110,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 			// Always send welcome message when user explicitly presses /start command
 			go h.sendWelcomeMessage(userID, langCode)
-		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stat") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users")) {
+		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stat") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users") || strings.HasPrefix(msgText, "/help") || strings.HasPrefix(msgText, "/commands")) {
 			targetChatID := userID
 			if update.Message.Chat != nil && update.Message.Chat.ID != 0 {
 				targetChatID = update.Message.Chat.ID
@@ -901,12 +902,12 @@ func (h *Handler) sendBotMessage(userID int64, text string) {
 
 func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string, cmd string) {
 	usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(username), "@"))
-	isAdmin := (userID == 214993606 || usernameLc == "neznayca" || usernameLc == "znayca")
+	isAdmin := (userID == 214993606 || userID == 39369914 || usernameLc == "neznayca" || usernameLc == "znayca" || usernameLc == "ndreys")
 	if !isAdmin && h.DB != nil && h.DB.Pool != nil {
 		var dbUsername string
 		if err := h.DB.Pool.QueryRow(context.Background(), "SELECT username FROM users WHERE id = $1", userID).Scan(&dbUsername); err == nil {
 			dbUnameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(dbUsername), "@"))
-			if dbUnameLc == "neznayca" || dbUnameLc == "znayca" {
+			if dbUnameLc == "neznayca" || dbUnameLc == "znayca" || dbUnameLc == "ndreys" {
 				isAdmin = true
 			}
 		}
@@ -925,7 +926,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 	ctx := context.Background()
 
 	switch cmdLower {
-	case "/stats", "/stat":
+	case "/stats", "/stat", "/status":
 		if h.DB == nil || h.DB.Pool == nil {
 			return
 		}
@@ -1129,6 +1130,14 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		if sb.Len() > 0 {
 			h.sendAdminBotMessage(chatID, sb.String())
 		}
+
+	case "/help", "/commands":
+		helpText := "🛠 <b>Команды администратора Lista:</b>\n\n" +
+			"• <code>/stats</code> — общая статистика (пользователи, элементы, размеры БД и сервера)\n" +
+			"• <code>/users</code> (или <code>/count</code>) — статистика пользователей по языкам\n" +
+			"• <code>/list</code> (или <code>/users_list</code>) — подробный список всех пользователей\n" +
+			"• <code>/start</code> — перезапустить мини-апп и приветственное сообщение"
+		h.sendAdminBotMessage(chatID, helpText)
 	}
 }
 
@@ -1353,7 +1362,15 @@ func (h *Handler) sendAdminBotMessage(targetID int64, text string) {
 		"disable_web_page_preview": true,
 	}
 	if err := h.sendBotAPIRequestWithErr("sendMessage", payload); err != nil {
-		log.Printf("[AdminCommand] Failed to send message to %d: %v", targetID, err)
+		log.Printf("[AdminCommand] HTML send failed to %d: %v, retrying plain text...", targetID, err)
+		fallbackPayload := map[string]interface{}{
+			"chat_id":                  targetID,
+			"text":                     text,
+			"disable_web_page_preview": true,
+		}
+		if errRetry := h.sendBotAPIRequestWithErr("sendMessage", fallbackPayload); errRetry != nil {
+			log.Printf("[AdminCommand] Failed to send message to %d: %v", targetID, errRetry)
+		}
 	}
 }
 
