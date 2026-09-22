@@ -372,7 +372,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       setIsSearchingYoutube(true);
       const queryTitle = item.author ? `${item.title} ${item.author}` : item.title;
       api
-        .searchYouTube(queryTitle, item.category)
+        .searchYouTube(queryTitle, item.category, item.release_year, item.director)
         .then((ytUrl) => {
           if (ytUrl) {
             onUpdateItem(item.id, { youtube_url: ytUrl });
@@ -382,7 +382,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           setIsSearchingYoutube(false);
         });
     }
-  }, [item.id, item.title, item.category, item.author, item.youtube_url]);
+  }, [item.id, item.title, item.category, item.author, item.youtube_url, item.release_year, item.director]);
 
   const enrichedItemIds = useRef<Set<string>>(new Set());
 

@@ -690,13 +690,6 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		completedAt = &now
 	}
 
-	ytURL := strings.TrimSpace(req.YoutubeURL)
-	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book") {
-		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat); err == nil && foundURL != "" {
-			ytURL = foundURL
-		}
-	}
-
 	posterURL := strings.TrimSpace(req.PosterURL)
 
 	directorVal := strings.TrimSpace(req.Director)
@@ -707,6 +700,13 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	descVal := strings.TrimSpace(req.Description)
 	pubRatingVal := strings.TrimSpace(req.PublicRating)
 	countryVal := mapCountryToFlag(strings.TrimSpace(req.Country))
+
+	ytURL := strings.TrimSpace(req.YoutubeURL)
+	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book") {
+		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat, releaseYearVal, directorVal); err == nil && foundURL != "" {
+			ytURL = foundURL
+		}
+	}
 
 	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "" || countryVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
@@ -1969,6 +1969,9 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	cat := strings.TrimSpace(r.URL.Query().Get("category"))
+	year := strings.TrimSpace(r.URL.Query().Get("year"))
+	director := strings.TrimSpace(r.URL.Query().Get("director"))
+	altTitle := strings.TrimSpace(r.URL.Query().Get("alt_title"))
 	if q == "" {
 		http.Error(w, `{"error":"q parameter is required"}`, http.StatusBadRequest)
 		return
@@ -1978,7 +1981,7 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Check Cache
-	cacheKey := fmt.Sprintf("yt:%s:%s", strings.ToLower(q), strings.ToLower(cat))
+	cacheKey := fmt.Sprintf("yt:%s:%s:%s:%s:%s", strings.ToLower(q), strings.ToLower(cat), strings.ToLower(year), strings.ToLower(director), strings.ToLower(altTitle))
 	if cachedVal, ok := h.SearchCache.Get(cacheKey); ok {
 		if ytURL, isStr := cachedVal.(string); isStr {
 			w.Header().Set("Content-Type", "application/json")
@@ -1989,7 +1992,7 @@ func (h *Handler) SearchYouTube(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ytURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, q, cat)
+	ytURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, q, cat, year, director, altTitle)
 	if err != nil {
 		log.Printf("YouTube search error: %v", err)
 	}

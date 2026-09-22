@@ -58,9 +58,25 @@ var (
 	isoDurationRegex = regexp.MustCompile(`(?i)PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?`)
 	minDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|minutes|min)\b`)
 	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\.?\s*(\d+)?\s*(?:мин|минут|m)?`)
-	timeColonRegex   = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
-	kinopoiskURLRegex = regexp.MustCompile(`(?i)kinopoisk\.ru/(?:film|series)/(?:[a-zA-Z0-9_-]+-)?(\d+)`)
+	timeColonRegex        = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
+	kinopoiskURLRegex     = regexp.MustCompile(`(?i)kinopoisk\.ru/(?:film|series)/(?:[a-zA-Z0-9_-]+-)?(\d+)`)
+	movieTrailerJSRegex   = regexp.MustCompile(`(?i)(?:var|let|const)\s+(?:MOVIE_TRAILER|TRAILER_URL|TRAILER|trailer_url|trailerUrl|trailer)\s*=\s*["']([^"']+)["']`)
+	iframeYoutubeRegex    = regexp.MustCompile(`(?i)<iframe[^>]+src=["'](?:https?:)?//(?:www\.)?(?:youtube(?:-nocookie)?\.com/embed/|youtu\.be/)([a-zA-Z0-9_-]{11})[^"']*["']`)
+	trailerContainerRegex = regexp.MustCompile(`(?is)<(?:div|section|li|a)[^>]+(?:id=["']trailer["']|class=["'][^"']*trailer[^"']*["'])[^>]*>(.*?)</(?:div|section|li|a)>`)
+	ytCanonicalRegex      = regexp.MustCompile(`(?i)(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/|v/)|youtu\.be/)([a-zA-Z0-9_-]{11})`)
 )
+
+func ExtractCanonicalYouTubeURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	m := ytCanonicalRegex.FindStringSubmatch(raw)
+	if len(m) > 1 {
+		return "https://www.youtube.com/watch?v=" + m[1]
+	}
+	return ""
+}
 
 // ExtractFirstURL extracts the first HTTP/HTTPS URL from a text message
 func ExtractFirstURL(text string) string {
@@ -160,6 +176,9 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 		if media.KinopoiskID != "" && kpKey != "" {
 			if kpMedia, kpErr := FetchKinopoiskFilmByID(client, kpKey, media.KinopoiskID); kpErr == nil && kpMedia != nil && kpMedia.Title != "" {
 				kpMedia.SourceURL = rawURL
+				if kpMedia.YoutubeURL == "" && media.YoutubeURL != "" {
+					kpMedia.YoutubeURL = media.YoutubeURL
+				}
 				enrichYouTubeTrailer(youtubeKey, kpMedia)
 				kpMedia.PosterURL = OptimizePosterURL(client, kpMedia.PosterURL)
 				return kpMedia, nil
@@ -170,6 +189,9 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 		if media.IMDbID != "" && tmdbKey != "" {
 			if tmdbMedia, tmdbErr := fetchTMDbByExternalID(client, tmdbKey, media.IMDbID, ""); tmdbErr == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
 				tmdbMedia.SourceURL = rawURL
+				if tmdbMedia.YoutubeURL == "" && media.YoutubeURL != "" {
+					tmdbMedia.YoutubeURL = media.YoutubeURL
+				}
 				enrichYouTubeTrailer(youtubeKey, tmdbMedia)
 				tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
 				return tmdbMedia, nil
@@ -421,10 +443,11 @@ func parseDurationString(raw string) string {
 }
 
 func enrichYouTubeTrailer(youtubeKey string, media *ExtractedMedia) {
-	if media.YoutubeURL == "" && media.Title != "" {
-		if ytURL, err := youtube.SearchYouTube(youtubeKey, media.Title, media.Category); err == nil && ytURL != "" {
-			media.YoutubeURL = ytURL
-		}
+	if media.YoutubeURL != "" || media.Title == "" {
+		return
+	}
+	if ytURL, err := youtube.SearchYouTube(youtubeKey, media.Title, media.Category, media.ReleaseYear, media.Director, media.AlternativeTitle); err == nil && ytURL != "" {
+		media.YoutubeURL = ytURL
 	}
 }
 
@@ -636,6 +659,44 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 		}
 	}
 
+	// 9. Extract trailer directly from page (OpenGraph, JS MOVIE_TRAILER, iframe, or trailer container)
+	if media.YoutubeURL == "" {
+		for _, vKey := range []string{"video", "video:url", "video:secure_url"} {
+			if v, ok := ogMap[vKey]; ok {
+				if yt := ExtractCanonicalYouTubeURL(v); yt != "" {
+					media.YoutubeURL = yt
+					break
+				}
+			}
+		}
+	}
+	if media.YoutubeURL == "" {
+		if m := movieTrailerJSRegex.FindStringSubmatch(html); len(m) > 1 {
+			if yt := ExtractCanonicalYouTubeURL(m[1]); yt != "" {
+				media.YoutubeURL = yt
+			}
+		}
+	}
+	if media.YoutubeURL == "" {
+		if m := iframeYoutubeRegex.FindStringSubmatch(html); len(m) > 1 {
+			media.YoutubeURL = "https://www.youtube.com/watch?v=" + m[1]
+		}
+	}
+	if media.YoutubeURL == "" {
+		if m := trailerContainerRegex.FindStringSubmatch(html); len(m) > 1 {
+			if yt := ExtractCanonicalYouTubeURL(m[1]); yt != "" {
+				media.YoutubeURL = yt
+			}
+		}
+	}
+
+	// Verify trailer embeddability if extracted from page
+	if media.YoutubeURL != "" {
+		if !youtube.IsVideoEmbeddable(client, media.YoutubeURL) {
+			media.YoutubeURL = ""
+		}
+	}
+
 	return media, nil
 }
 
@@ -708,6 +769,14 @@ func parseJSONLD(data map[string]interface{}, media *ExtractedMedia, baseURL str
 		if actorObj, ok := data["actor"]; ok {
 			media.Cast = extractPersonNames(actorObj, 6)
 		}
+		// Trailer / Video
+		if media.YoutubeURL == "" {
+			if trailerObj, ok := data["trailer"]; ok {
+				media.YoutubeURL = extractTrailerFromJSONLD(trailerObj)
+			} else if videoObj, ok := data["video"]; ok {
+				media.YoutubeURL = extractTrailerFromJSONLD(videoObj)
+			}
+		}
 	} else if tp == "Book" || tp == "Product" {
 		media.Category = "book"
 		if name, ok := data["name"].(string); ok && name != "" {
@@ -768,6 +837,22 @@ func extractPersonNames(obj interface{}, maxCount int) string {
 	}
 
 	return strings.Join(names, ", ")
+}
+
+func extractTrailerFromJSONLD(obj interface{}) string {
+	switch v := obj.(type) {
+	case string:
+		return ExtractCanonicalYouTubeURL(v)
+	case map[string]interface{}:
+		for _, key := range []string{"embedUrl", "url", "contentUrl"} {
+			if s, ok := v[key].(string); ok && s != "" {
+				if yt := ExtractCanonicalYouTubeURL(s); yt != "" {
+					return yt
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // DetectTargetLanguage determines the target locale (uk-UA, ru-RU, es-ES, en-US) based on query content and user language code.

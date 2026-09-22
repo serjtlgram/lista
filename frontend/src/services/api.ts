@@ -149,11 +149,14 @@ export const api = {
     }
   },
 
-  async searchYouTube(title: string, category?: string): Promise<string> {
+  async searchYouTube(title: string, category?: string, year?: string, director?: string, altTitle?: string): Promise<string> {
     try {
       if (!title) return '';
       const params = new URLSearchParams({ q: title });
       if (category) params.append('category', category);
+      if (year) params.append('year', year);
+      if (director) params.append('director', director);
+      if (altTitle) params.append('alt_title', altTitle);
 
       const res = await fetch(`${API_BASE}/api/youtube/search?${params.toString()}`, { headers: getHeaders() });
       if (!res.ok) return '';
