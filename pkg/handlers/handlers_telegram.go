@@ -697,10 +697,19 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		targetLang := parser.DetectTargetLanguage(titleTrimmed, langCode)
 		onlineResults := h.searchOnlineCatalog(titleTrimmed, catEn, nil, targetLang)
 		if len(onlineResults) > 0 {
+			cleanQuery := parser.CleanTitleForMatch(titleTrimmed)
+			var candidateMatches []models.CatalogSearchResult
+			for _, res := range onlineResults {
+				cTitle := parser.CleanTitleForMatch(res.Title)
+				if cTitle == cleanQuery {
+					candidateMatches = append(candidateMatches, res)
+				}
+			}
+
 			var best models.CatalogSearchResult
 			found := false
 			if media.ReleaseYear != "" {
-				for _, res := range onlineResults {
+				for _, res := range candidateMatches {
 					if res.ReleaseYear == media.ReleaseYear {
 						best = res
 						found = true
@@ -708,45 +717,48 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 					}
 				}
 			}
-			if !found {
-				best = onlineResults[0]
+			if !found && len(candidateMatches) > 0 {
+				best = candidateMatches[0]
+				found = true
 			}
-			
-			if media.PublicRating == "" && best.PublicRating != "" {
-				media.PublicRating = best.PublicRating
-			}
-			if media.Description == "" && best.Description != "" {
-				media.Description = best.Description
-			}
-			if media.PosterURL == "" && best.PosterURL != "" {
-				media.PosterURL = best.PosterURL
-			}
-			if media.ReleaseYear == "" && best.ReleaseYear != "" {
-				media.ReleaseYear = best.ReleaseYear
-			}
-			if media.Duration == "" && best.Duration != "" {
-				media.Duration = best.Duration
-			}
-			if media.Genre == "" && best.Genre != "" {
-				media.Genre = best.Genre
-			}
-			if media.Director == "" && best.Director != "" {
-				media.Director = best.Director
-			}
-			if media.Cast == "" && best.Cast != "" {
-				media.Cast = best.Cast
-			}
-			if media.Author == "" && best.Author != "" {
-				media.Author = best.Author
-			}
-			if media.ISBN == "" && best.ISBN != "" {
-				media.ISBN = best.ISBN
-			}
-			if media.YoutubeURL == "" && best.YoutubeURL != "" {
-				media.YoutubeURL = best.YoutubeURL
-			}
-			if media.Country == "" && best.Country != "" {
-				media.Country = best.Country
+
+			if found {
+				if media.PublicRating == "" && best.PublicRating != "" {
+					media.PublicRating = best.PublicRating
+				}
+				if media.Description == "" && best.Description != "" {
+					media.Description = best.Description
+				}
+				if media.PosterURL == "" && best.PosterURL != "" {
+					media.PosterURL = best.PosterURL
+				}
+				if media.ReleaseYear == "" && best.ReleaseYear != "" {
+					media.ReleaseYear = best.ReleaseYear
+				}
+				if media.Duration == "" && best.Duration != "" {
+					media.Duration = best.Duration
+				}
+				if media.Genre == "" && best.Genre != "" {
+					media.Genre = best.Genre
+				}
+				if media.Director == "" && best.Director != "" {
+					media.Director = best.Director
+				}
+				if media.Cast == "" && best.Cast != "" {
+					media.Cast = best.Cast
+				}
+				if media.Author == "" && best.Author != "" {
+					media.Author = best.Author
+				}
+				if media.ISBN == "" && best.ISBN != "" {
+					media.ISBN = best.ISBN
+				}
+				if media.YoutubeURL == "" && best.YoutubeURL != "" {
+					media.YoutubeURL = best.YoutubeURL
+				}
+				if media.Country == "" && best.Country != "" {
+					media.Country = best.Country
+				}
 			}
 		}
 	}
@@ -761,7 +773,8 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 	var finalItemID string = itemUUID
 	if h.DB != nil && h.DB.Pool != nil {
 		var existingID string
-		checkQuery := "SELECT id FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))"
+		var existingNote string
+		checkQuery := "SELECT id, COALESCE(note, '') FROM items WHERE user_id = $1 AND LOWER(TRIM(title)) = LOWER($2) AND (LOWER(TRIM(category)) = LOWER($3) OR LOWER(TRIM(category)) = LOWER($4))"
 		args := []interface{}{userID, titleTrimmed, media.Category, catEn}
 		if media.ReleaseYear != "" {
 			checkQuery += " AND release_year = $5"
@@ -769,26 +782,46 @@ func (h *Handler) processIncomingMediaURL(userID int64, from *struct {
 		}
 		checkQuery += " LIMIT 1"
 		
-		checkErr := h.DB.Pool.QueryRow(ctx, checkQuery, args...).Scan(&existingID)
+		checkErr := h.DB.Pool.QueryRow(ctx, checkQuery, args...).Scan(&existingID, &existingNote)
 		if checkErr == nil && existingID != "" {
 			finalItemID = existingID
-			// Update missing fields if new data has director/cast/poster/duration/public_rating
-			_, _ = h.DB.Pool.Exec(ctx, `
-				UPDATE items SET
-					poster_url = CASE WHEN poster_url = '' OR poster_url IS NULL THEN $1 ELSE poster_url END,
-					duration = CASE WHEN duration = '' OR duration IS NULL THEN $2 ELSE duration END,
-					genre = CASE WHEN genre = '' OR genre IS NULL THEN $3 ELSE genre END,
-					director = CASE WHEN director = '' OR director IS NULL THEN $4 ELSE director END,
-					cast_members = CASE WHEN cast_members = '' OR cast_members IS NULL THEN $5 ELSE cast_members END,
-					author = CASE WHEN author = '' OR author IS NULL THEN $6 ELSE author END,
-					isbn = CASE WHEN isbn = '' OR isbn IS NULL THEN $7 ELSE isbn END,
-					youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
-					public_rating = CASE WHEN public_rating = '' OR public_rating IS NULL THEN $9 ELSE public_rating END,
-					note = CASE WHEN note = '' OR note IS NULL THEN $10 ELSE note END,
-					country = CASE WHEN country = '' OR country IS NULL THEN $11 ELSE country END,
-					updated_at = CURRENT_TIMESTAMP
-				WHERE id = $12 AND user_id = $13;
-			`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, media.Country, finalItemID, userID)
+			if existingNote == rawURL {
+				// User is re-sending the exact same URL, update fields with newly corrected data
+				_, _ = h.DB.Pool.Exec(ctx, `
+					UPDATE items SET
+						poster_url = CASE WHEN $1 != '' THEN $1 ELSE poster_url END,
+						duration = CASE WHEN $2 != '' THEN $2 ELSE duration END,
+						genre = CASE WHEN $3 != '' THEN $3 ELSE genre END,
+						director = CASE WHEN $4 != '' THEN $4 ELSE director END,
+						cast_members = CASE WHEN $5 != '' THEN $5 ELSE cast_members END,
+						author = CASE WHEN $6 != '' THEN $6 ELSE author END,
+						isbn = CASE WHEN $7 != '' THEN $7 ELSE isbn END,
+						youtube_url = CASE WHEN $8 != '' THEN $8 ELSE youtube_url END,
+						public_rating = CASE WHEN $9 != '' THEN $9 ELSE public_rating END,
+						description = CASE WHEN $10 != '' THEN $10 ELSE description END,
+						country = CASE WHEN $11 != '' THEN $11 ELSE country END,
+						updated_at = CURRENT_TIMESTAMP
+					WHERE id = $12 AND user_id = $13;
+				`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, media.Description, media.Country, finalItemID, userID)
+			} else {
+				// Update missing fields if new data has director/cast/poster/duration/public_rating
+				_, _ = h.DB.Pool.Exec(ctx, `
+					UPDATE items SET
+						poster_url = CASE WHEN poster_url = '' OR poster_url IS NULL THEN $1 ELSE poster_url END,
+						duration = CASE WHEN duration = '' OR duration IS NULL THEN $2 ELSE duration END,
+						genre = CASE WHEN genre = '' OR genre IS NULL THEN $3 ELSE genre END,
+						director = CASE WHEN director = '' OR director IS NULL THEN $4 ELSE director END,
+						cast_members = CASE WHEN cast_members = '' OR cast_members IS NULL THEN $5 ELSE cast_members END,
+						author = CASE WHEN author = '' OR author IS NULL THEN $6 ELSE author END,
+						isbn = CASE WHEN isbn = '' OR isbn IS NULL THEN $7 ELSE isbn END,
+						youtube_url = CASE WHEN youtube_url = '' OR youtube_url IS NULL THEN $8 ELSE youtube_url END,
+						public_rating = CASE WHEN public_rating = '' OR public_rating IS NULL THEN $9 ELSE public_rating END,
+						note = CASE WHEN note = '' OR note IS NULL THEN $10 ELSE note END,
+						country = CASE WHEN country = '' OR country IS NULL THEN $11 ELSE country END,
+						updated_at = CURRENT_TIMESTAMP
+					WHERE id = $12 AND user_id = $13;
+				`, media.PosterURL, media.Duration, media.Genre, media.Director, media.Cast, media.Author, media.ISBN, media.YoutubeURL, media.PublicRating, rawURL, media.Country, finalItemID, userID)
+			}
 		} else {
 			insertQuery := `
 				INSERT INTO items (id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, youtube_url, director, cast_members, author, isbn, public_rating, country, note)

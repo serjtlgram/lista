@@ -38,10 +38,13 @@ type ExtractedMedia struct {
 	Cast         string `json:"cast"` // 1-4 main actors
 	Author       string `json:"author,omitempty"`
 	ISBN         string `json:"isbn,omitempty"`
-	PublicRating string `json:"public_rating,omitempty"`
-	Country      string `json:"country,omitempty"`
-	YoutubeURL   string `json:"youtube_url"`
-	SourceURL    string `json:"source_url"`
+	PublicRating     string `json:"public_rating,omitempty"`
+	Country          string `json:"country,omitempty"`
+	YoutubeURL       string `json:"youtube_url"`
+	SourceURL        string `json:"source_url"`
+	KinopoiskID      string `json:"-"`
+	IMDbID           string `json:"-"`
+	AlternativeTitle string `json:"-"`
 }
 
 var (
@@ -145,6 +148,33 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 	scrapedMedia, err := scrapeWebPage(client, rawURL)
 	if err == nil && scrapedMedia != nil && scrapedMedia.Title != "" {
 		media = scrapedMedia
+
+		// 3a. If scraped page contains direct link to Kinopoisk, fetch official reference data
+		kpKey := ""
+		if len(kinopoiskKey) > 0 {
+			kpKey = kinopoiskKey[0]
+		}
+		if kpKey == "" {
+			kpKey = os.Getenv("KINOPOISK_API_KEY")
+		}
+		if media.KinopoiskID != "" && kpKey != "" {
+			if kpMedia, kpErr := FetchKinopoiskFilmByID(client, kpKey, media.KinopoiskID); kpErr == nil && kpMedia != nil && kpMedia.Title != "" {
+				kpMedia.SourceURL = rawURL
+				enrichYouTubeTrailer(youtubeKey, kpMedia)
+				kpMedia.PosterURL = OptimizePosterURL(client, kpMedia.PosterURL)
+				return kpMedia, nil
+			}
+		}
+
+		// 3b. If scraped page contains IMDb ID, fetch official TMDb data by external ID
+		if media.IMDbID != "" && tmdbKey != "" {
+			if tmdbMedia, tmdbErr := fetchTMDbByExternalID(client, tmdbKey, media.IMDbID, ""); tmdbErr == nil && tmdbMedia != nil && tmdbMedia.Title != "" {
+				tmdbMedia.SourceURL = rawURL
+				enrichYouTubeTrailer(youtubeKey, tmdbMedia)
+				tmdbMedia.PosterURL = OptimizePosterURL(client, tmdbMedia.PosterURL)
+				return tmdbMedia, nil
+			}
+		}
 	}
 
 	// Clean up title and detect category
@@ -178,36 +208,44 @@ func ParseMediaURL(rawURL string, tmdbKey string, youtubeKey string, kinopoiskKe
 		}
 	}
 
-	// 4a. TMDb Search Fallback: Query TMDb search API ONLY for movies/shows
+	// 4a. TMDb Search Fallback: Query TMDb search API ONLY for missing fields in movies/shows
 	if media.Category != "book" && media.Title != "" {
 		targetLang := DetectTargetLanguage(media.Title, "")
 		if enriched, err := searchTMDbByTitle(client, tmdbKey, media.Title, media.ReleaseYear, targetLang); err == nil && enriched != nil && enriched.Title != "" {
-			if enriched.PosterURL != "" {
+			if media.PosterURL == "" && enriched.PosterURL != "" {
 				media.PosterURL = enriched.PosterURL
 			}
-			if enriched.Description != "" && len(enriched.Description) > len(media.Description) {
+			if media.Description == "" && enriched.Description != "" {
+				media.Description = enriched.Description
+			} else if enriched.Description != "" && len(strings.TrimSpace(media.Description)) < 30 && len(enriched.Description) > len(media.Description) {
 				media.Description = enriched.Description
 			}
-			if enriched.Duration != "" {
+			if media.Duration == "" && enriched.Duration != "" {
 				media.Duration = enriched.Duration
 			}
-			if enriched.Director != "" {
+			if media.Director == "" && enriched.Director != "" {
 				media.Director = enriched.Director
 			}
-			if enriched.Cast != "" {
+			if media.Cast == "" && enriched.Cast != "" {
 				media.Cast = enriched.Cast
 			}
-			if enriched.Genre != "" {
+			if media.Genre == "" && enriched.Genre != "" {
 				media.Genre = enriched.Genre
 			}
-			if enriched.ReleaseYear != "" {
+			if media.ReleaseYear == "" && enriched.ReleaseYear != "" {
 				media.ReleaseYear = enriched.ReleaseYear
 			}
-			if enriched.Category != "" {
+			if media.Category == "" && enriched.Category != "" {
 				media.Category = enriched.Category
 			}
-			if enriched.YoutubeURL != "" {
+			if media.YoutubeURL == "" && enriched.YoutubeURL != "" {
 				media.YoutubeURL = enriched.YoutubeURL
+			}
+			if media.Country == "" && enriched.Country != "" {
+				media.Country = enriched.Country
+			}
+			if media.PublicRating == "" && enriched.PublicRating != "" {
+				media.PublicRating = enriched.PublicRating
 			}
 		}
 	}
@@ -551,6 +589,44 @@ func scrapeWebPage(client *http.Client, pageURL string) (*ExtractedMedia, error)
 				media.Cast = strings.Join(castList, ", ")
 			}
 		}
+	}
+
+	// 5. Fallback HTML Scraper for Country if empty
+	if media.Country == "" {
+		countrySectionRegex := regexp.MustCompile(`(?i)(?:itemprop=["']countryOfOrigin["']|<div[^>]*class=["'][^"']*key[^"']*["'][^>]*>\s*Страна\s*</div>)[^>]*>(.*?)(?:</div>\s*</div>|</td>|</tr|itemprop=["']genre|$)`)
+		if m := countrySectionRegex.FindStringSubmatch(html); len(m) > 1 {
+			cText := stripHTML(m[1])
+			cText = strings.TrimSpace(cText)
+			if cText != "" {
+				parts := strings.Split(cText, ",")
+				if len(parts) > 0 {
+					media.Country = strings.TrimSpace(parts[0])
+				}
+			}
+		}
+	}
+
+	// 6. Check duration in HTML if empty or suspiciously short (e.g. <= 3 min trailer in JSON-LD)
+	durTextRegex := regexp.MustCompile(`(?i)(?:itemprop=["']duration["']|<div[^>]*class=["'][^"']*key[^"']*["'][^>]*>\s*Время\s*</div>)[^>]*>(.*?)(?:</div>|</td>|</tr|$)`)
+	if m := durTextRegex.FindStringSubmatch(html); len(m) > 1 {
+		durParsed := parseDurationString(stripHTML(m[1]))
+		if durParsed != "" && (media.Duration == "" || strings.HasPrefix(media.Duration, "1 мин") || strings.HasPrefix(media.Duration, "2 мин") || strings.HasPrefix(media.Duration, "3 мин")) {
+			media.Duration = durParsed
+		}
+	}
+
+	// 7. Check for Kinopoisk link or IMDb ID in page HTML
+	if kpMatch := kinopoiskURLRegex.FindStringSubmatch(html); len(kpMatch) > 1 {
+		media.KinopoiskID = kpMatch[1]
+	}
+	if imdbMatch := imdbIDRegex.FindStringSubmatch(html); len(imdbMatch) > 1 {
+		media.IMDbID = imdbMatch[1]
+	}
+
+	// 8. Alternative title
+	altTitleRegex := regexp.MustCompile(`(?i)itemprop=["']alternativeHeadline["'][^>]*>([^<]+)<`)
+	if m := altTitleRegex.FindStringSubmatch(html); len(m) > 1 {
+		media.AlternativeTitle = strings.TrimSpace(m[1])
 	}
 
 	// Extract year from title if not set
@@ -997,10 +1073,15 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 
 	var searchRes struct {
 		Results []struct {
-			ID           int    `json:"id"`
-			MediaType    string `json:"media_type"`
-			ReleaseDate  string `json:"release_date"`
-			FirstAirDate string `json:"first_air_date"`
+			ID            int     `json:"id"`
+			MediaType     string  `json:"media_type"`
+			Title         string  `json:"title"`
+			Name          string  `json:"name"`
+			OriginalTitle string  `json:"original_title"`
+			OriginalName  string  `json:"original_name"`
+			ReleaseDate   string  `json:"release_date"`
+			FirstAirDate  string  `json:"first_air_date"`
+			Popularity    float64 `json:"popularity"`
 		} `json:"results"`
 	}
 
@@ -1008,39 +1089,107 @@ func searchTMDbByTitle(client *http.Client, tmdbKey string, title string, year s
 		return nil, err
 	}
 
-	if year != "" {
-		yearInt, _ := strconv.Atoi(year)
-		for _, item := range searchRes.Results {
-			if item.MediaType == "movie" || item.MediaType == "tv" {
-				itemYear := ""
-				if len(item.ReleaseDate) >= 4 {
-					itemYear = item.ReleaseDate[:4]
-				} else if len(item.FirstAirDate) >= 4 {
-					itemYear = item.FirstAirDate[:4]
-				}
-				
-				if itemYear == year {
-					return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
-				}
-				
-				if itemYearInt, err := strconv.Atoi(itemYear); err == nil && yearInt > 0 {
-					if itemYearInt == yearInt-1 || itemYearInt == yearInt+1 {
-						return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
-					}
+	qClean := CleanTitleForMatch(title)
+	yearInt, _ := strconv.Atoi(year)
+
+	type matchCandidate struct {
+		id        int
+		mediaType string
+		year      string
+		exactYear bool
+		nearYear  bool
+	}
+
+	var titleMatches []matchCandidate
+
+	for _, item := range searchRes.Results {
+		if item.MediaType != "movie" && item.MediaType != "tv" {
+			continue
+		}
+
+		itemTitle := item.Title
+		if itemTitle == "" {
+			itemTitle = item.Name
+		}
+		itemOrig := item.OriginalTitle
+		if itemOrig == "" {
+			itemOrig = item.OriginalName
+		}
+
+		cTitle := CleanTitleForMatch(itemTitle)
+		cOrig := CleanTitleForMatch(itemOrig)
+
+		// Candidate must strictly match either local or original title
+		if cTitle != qClean && cOrig != qClean {
+			continue
+		}
+
+		itemYear := ""
+		if len(item.ReleaseDate) >= 4 {
+			itemYear = item.ReleaseDate[:4]
+		} else if len(item.FirstAirDate) >= 4 {
+			itemYear = item.FirstAirDate[:4]
+		}
+
+		exactY := false
+		nearY := false
+		if year != "" {
+			if itemYear == year {
+				exactY = true
+			} else if itemYearInt, errConv := strconv.Atoi(itemYear); errConv == nil && yearInt > 0 {
+				if itemYearInt == yearInt-1 || itemYearInt == yearInt+1 {
+					nearY = true
 				}
 			}
 		}
-		// If year is provided but no match within +/- 1 year is found, do not fall back to an arbitrary year.
-		return nil, fmt.Errorf("no TMDb match found for year %s", year)
+
+		titleMatches = append(titleMatches, matchCandidate{
+			id:        item.ID,
+			mediaType: item.MediaType,
+			year:      itemYear,
+			exactYear: exactY,
+			nearYear:  nearY,
+		})
 	}
 
-	for _, item := range searchRes.Results {
-		if item.MediaType == "movie" || item.MediaType == "tv" {
-			return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(item.ID), item.MediaType, targetLang)
+	// 1. If year was specified, look for exact year among title matches
+	if year != "" {
+		for _, cand := range titleMatches {
+			if cand.exactYear {
+				return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(cand.id), cand.mediaType, targetLang)
+			}
+		}
+		// 2. Look for near year (+/- 1 year)
+		for _, cand := range titleMatches {
+			if cand.nearYear {
+				return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(cand.id), cand.mediaType, targetLang)
+			}
+		}
+		return nil, fmt.Errorf("no TMDb match found for title %q and year %s", title, year)
+	}
+
+	// If no year was specified, return the first candidate matching the title
+	if len(titleMatches) > 0 {
+		return fetchTMDbDetails(client, tmdbKey, strconv.Itoa(titleMatches[0].id), titleMatches[0].mediaType, targetLang)
+	}
+
+	return nil, fmt.Errorf("no TMDb match found for title %q", title)
+}
+
+// CleanTitleForMatch normalizes a title for strict comparison
+func CleanTitleForMatch(s string) string {
+	s = strings.ToLower(s)
+	// Remove year in parentheses e.g. (2015) or (1994)
+	s = regexp.MustCompile(`\(\s*(?:19|20)\d\d\s*\)`).ReplaceAllString(s, "")
+	var sb strings.Builder
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
+			sb.WriteRune(r)
+		} else {
+			sb.WriteRune(' ')
 		}
 	}
-
-	return nil, fmt.Errorf("no TMDb match found")
+	return strings.Join(strings.Fields(sb.String()), " ")
 }
 
 // OptimizePosterURL downloads, resizes, and encodes poster to JPEG <= 50KB Data URL
