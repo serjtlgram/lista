@@ -49,12 +49,9 @@ func (h *Handler) SearchCatalog(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// 2. Search Rate Limiter: max 20 requests per minute per user/IP
+		// 2. Search Rate Limiter: max 30 requests per minute per user/IP
 		if h.SearchLimiter != nil {
 			if allowed, wait := h.SearchLimiter.AllowSearch(rateKey); !allowed {
-				if h.AutoJail != nil {
-					h.AutoJail.Record429(rateKey)
-				}
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
 				w.WriteHeader(http.StatusTooManyRequests)

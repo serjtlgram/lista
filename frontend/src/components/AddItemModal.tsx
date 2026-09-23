@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Check, Sparkles, Search } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, ChevronDown, Check, Sparkles, Search, Loader2 } from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { Translations, getTranslatedStatus, getStoredLanguage } from '../services/i18n';
 import { api } from '../services/api';
@@ -113,8 +113,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const [catalogSuggestions, setCatalogSuggestions] = useState<CatalogItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
-  const titleContainerRef = React.useRef<HTMLDivElement>(null);
+  const titleContainerRef = useRef<HTMLDivElement>(null);
+  const searchSeqRef = useRef<number>(0);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const suggestionsCacheRef = useRef<Map<string, CatalogItem[]>>(new Map());
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -123,23 +127,70 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
   }, []);
 
-  const [quickSearchQuery, setQuickSearchQuery] = useState('');
-  const [quickSearchResults, setQuickSearchResults] = useState<CatalogItem[]>([]);
+  const fetchSuggestions = (query: string, currentCategory: string) => {
+    const q = query.trim();
+    if (editingItem || q.length < 2) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      setCatalogSuggestions([]);
+      setShowSuggestions(false);
+      setIsSearchingCatalog(false);
+      return;
+    }
 
-  const handleCategorySelect = async (newCat: string) => {
+    const cacheKey = `${currentCategory.toLowerCase()}::${q.toLowerCase()}`;
+    if (suggestionsCacheRef.current.has(cacheKey)) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      const cached = suggestionsCacheRef.current.get(cacheKey) || [];
+      setCatalogSuggestions(cached);
+      setShowSuggestions(cached.length > 0);
+      setIsSearchingCatalog(false);
+      return;
+    }
+
+    setIsSearchingCatalog(true);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    debounceTimerRef.current = setTimeout(async () => {
+      const currentReqId = ++searchSeqRef.current;
+      try {
+        const results = await api.searchCatalog(q, currentCategory);
+        if (searchSeqRef.current !== currentReqId) return;
+
+        const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
+        const finalResults = isUk && results ? results.filter(isValidUkrainianCatalogItem) : (results || []);
+
+        suggestionsCacheRef.current.set(cacheKey, finalResults);
+        setCatalogSuggestions(finalResults);
+        setShowSuggestions(finalResults.length > 0);
+      } catch (e) {
+        if (searchSeqRef.current === currentReqId) {
+          setCatalogSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (searchSeqRef.current === currentReqId) {
+          setIsSearchingCatalog(false);
+        }
+      }
+    }, 350);
+  };
+
+  const handleCategorySelect = (newCat: string) => {
     setCategory(newCat);
     if (!editingItem && title.trim().length >= 2) {
-      try {
-        const results = await api.searchCatalog(title, newCat);
-        setCatalogSuggestions(results || []);
-        setShowSuggestions(results && results.length > 0);
-      } catch (e) {
-        setCatalogSuggestions([]);
-        setShowSuggestions(false);
-      }
+      fetchSuggestions(title, newCat);
     }
   };
 
@@ -209,8 +260,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       setNote('');
       setShowAdvanced(true);
     }
-    setQuickSearchQuery('');
-    setQuickSearchResults([]);
+    setCatalogSuggestions([]);
+    setShowSuggestions(false);
+    setIsSearchingCatalog(false);
   }, [editingItem, isOpen, t]);
 
   if (!isOpen) return null;
@@ -233,42 +285,18 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     return false;
   };
 
-  const handleQuickSearch = async (val: string) => {
-    setQuickSearchQuery(val);
-    if (val.trim().length >= 2) {
-      try {
-        const results = await api.searchCatalog(val);
-        const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
-        const finalResults = isUk && results ? results.filter(isValidUkrainianCatalogItem) : (results || []);
-        setQuickSearchResults(finalResults);
-      } catch (e) {
-        setQuickSearchResults([]);
-      }
-    } else {
-      setQuickSearchResults([]);
-    }
-  };
-
-  const handleTitleChange = async (val: string) => {
+  const handleTitleChange = (val: string) => {
     setTitle(val);
-    if (!editingItem && val.trim().length >= 2) {
-      try {
-        const results = await api.searchCatalog(val, category);
-        const isUk = getStoredLanguage() === 'uk' || t?.categories?.movie_single === 'Фільм';
-        const finalResults = isUk && results ? results.filter(isValidUkrainianCatalogItem) : (results || []);
-        setCatalogSuggestions(finalResults);
-        setShowSuggestions(finalResults && finalResults.length > 0);
-      } catch (e) {
-        setCatalogSuggestions([]);
-        setShowSuggestions(false);
-      }
-    } else {
-      setCatalogSuggestions([]);
-      setShowSuggestions(false);
-    }
+    fetchSuggestions(val, category);
   };
 
   const handleSelectSuggestion = (sug: CatalogItem) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    setIsSearchingCatalog(false);
+    setShowSuggestions(false);
     setTitle(sug.title);
     const targetCat = sug.category || category;
     if (sug.category) {
@@ -289,8 +317,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       if (digits) setDurationMin(digits);
     }
 
-    setQuickSearchQuery('');
-    setQuickSearchResults([]);
     setShowSuggestions(false);
   };
 
@@ -415,18 +441,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <label className="text-xs sm:text-[13px] font-semibold text-gray-300 mb-1.5 block">
               {t.modal.title_label}
             </label>
-            <input
-              type="text"
-              required
-              maxLength={200}
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              onFocus={() => {
-                if (catalogSuggestions.length > 0) setShowSuggestions(true);
-              }}
-              placeholder={t.modal.title_placeholder}
-              className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                required
+                maxLength={200}
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                onFocus={() => {
+                  if (catalogSuggestions.length > 0) setShowSuggestions(true);
+                }}
+                placeholder={t.modal.title_placeholder}
+                className="w-full bg-bgDark border border-cardBorder rounded-xl p-3 pr-10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accentViolet"
+              />
+              {isSearchingCatalog && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-accentViolet animate-spin">
+                  <Loader2 className="w-4 h-4" />
+                </div>
+              )}
+            </div>
 
             {/* Catalog Autocomplete Suggestions Popup (Add mode only) */}
             {!editingItem && showSuggestions && catalogSuggestions.length > 0 && (
