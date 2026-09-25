@@ -190,6 +190,12 @@ export const ru: Translations = {
     min_warning: 'Должно быть выбрано минимум 1 категория!',
     save: 'Сохранить',
   },
+  card_menu: {
+    share: 'Поделиться',
+    copy_link: 'Скопировать ссылку',
+    edit: 'Редактировать',
+    delete: 'Удалить',
+  },
 
   details: {
     my_rating: 'Моя оценка',

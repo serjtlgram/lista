@@ -161,6 +161,12 @@ export interface Translations {
     min_warning: string;
     save: string;
   };
+  card_menu?: {
+    share: string;
+    copy_link: string;
+    edit: string;
+    delete: string;
+  };
 
   details: {
     my_rating: string;

@@ -190,6 +190,12 @@ export const en: Translations = {
     min_warning: 'At least 1 category must be selected!',
     save: 'Save',
   },
+  card_menu: {
+    share: 'Share',
+    copy_link: 'Copy link',
+    edit: 'Edit',
+    delete: 'Delete',
+  },
 
   details: {
     my_rating: 'My Rating',

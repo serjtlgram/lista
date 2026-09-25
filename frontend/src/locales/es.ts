@@ -190,6 +190,12 @@ export const es: Translations = {
     min_warning: '¡Debe seleccionar al menos 1 categoría!',
     save: 'Guardar',
   },
+  card_menu: {
+    share: 'Compartir',
+    copy_link: 'Copiar enlace',
+    edit: 'Editar',
+    delete: 'Eliminar',
+  },
 
   details: {
     my_rating: 'Mi Calificación',

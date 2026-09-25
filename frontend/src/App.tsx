@@ -771,19 +771,27 @@ function safeBase64Decode(str: string): any {
     }
   };
 
+  const handleEditItem = (item: Item) => {
+    triggerHaptic();
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
   const handleDeleteItem = async (id: string) => {
     triggerHaptic();
     setItems((prev) => prev.filter(i => i.id !== id));
     setSelectedItem(null);
-    const returnTab = previousTab || 'home';
-    setActiveTab(returnTab);
-    const targetY = savedScrollPosition;
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: targetY, behavior: 'instant' });
-      setTimeout(() => {
+    if (activeTab === 'details') {
+      const returnTab = previousTab || 'home';
+      setActiveTab(returnTab);
+      const targetY = savedScrollPosition;
+      requestAnimationFrame(() => {
         window.scrollTo({ top: targetY, behavior: 'instant' });
-      }, 50);
-    });
+        setTimeout(() => {
+          window.scrollTo({ top: targetY, behavior: 'instant' });
+        }, 50);
+      });
+    }
 
     setRecommendationListInfo((prev) => {
       if (!prev) return null;
@@ -808,6 +816,25 @@ function safeBase64Decode(str: string): any {
 
     api.deleteItem(id);
   };
+
+  useEffect(() => {
+    const onEditEvent = (e: any) => {
+      if (e.detail) {
+        handleEditItem(e.detail);
+      }
+    };
+    const onDeleteEvent = (e: any) => {
+      if (e.detail) {
+        handleDeleteItem(e.detail);
+      }
+    };
+    window.addEventListener('lista_edit_item', onEditEvent);
+    window.addEventListener('lista_delete_item', onDeleteEvent);
+    return () => {
+      window.removeEventListener('lista_edit_item', onEditEvent);
+      window.removeEventListener('lista_delete_item', onDeleteEvent);
+    };
+  }, [activeTab, previousTab, savedScrollPosition]);
 
   const userName =
     (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.first_name ||
@@ -950,6 +977,8 @@ function safeBase64Decode(str: string): any {
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
               t={t}
             />
             <ActivityCard
@@ -970,6 +999,8 @@ function safeBase64Decode(str: string): any {
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
               onAddItemClick={() => {
                 triggerHaptic();
                 setEditingItem(null);
@@ -995,6 +1026,8 @@ function safeBase64Decode(str: string): any {
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
               onAddCatalogItem={handleAddCatalogItem}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
               t={t}
             />
           </section>
@@ -1028,6 +1061,8 @@ function safeBase64Decode(str: string): any {
               onSelectItem={handleSelectItem}
               onToggleStatus={handleToggleStatus}
               onUpdateItem={handleUpdateItem}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
               onOpenRecommendations={handleOpenRecommendations}
               selectedListId={selectedListId}
               onSelectList={setSelectedListId}

@@ -11,6 +11,8 @@ interface RecentlyAddedProps {
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   onAddItemClick?: () => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: string) => void;
   t: Translations;
 }
 
@@ -21,6 +23,8 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
   onToggleStatus,
   onUpdateItem,
   onAddItemClick,
+  onEdit,
+  onDelete,
   t,
 }) => {
   return (
@@ -43,6 +47,8 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
               onSelect={onSelectItem} 
               onToggleStatus={onToggleStatus} 
               onUpdateItem={onUpdateItem}
+              onEdit={onEdit}
+              onDelete={onDelete}
               t={t} 
             />
           ))}

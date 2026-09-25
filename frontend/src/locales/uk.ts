@@ -190,6 +190,12 @@ export const uk: Translations = {
     min_warning: 'Має бути обрано щонайменше 1 категорія!',
     save: 'Зберегти',
   },
+  card_menu: {
+    share: 'Поділитися',
+    copy_link: 'Скопіювати посилання',
+    edit: 'Редагувати',
+    delete: 'Видалити',
+  },
 
   details: {
     my_rating: 'Моя оцінка',

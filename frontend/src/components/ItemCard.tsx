@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, Check, Plus, Minus, ChevronDown, X, FolderCheck, Popcorn, Share2 } from 'lucide-react';
+import { Star, Check, Plus, Minus, ChevronDown, X, FolderCheck, Popcorn, Share2, Link as LinkIcon, Edit3, Trash2, Copy } from 'lucide-react';
 import { Item } from '../types';
 import { getItemPoster } from '../services/posters';
 import { Translations } from '../services/i18n';
@@ -17,6 +17,8 @@ interface ItemCardProps {
   onAdd?: (item: Item, e: React.MouseEvent) => void;
   onRemoveFromList?: (item: Item, e: React.MouseEvent) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: string) => void;
   showCheckbox?: boolean;
   t?: Translations;
   searchMode?: string;
@@ -30,6 +32,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   onAdd,
   onRemoveFromList,
   onUpdateItem,
+  onEdit,
+  onDelete,
   t,
   searchMode,
   searchQuery,
@@ -294,14 +298,29 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
 
 
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastIconType, setToastIconType] = useState<'share' | 'copy' | 'check'>('share');
   const longPressTimerRef = useRef<any>(null);
   const isLongPressRef = useRef<boolean>(false);
   const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const actionMenuOpenedAtRef = useRef<number>(0);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, iconType: 'share' | 'copy' | 'check' = 'check') => {
+    setToastIconType(iconType);
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.HapticFeedback) {
+      try {
+        tg.HapticFeedback.impactOccurred(style);
+      } catch (e) {
+        console.warn('Haptic feedback error:', e);
+      }
+    }
   };
 
   const startLongPress = (clientX: number, clientY: number) => {
@@ -310,7 +329,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
-      shareItem(item, t, showToast);
+      actionMenuOpenedAtRef.current = Date.now();
+      triggerHaptic('medium');
+      setIsActionMenuOpen(true);
     }, 500);
   };
 
@@ -365,6 +386,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     cancelLongPress();
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    cancelLongPress();
+    actionMenuOpenedAtRef.current = Date.now();
+    triggerHaptic('medium');
+    setIsActionMenuOpen(true);
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     if (isLongPressRef.current) {
       e.preventDefault();
@@ -375,14 +404,69 @@ export const ItemCard: React.FC<ItemCardProps> = ({
     onSelect(item);
   };
 
-  const availableGenres = getAvailableGenres(item.category, t);
+  const handleShareAction = () => {
+    setIsActionMenuOpen(false);
+    triggerHaptic('light');
+    shareItem(item, t, (msg) => showToast(msg, 'share'));
+  };
 
-  const triggerHaptic = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred('light');
+  const handleCopyLinkAction = async () => {
+    setIsActionMenuOpen(false);
+    triggerHaptic('light');
+    const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      showToast(t?.details?.link_copied || 'Ссылка скопирована!', 'copy');
+    } catch (e) {
+      console.warn('Clipboard write error:', e);
+      showToast(t?.details?.link_copied || 'Ссылка скопирована!', 'copy');
     }
   };
+
+  const handleEditAction = () => {
+    setIsActionMenuOpen(false);
+    triggerHaptic('light');
+    if (onEdit) {
+      onEdit(item);
+    } else {
+      window.dispatchEvent(new CustomEvent('lista_edit_item', { detail: item }));
+    }
+  };
+
+  const handleDeleteAction = () => {
+    setIsActionMenuOpen(false);
+    triggerHaptic('light');
+    if (onDelete) {
+      onDelete(item.id);
+    } else {
+      window.dispatchEvent(new CustomEvent('lista_delete_item', { detail: item.id }));
+    }
+  };
+
+  useEffect(() => {
+    if (!isActionMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsActionMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActionMenuOpen]);
+
+  const availableGenres = getAvailableGenres(item.category, t);
 
   const subtitleObj = formatSubtitle();
 
@@ -398,11 +482,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        onContextMenu={(e) => {
-          if (isLongPressRef.current) {
-            e.preventDefault();
-          }
-        }}
+        onContextMenu={handleContextMenu}
         className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer transition-colors hover:border-accentViolet/50 relative overflow-hidden select-none"
       >
         <div className="flex items-stretch gap-3 w-full">
@@ -574,9 +654,114 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         onSave={() => recalculateLists()}
       />
 
+      {/* Long Press Action Menu Bottom Sheet */}
+      {isActionMenuOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          onClick={() => {
+            if (Date.now() - actionMenuOpenedAtRef.current < 400) return;
+            setIsActionMenuOpen(false);
+          }}
+        >
+          <div
+            className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-3 animate-slide-up pb-8 sm:pb-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: Poster + Title + Subtitle + Close */}
+            <div className="flex items-center justify-between border-b border-cardBorder pb-3 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src={posterSrc}
+                  referrerPolicy="no-referrer"
+                  className="w-9 h-[54px] object-cover rounded-lg bg-gray-200 dark:bg-cardDark shrink-0 shadow-sm"
+                  alt={item.title}
+                />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white truncate leading-snug">{item.title}</h3>
+                  <p className="text-[11px] text-gray-400 truncate mt-0.5">{subtitleObj.line1}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsActionMenuOpen(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Menu Options */}
+            <div className="space-y-1">
+              {/* 1. Поделиться */}
+              <button
+                onClick={handleShareAction}
+                className="w-full p-2.5 sm:p-3 rounded-2xl flex items-center gap-3 text-sm font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 transition active:scale-[0.98]"
+              >
+                <div className="w-8 h-8 rounded-xl bg-accentTeal/15 flex items-center justify-center text-accentTeal shrink-0">
+                  <Share2 className="w-4 h-4" />
+                </div>
+                <span>{t?.card_menu?.share || t?.details?.share || 'Поделиться'}</span>
+              </button>
+
+              {/* 2. Скопировать ссылку */}
+              <button
+                onClick={handleCopyLinkAction}
+                className="w-full p-2.5 sm:p-3 rounded-2xl flex items-center gap-3 text-sm font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 transition active:scale-[0.98]"
+              >
+                <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400 shrink-0">
+                  <LinkIcon className="w-4 h-4" />
+                </div>
+                <span>{t?.card_menu?.copy_link || 'Скопировать ссылку'}</span>
+              </button>
+
+              {/* 3. Редактировать (for library items) */}
+              {!onAdd && (
+                <button
+                  onClick={handleEditAction}
+                  className="w-full p-2.5 sm:p-3 rounded-2xl flex items-center gap-3 text-sm font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 transition active:scale-[0.98]"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-accentViolet/15 flex items-center justify-center text-accentViolet shrink-0">
+                    <Edit3 className="w-4 h-4" />
+                  </div>
+                  <span>{t?.card_menu?.edit || t?.details?.edit || 'Редактировать'}</span>
+                </button>
+              )}
+
+              {/* 4. Удалить (for library items) */}
+              {!onAdd && (
+                <>
+                  <div className="h-px bg-cardBorder/60 my-1" />
+                  <button
+                    onClick={handleDeleteAction}
+                    className="w-full p-2.5 sm:p-3 rounded-2xl flex items-center gap-3 text-sm font-semibold text-red-400 hover:bg-red-500/15 transition active:scale-[0.98]"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center text-red-400 shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </div>
+                    <span>{t?.card_menu?.delete || t?.details?.delete || 'Удалить'}</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Cancel Button */}
+            <div className="pt-1">
+              <button
+                onClick={() => setIsActionMenuOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-cardBorder/40 hover:bg-cardBorder/60 text-gray-300 hover:text-white text-xs font-semibold transition active:scale-[0.98]"
+              >
+                {t?.modal?.cancel || 'Отмена'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {toastMessage && createPortal(
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10000] bg-cardDark border border-cardBorder text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md animate-fade-in flex items-center gap-2 pointer-events-none">
-          <Share2 className="w-4 h-4 text-accentTeal" />
+          {toastIconType === 'share' && <Share2 className="w-4 h-4 text-accentTeal" />}
+          {toastIconType === 'copy' && <Copy className="w-4 h-4 text-sky-400" />}
+          {toastIconType === 'check' && <Check className="w-4 h-4 text-accentTeal" />}
           <span>{toastMessage}</span>
         </div>,
         document.body

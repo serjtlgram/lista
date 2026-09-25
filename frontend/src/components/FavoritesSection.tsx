@@ -10,6 +10,8 @@ interface FavoritesSectionProps {
   onSelectItem: (item: Item) => void;
   onToggleStatus?: (item: Item, e: React.MouseEvent) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: string) => void;
   t: Translations;
 }
 
@@ -19,6 +21,8 @@ export const FavoritesSection: React.FC<FavoritesSectionProps> = ({
   onSelectItem,
   onToggleStatus,
   onUpdateItem,
+  onEdit,
+  onDelete,
   t,
 }) => {
   return (
@@ -44,6 +48,8 @@ export const FavoritesSection: React.FC<FavoritesSectionProps> = ({
               onSelect={onSelectItem}
               onToggleStatus={onToggleStatus}
               onUpdateItem={onUpdateItem}
+              onEdit={onEdit}
+              onDelete={onDelete}
               t={t}
             />
           ))}

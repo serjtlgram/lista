@@ -54,6 +54,8 @@ interface ListsScreenProps {
   selectedListId?: string;
   onSelectList?: (id: string) => void;
   initialListId?: string;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: string) => void;
   t: Translations;
 }
 
@@ -86,6 +88,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   selectedListId: selectedListIdProp,
   onSelectList,
   initialListId,
+  onEdit,
+  onDelete,
   t,
 }) => {
   const [lists, setLists] = useState<UserList[]>(() => getLists());
@@ -1221,6 +1225,8 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
               onSelect={onSelectItem}
               onRemoveFromList={currentList.id === UNCATEGORIZED_ID ? undefined : handleRemoveItemFromCurrentList}
               onUpdateItem={onUpdateItem}
+              onEdit={onEdit}
+              onDelete={onDelete}
               t={t}
             />
           ))}

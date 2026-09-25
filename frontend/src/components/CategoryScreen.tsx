@@ -19,6 +19,8 @@ interface CategoryScreenProps {
   onToggleStatus: (item: Item) => void;
   onUpdateItem?: (id: string, updates: Partial<Item>) => void;
   onAddCatalogItem?: (catalogItem: CatalogItem) => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: string) => void;
   t: Translations;
 }
 
@@ -34,6 +36,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   onToggleStatus,
   onUpdateItem,
   onAddCatalogItem,
+  onEdit,
+  onDelete,
   t,
 }) => {
   const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>(() => {
@@ -786,6 +790,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
               showCheckbox={true}
               onToggleStatus={() => onToggleStatus(item)}
               onUpdateItem={onUpdateItem}
+              onEdit={onEdit}
+              onDelete={onDelete}
               t={t}
               searchMode={searchMode}
               searchQuery={searchQuery}
@@ -817,6 +823,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                     showCheckbox={true}
                     onToggleStatus={() => onToggleStatus(item)}
                     onUpdateItem={onUpdateItem}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
                     t={t}
                     searchMode={searchMode}
                     searchQuery={searchQuery}
