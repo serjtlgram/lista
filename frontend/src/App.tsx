@@ -1203,6 +1203,8 @@ function safeBase64Decode(str: string): any {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveItem}
         editingItem={editingItem}
+        userItems={items}
+        onSelectItem={handleSelectItem}
         t={t}
       />
     </div>

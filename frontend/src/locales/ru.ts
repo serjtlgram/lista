@@ -183,6 +183,8 @@ export const ru: Translations = {
     select_genre: 'Выберите жанр',
     select_status: 'Выберите статус',
     poster_label: 'Постер (URL)',
+    already_in_list: 'Есть в списке',
+    autofill_btn: 'Автозаполнить',
   },
   category_modal: {
     title: 'Настройка категорий',

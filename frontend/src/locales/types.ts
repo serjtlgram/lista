@@ -154,6 +154,8 @@ export interface Translations {
     select_genre: string;
     select_status: string;
     poster_label?: string;
+    already_in_list?: string;
+    autofill_btn?: string;
   };
   category_modal: {
     title: string;

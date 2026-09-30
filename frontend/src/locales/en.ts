@@ -183,6 +183,8 @@ export const en: Translations = {
     select_genre: 'Select genre',
     select_status: 'Select status',
     poster_label: 'Poster (URL)',
+    already_in_list: 'In your list',
+    autofill_btn: 'Auto-fill',
   },
   category_modal: {
     title: 'Customize Categories',

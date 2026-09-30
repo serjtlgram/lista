@@ -12,6 +12,8 @@ interface AddItemModalProps {
   onClose: () => void;
   onSave: (item: Partial<Item>) => void;
   editingItem?: Item | null;
+  userItems?: Item[];
+  onSelectItem?: (item: Item) => void;
   t: Translations;
 }
 
@@ -83,6 +85,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   onClose,
   onSave,
   editingItem,
+  userItems = [],
+  onSelectItem,
   t,
 }) => {
   const [title, setTitle] = useState(editingItem?.title || '');
@@ -320,6 +324,46 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     setShowSuggestions(false);
   };
 
+  const findExistingUserItem = (sug: CatalogItem): Item | undefined => {
+    if (!userItems || userItems.length === 0) return undefined;
+
+    const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-zа-яё0-9]/gi, '').trim();
+    const normCat = (c: string) => {
+      const lc = (c || '').toLowerCase().trim();
+      if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'movie';
+      if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'show';
+      if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'book';
+      if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'game';
+      return lc;
+    };
+
+    const sugTitleNorm = norm(sug.title);
+    if (!sugTitleNorm) return undefined;
+
+    const sugCatNorm = normCat(sug.category || category);
+
+    return userItems.find((item) => {
+      const itemTitleNorm = norm(item.title);
+      if (itemTitleNorm !== sugTitleNorm) return false;
+
+      const itemCatNorm = normCat(item.category);
+      if (sugCatNorm && itemCatNorm && sugCatNorm !== itemCatNorm) return false;
+
+      if (sug.release_year && item.release_year && sug.release_year !== item.release_year) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  const handleOpenExisting = (item: Item) => {
+    onClose();
+    if (onSelectItem) {
+      onSelectItem(item);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -478,32 +522,69 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {catalogSuggestions.map((sug, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleSelectSuggestion(sug)}
-                    className="p-2 hover:bg-bgDark rounded-xl cursor-pointer flex items-center justify-between transition group suggestion-item"
-                  >
-                    <div className="flex items-center gap-2">
-                      {sug.poster_url ? (
-                        <img src={sug.poster_url} referrerPolicy="no-referrer" className="w-7 h-10 object-cover rounded shadow" alt="" />
-                      ) : (
-                        <div className="w-7 h-10 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 font-bold">
-                          {sug.category?.[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-xs font-bold text-white group-hover:text-accentViolet transition suggestion-title">{sug.title}</div>
-                        <div className="text-[10px] text-gray-400 suggestion-sub">
-                          {sug.release_year ? `${sug.release_year} г.` : ''} {sug.genre ? `• ${sug.genre}` : ''} {sug.author ? `• ${sug.author}` : ''}
+                {catalogSuggestions.map((sug, idx) => {
+                  const existingUserItem = findExistingUserItem(sug);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        if (existingUserItem) {
+                          handleOpenExisting(existingUserItem);
+                        } else {
+                          handleSelectSuggestion(sug);
+                        }
+                      }}
+                      className="p-2 hover:bg-bgDark rounded-xl cursor-pointer flex items-center justify-between transition group suggestion-item gap-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {sug.poster_url ? (
+                          <img src={sug.poster_url} referrerPolicy="no-referrer" className="w-7 h-10 object-cover rounded shadow shrink-0" alt="" />
+                        ) : (
+                          <div className="w-7 h-10 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                            {sug.category?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-white group-hover:text-accentViolet transition suggestion-title truncate">{sug.title}</div>
+                          <div className="text-[10px] text-gray-400 suggestion-sub truncate">
+                            {sug.release_year ? `${sug.release_year} г.` : ''} {sug.genre ? `• ${sug.genre}` : ''} {sug.author ? `• ${sug.author}` : ''}
+                          </div>
                         </div>
                       </div>
+
+                      {existingUserItem ? (
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenExisting(existingUserItem);
+                            }}
+                            className="text-[10px] sm:text-[11px] bg-accentTeal/20 hover:bg-accentTeal/30 text-accentTeal border border-accentTeal/40 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-sm"
+                            title={t.modal.already_in_list || 'Есть в списке'}
+                          >
+                            <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                            <span>{t.modal.already_in_list || 'Есть в списке'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectSuggestion(sug);
+                            }}
+                            className="text-[9px] text-gray-400 hover:text-accentViolet transition"
+                          >
+                            {t.modal.autofill_btn || 'Автозаполнить'}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] bg-accentViolet/20 text-accentViolet font-semibold px-2 py-0.5 rounded-full shrink-0">
+                          {t.modal.autofill_btn || 'Автозаполнить'}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[10px] bg-accentViolet/20 text-accentViolet font-semibold px-2 py-0.5 rounded-full shrink-0">
-                      Автозаполнить
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
