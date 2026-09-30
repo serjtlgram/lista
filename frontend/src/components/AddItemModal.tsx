@@ -553,30 +553,18 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       </div>
 
                       {existingUserItem ? (
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenExisting(existingUserItem);
-                            }}
-                            className="text-[10px] sm:text-[11px] bg-accentTeal/20 hover:bg-accentTeal/30 text-accentTeal border border-accentTeal/40 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-sm"
-                            title={t.modal.already_in_list || 'Есть в списке'}
-                          >
-                            <Check className="w-2.5 h-2.5 stroke-[2.5]" />
-                            <span>{t.modal.already_in_list || 'Есть в списке'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectSuggestion(sug);
-                            }}
-                            className="text-[9px] text-gray-400 hover:text-accentViolet transition"
-                          >
-                            {t.modal.autofill_btn || 'Автозаполнить'}
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenExisting(existingUserItem);
+                          }}
+                          className="text-[10px] sm:text-[11px] bg-accentTeal/20 hover:bg-accentTeal/30 text-accentTeal border border-accentTeal/40 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
+                          title={t.modal.already_in_list || 'Есть в списке'}
+                        >
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                          <span>{t.modal.already_in_list || 'Есть в списке'}</span>
+                        </button>
                       ) : (
                         <span className="text-[10px] bg-accentViolet/20 text-accentViolet font-semibold px-2 py-0.5 rounded-full shrink-0">
                           {t.modal.autofill_btn || 'Автозаполнить'}
