@@ -55,9 +55,9 @@ var (
 	ogTagRegex      = regexp.MustCompile(`(?i)<meta\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']\s+content=["']([^"']*)["']`)
 	ogTagRegex2     = regexp.MustCompile(`(?i)<meta\s+content=["']([^"']*)["']\s+(?:property|name)=["'](?:og:|twitter:)?([^"']+)["']`)
 	scriptLDJson    = regexp.MustCompile(`(?s)<script\s+type=["']application/ld\+json["']\s*>(.*?)</script>`)
-	isoDurationRegex = regexp.MustCompile(`(?i)PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?`)
-	minDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|minutes|min)\b`)
-	hrsDurationRegex = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|h|hrs?)\.?\s*(\d+)?\s*(?:мин|минут|m)?`)
+	isoDurationRegex      = regexp.MustCompile(`(?i)P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?`)
+	minDurationRegex      = regexp.MustCompile(`(?i)(\d+)\s*(?:мин|минут|минуты|минута|minutes|minute|min|хв|хвил|хвилини|хвилин)\b`)
+	hrsDurationRegex      = regexp.MustCompile(`(?i)(\d+)\s*(?:ч|час|часа|часов|год|годин|години|h|hrs?)\.?\s*(\d+)?\s*(?:мин|минут|минуты|минута|хв|хвил|m|min)?`)
 	timeColonRegex        = regexp.MustCompile(`\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b`)
 	kinopoiskURLRegex     = regexp.MustCompile(`(?i)kinopoisk\.ru/(?:film|series)/(?:[a-zA-Z0-9_-]+-)?(\d+)`)
 	movieTrailerJSRegex   = regexp.MustCompile(`(?i)(?:var|let|const)\s+(?:MOVIE_TRAILER|TRAILER_URL|TRAILER|trailer_url|trailerUrl|trailer)\s*=\s*["']([^"']+)["']`)
@@ -382,29 +382,68 @@ func cleanTitle(t string) string {
 	return strings.TrimSpace(t)
 }
 
-func parseDurationString(raw string) string {
+// ParseDurationString converts raw duration strings (ISO 8601 like PT45M, PT0H0M, "1 ч 30 мин", "90 min", "01:30", "45") into clean "%d мин" format.
+// Returns "" if duration is 0, empty, invalid, placeholder, or zero-length ISO duration.
+func ParseDurationString(raw string) string {
 	raw = strings.TrimSpace(raw)
-	if raw == "" {
+	if raw == "" || raw == "-" || raw == "—" || strings.EqualFold(raw, "null") || strings.EqualFold(raw, "undefined") {
 		return ""
 	}
 
-	// 1. ISO 8601 Duration (e.g. PT169M, PT2H49M, PT1H)
-	if matches := isoDurationRegex.FindStringSubmatch(raw); len(matches) > 0 && (matches[1] != "" || matches[2] != "") {
+	// 1. ISO 8601 Duration (e.g. PT169M, PT2H49M, PT1H, PT0H0M, PT45M, PT3600S, P0DT0H45M0S, P0Y0M0DT0H45M0S)
+	if strings.HasPrefix(strings.ToUpper(raw), "P") {
 		var totalMin int
-		if matches[1] != "" {
-			h, _ := strconv.Atoi(matches[1])
-			totalMin += h * 60
+		hasIsoMatch := false
+
+		// Days: P...(\d+)D
+		if m := regexp.MustCompile(`(?i)(\d+)\s*D`).FindStringSubmatch(raw); len(m) > 1 {
+			if d, err := strconv.Atoi(m[1]); err == nil {
+				totalMin += d * 24 * 60
+				hasIsoMatch = true
+			}
 		}
-		if matches[2] != "" {
-			m, _ := strconv.Atoi(matches[2])
-			totalMin += m
+
+		// Hours: T...(\d+)H or PT(\d+)H
+		if m := regexp.MustCompile(`(?i)(?:T.*?)?(\d+)\s*H`).FindStringSubmatch(raw); len(m) > 1 {
+			if h, err := strconv.Atoi(m[1]); err == nil {
+				totalMin += h * 60
+				hasIsoMatch = true
+			}
 		}
-		if totalMin > 0 {
-			return fmt.Sprintf("%d мин", totalMin)
+
+		// Minutes: T...(\d+)M (in ISO, M after T is minute, before T is month)
+		tIdx := strings.Index(strings.ToUpper(raw), "T")
+		timePart := raw
+		if tIdx >= 0 {
+			timePart = raw[tIdx:]
 		}
+		if m := regexp.MustCompile(`(?i)(\d+)\s*M`).FindStringSubmatch(timePart); len(m) > 1 {
+			if minVal, err := strconv.Atoi(m[1]); err == nil {
+				totalMin += minVal
+				hasIsoMatch = true
+			}
+		}
+
+		// Seconds: (\d+)S
+		if m := regexp.MustCompile(`(?i)(\d+)\s*S`).FindStringSubmatch(timePart); len(m) > 1 {
+			if s, err := strconv.Atoi(m[1]); err == nil {
+				totalMin += (s + 30) / 60
+				hasIsoMatch = true
+			}
+		}
+
+		if hasIsoMatch {
+			if totalMin > 0 {
+				return fmt.Sprintf("%d мин", totalMin)
+			}
+			return ""
+		}
+
+		// Never return raw ISO string (like PT0H0M)
+		return ""
 	}
 
-	// 2. Russian & English Hours + Min (e.g. 1 час, 1 ч, 1ч, 1h, 2 ч 49 мин, 1 час 30 минут)
+	// 2. Russian, English & Ukrainian Hours + Min (e.g. 1 час, 1 ч, 1ч, 1h, 2 ч 49 мин, 1 час 30 минут, 1 год 30 хв)
 	if matches := hrsDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
 		h, _ := strconv.Atoi(matches[1])
 		m := 0
@@ -415,16 +454,20 @@ func parseDurationString(raw string) string {
 		if totalMin > 0 {
 			return fmt.Sprintf("%d мин", totalMin)
 		}
+		return ""
 	}
 
-	// 3. Minutes match (e.g. 169 мин, 60 мин)
+	// 3. Minutes match (e.g. 169 мин, 60 мин, 45 min, 45 хв, 0 мин)
 	if matches := minDurationRegex.FindStringSubmatch(raw); len(matches) > 1 {
-		if m, err := strconv.Atoi(matches[1]); err == nil && m > 0 {
-			return fmt.Sprintf("%d мин", m)
+		if m, err := strconv.Atoi(matches[1]); err == nil {
+			if m > 0 {
+				return fmt.Sprintf("%d мин", m)
+			}
+			return ""
 		}
 	}
 
-	// 4. Time format (e.g. 02:49:00 or 1:49)
+	// 4. Time format (e.g. 02:49:00 or 1:49 or 00:00:00)
 	if matches := timeColonRegex.FindStringSubmatch(raw); len(matches) > 2 {
 		h, _ := strconv.Atoi(matches[1])
 		m, _ := strconv.Atoi(matches[2])
@@ -432,14 +475,27 @@ func parseDurationString(raw string) string {
 		if totalMin > 0 {
 			return fmt.Sprintf("%d мин", totalMin)
 		}
+		return ""
 	}
 
-	// 5. Bare number fallback (e.g. "60" -> "60 мин")
-	if m, err := strconv.Atoi(raw); err == nil && m > 0 {
-		return fmt.Sprintf("%d мин", m)
+	// 5. Bare number fallback (e.g. "60" -> "60 мин", "0" -> "")
+	if m, err := strconv.Atoi(raw); err == nil {
+		if m > 0 {
+			return fmt.Sprintf("%d мин", m)
+		}
+		return ""
+	}
+
+	// If raw contains unparsed PT marker (e.g. "PT0H0M"), never return it raw
+	if strings.Contains(strings.ToUpper(raw), "PT") {
+		return ""
 	}
 
 	return raw
+}
+
+func parseDurationString(raw string) string {
+	return ParseDurationString(raw)
 }
 
 func enrichYouTubeTrailer(youtubeKey string, media *ExtractedMedia) {

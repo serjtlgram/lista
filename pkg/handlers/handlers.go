@@ -117,6 +117,22 @@ func (h *Handler) InitBotCommandsAndMenu() {
 				OR poster_url LIKE 'data:image/jpeg;base64,ffff%'
 			  );
 		`)
+
+		// Clean up corrupted/placeholder duration entries in database
+		_, _ = h.DB.Pool.Exec(ctx, `
+			UPDATE items
+			SET duration = ''
+			WHERE duration IS NOT NULL
+			  AND (
+				duration ILIKE 'PT0H0M%'
+				OR duration ILIKE 'PT0M%'
+				OR duration ILIKE 'PT0S%'
+				OR duration ILIKE 'PT0H%'
+				OR duration = '0'
+				OR duration = '0 мин'
+				OR duration = '-'
+			  );
+		`)
 	}
 
 	if h.BotToken == "" {

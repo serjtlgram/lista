@@ -157,9 +157,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         if (e) epStr = `${e} ${epUnit}`;
         if (m) durStr = `${m} ${isBook ? pageUnit : minUnit}`;
       } else {
-        const durNum = rawDur.replace(/\D/g, '');
-        if (durNum) durStr = `${durNum} ${isBook ? pageUnit : minUnit}`;
-        else durStr = isBook && !rawDur.includes('стр') ? `${rawDur} ${pageUnit}` : rawDur;
+        const numVal = parseInt(rawDur.replace(/\D/g, ''), 10);
+        if (!isNaN(numVal) && numVal > 0 && !rawDur.toUpperCase().startsWith('PT0')) {
+          durStr = `${numVal} ${isBook ? pageUnit : minUnit}`;
+        } else if (!rawDur.toUpperCase().startsWith('PT') && rawDur !== '0' && rawDur !== '-') {
+          durStr = isBook && !rawDur.includes('стр') ? `${rawDur} ${pageUnit}` : rawDur;
+        }
       }
     }
 

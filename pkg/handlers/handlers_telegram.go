@@ -420,7 +420,12 @@ func buildTelegramCardText(title, category, releaseYear, duration, genre, direct
 				infoParts = append(infoParts, fmt.Sprintf("📄 %s", duration))
 			}
 		} else {
-			infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
+			cleanDur := parser.ParseDurationString(duration)
+			if cleanDur != "" {
+				infoParts = append(infoParts, fmt.Sprintf("⏱ %s", cleanDur))
+			} else if !strings.HasPrefix(strings.ToUpper(duration), "PT") && duration != "0" && duration != "-" && !strings.HasPrefix(duration, "0 мин") {
+				infoParts = append(infoParts, fmt.Sprintf("⏱ %s", duration))
+			}
 		}
 	}
 	if len(infoParts) > 0 {

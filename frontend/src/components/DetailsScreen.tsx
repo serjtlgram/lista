@@ -646,8 +646,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
         if (!isMovieCat && durNum > 300 && totalEps && totalEps > 0) {
           const avgDur = Math.round(durNum / totalEps);
           durationDisplay = `${avgDur} ${t.details.minutes_short}`;
+        } else if (durNum && durNum > 0 && !raw.toUpperCase().startsWith('PT0')) {
+          durationDisplay = `${durNum} ${t.details.minutes_short}`;
+        } else if (!raw.toUpperCase().startsWith('PT') && raw !== '0' && raw !== '-') {
+          durationDisplay = raw;
         } else {
-          durationDisplay = durNum ? `${durNum} ${t.details.minutes_short}` : raw;
+          durationDisplay = '-';
         }
       }
     }
