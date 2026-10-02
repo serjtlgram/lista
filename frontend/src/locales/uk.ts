@@ -408,5 +408,8 @@ export const uk: Translations = {
     shared_list_imported: 'Список збережено до вашої бібліотеки!',
     shared_list_saving: 'Збереження списку...',
     add_entire_list: '➕ Додати весь список собі',
+    only_this: 'Тільки цей',
+    only_this_desc: 'Додати тільки цей елемент',
+    item_added: 'Додано',
   },
 };

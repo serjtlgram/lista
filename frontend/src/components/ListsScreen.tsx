@@ -107,8 +107,12 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
   useEffect(() => {
     if (selectedListIdProp && selectedListIdProp !== selectedListIdState) {
       setSelectedListIdState(selectedListIdProp);
+      const target = lists.find((l) => l.id === selectedListIdProp);
+      if (target && target.folderId && selectedFolderId !== 'all' && selectedFolderId !== target.folderId) {
+        setSelectedFolderId(target.folderId);
+      }
     }
-  }, [selectedListIdProp]);
+  }, [selectedListIdProp, lists]);
 
   useEffect(() => {
     localStorage.setItem('lista_selected_folder', selectedFolderId);
@@ -613,6 +617,21 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       }));
       const encoded = safeBase64Encode({ title: listTitle, items: compactItems });
       sharedId = `sl_${encoded}`;
+    }
+
+    if (sharedId && currentList.id !== FAVORITES_ID) {
+      try {
+        const mapStr = localStorage.getItem('lista_imported_shared_lists');
+        const map = mapStr ? JSON.parse(mapStr) : {};
+        map[sharedId] = currentList.id;
+        const clean = sharedId.replace(/^(sl_|sharedlist_|list_)/, '');
+        map[clean] = currentList.id;
+        map[`sl_${clean}`] = currentList.id;
+        localStorage.setItem('lista_imported_shared_lists', JSON.stringify(map));
+
+        const allLists = getLists();
+        saveLists(allLists.map((l) => (l.id === currentList.id ? { ...l, sourceSharedId: sharedId } : l)));
+      } catch {}
     }
 
     const shareUrl = `https://t.me/manytgbot?startapp=${sharedId}`;

@@ -60,7 +60,7 @@ export function App() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
-  const [sharedListModalData, setSharedListModalData] = useState<{ title: string; items: Item[] } | null>(null);
+  const [sharedListModalData, setSharedListModalData] = useState<{ title: string; items: Item[]; sharedId?: string } | null>(null);
   const [targetListIdToOpen, setTargetListIdToOpen] = useState<string | undefined>(undefined);
   const [selectedListId, setSelectedListId] = useState<string>('favorites');
 
@@ -355,13 +355,118 @@ function safeBase64Decode(str: string): any {
           if (rawParam.startsWith('sharedlist_')) listId = rawParam.replace('sharedlist_', '');
           if (rawParam.startsWith('list_')) listId = rawParam.replace('list_', '');
 
+          // Helper to check if user already has this list added
+          const checkAndOpenExistingList = (title?: string, sItems?: Item[], uItems?: Item[]): boolean => {
+            const allLists = getLists();
+            const norm = (s?: string) => (s || '').trim().toLowerCase();
+
+            // 1. Check direct match by sourceSharedId or local imported mapping
+            let match = allLists.find(
+              (l) =>
+                l.sourceSharedId &&
+                (l.sourceSharedId === rawParam ||
+                  l.sourceSharedId === listId ||
+                  l.sourceSharedId === `sl_${listId}` ||
+                  (listId.startsWith('sl_') && l.sourceSharedId === listId.slice(3)))
+            );
+
+            if (!match) {
+              try {
+                const mapStr = localStorage.getItem('lista_imported_shared_lists');
+                if (mapStr) {
+                  const map = JSON.parse(mapStr);
+                  const targetId = map[rawParam] || map[listId] || map[`sl_${listId}`];
+                  if (targetId) {
+                    match = allLists.find((l) => l.id === targetId);
+                  }
+                }
+              } catch {}
+            }
+
+            // 2. Check match by title and item overlap if title is known
+            if (!match && title && title.trim()) {
+              const candidates = allLists.filter((l) => norm(l.name) === norm(title) && !l.isDefault);
+              if (candidates.length === 1) {
+                const cand = candidates[0];
+                if (sItems && sItems.length > 0) {
+                  const sTitles = new Set(sItems.map((i) => norm(i.title)));
+                  const userItemsToCheck = uItems || items;
+                  const candItems = userItemsToCheck.filter((ui) => cand.itemIds.includes(ui.id));
+                  const hasMatchingItem = candItems.some((ci) => sTitles.has(norm(ci.title)));
+                  if (hasMatchingItem || cand.itemIds.length === 0) {
+                    match = cand;
+                  }
+                } else {
+                  match = cand;
+                }
+              } else if (candidates.length > 1 && sItems && sItems.length > 0) {
+                const sTitles = new Set(sItems.map((i) => norm(i.title)));
+                const userItemsToCheck = uItems || items;
+                let best: UserList | undefined = undefined;
+                let maxOverlap = 0;
+                for (const cand of candidates) {
+                  const candItems = userItemsToCheck.filter((ui) => cand.itemIds.includes(ui.id));
+                  const overlap = candItems.filter((ci) => sTitles.has(norm(ci.title))).length;
+                  if (overlap > maxOverlap) {
+                    maxOverlap = overlap;
+                    best = cand;
+                  }
+                }
+                if (best && maxOverlap > 0) {
+                  match = best;
+                }
+              }
+            }
+
+            if (match) {
+              // Persist link so future lookups are instant
+              try {
+                const mapStr = localStorage.getItem('lista_imported_shared_lists');
+                const map = mapStr ? JSON.parse(mapStr) : {};
+                map[rawParam] = match.id;
+                map[listId] = match.id;
+                map[`sl_${listId}`] = match.id;
+                localStorage.setItem('lista_imported_shared_lists', JSON.stringify(map));
+
+                if (!match.sourceSharedId) {
+                  const updated = allLists.map((l) => (l.id === match!.id ? { ...l, sourceSharedId: rawParam } : l));
+                  saveLists(updated);
+                }
+              } catch {}
+
+              setSelectedListId(match.id);
+              setTargetListIdToOpen(match.id);
+              setActiveTab('lists');
+              return true;
+            }
+
+            return false;
+          };
+
+          // Fast check before network request
+          if (checkAndOpenExistingList()) {
+            return true;
+          }
+
+          // Fetch items for overlap check if needed
+          let currentItems = items;
+          if (currentItems.length === 0) {
+            try {
+              currentItems = await api.getItems();
+            } catch {}
+          }
+
           // Try server DB lookup first for short IDs (e.g. sl_a1b2c3d4)
           if (/^sl_[a-f0-9]{8,12}$/i.test(listId) || listId.length < 25) {
             const sharedData = await api.getSharedList(listId);
             if (sharedData?.title && sharedData?.items?.length) {
+              if (checkAndOpenExistingList(sharedData.title, sharedData.items, currentItems)) {
+                return true;
+              }
               setSharedListModalData({
                 title: sharedData.title,
                 items: sharedData.items,
+                sharedId: rawParam,
               });
               return true;
             }
@@ -371,20 +476,27 @@ function safeBase64Decode(str: string): any {
           const payload = listId.replace(/^sl_/, '');
           const parsed = safeBase64Decode(payload);
           if (parsed && parsed.title && Array.isArray(parsed.items)) {
+            const decodedItems = parsed.items.map((i: any) => ({
+              id: `shared_${Math.random()}`,
+              title: i.t || i.title,
+              category: i.c || i.category || 'Фильмы',
+              status: 'planned',
+              rating: i.r || i.rating || 0,
+              public_rating: i.pr || i.public_rating || '',
+              release_year: i.y || i.release_year,
+              genre: i.g || i.genre,
+              poster_url: i.p || i.poster_url,
+              duration: i.d || i.duration,
+            }));
+
+            if (checkAndOpenExistingList(parsed.title, decodedItems, currentItems)) {
+              return true;
+            }
+
             setSharedListModalData({
               title: parsed.title,
-              items: parsed.items.map((i: any) => ({
-                id: `shared_${Math.random()}`,
-                title: i.t || i.title,
-                category: i.c || i.category || 'Фильмы',
-                status: 'planned',
-                rating: i.r || i.rating || 0,
-                public_rating: i.pr || i.public_rating || '',
-                release_year: i.y || i.release_year,
-                genre: i.g || i.genre,
-                poster_url: i.p || i.poster_url,
-                duration: i.d || i.duration,
-              })),
+              items: decodedItems,
+              sharedId: rawParam,
             });
             return true;
           }
@@ -392,9 +504,13 @@ function safeBase64Decode(str: string): any {
           // Fallback: query API with listId directly
           const sharedData = await api.getSharedList(listId);
           if (sharedData?.title && sharedData?.items?.length) {
+            if (checkAndOpenExistingList(sharedData.title, sharedData.items, currentItems)) {
+              return true;
+            }
             setSharedListModalData({
               title: sharedData.title,
               items: sharedData.items,
+              sharedId: rawParam,
             });
             return true;
           }
@@ -1168,8 +1284,19 @@ function safeBase64Decode(str: string): any {
           isOpen={!!sharedListModalData}
           sharedListTitle={sharedListModalData.title}
           sharedItems={sharedListModalData.items}
+          sharedId={sharedListModalData.sharedId}
           userItems={items}
           onClose={() => setSharedListModalData(null)}
+          onSingleItemAdded={(newItem) => {
+            setItems((prev) => {
+              const norm = (s?: string) => (s || '').trim().toLowerCase();
+              const exists = prev.some(
+                (i) => i.id === newItem.id || (norm(i.title) === norm(newItem.title) && (i.release_year === newItem.release_year || !i.release_year || !newItem.release_year))
+              );
+              if (exists) return prev;
+              return [newItem, ...prev];
+            });
+          }}
           onSuccessImport={(newListId, newlyCreatedItems) => {
             if (newlyCreatedItems && newlyCreatedItems.length > 0) {
               setItems((prev) => {

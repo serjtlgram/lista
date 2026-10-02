@@ -379,5 +379,8 @@ export interface Translations {
     shared_list_imported?: string;
     shared_list_saving?: string;
     add_entire_list?: string;
+    only_this?: string;
+    only_this_desc?: string;
+    item_added?: string;
   };
 }

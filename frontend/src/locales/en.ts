@@ -408,5 +408,8 @@ export const en: Translations = {
     shared_list_imported: 'List saved to your library!',
     shared_list_saving: 'Saving list...',
     add_entire_list: '➕ Add entire list to my library',
+    only_this: 'Only this',
+    only_this_desc: 'Add only this item',
+    item_added: 'Added',
   },
 };

@@ -18,6 +18,7 @@ export interface UserList {
   itemIds: string[];
   createdAt: string;
   folderId?: string; // ID of the folder it belongs to. Defaults to 'misc'
+  sourceSharedId?: string; // ID or link of shared list if imported or shared
 }
 
 const LISTS_KEY = 'lista_user_lists';
@@ -215,7 +216,7 @@ export function saveLists(lists: UserList[]): void {
   api.syncListsData(lists, getFolders());
 }
 
-export function createList(name: string, folderId?: string): UserList {
+export function createList(name: string, folderId?: string, sourceSharedId?: string): UserList {
   const lists = getLists();
   const newList: UserList = {
     id: crypto.randomUUID ? crypto.randomUUID() : `list_${Date.now()}`,
@@ -224,6 +225,7 @@ export function createList(name: string, folderId?: string): UserList {
     itemIds: [],
     createdAt: new Date().toISOString(),
     folderId: folderId || DEFAULT_FOLDER_ID,
+    sourceSharedId,
   };
   const defaultLists = lists.filter((l) => l.isDefault);
   const customLists = lists.filter((l) => !l.isDefault);

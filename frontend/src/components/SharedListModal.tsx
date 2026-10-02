@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookMarked, Download, Check, X, Film, Tv, Book, Gamepad2, Popcorn, Star } from 'lucide-react';
+import { BookMarked, Download, Check, X, Film, Tv, Book, Gamepad2, Popcorn, Star, Plus } from 'lucide-react';
 import { Item } from '../types';
 import { createList, addItemToList } from '../services/lists';
 import { api } from '../services/api';
@@ -10,9 +10,11 @@ interface SharedListModalProps {
   isOpen: boolean;
   sharedListTitle: string;
   sharedItems: Item[];
+  sharedId?: string;
   userItems: Item[];
   onClose: () => void;
   onSuccessImport: (newListId: string, newlyCreatedItems?: Item[]) => void;
+  onSingleItemAdded?: (item: Item) => void;
   t: Translations;
 }
 
@@ -20,13 +22,17 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
   isOpen,
   sharedListTitle,
   sharedItems,
+  sharedId,
   userItems,
   onClose,
   onSuccessImport,
+  onSingleItemAdded,
   t,
 }) => {
   const [isImporting, setIsImporting] = useState(false);
   const [importDone, setImportDone] = useState(false);
+  const [addedItemKeys, setAddedItemKeys] = useState<Set<string>>(new Set());
+  const [loadingItemKeys, setLoadingItemKeys] = useState<Set<string>>(new Set());
 
   if (!isOpen) return null;
 
@@ -37,20 +43,101 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
     }
   };
 
+  const norm = (s?: string) => (s || '').trim().toLowerCase();
+
+  const getItemKey = (item: Item, idx: number) => {
+    return `${norm(item.title)}_${item.release_year || ''}_${idx}`;
+  };
+
+  const isItemAlreadyAdded = (item: Item, itemKey: string) => {
+    if (addedItemKeys.has(itemKey)) return true;
+    const normTitle = norm(item.title);
+    return userItems.some(
+      (ui) => norm(ui.title) === normTitle && (ui.release_year === item.release_year || !item.release_year || !ui.release_year)
+    );
+  };
+
+  const handleImportSingle = async (item: Item, itemKey: string) => {
+    triggerHaptic();
+    setLoadingItemKeys((prev) => new Set(prev).add(itemKey));
+
+    try {
+      const existing = userItems.find(
+        (ui) => norm(ui.title) === norm(item.title) && (ui.release_year === item.release_year || !item.release_year || !ui.release_year)
+      );
+
+      let targetItem: Item;
+      if (existing) {
+        targetItem = existing;
+      } else {
+        const payload: Partial<Item> = {
+          title: item.title,
+          category: item.category || 'Фильмы',
+          status: 'planned',
+          rating: item.rating || 0,
+          public_rating: item.public_rating || '',
+          genre: item.genre || '',
+          duration: item.duration || '',
+          release_year: item.release_year || '',
+          poster_url: item.poster_url || '',
+          description: item.description || '',
+          youtube_url: item.youtube_url || '',
+          director: item.director || '',
+          cast: item.cast || '',
+          author: item.author || '',
+          isbn: item.isbn || '',
+          note: item.note || '',
+          country: item.country || '',
+        };
+        const created = await api.createItem(payload);
+        targetItem = created && created.id ? created : ({ ...payload, id: `item_${Date.now()}` } as Item);
+      }
+
+      setAddedItemKeys((prev) => new Set(prev).add(itemKey));
+      if (onSingleItemAdded) {
+        onSingleItemAdded(targetItem);
+      }
+
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+      }
+    } catch (e) {
+      console.error('Failed to import single item:', e);
+    } finally {
+      setLoadingItemKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(itemKey);
+        return next;
+      });
+    }
+  };
+
   const handleImportAll = async () => {
     triggerHaptic();
     setIsImporting(true);
 
     try {
       // 1. Create new list with shared title
-      const newList = createList(sharedListTitle);
+      const newList = createList(sharedListTitle, undefined, sharedId);
 
-      const norm = (s?: string) => (s || '').trim().toLowerCase();
+      if (sharedId) {
+        try {
+          const mapStr = localStorage.getItem('lista_imported_shared_lists');
+          const map = mapStr ? JSON.parse(mapStr) : {};
+          map[sharedId] = newList.id;
+          const clean = sharedId.replace(/^(sl_|sharedlist_|list_)/, '');
+          map[clean] = newList.id;
+          map[`sl_${clean}`] = newList.id;
+          localStorage.setItem('lista_imported_shared_lists', JSON.stringify(map));
+        } catch {}
+      }
+
       const newlyCreatedItems: Item[] = [];
 
       // 2. Add each item to user database & list
       for (const item of sharedItems) {
-        const existing = [...userItems, ...newlyCreatedItems].find((ui) => norm(ui.title) === norm(item.title) && ui.release_year === item.release_year);
+        const existing = [...userItems, ...newlyCreatedItems].find((ui) => norm(ui.title) === norm(item.title) && (ui.release_year === item.release_year || !item.release_year || !ui.release_year));
         let targetId = existing?.id;
 
         if (!targetId) {
@@ -156,6 +243,10 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
             const hasPublicRating = Boolean(item.public_rating && item.public_rating.trim() !== '');
             const hasUserRating = Boolean(item.rating && item.rating > 0);
 
+            const itemKey = getItemKey(item, idx);
+            const isAdded = isItemAlreadyAdded(item, itemKey);
+            const isLoading = loadingItemKeys.has(itemKey);
+
             return (
               <div
                 key={item.id || idx}
@@ -187,6 +278,36 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
                     </div>
                   ) : null}
                 </div>
+
+                {/* Right side: Add single item / Added indicator */}
+                {isAdded ? (
+                  <div className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-accentGreen/15 border border-accentGreen/30 text-accentGreen text-[11px] font-medium animate-fade-in select-none">
+                    <span>{t.lists?.item_added || 'Добавлен'}</span>
+                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleImportSingle(item, itemKey);
+                    }}
+                    disabled={isLoading}
+                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-cardBorder/80 text-white/90 hover:text-white transition text-[11px] font-medium group"
+                    title={t.lists?.only_this_desc || 'Добавить только этот элемент'}
+                  >
+                    <span className="text-[10px] text-gray-300 group-hover:text-white transition">
+                      {t.lists?.only_this || 'Только этот'}
+                    </span>
+                    {isLoading ? (
+                      <div className="w-3.5 h-3.5 border-2 border-accentViolet border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-accentViolet/25 text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
+                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
             );
           })}

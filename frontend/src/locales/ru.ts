@@ -408,5 +408,8 @@ export const ru: Translations = {
     shared_list_imported: 'Список сохранён в вашу библиотеку!',
     shared_list_saving: 'Сохранение списка...',
     add_entire_list: '➕ Добавить весь список себе',
+    only_this: 'Только этот',
+    only_this_desc: 'Добавить только этот элемент',
+    item_added: 'Добавлен',
   },
 };
