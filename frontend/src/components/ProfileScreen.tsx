@@ -475,6 +475,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
         t={t}
+        currentTheme={currentTheme}
       />
     </div>
   );
