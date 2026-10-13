@@ -141,7 +141,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </button>
 
         {/* Navigation Links */}
-        <nav className="space-y-1 pt-0.5">
+        <nav className="desktop-sidebar-nav space-y-1 p-2 rounded-2xl bg-cardBorder/30 border border-cardBorder shadow-sm overflow-hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =

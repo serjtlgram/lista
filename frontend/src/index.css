@@ -955,6 +955,20 @@ body.light-brutalism nav {
   box-shadow: 0 10px 30px rgba(100, 116, 139, 0.2) !important;
 }
 
+/* Desktop Sidebar Nav: Ensure rounded-2xl corners across all themes */
+.desktop-sidebar-nav,
+body.light .desktop-sidebar-nav,
+body.light-powdery .desktop-sidebar-nav,
+body.light-mint .desktop-sidebar-nav,
+body.light-neon .desktop-sidebar-nav,
+body.light-nordic .desktop-sidebar-nav,
+body.light-talavera .desktop-sidebar-nav,
+body.light-terminal .desktop-sidebar-nav,
+body.light-brutalism .desktop-sidebar-nav {
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+}
+
 /* ─── Global Input & Textarea Contrast & Theme Overrides ─── */
 /* Base Dark Theme Inputs: Always clear white text and visible caret on dark background */
 input,
