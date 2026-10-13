@@ -32,6 +32,7 @@ import {
   getStoredActiveCategories,
   setStoredActiveCategories,
 } from './services/i18n';
+import { triggerFullscreen } from './utils/telegram';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details' | 'recommendations'>('home');
@@ -72,6 +73,7 @@ export function App() {
   });
 
   useEffect(() => {
+    triggerFullscreen();
     syncFavoritesFromCloud();
     syncListsFromCloud();
     
@@ -92,6 +94,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    triggerFullscreen();
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
 
@@ -99,16 +102,23 @@ export function App() {
       setIsFullscreen(!!tg.isFullscreen);
     };
 
+    const handleViewportChanged = () => {
+      checkFullscreen();
+      triggerFullscreen();
+    };
+
     checkFullscreen();
 
     if (tg.onEvent) {
       tg.onEvent('fullscreenChanged', checkFullscreen);
+      tg.onEvent('viewportChanged', handleViewportChanged);
     }
     const interval = setInterval(checkFullscreen, 800);
 
     return () => {
       if (tg.offEvent) {
         tg.offEvent('fullscreenChanged', checkFullscreen);
+        tg.offEvent('viewportChanged', handleViewportChanged);
       }
       clearInterval(interval);
     };
@@ -283,11 +293,18 @@ export function App() {
 
   // Telegram SDK Init & Deep Link Detection
   useEffect(() => {
+    triggerFullscreen();
     const tgApp = (window as any).Telegram?.WebApp;
     if (tgApp) {
       try {
         tgApp.ready();
         tgApp.expand();
+        if (typeof tgApp.requestFullscreen === 'function' && !tgApp.isFullscreen) {
+          tgApp.requestFullscreen();
+        }
+        if (typeof tgApp.disableVerticalSwipes === 'function') {
+          tgApp.disableVerticalSwipes();
+        }
         let bg = '#0B0D14';
         if (theme === 'dark-black') bg = '#000000';
         if (theme === 'dark-navy') bg = '#020617';
@@ -1058,9 +1075,11 @@ function safeBase64Decode(str: string): any {
 
   return (
     <div
-      className="flex flex-col min-h-screen text-gray-100 max-w-md mx-auto relative pb-28 overflow-x-hidden transition-colors duration-200"
+      className="flex flex-col min-h-screen text-gray-100 w-full max-w-md mx-auto relative pb-28 overflow-x-hidden box-border transition-colors duration-200"
       style={{
         paddingTop: isFullscreen ? 'max(68px, env(safe-area-inset-top, 68px))' : undefined,
+        maxWidth: 'min(100%, 28rem)',
+        boxSizing: 'border-box',
       }}
     >
       {/* Top Safe Area Header */}

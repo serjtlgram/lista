@@ -486,7 +486,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
-        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer transition-colors hover:border-accentViolet/50 relative overflow-hidden select-none"
+        className="glass-card p-2.5 rounded-2xl flex flex-col gap-2 cursor-pointer transition-colors hover:border-accentViolet/50 relative overflow-hidden select-none min-w-0 w-full"
       >
         <div className="flex items-stretch gap-3 w-full">
           {/* Rectangular poster image */}
