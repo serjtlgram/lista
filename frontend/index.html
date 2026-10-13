@@ -8,44 +8,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js?v=2"></script>
     <script>
       (function() {
-        var isViewportBound = false;
-        function activateFullscreen() {
+        try {
           var twa = window.Telegram && window.Telegram.WebApp;
-          if (!twa) return;
-          try {
-            if (typeof twa.ready === 'function') {
-              twa.ready();
-            }
-            if (typeof twa.expand === 'function') {
-              twa.expand();
-            }
-            if (typeof twa.requestFullscreen === 'function' && !twa.isFullscreen) {
-              twa.requestFullscreen();
-            }
-            if (typeof twa.disableVerticalSwipes === 'function') {
-              twa.disableVerticalSwipes();
-            }
-            if (!isViewportBound && typeof twa.onEvent === 'function') {
-              twa.onEvent('viewportChanged', activateFullscreen);
-              isViewportBound = true;
-            }
-          } catch (e) {
-            console.warn('activateFullscreen error:', e);
+          if (twa) {
+            if (typeof twa.ready === 'function') twa.ready();
+            if (typeof twa.expand === 'function') twa.expand();
           }
-        }
-
-        // 1. Instant execution
-        activateFullscreen();
-
-        // 2. Cascade retry timers for Desktop IPC bridge delay
-        [50, 150, 300, 600, 1000, 1500, 2500].forEach(function(ms) {
-          setTimeout(activateFullscreen, ms);
-        });
-
-        // 3. User gesture fallback (click / touch / pointer)
-        ['click', 'touchstart', 'pointerdown'].forEach(function(evt) {
-          window.addEventListener(evt, activateFullscreen, { once: true, passive: true });
-        });
+        } catch (e) {}
       })();
     </script>
   </head>

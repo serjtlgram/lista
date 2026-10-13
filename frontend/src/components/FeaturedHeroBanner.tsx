@@ -129,7 +129,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   return (
     <div
       onClick={() => onSelectItem(currentItem)}
-      className={`relative w-full rounded-3xl overflow-hidden border border-cardBorder shadow-2xl group cursor-pointer select-none min-h-[460px] max-h-[580px] aspect-[3/4] flex flex-col justify-between ${className}`}
+      className={`featured-hero-banner relative w-full rounded-3xl overflow-hidden border border-cardBorder shadow-2xl group cursor-pointer select-none min-h-[460px] max-h-[580px] aspect-[3/4] flex flex-col justify-between ${className}`}
     >
       {/* Background Poster with smooth transition */}
       <img
@@ -146,9 +146,9 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
         }}
       />
 
-      {/* Cinematic Gradient Overlays: ONLY at the top and bottom text areas to keep poster bright and crisp */}
-      <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/75 via-black/25 to-transparent h-24 pointer-events-none" />
-      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-bgDark via-bgDark/85 to-transparent h-64 pointer-events-none" />
+      {/* Cinematic Gradient Overlays: Rich dark scrims so text & controls pop across ALL themes */}
+      <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/85 via-black/35 to-transparent h-28 pointer-events-none" />
+      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent h-72 pointer-events-none" />
 
       {/* Top Bar: Clickable Badge & Navigation Arrows */}
       <div className="relative z-10 p-4 sm:p-5 flex items-center justify-between">
@@ -158,18 +158,19 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
             e.stopPropagation();
             onBadgeClick?.();
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 hover:bg-black/75 hover:border-accentTeal/50 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-md cursor-pointer transition active:scale-95 group/badge"
+          style={{ color: '#FFFFFF' }}
+          className="featured-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 hover:bg-black/80 hover:border-accentTeal/50 backdrop-blur-md border border-white/20 text-white text-xs font-bold shadow-md cursor-pointer transition active:scale-95 group/badge"
           title="Показать все элементы этой категории"
         >
           {isPlanned ? (
             <>
               <BookmarkCheck className="w-3.5 h-3.5 text-accentTeal group-hover/badge:scale-110 transition-transform" />
-              <span>В планах посмотреть</span>
+              <span className="text-white font-semibold" style={{ color: '#FFFFFF' }}>В планах посмотреть</span>
             </>
           ) : (
             <>
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 group-hover/badge:scale-110 transition-transform" />
-              <span>Рекомендуем сегодня</span>
+              <span className="text-white font-semibold" style={{ color: '#FFFFFF' }}>Рекомендуем сегодня</span>
             </>
           )}
         </button>
@@ -180,18 +181,20 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
             <button
               type="button"
               onClick={handlePrev}
-              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/15 text-white flex items-center justify-center transition active:scale-90 shadow-md"
+              style={{ color: '#FFFFFF' }}
+              className="featured-hero-arrow w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-md"
               title="Предыдущий"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-white" style={{ color: '#FFFFFF' }} />
             </button>
             <button
               type="button"
               onClick={handleNext}
-              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/15 text-white flex items-center justify-center transition active:scale-90 shadow-md"
+              style={{ color: '#FFFFFF' }}
+              className="featured-hero-arrow w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-md"
               title="Следующий"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-white" style={{ color: '#FFFFFF' }} />
             </button>
           </div>
         )}
@@ -201,11 +204,11 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
       <div className="relative z-10 p-4 sm:p-5 space-y-2 mt-auto">
         {/* Title & Metadata */}
         <div className="space-y-0.5">
-          <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+          <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight drop-shadow-md" style={{ color: '#FFFFFF' }}>
             {currentItem.title}
           </h2>
           {metaParts.length > 0 && (
-            <p className="text-xs text-gray-300 font-medium line-clamp-1 drop-shadow">
+            <p className="text-xs text-gray-200 font-medium line-clamp-1 drop-shadow" style={{ color: '#E2E8F0' }}>
               {metaParts.join(' • ')}
             </p>
           )}
@@ -216,6 +219,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
           {genresList.map((g, idx) => (
             <span
               key={idx}
+              style={{ color: '#E2E8F0' }}
               className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-gray-200 border border-white/10"
             >
               {getTranslatedGenreShort(g, t)}
@@ -248,10 +252,11 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
               e.stopPropagation();
               onWatchTrailer(currentItem);
             }}
-            className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-accentViolet via-purple-600 to-accentTeal hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xl shadow-accentViolet/30 transition active:scale-[0.98]"
+            style={{ color: '#FFFFFF' }}
+            className="btn-watch-trailer flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-accentViolet via-purple-600 to-accentTeal hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xl shadow-accentViolet/30 transition active:scale-[0.98]"
           >
-            <Play className="w-4 h-4 fill-white" />
-            <span>Смотреть трейлер</span>
+            <Play className="w-4 h-4 fill-white text-white" style={{ fill: '#FFFFFF', color: '#FFFFFF' }} />
+            <span style={{ color: '#FFFFFF' }}>Смотреть трейлер</span>
           </button>
 
           {/* Plus / Details Button */}
@@ -261,10 +266,11 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
               e.stopPropagation();
               onSelectItem(currentItem);
             }}
-            className="w-11 h-11 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-95 shadow-md shrink-0"
+            style={{ color: '#FFFFFF' }}
+            className="btn-details w-11 h-11 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-95 shadow-md shrink-0"
             title="Подробнее"
           >
-            <Plus className="w-5 h-5 stroke-[2.5]" />
+            <Plus className="w-5 h-5 stroke-[2.5] text-white" style={{ color: '#FFFFFF' }} />
           </button>
         </div>
 

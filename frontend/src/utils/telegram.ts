@@ -1,4 +1,12 @@
-let hasInitialized = false;
+export function isDesktopDevice(): boolean {
+  const twa = (window as any).Telegram?.WebApp;
+  const platform = (twa?.platform || '').toLowerCase();
+  if (['tdesktop', 'macos', 'web', 'weba'].includes(platform)) return true;
+  if (['ios', 'android'].includes(platform)) return false;
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+  if (/Android|iPhone|iPad|iPod/i.test(ua)) return false;
+  return (typeof window !== 'undefined' && window.innerWidth >= 1024) || /Windows|Macintosh|Linux/i.test(ua);
+}
 
 export function triggerFullscreen() {
   const twa = (window as any).Telegram?.WebApp;
@@ -14,15 +22,11 @@ export function triggerFullscreen() {
       twa.disableVerticalSwipes();
     }
 
-    if (hasInitialized) return;
-    hasInitialized = true;
-
-    const isDesktop =
-      ['tdesktop', 'macos', 'web', 'weba'].includes(twa.platform || '') ||
-      window.innerWidth >= 1024;
+    const isDesktop = isDesktopDevice();
 
     if (isDesktop) {
-      // On desktop / PC: expand window without hiding the Windows/Mac taskbar
+      // On desktop / laptop (Windows/Mac/Linux):
+      // Expand window but NEVER enter OS fullscreen mode so the Windows taskbar remains fully visible!
       if (typeof twa.exitFullscreen === 'function' && twa.isFullscreen) {
         twa.exitFullscreen();
       }
