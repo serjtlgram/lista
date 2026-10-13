@@ -105,7 +105,6 @@ export function App() {
 
     const handleViewportChanged = () => {
       checkFullscreen();
-      triggerFullscreen();
     };
 
     checkFullscreen();
@@ -298,23 +297,6 @@ export function App() {
     const tgApp = (window as any).Telegram?.WebApp;
     if (tgApp) {
       try {
-        tgApp.ready();
-        const isDesktop =
-          ['tdesktop', 'macos', 'web', 'weba'].includes(tgApp.platform || '') ||
-          window.innerWidth >= 1024;
-        tgApp.expand();
-        if (isDesktop) {
-          if (typeof tgApp.exitFullscreen === 'function' && tgApp.isFullscreen) {
-            tgApp.exitFullscreen();
-          }
-        } else {
-          if (typeof tgApp.requestFullscreen === 'function' && !tgApp.isFullscreen) {
-            tgApp.requestFullscreen();
-          }
-        }
-        if (typeof tgApp.disableVerticalSwipes === 'function') {
-          tgApp.disableVerticalSwipes();
-        }
         let bg = '#0B0D14';
         if (theme === 'dark-black') bg = '#000000';
         if (theme === 'dark-navy') bg = '#020617';
@@ -323,8 +305,8 @@ export function App() {
         if (theme === 'light-powdery') bg = '#FFF5F5';
         if (theme === 'light-mint') bg = '#F8FAF8';
         if (theme === 'light-neon') bg = '#F8FAFC';
-        tgApp.setHeaderColor(bg);
-        tgApp.setBackgroundColor(bg);
+        if (typeof tgApp.setHeaderColor === 'function') tgApp.setHeaderColor(bg);
+        if (typeof tgApp.setBackgroundColor === 'function') tgApp.setBackgroundColor(bg);
       } catch (e) {
         console.warn('Telegram SDK init warning:', e);
       }

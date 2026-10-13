@@ -7,8 +7,8 @@ import { triggerFullscreen } from './utils/telegram.ts'
 // 1. Immediate call before any auth/renders
 triggerFullscreen();
 
-// 2. Cascading retry timers for Desktop Telegram IPC delay
-[50, 150, 300, 600, 1000, 1500, 2500].forEach((ms) => {
+// 2. Safe retry timers for Telegram IPC delay
+[100, 500].forEach((ms) => {
   setTimeout(triggerFullscreen, ms);
 });
 
