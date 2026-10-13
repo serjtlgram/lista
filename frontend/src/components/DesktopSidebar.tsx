@@ -134,10 +134,11 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         {/* Primary Action Button: Add Item */}
         <button
           onClick={onOpenAddItem}
-          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-accentViolet to-purple-600 hover:from-accentViolet/90 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-accentViolet/30 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+          style={{ color: '#FFFFFF' }}
+          className="btn-add-item w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-accentViolet to-purple-600 hover:from-accentViolet/90 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-accentViolet/30 flex items-center justify-center gap-2 transition active:scale-[0.98]"
         >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>{t.modal?.add_item || 'Добавить запись'}</span>
+          <Plus className="w-4 h-4 stroke-[2.5] text-white" style={{ color: '#FFFFFF' }} />
+          <span className="text-white" style={{ color: '#FFFFFF' }}>{t.modal?.add_item || 'Добавить запись'}</span>
         </button>
 
         {/* Navigation Links */}
