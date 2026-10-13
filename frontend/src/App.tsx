@@ -1094,6 +1094,7 @@ function safeBase64Decode(str: string): any {
         userName={userName}
         userHandle={userHandle}
         photoUrl={profile?.user?.photo_url}
+        items={items}
         itemsCount={items.length}
         currentStreak={profile?.current_streak || 0}
         onOpenAddItem={() => {
@@ -1105,9 +1106,9 @@ function safeBase64Decode(str: string): any {
       />
 
       {/* Main App Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen w-full max-w-md lg:max-w-6xl xl:max-w-7xl mx-auto relative pb-28 lg:pb-12 px-4 lg:px-8 pt-3 box-border min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen w-full max-w-md lg:max-w-6xl xl:max-w-7xl mx-auto relative pb-28 lg:pb-12 px-4 lg:px-8 pt-1 lg:pt-2 box-border min-w-0">
         {/* Top Safe Area Header on Mobile */}
-        <div className="h-1 lg:h-3 w-full shrink-0"></div>
+        <div className="h-1 lg:h-0 w-full shrink-0"></div>
 
         {/* Main App Content */}
         <main className="flex-1 min-w-0">

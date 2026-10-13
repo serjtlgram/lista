@@ -237,8 +237,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         </div>
       </div>
 
-      {/* Sparkline — Catmull-Rom smooth curve, labels in accent color */}
-      <div>
+      {/* Sparkline — Catmull-Rom smooth curve, labels in accent color (hidden on desktop to compact and lift layout as requested) */}
+      <div className="lg:hidden">
         <svg className="w-full overflow-visible" viewBox="0 0 290 42" preserveAspectRatio="none">
           <defs>
             <linearGradient id="acGradAct" x1="0" y1="0" x2="0" y2="1">

@@ -19,10 +19,10 @@ export const Header: React.FC<HeaderProps> = ({ userName, photoUrl, onAvatarClic
         <p className="text-xs text-gray-400 mt-0.5">{t.what_to_add}</p>
       </div>
 
-      {/* User Avatar Button replacing Bell Icon */}
+      {/* User Avatar Button replacing Bell Icon (Hidden on desktop since avatar is in sidebar) */}
       <button
         onClick={onAvatarClick}
-        className="w-10 h-10 rounded-full bg-cardDark border border-cardBorder p-0.5 overflow-hidden flex items-center justify-center hover:border-accentViolet transition active:scale-[0.97] shadow-md"
+        className="w-10 h-10 rounded-full bg-cardDark border border-cardBorder p-0.5 overflow-hidden flex items-center justify-center hover:border-accentViolet transition active:scale-[0.97] shadow-md lg:hidden"
         title={t.nav_profile}
       >
         {photoUrl ? (

@@ -1236,7 +1236,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
       {/* Items list */}
       {sortedListItems.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4 lg:overflow-y-auto lg:max-h-[calc(100vh-320px)] lg:pr-2 custom-scrollbar">
           {sortedListItems.map((item) => (
             <ItemCard
               key={item.id}

@@ -1,11 +1,23 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Search as SearchIcon, ChevronDown, Globe, FolderCheck, Loader2, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  Search as SearchIcon,
+  ChevronDown,
+  Globe,
+  FolderCheck,
+  Loader2,
+  X,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { Item, CatalogItem } from '../types';
 import { ItemCard } from './ItemCard';
 import { Translations, getStoredLanguage } from '../services/i18n';
 import { api } from '../services/api';
 import { getAvailableGenres, getTranslatedGenreFull } from '../services/genres';
 import { isValidUkrainianCatalogItem } from '../utils/langFilter';
+import { getFavoriteIds } from '../services/favorites';
+import { FeaturedHeroBanner } from './FeaturedHeroBanner';
+import { TrailerModal } from './TrailerModal';
 
 interface CategoryScreenProps {
   title: string;
@@ -40,11 +52,13 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
   onDelete,
   t,
 }) => {
-  const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned'>(() => {
+  const [activeFilterKey, setActiveFilterKey] = useState<'all' | 'watching' | 'completed' | 'planned' | 'favorites'>(() => {
     const saved = localStorage.getItem('lista_catalog_status_filter');
-    if (saved === 'watching' || saved === 'completed' || saved === 'planned') return saved;
+    if (saved === 'watching' || saved === 'completed' || saved === 'planned' || saved === 'favorites') return saved as any;
     return 'all';
   });
+  const [trailerModalItem, setTrailerModalItem] = useState<Item | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lista_catalog_status_filter', activeFilterKey);
@@ -133,6 +147,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     { key: 'watching', label: t.modal.status_watching },
     { key: 'completed', label: t.modal.status_completed },
     { key: 'planned', label: t.modal.status_planned },
+    { key: 'favorites', label: t.favorites?.title || 'Избранное' },
   ];
 
   const getTranslatedCategoryTitle = (catTitle: string): string => {
@@ -416,6 +431,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       if (activeFilterKey === 'watching' && item.status !== 'watching' && item.status !== 'Смотрю' && item.status !== 'Читаю' && item.status !== 'Граю') return false;
       if (activeFilterKey === 'completed' && item.status !== 'completed' && item.status !== 'Просмотрено' && item.status !== 'Завершено' && item.status !== 'Завершён' && item.status !== 'Прочитано' && item.status !== 'Пройдено') return false;
       if (activeFilterKey === 'planned' && item.status !== 'planned' && item.status !== 'Отложено' && item.status !== 'В планах' && item.status !== 'У планах') return false;
+      if (activeFilterKey === 'favorites' && !getFavoriteIds().includes(item.id)) return false;
 
       if (selectedGenres.length > 0) {
         const itemGenre = getTranslatedGenreFull(item.genre, t);
@@ -556,132 +572,156 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
     <div className="space-y-3.5">
       {showSearchInput && (
         <div className="space-y-2">
-          {/* Mode Switcher Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-            {searchModes.map((mode) => (
-              <button
-                key={mode.key}
-                type="button"
-                onClick={() => setSearchMode(mode.key)}
-                className={`py-1.5 px-3.5 rounded-full text-xs font-semibold whitespace-nowrap transition text-center ${
-                  searchMode === mode.key
-                    ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
-                    : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600 hover:text-white'
-                }`}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
+          {/* Advanced Search Mode Chips (Toggled by Расширенные фильтры) */}
+          {showAdvancedFilters && (
+            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 animate-slide-up">
+              {searchModes.map((mode) => (
+                <button
+                  key={mode.key}
+                  type="button"
+                  onClick={() => setSearchMode(mode.key)}
+                  className={`py-1.5 px-3.5 rounded-full text-xs font-semibold whitespace-nowrap transition text-center ${
+                    searchMode === mode.key
+                      ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                      : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600 hover:text-white'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          )}
 
+          {/* Search Input matching Screen 1 */}
           <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+              <SearchIcon className="w-4 h-4" />
+            </div>
             <input
               type="text"
               maxLength={100}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 pr-8 text-xs text-white focus:outline-none focus:border-accentViolet"
+              className="w-full bg-cardDark/80 border border-cardBorder rounded-2xl pl-10 pr-20 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-accentViolet shadow-sm transition"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 focus:outline-none"
-                title="Clear search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-gray-400 hover:text-white p-1 focus:outline-none"
+                  title="Очистить"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400 font-semibold select-none">
+                  Ctrl K
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Row 1: Status Filter Chips */}
-      {/* Row 1: Filters */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
-        {filters.map((filter) => (
-          <button
-            key={filter.key}
-            onClick={() => setActiveFilterKey(filter.key as any)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-              activeFilterKey === filter.key
-                ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30'
-                : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600'
+      {/* Row 1: Status Filter Chips with "Расширенные фильтры" (Screen 1) */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+          {filters.map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => setActiveFilterKey(filter.key as any)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                activeFilterKey === filter.key
+                  ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30'
+                  : 'bg-cardDark border border-cardBorder text-gray-300 font-medium hover:border-gray-600'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ml-auto border ${
+            showAdvancedFilters
+              ? 'bg-accentViolet/15 text-accentViolet border-accentViolet/40'
+              : 'bg-cardDark border border-cardBorder text-gray-400 hover:text-white hover:border-gray-600'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5 text-accentViolet" />
+          <span>Расширенные фильтры</span>
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              showAdvancedFilters ? 'rotate-180' : ''
             }`}
-          >
-            {filter.label}
-          </button>
-        ))}
+          />
+        </button>
       </div>
 
-      {/* Row 2: Strict App Categories Chips Only */}
-      {onSelectCategory && (
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
-          <button
-            onClick={() => onSelectCategory('Все')}
-            className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-              title === 'Все'
-                ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
-                : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-            }`}
-          >
-            {t.recently_added.see_all}
-          </button>
-          {displayCategories.map((catKey) => {
-            const isSelected = title.toLowerCase() === catKey.toLowerCase();
-            return (
-              <button
-                key={catKey}
-                onClick={() => onSelectCategory(catKey)}
-                className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                  isSelected
-                    ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
-                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-                }`}
-              >
-                {getTranslatedCategoryTitle(catKey)}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Row 2: Categories and Quick Genres in Single Fluid Row (Screen 1) */}
+      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
+        {onSelectCategory && (
+          <>
+            <button
+              onClick={() => onSelectCategory('Все')}
+              className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                title === 'Все'
+                  ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                  : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+              }`}
+            >
+              {t.recently_added.see_all}
+            </button>
+            {displayCategories.map((catKey) => {
+              const isSelected = title.toLowerCase() === catKey.toLowerCase();
+              return (
+                <button
+                  key={catKey}
+                  onClick={() => onSelectCategory(catKey)}
+                  className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                    isSelected
+                      ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                      : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                  }`}
+                >
+                  {getTranslatedCategoryTitle(catKey)}
+                </button>
+              );
+            })}
+            <div className="hidden sm:block h-4 w-px bg-cardBorder/80 mx-1 shrink-0" />
+          </>
+        )}
 
-      {/* Row 3: Genres Filter */}
-      {availableGenres.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
-          <button
-            onClick={() => setSelectedGenres([])}
-            className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-              selectedGenres.length === 0
-                ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
-                : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-            }`}
-          >
-            {t.recently_added.see_all}
-          </button>
-          {availableGenres.map((genreStr) => {
-            const isSelected = selectedGenres.includes(genreStr);
-            return (
-              <button
-                key={genreStr}
-                onClick={() => {
-                  setSelectedGenres(prev => {
-                    if (prev.includes(genreStr)) return prev.filter(g => g !== genreStr);
-                    return [...prev, genreStr];
-                  });
-                }}
-                className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                  isSelected
-                    ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
-                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-                }`}
-              >
-                {genreStr}
-              </button>
-            );
-          })}
-        </div>
-      )}
+        {/* Genres Filter Chips */}
+        {availableGenres.length > 0 && (
+          <>
+            {availableGenres.map((genreStr) => {
+              const isSelected = selectedGenres.includes(genreStr);
+              return (
+                <button
+                  key={genreStr}
+                  onClick={() => {
+                    setSelectedGenres((prev) => {
+                      if (prev.includes(genreStr)) return prev.filter((g) => g !== genreStr);
+                      return [...prev, genreStr];
+                    });
+                  }}
+                  className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                    isSelected
+                      ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                      : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                  }`}
+                >
+                  {genreStr}
+                </button>
+              );
+            })}
+          </>
+        )}
+      </div>
 
       {/* Subheader count & working sort buttons when not actively searching */}
       {!isSearchActive && !isSearchBlockedForCategory && (
@@ -768,56 +808,36 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         </div>
       )}
 
-      {/* Content Rendering */}
-      {isSearchBlockedForCategory ? (
-        <div className="glass-card p-6 rounded-2xl text-center space-y-2 border border-cardBorder my-3">
-          <div className="w-10 h-10 mx-auto rounded-full bg-accentViolet/20 flex items-center justify-center text-accentViolet">
-            <SearchIcon className="w-5 h-5" />
-          </div>
-          <p className="text-sm font-medium text-gray-200 px-2">
-            {isActorUnsupported
-              ? (t.details.search_actor_category_hint || 'Выберите категорию «Фильмы» или «Сериалы», чтобы найти, где играл актёр')
-              : (t.details.search_director_games_hint || 'Выберите категорию «Фильмы», «Сериалы» или «Книги» для поиска по режиссёру или автору')}
-          </p>
+      {/* Content Rendering: 2-Column Split on Desktop, Single Column on Mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-1">
+        {/* Left Column (Desktop Only): Featured Hero Banner from Want to Watch / Recent */}
+        <div className="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-4">
+          <FeaturedHeroBanner
+            items={items}
+            onSelectItem={onSelectItem}
+            onWatchTrailer={(item) => setTrailerModalItem(item)}
+            onAddItemClick={onBack}
+            t={t}
+          />
         </div>
-      ) : !isSearchActive ? (
-        /* Normal View (User Items List) */
-        <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {sortedItems.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onSelect={onSelectItem}
-                showCheckbox={true}
-                onToggleStatus={() => onToggleStatus(item)}
-                onUpdateItem={onUpdateItem}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                t={t}
-                searchMode={searchMode}
-                searchQuery={searchQuery}
-              />
-            ))}
-          </div>
 
-          {sortedItems.length === 0 && (
-            <div className="text-center py-10 text-xs text-gray-500">
-              {t.details.no_items_found}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Dual Search View: User List + Global Catalog Results */
-        <div className="space-y-5 pt-1">
-          {/* Section 1: User's Own List */}
-          {sortedItems.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 px-1">
-                <FolderCheck className="w-4 h-4 text-accentTeal" />
-                <span>{(t.details.in_your_collection || 'В вашем списке')} ({sortedItems.length})</span>
+        {/* Right Column: Cards container with internal scroll on desktop */}
+        <div className="w-full lg:col-span-7 xl:col-span-8 lg:overflow-y-auto lg:max-h-[calc(100vh-230px)] lg:pr-2 custom-scrollbar">
+          {isSearchBlockedForCategory ? (
+            <div className="glass-card p-6 rounded-2xl text-center space-y-2 border border-cardBorder my-3">
+              <div className="w-10 h-10 mx-auto rounded-full bg-accentViolet/20 flex items-center justify-center text-accentViolet">
+                <SearchIcon className="w-5 h-5" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <p className="text-sm font-medium text-gray-200 px-2">
+                {isActorUnsupported
+                  ? (t.details.search_actor_category_hint || 'Выберите категорию «Фильмы» или «Сериалы», чтобы найти, где играл актёр')
+                  : (t.details.search_director_games_hint || 'Выберите категорию «Фильмы», «Сериалы» или «Книги» для поиска по режиссёру или автору')}
+              </p>
+            </div>
+          ) : !isSearchActive ? (
+            /* Normal View (User Items List) */
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {sortedItems.map((item) => (
                   <ItemCard
                     key={item.id}
@@ -834,82 +854,126 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                   />
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* Section 2: Global Database Results */}
-          {dbCatalogResults.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
-                <div className="flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-accentViolet" />
-                  <span>{t.details.in_global_database || 'В общей базе LISTA'}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {dbCatalogResults.map((catItem, idx) => {
-                  const mapped = mapCatalogToItem(catItem);
-                  return (
-                    <ItemCard
-                      key={catItem.id || `cat_db_${catItem.title}_${idx}`}
-                      item={mapped}
-                      onSelect={() => onSelectItem(mapped)}
-                      onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
-                      t={t}
-                      searchMode={searchMode}
-                      searchQuery={searchQuery}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Section 3: Internet Search Results (TMDb, iTunes, TVMaze, Wikipedia) */}
-          <div>
-            <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
-              <div className="flex items-center gap-1.5">
-                <SearchIcon className="w-4 h-4 text-accentBlue" />
-                <span>{t.details.search_internet || 'Поиск в интернете'}</span>
-              </div>
-              {isSearchingCatalog && (
-                <div className="flex items-center gap-1 text-[11px] text-gray-400 font-normal">
-                  <Loader2 className="w-3 h-3 animate-spin text-accentBlue" />
-                  <span>{t.details.searching_status || 'Ищем...'}</span>
+              {sortedItems.length === 0 && (
+                <div className="text-center py-10 text-xs text-gray-500">
+                  {t.details.no_items_found}
                 </div>
               )}
             </div>
+          ) : (
+            /* Dual Search View: User List + Global Catalog Results */
+            <div className="space-y-5 pt-1">
+              {/* Section 1: User's Own List */}
+              {sortedItems.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 px-1">
+                    <FolderCheck className="w-4 h-4 text-accentTeal" />
+                    <span>{(t.details.in_your_collection || 'В вашем списке')} ({sortedItems.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {sortedItems.map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        onSelect={onSelectItem}
+                        showCheckbox={true}
+                        onToggleStatus={() => onToggleStatus(item)}
+                        onUpdateItem={onUpdateItem}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        t={t}
+                        searchMode={searchMode}
+                        searchQuery={searchQuery}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            {onlineCatalogResults.length > 0 ? (
-              <div className="space-y-2.5">
-                {onlineCatalogResults.map((catItem, idx) => {
-                  const mapped = mapCatalogToItem(catItem);
-                  return (
-                    <ItemCard
-                      key={catItem.id || `cat_online_${catItem.title}_${idx}`}
-                      item={mapped}
-                      onSelect={() => onSelectItem(mapped)}
-                      onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
-                      t={t}
-                      searchMode={searchMode}
-                      searchQuery={searchQuery}
-                    />
-                  );
-                })}
+              {/* Section 2: Global Database Results */}
+              {dbCatalogResults.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Globe className="w-4 h-4 text-accentViolet" />
+                      <span>{t.details.in_global_database || 'В общей базе LISTA'}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {dbCatalogResults.map((catItem, idx) => {
+                      const mapped = mapCatalogToItem(catItem);
+                      return (
+                        <ItemCard
+                          key={catItem.id || `cat_db_${catItem.title}_${idx}`}
+                          item={mapped}
+                          onSelect={() => onSelectItem(mapped)}
+                          onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
+                          t={t}
+                          searchMode={searchMode}
+                          searchQuery={searchQuery}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 3: Internet Search Results (TMDb, iTunes, TVMaze, Wikipedia) */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold text-gray-300 px-1 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <SearchIcon className="w-4 h-4 text-accentBlue" />
+                    <span>{t.details.search_internet || 'Поиск в интернете'}</span>
+                  </div>
+                  {isSearchingCatalog && (
+                    <div className="flex items-center gap-1 text-[11px] text-gray-400 font-normal">
+                      <Loader2 className="w-3 h-3 animate-spin text-accentBlue" />
+                      <span>{t.details.searching_status || 'Ищем...'}</span>
+                    </div>
+                  )}
+                </div>
+
+                {onlineCatalogResults.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {onlineCatalogResults.map((catItem, idx) => {
+                      const mapped = mapCatalogToItem(catItem);
+                      return (
+                        <ItemCard
+                          key={catItem.id || `cat_online_${catItem.title}_${idx}`}
+                          item={mapped}
+                          onSelect={() => onSelectItem(mapped)}
+                          onAdd={() => onAddCatalogItem && onAddCatalogItem(catItem)}
+                          t={t}
+                          searchMode={searchMode}
+                          searchQuery={searchQuery}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : !isSearchingCatalog ? (
+                  <div className="glass-card p-4 rounded-2xl text-center text-xs text-gray-400 space-y-1">
+                    {sortedItems.length === 0 && dbCatalogResults.length === 0 ? (
+                      <p>Ничего не найдено в интернете</p>
+                    ) : (
+                      <p className="text-gray-500">Больше совпадений нет</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
-            ) : !isSearchingCatalog ? (
-              <div className="glass-card p-4 rounded-2xl text-center text-xs text-gray-400 space-y-1">
-                {sortedItems.length === 0 && dbCatalogResults.length === 0 ? (
-                  <p>Ничего не найдено в интернете</p>
-                ) : (
-                  <p className="text-gray-500">Больше совпадений нет</p>
-                )}
-              </div>
-            ) : null}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Trailer Modal (Large 60-70% Viewport Player) */}
+      <TrailerModal
+        isOpen={!!trailerModalItem}
+        onClose={() => setTrailerModalItem(null)}
+        youtubeUrl={trailerModalItem?.youtube_url}
+        title={trailerModalItem?.title || ''}
+      />
     </div>
   );
 };
