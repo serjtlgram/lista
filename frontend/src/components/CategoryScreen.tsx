@@ -661,67 +661,64 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         </button>
       </div>
 
-      {/* Row 2: Categories and Quick Genres in Single Fluid Row (Screen 1) */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
-        {onSelectCategory && (
-          <>
-            <button
-              onClick={() => onSelectCategory('Все')}
-              className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                title === 'Все'
-                  ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
-                  : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-              }`}
-            >
-              {t.recently_added.see_all}
-            </button>
-            {displayCategories.map((catKey) => {
-              const isSelected = title.toLowerCase() === catKey.toLowerCase();
-              return (
-                <button
-                  key={catKey}
-                  onClick={() => onSelectCategory(catKey)}
-                  className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                    isSelected
-                      ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
-                      : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-                  }`}
-                >
-                  {getTranslatedCategoryTitle(catKey)}
-                </button>
-              );
-            })}
-            <div className="hidden sm:block h-4 w-px bg-cardBorder/80 mx-1 shrink-0" />
-          </>
-        )}
+      {/* Row 2: Categories Row */}
+      {onSelectCategory && (
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 flex-nowrap">
+          <button
+            onClick={() => onSelectCategory('Все')}
+            className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+              title === 'Все'
+                ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+            }`}
+          >
+            {t.recently_added.see_all}
+          </button>
+          {displayCategories.map((catKey) => {
+            const isSelected = title.toLowerCase() === catKey.toLowerCase();
+            return (
+              <button
+                key={catKey}
+                onClick={() => onSelectCategory(catKey)}
+                className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+                  isSelected
+                    ? 'bg-accentTeal text-white shadow-md shadow-accentTeal/30 font-bold'
+                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                }`}
+              >
+                {getTranslatedCategoryTitle(catKey)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-        {/* Genres Filter Chips */}
-        {availableGenres.length > 0 && (
-          <>
-            {availableGenres.map((genreStr) => {
-              const isSelected = selectedGenres.includes(genreStr);
-              return (
-                <button
-                  key={genreStr}
-                  onClick={() => {
-                    setSelectedGenres((prev) => {
-                      if (prev.includes(genreStr)) return prev.filter((g) => g !== genreStr);
-                      return [...prev, genreStr];
-                    });
-                  }}
-                  className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                    isSelected
-                      ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
-                      : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
-                  }`}
-                >
-                  {genreStr}
-                </button>
-              );
-            })}
-          </>
-        )}
-      </div>
+      {/* Row 3: Genres on a separate line, fitted in ONE single line */}
+      {availableGenres.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5 flex-nowrap">
+          {availableGenres.map((genreStr) => {
+            const isSelected = selectedGenres.includes(genreStr);
+            return (
+              <button
+                key={genreStr}
+                onClick={() => {
+                  setSelectedGenres((prev) => {
+                    if (prev.includes(genreStr)) return prev.filter((g) => g !== genreStr);
+                    return [...prev, genreStr];
+                  });
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+                  isSelected
+                    ? 'bg-accentViolet text-white shadow-md shadow-accentViolet/30 font-bold'
+                    : 'bg-cardDark border border-cardBorder text-gray-300 hover:border-gray-600'
+                }`}
+              >
+                {genreStr}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Subheader count & working sort buttons when not actively searching */}
       {!isSearchActive && !isSearchBlockedForCategory && (
