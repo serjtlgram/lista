@@ -21,20 +21,8 @@ export function triggerFullscreen() {
     if (typeof twa.disableVerticalSwipes === 'function') {
       twa.disableVerticalSwipes();
     }
-
-    const isDesktop = isDesktopDevice();
-
-    if (isDesktop) {
-      // On desktop / laptop (Windows/Mac/Linux):
-      // Expand window but NEVER enter OS fullscreen mode so the Windows taskbar remains fully visible!
-      if (typeof twa.exitFullscreen === 'function' && twa.isFullscreen) {
-        twa.exitFullscreen();
-      }
-    } else {
-      // On mobile devices: enter fullscreen if supported
-      if (typeof twa.requestFullscreen === 'function' && !twa.isFullscreen) {
-        twa.requestFullscreen();
-      }
+    if (typeof twa.requestFullscreen === 'function' && !twa.isFullscreen) {
+      twa.requestFullscreen();
     }
   } catch (e) {
     console.warn('triggerFullscreen error:', e);

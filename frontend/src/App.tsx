@@ -33,7 +33,7 @@ import {
   getStoredActiveCategories,
   setStoredActiveCategories,
 } from './services/i18n';
-import { triggerFullscreen, isDesktopDevice } from './utils/telegram';
+import { triggerFullscreen } from './utils/telegram';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'lists' | 'stats' | 'profile' | 'details' | 'recommendations'>('home');
@@ -100,11 +100,7 @@ export function App() {
     if (!tg) return;
 
     const checkFullscreen = () => {
-      const isFs = !!tg.isFullscreen;
-      setIsFullscreen(isFs);
-      if (isDesktopDevice() && isFs && typeof tg.exitFullscreen === 'function') {
-        tg.exitFullscreen();
-      }
+      setIsFullscreen(!!tg.isFullscreen);
     };
 
     const handleViewportChanged = () => {

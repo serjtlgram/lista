@@ -13,6 +13,9 @@
           if (twa) {
             if (typeof twa.ready === 'function') twa.ready();
             if (typeof twa.expand === 'function') twa.expand();
+            if (typeof twa.requestFullscreen === 'function' && !twa.isFullscreen) {
+              twa.requestFullscreen();
+            }
           }
         } catch (e) {}
       })();
