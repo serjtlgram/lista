@@ -74,7 +74,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   if (!currentItem) {
     return (
       <div
-        className={`glass-card rounded-3xl p-6 border border-cardBorder text-center flex flex-col items-center justify-center min-h-[460px] space-y-4 ${className}`}
+        className={`glass-card rounded-3xl p-6 border border-cardBorder text-center flex flex-col items-center justify-center min-h-[480px] max-h-[640px] aspect-[2/3] space-y-4 ${className}`}
       >
         <div className="w-16 h-16 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-accentTeal" />
@@ -129,7 +129,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   return (
     <div
       onClick={() => onSelectItem(currentItem)}
-      className={`featured-hero-banner relative w-full rounded-3xl overflow-hidden border border-cardBorder shadow-2xl group cursor-pointer select-none min-h-[460px] max-h-[580px] aspect-[3/4] flex flex-col justify-between ${className}`}
+      className={`featured-hero-banner relative w-full rounded-3xl overflow-hidden border border-cardBorder shadow-2xl group cursor-pointer select-none min-h-[480px] max-h-[640px] aspect-[2/3] flex flex-col justify-between ${className}`}
     >
       {/* Background Poster with smooth transition */}
       <img
