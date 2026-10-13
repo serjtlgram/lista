@@ -860,6 +860,21 @@ body.light-brutalism nav {
   box-shadow: 0 10px 30px rgba(100, 116, 139, 0.2) !important;
 }
 
+/* ─── Global Input & Textarea Contrast & Theme Overrides ─── */
+/* Base Dark Theme Inputs: Always clear white text and visible caret on dark background */
+input,
+select,
+textarea {
+  color: #FFFFFF !important;
+  caret-color: #FFFFFF !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Light Theme Inputs: Always crisp dark text and visible caret on white/light background */
 body.light input,
 body.light select,
 body.light textarea,
@@ -885,48 +900,67 @@ body.light-brutalism input,
 body.light-brutalism select,
 body.light-brutalism textarea {
   background-color: #FFFFFF !important;
+  color: #0F172A !important;
   border-color: #CBD5E1 !important;
+  caret-color: #0F172A !important;
 }
 
-body.light input,
-body.light select,
-body.light textarea {
+body.light input::placeholder,
+body.light select::placeholder,
+body.light textarea::placeholder,
+body.light-powdery input::placeholder,
+body.light-powdery select::placeholder,
+body.light-powdery textarea::placeholder,
+body.light-mint input::placeholder,
+body.light-mint select::placeholder,
+body.light-mint textarea::placeholder,
+body.light-neon input::placeholder,
+body.light-neon select::placeholder,
+body.light-neon textarea::placeholder,
+body.light-nordic input::placeholder,
+body.light-nordic select::placeholder,
+body.light-nordic textarea::placeholder,
+body.light-talavera input::placeholder,
+body.light-talavera select::placeholder,
+body.light-talavera textarea::placeholder,
+body.light-terminal input::placeholder,
+body.light-terminal select::placeholder,
+body.light-terminal textarea::placeholder,
+body.light-brutalism input::placeholder,
+body.light-brutalism select::placeholder,
+body.light-brutalism textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Universal Contrast Guard: If any input has white background, force dark text */
+input[class*="bg-white"],
+textarea[class*="bg-white"],
+input.bg-white,
+textarea.bg-white {
   color: #0F172A !important;
+  caret-color: #0F172A !important;
 }
-body.light-powdery input,
-body.light-powdery select,
-body.light-powdery textarea {
-  color: #4A154B !important;
+
+/* Browser Autofill Text Color Fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: #FFFFFF !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
-body.light-mint input,
-body.light-mint select,
-body.light-mint textarea {
-  color: #064E3B !important;
-}
-body.light-neon input,
-body.light-neon select,
-body.light-neon textarea {
-  color: #164E63 !important;
-}
-body.light-nordic input,
-body.light-nordic select,
-body.light-nordic textarea {
-  color: #11221B !important;
-}
-body.light-talavera input,
-body.light-talavera select,
-body.light-talavera textarea {
-  color: #1A1D24 !important;
-}
-body.light-terminal input,
-body.light-terminal select,
-body.light-terminal textarea {
-  color: #0C1E36 !important;
-}
-body.light-brutalism input,
-body.light-brutalism select,
-body.light-brutalism textarea {
-  color: #0F172A !important;
+
+body.light input:-webkit-autofill,
+body.light-powdery input:-webkit-autofill,
+body.light-mint input:-webkit-autofill,
+body.light-neon input:-webkit-autofill,
+body.light-nordic input:-webkit-autofill,
+body.light-talavera input:-webkit-autofill,
+body.light-terminal input:-webkit-autofill,
+body.light-brutalism input:-webkit-autofill {
+  -webkit-text-fill-color: #0F172A !important;
 }
 
 @keyframes slideUp {

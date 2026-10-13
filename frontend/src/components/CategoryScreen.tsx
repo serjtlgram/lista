@@ -603,7 +603,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full bg-cardDark/80 border border-cardBorder rounded-2xl pl-10 pr-20 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-accentViolet shadow-sm transition"
+              className="w-full bg-cardDark border border-cardBorder rounded-2xl pl-10 pr-20 py-2.5 text-xs focus:outline-none focus:border-accentViolet shadow-sm transition"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
               {searchQuery ? (
@@ -817,6 +817,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
             onSelectItem={onSelectItem}
             onWatchTrailer={(item) => setTrailerModalItem(item)}
             onAddItemClick={onBack}
+            onBadgeClick={() => setActiveFilterKey('planned')}
             t={t}
           />
         </div>

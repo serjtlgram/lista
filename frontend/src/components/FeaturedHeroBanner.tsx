@@ -19,6 +19,7 @@ interface FeaturedHeroBannerProps {
   onSelectItem: (item: Item) => void;
   onWatchTrailer: (item: Item) => void;
   onAddItemClick?: () => void;
+  onBadgeClick?: () => void;
   t: Translations;
   className?: string;
 }
@@ -28,6 +29,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   onSelectItem,
   onWatchTrailer,
   onAddItemClick,
+  onBadgeClick,
   t,
   className = '',
 }) => {
@@ -144,25 +146,33 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
         }}
       />
 
-      {/* Cinematic Gradient Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-bgDark via-bgDark/60 to-black/30 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent pointer-events-none h-28" />
+      {/* Cinematic Gradient Overlays: ONLY at the top and bottom text areas to keep poster bright and crisp */}
+      <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/75 via-black/25 to-transparent h-24 pointer-events-none" />
+      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-bgDark via-bgDark/85 to-transparent h-64 pointer-events-none" />
 
-      {/* Top Bar: Badge & Navigation Arrows */}
+      {/* Top Bar: Clickable Badge & Navigation Arrows */}
       <div className="relative z-10 p-4 sm:p-5 flex items-center justify-between">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-md">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onBadgeClick?.();
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 hover:bg-black/75 hover:border-accentTeal/50 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-md cursor-pointer transition active:scale-95 group/badge"
+          title="Показать все элементы этой категории"
+        >
           {isPlanned ? (
             <>
-              <BookmarkCheck className="w-3.5 h-3.5 text-accentTeal" />
+              <BookmarkCheck className="w-3.5 h-3.5 text-accentTeal group-hover/badge:scale-110 transition-transform" />
               <span>В планах посмотреть</span>
             </>
           ) : (
             <>
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 group-hover/badge:scale-110 transition-transform" />
               <span>Рекомендуем сегодня</span>
             </>
           )}
-        </div>
+        </button>
 
         {/* Carousel Arrows */}
         {total > 1 && (
@@ -187,10 +197,10 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
         )}
       </div>
 
-      {/* Bottom Content Area */}
-      <div className="relative z-10 p-4 sm:p-6 space-y-3">
+      {/* Bottom Content Area: Pushed right down next to actions button with compact spacing */}
+      <div className="relative z-10 p-4 sm:p-5 space-y-2 mt-auto">
         {/* Title & Metadata */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight drop-shadow-md">
             {currentItem.title}
           </h2>
@@ -201,39 +211,36 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
           )}
         </div>
 
-        {/* Genre Tags */}
-        {genresList.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {genresList.map((g, idx) => (
-              <span
-                key={idx}
-                className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-gray-200 border border-white/10"
-              >
-                {getTranslatedGenreShort(g, t)}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Genre Tags and Ratings IN ONE LINE */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          {genresList.map((g, idx) => (
+            <span
+              key={idx}
+              className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-gray-200 border border-white/10"
+            >
+              {getTranslatedGenreShort(g, t)}
+            </span>
+          ))}
 
-        {/* Ratings Row */}
-        <div className="flex items-center gap-2 pt-0.5">
+          {/* Public Rating (Kinopoisk / IMDb) */}
           {currentItem.public_rating && currentItem.public_rating.trim() !== '' && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-500/20 backdrop-blur-md border border-orange-500/30 text-orange-300 text-xs font-bold">
-              <Popcorn className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/25 backdrop-blur-md border border-orange-500/35 text-orange-300 text-[11px] font-bold">
+              <Popcorn className="w-3 h-3 text-orange-400" />
               <span>{currentItem.public_rating}</span>
             </div>
           )}
 
-          {currentItem.rating > 0 && !isPlanned && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-400/20 backdrop-blur-md border border-amber-400/30 text-amber-300 text-xs font-bold">
-              <Star className="w-3.5 h-3.5 fill-amber-400" />
+          {/* User's Rating (always shown if rating > 0) */}
+          {currentItem.rating > 0 && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/25 backdrop-blur-md border border-amber-400/35 text-amber-300 text-[11px] font-bold">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               <span>{currentItem.rating}</span>
             </div>
           )}
         </div>
 
         {/* Actions Row */}
-        <div className="flex items-center gap-2.5 pt-2">
+        <div className="flex items-center gap-2 pt-1">
           {/* Watch / Play Trailer Button */}
           <button
             type="button"

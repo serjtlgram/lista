@@ -299,9 +299,18 @@ export function App() {
     if (tgApp) {
       try {
         tgApp.ready();
+        const isDesktop =
+          ['tdesktop', 'macos', 'web', 'weba'].includes(tgApp.platform || '') ||
+          window.innerWidth >= 1024;
         tgApp.expand();
-        if (typeof tgApp.requestFullscreen === 'function' && !tgApp.isFullscreen) {
-          tgApp.requestFullscreen();
+        if (isDesktop) {
+          if (typeof tgApp.exitFullscreen === 'function' && tgApp.isFullscreen) {
+            tgApp.exitFullscreen();
+          }
+        } else {
+          if (typeof tgApp.requestFullscreen === 'function' && !tgApp.isFullscreen) {
+            tgApp.requestFullscreen();
+          }
         }
         if (typeof tgApp.disableVerticalSwipes === 'function') {
           tgApp.disableVerticalSwipes();
