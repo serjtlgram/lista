@@ -16,6 +16,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { CategorySelectModal } from './components/CategorySelectModal';
 import { AddItemModal } from './components/AddItemModal';
 import { Navbar } from './components/Navbar';
+import { DesktopSidebar } from './components/DesktopSidebar';
 
 import { api } from './services/api';
 import { getTranslatedGenreFull } from './services/genres';
@@ -974,6 +975,11 @@ function safeBase64Decode(str: string): any {
     profile?.user?.first_name ||
     'Друг';
 
+  const userHandle =
+    (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.username ||
+    profile?.user?.username ||
+    '';
+
   // Extract category counts map
   const catCountsMap: Record<string, number> = {};
   if (profile?.categories) {
@@ -1075,76 +1081,153 @@ function safeBase64Decode(str: string): any {
 
   return (
     <div
-      className="flex flex-col min-h-screen text-gray-100 w-full max-w-md mx-auto relative pb-28 overflow-x-hidden box-border transition-colors duration-200"
+      className="flex min-h-screen text-gray-100 w-full relative transition-colors duration-200"
       style={{
         paddingTop: isFullscreen ? 'max(68px, env(safe-area-inset-top, 68px))' : undefined,
-        maxWidth: 'min(100%, 28rem)',
         boxSizing: 'border-box',
       }}
     >
-      {/* Top Safe Area Header */}
-      <div className="h-2 w-full"></div>
+      {/* Desktop Left Sidebar (Visible only on lg: >= 1024px) */}
+      <DesktopSidebar
+        activeTab={activeTab === 'details' ? 'search' : activeTab}
+        onTabChange={handleTabChange}
+        userName={userName}
+        userHandle={userHandle}
+        photoUrl={profile?.user?.photo_url}
+        itemsCount={items.length}
+        currentStreak={profile?.current_streak || 0}
+        onOpenAddItem={() => {
+          triggerHaptic();
+          setEditingItem(null);
+          setIsModalOpen(true);
+        }}
+        t={t}
+      />
 
-      {/* Main App Content */}
-      <main className="px-4 pt-3 flex-1">
-        {/* SCREEN 1: HOME */}
-        {activeTab === 'home' && (
-          <section className="space-y-5">
-            <Header
-              userName={userName}
-              photoUrl={profile?.user?.photo_url}
-              onAvatarClick={() => handleTabChange('profile')}
-              t={t}
-            />
-            <CategoryGrid
-              counts={catCountsMap}
-              activeCategories={activeCategories}
-              onSelectCategory={handleOpenCategory}
-              onOpenCategoryConfig={() => {
-                triggerHaptic();
-                setIsCategoryModalOpen(true);
-              }}
-              t={t}
-            />
-            <FavoritesSection
-              items={items.filter((i) => getFavoriteIds().includes(i.id))}
-              onSeeAll={() => handleTabChange('lists')}
-              onSelectItem={handleSelectItem}
-              onToggleStatus={handleToggleStatus}
-              onUpdateItem={handleUpdateItem}
-              onEdit={handleEditItem}
-              onDelete={handleDeleteItem}
-              t={t}
-            />
-            <ActivityCard
-              monthlyCount={profile?.monthly_count || 0}
-              monthlyHours={profile?.monthly_hours || 0}
-              currentStreak={profile?.current_streak || 0}
-              items={items}
-              onShowStats={() => handleTabChange('stats')}
-              onUpdateItem={handleUpdateItem}
-              t={t}
-            />
-            <RecentlyAdded
-              items={items}
-              onSeeAll={() => {
-                setSelectedCategory('Все');
-                handleTabChange('search');
-              }}
-              onSelectItem={handleSelectItem}
-              onToggleStatus={handleToggleStatus}
-              onUpdateItem={handleUpdateItem}
-              onEdit={handleEditItem}
-              onDelete={handleDeleteItem}
-              onAddItemClick={() => {
-                triggerHaptic();
-                setEditingItem(null);
-                setIsModalOpen(true);
-              }}
-              t={t}
-            />
-          </section>
-        )}
+      {/* Main App Content Area */}
+      <div className="flex-1 flex flex-col min-h-screen w-full max-w-md lg:max-w-6xl xl:max-w-7xl mx-auto relative pb-28 lg:pb-12 px-4 lg:px-8 pt-3 box-border min-w-0">
+        {/* Top Safe Area Header on Mobile */}
+        <div className="h-1 lg:h-3 w-full shrink-0"></div>
+
+        {/* Main App Content */}
+        <main className="flex-1 min-w-0">
+          {/* SCREEN 1: HOME */}
+          {activeTab === 'home' && (
+            <section className="space-y-6">
+              <Header
+                userName={userName}
+                photoUrl={profile?.user?.photo_url}
+                onAvatarClick={() => handleTabChange('profile')}
+                t={t}
+              />
+
+              {/* Desktop 2-Column Grid / Mobile Single Column */}
+              <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-start">
+                {/* Main Column (Categories + Recently Added on desktop) */}
+                <div className="w-full lg:col-span-7 xl:col-span-8 space-y-6 order-1 lg:order-none">
+                  <CategoryGrid
+                    counts={catCountsMap}
+                    activeCategories={activeCategories}
+                    onSelectCategory={handleOpenCategory}
+                    onOpenCategoryConfig={() => {
+                      triggerHaptic();
+                      setIsCategoryModalOpen(true);
+                    }}
+                    t={t}
+                  />
+
+                  {/* On desktop, Recently Added goes right below categories in the main area */}
+                  <div className="hidden lg:block">
+                    <RecentlyAdded
+                      items={items}
+                      onSeeAll={() => {
+                        setSelectedCategory('Все');
+                        handleTabChange('search');
+                      }}
+                      onSelectItem={handleSelectItem}
+                      onToggleStatus={handleToggleStatus}
+                      onUpdateItem={handleUpdateItem}
+                      onEdit={handleEditItem}
+                      onDelete={handleDeleteItem}
+                      onAddItemClick={() => {
+                        triggerHaptic();
+                        setEditingItem(null);
+                        setIsModalOpen(true);
+                      }}
+                      t={t}
+                    />
+                  </div>
+                </div>
+
+                {/* Sidebar Panel (Activity & Favorites on desktop, standard sequence on mobile) */}
+                <div className="w-full lg:col-span-5 xl:col-span-4 space-y-6 order-2 lg:order-none lg:sticky lg:top-4">
+                  {/* On mobile: Favorites -> Activity -> Recently Added */}
+                  <div className="lg:hidden space-y-6">
+                    <FavoritesSection
+                      items={items.filter((i) => getFavoriteIds().includes(i.id))}
+                      onSeeAll={() => handleTabChange('lists')}
+                      onSelectItem={handleSelectItem}
+                      onToggleStatus={handleToggleStatus}
+                      onUpdateItem={handleUpdateItem}
+                      onEdit={handleEditItem}
+                      onDelete={handleDeleteItem}
+                      t={t}
+                    />
+                    <ActivityCard
+                      monthlyCount={profile?.monthly_count || 0}
+                      monthlyHours={profile?.monthly_hours || 0}
+                      currentStreak={profile?.current_streak || 0}
+                      items={items}
+                      onShowStats={() => handleTabChange('stats')}
+                      onUpdateItem={handleUpdateItem}
+                      t={t}
+                    />
+                    <RecentlyAdded
+                      items={items}
+                      onSeeAll={() => {
+                        setSelectedCategory('Все');
+                        handleTabChange('search');
+                      }}
+                      onSelectItem={handleSelectItem}
+                      onToggleStatus={handleToggleStatus}
+                      onUpdateItem={handleUpdateItem}
+                      onEdit={handleEditItem}
+                      onDelete={handleDeleteItem}
+                      onAddItemClick={() => {
+                        triggerHaptic();
+                        setEditingItem(null);
+                        setIsModalOpen(true);
+                      }}
+                      t={t}
+                    />
+                  </div>
+
+                  {/* On Desktop: ActivityCard widget at top, FavoritesSection widget below */}
+                  <div className="hidden lg:block space-y-6">
+                    <ActivityCard
+                      monthlyCount={profile?.monthly_count || 0}
+                      monthlyHours={profile?.monthly_hours || 0}
+                      currentStreak={profile?.current_streak || 0}
+                      items={items}
+                      onShowStats={() => handleTabChange('stats')}
+                      onUpdateItem={handleUpdateItem}
+                      t={t}
+                    />
+                    <FavoritesSection
+                      items={items.filter((i) => getFavoriteIds().includes(i.id))}
+                      onSeeAll={() => handleTabChange('lists')}
+                      onSelectItem={handleSelectItem}
+                      onToggleStatus={handleToggleStatus}
+                      onUpdateItem={handleUpdateItem}
+                      onEdit={handleEditItem}
+                      onDelete={handleDeleteItem}
+                      t={t}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
         {/* SCREEN 2: CATEGORY / SEARCH */}
         {activeTab === 'search' && (
@@ -1268,14 +1351,14 @@ function safeBase64Decode(str: string): any {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         aria-label="Back to top"
-        className={`fixed right-6 w-10 h-10 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))] ${
+        className={`fixed right-6 lg:right-8 w-10 h-10 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-8 ${
           showScrollTop ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
         }`}
       >
         <ChevronUp className="w-5 h-5" />
       </button>
 
-      {/* Floating Action Button (+) on Home & Search screens */}
+      {/* Floating Action Button (+) on Home & Search screens (mobile only) */}
       {(activeTab === 'home' || activeTab === 'search') && (
         <button
           onClick={() => {
@@ -1283,19 +1366,22 @@ function safeBase64Decode(str: string): any {
             setEditingItem(null);
             setIsModalOpen(true);
           }}
-          className="fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
+          className="lg:hidden fixed right-5 w-12 h-12 rounded-full bg-accentViolet text-white flex items-center justify-center shadow-lg shadow-accentViolet/40 active:scale-[0.97] transition duration-300 z-40 bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
 
-      {/* Bottom Navbar */}
-      <Navbar
-        activeTab={activeTab === 'details' ? 'search' : activeTab}
-        onTabChange={handleTabChange}
-        t={t}
-        isVisible={isNavVisible}
-      />
+      {/* Bottom Navbar (mobile only) */}
+      <div className="lg:hidden">
+        <Navbar
+          activeTab={activeTab === 'details' ? 'search' : activeTab}
+          onTabChange={handleTabChange}
+          t={t}
+          isVisible={isNavVisible}
+        />
+      </div>
+    </div>
 
       {/* Shared List Deep Link Import Modal */}
       {sharedListModalData && (

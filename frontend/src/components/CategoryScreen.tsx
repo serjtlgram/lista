@@ -597,7 +597,8 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
       )}
 
       {/* Row 1: Status Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
+      {/* Row 1: Filters */}
+      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
         {filters.map((filter) => (
           <button
             key={filter.key}
@@ -613,9 +614,9 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         ))}
       </div>
 
-      {/* Row 2: Strict App Categories Chips Only (Scrollable Horizontally) */}
+      {/* Row 2: Strict App Categories Chips Only */}
       {onSelectCategory && (
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
           <button
             onClick={() => onSelectCategory('Все')}
             className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
@@ -645,9 +646,9 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         </div>
       )}
 
-      {/* Row 3: Genres Filter (Scrollable Horizontally) */}
+      {/* Row 3: Genres Filter */}
       {availableGenres.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5 sm:flex-wrap">
           <button
             onClick={() => setSelectedGenres([])}
             className={`px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
@@ -781,22 +782,24 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         </div>
       ) : !isSearchActive ? (
         /* Normal View (User Items List) */
-        <div className="space-y-2.5">
-          {sortedItems.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onSelect={onSelectItem}
-              showCheckbox={true}
-              onToggleStatus={() => onToggleStatus(item)}
-              onUpdateItem={onUpdateItem}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              t={t}
-              searchMode={searchMode}
-              searchQuery={searchQuery}
-            />
-          ))}
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sortedItems.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                onSelect={onSelectItem}
+                showCheckbox={true}
+                onToggleStatus={() => onToggleStatus(item)}
+                onUpdateItem={onUpdateItem}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                t={t}
+                searchMode={searchMode}
+                searchQuery={searchQuery}
+              />
+            ))}
+          </div>
 
           {sortedItems.length === 0 && (
             <div className="text-center py-10 text-xs text-gray-500">
@@ -814,7 +817,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                 <FolderCheck className="w-4 h-4 text-accentTeal" />
                 <span>{(t.details.in_your_collection || 'В вашем списке')} ({sortedItems.length})</span>
               </div>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {sortedItems.map((item) => (
                   <ItemCard
                     key={item.id}
@@ -844,7 +847,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {dbCatalogResults.map((catItem, idx) => {
                   const mapped = mapCatalogToItem(catItem);
                   return (

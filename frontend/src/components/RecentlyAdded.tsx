@@ -39,22 +39,24 @@ export const RecentlyAdded: React.FC<RecentlyAddedProps> = ({
       </div>
 
       {items.length > 0 ? (
-        <div className="space-y-2.5">
-          {items.slice(0, 5).map((item) => (
-            <ItemCard 
-              key={item.id} 
-              item={item} 
-              onSelect={onSelectItem} 
-              onToggleStatus={onToggleStatus} 
-              onUpdateItem={onUpdateItem}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              t={t} 
-            />
-          ))}
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {items.slice(0, 8).map((item) => (
+              <ItemCard 
+                key={item.id} 
+                item={item} 
+                onSelect={onSelectItem} 
+                onToggleStatus={onToggleStatus} 
+                onUpdateItem={onUpdateItem}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                t={t} 
+              />
+            ))}
+          </div>
 
           {/* Centered plus in circle button below the last card on Home screen */}
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-center pt-1">
             <button
               onClick={onAddItemClick}
               className="p-1 rounded-full text-accentViolet hover:text-accentViolet/80 active:scale-[0.97] transition opacity-80 hover:opacity-100"

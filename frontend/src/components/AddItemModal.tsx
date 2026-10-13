@@ -441,8 +441,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const genreOptions = getAvailableGenres(category, t);
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center p-3 pb-8 sm:pb-12">
-      <div className="w-full bg-cardDark rounded-3xl p-5 pb-8 space-y-4 border border-cardBorder max-w-md mx-auto animate-slide-up max-h-[85vh] overflow-y-auto hide-scrollbar shadow-2xl mb-4 sm:mb-6">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3 pb-8 sm:p-4">
+      <div className="w-full bg-cardDark rounded-3xl p-5 pb-8 sm:pb-6 space-y-4 border border-cardBorder max-w-md sm:max-w-lg lg:max-w-xl mx-auto animate-slide-up max-h-[85vh] sm:max-h-[90vh] overflow-y-auto hide-scrollbar shadow-2xl mb-4 sm:mb-0">
         {/* Header */}
         <div className="flex items-center justify-between pb-1 border-b border-cardBorder">
           <h3 className="text-base font-bold text-white">

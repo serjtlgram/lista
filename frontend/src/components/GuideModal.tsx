@@ -147,7 +147,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, t, curr
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-md bg-cardDark border-t sm:border border-cardBorder rounded-t-[32px] sm:rounded-3xl flex flex-col h-[93vh] max-h-[93vh] sm:h-auto sm:max-h-[88vh] animate-slide-up shadow-2xl overflow-hidden"
+        className="w-full max-w-md sm:max-w-xl bg-cardDark border-t sm:border border-cardBorder rounded-t-[32px] sm:rounded-3xl flex flex-col h-[93vh] max-h-[93vh] sm:h-auto sm:max-h-[88vh] animate-slide-up shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top gradient accent line */}

@@ -1236,7 +1236,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
 
       {/* Items list */}
       {sortedListItems.length > 0 ? (
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {sortedListItems.map((item) => (
             <ItemCard
               key={item.id}

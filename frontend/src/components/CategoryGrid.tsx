@@ -54,8 +54,16 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
 
   return (
     <div className="space-y-1.5 -mb-3">
-      {/* Categories Grid - always 2 columns, odd last item spans full row */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* Categories Grid - 2 columns on mobile, 4 columns on desktop */}
+      <div
+        className={`grid grid-cols-2 ${
+          visibleCategories.length === 4
+            ? 'sm:grid-cols-4'
+            : visibleCategories.length === 3
+            ? 'sm:grid-cols-3'
+            : 'sm:grid-cols-2'
+        } gap-2.5 sm:gap-3`}
+      >
         {visibleCategories.map((cat, index) => {
           const IconComponent = cat.icon;
           const count = getCount(cat.key);
@@ -66,8 +74,8 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <div
               key={cat.key}
               onClick={() => onSelectCategory(cat.key)}
-              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer transition-colors hover:border-accentViolet/50 min-w-0 ${
-                isLastOdd ? 'col-span-2' : ''
+              className={`glass-card p-3.5 rounded-2xl flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02] hover:border-accentViolet/50 min-w-0 ${
+                isLastOdd ? 'col-span-2 sm:col-span-1' : ''
               }`}
             >
               <div className={`w-10 h-10 rounded-xl ${cat.bg} flex items-center justify-center ${cat.text} shrink-0`}>

@@ -28,7 +28,8 @@ import {
   BookMarked,
   Plus,
   Wand2,
-  Link
+  Link,
+  ChevronLeft
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -657,763 +658,790 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   }
 
+  const renderActionButtons = () => (
+    isSharedPreview ? (
+      <div className="pt-2">
+        <button
+          onClick={() => onAddSharedItem && onAddSharedItem(item)}
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-xl hover:opacity-90 active:scale-[0.97] transition flex items-center justify-center gap-2"
+        >
+          <PlusCircle className="w-5 h-5" />
+          <span>{t.details.add_to_list}</span>
+        </button>
+      </div>
+    ) : (
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
+        <button
+          onClick={handleCopyLink}
+          className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm hover:border-amber-400/40"
+        >
+          <Link className="w-4 h-4 mb-1 text-amber-400" />
+          <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.copy_link || 'Ссылка'}</span>
+        </button>
+        <button
+          onClick={() => onEdit(item)}
+          className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm hover:border-accentViolet/40"
+        >
+          <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
+          <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.edit}</span>
+        </button>
+        <button
+          onClick={handleShareTelegram}
+          className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm hover:border-accentTeal/40"
+        >
+          <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
+          <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.share}</span>
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-[0.97] shadow-sm"
+        >
+          <Trash2 className="w-4 h-4 mb-1" />
+          <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.delete}</span>
+        </button>
+      </div>
+    )
+  );
+
   return (
     <div className="space-y-4 animate-slide-up pb-6">
-      {/* Main Poster & Details Card (Title & Menu in top row, 2:3 Aspect Ratio Layout) */}
-      <div className="glass-card p-4 rounded-3xl space-y-3 shadow-xl">
-        {/* Title & Three-Dots Menu Row (No line below) */}
-        <div className="flex items-start justify-between gap-2">
-          <h1 className="text-base sm:text-lg font-bold text-white leading-snug break-words flex-1">
-            <span>{item.title}</span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopyText(item.title, 'title', t.details.title_copied || 'Название скопировано!');
-              }}
-              className="inline-flex items-center justify-center align-middle ml-1.5 p-1 -mt-0.5 rounded-lg text-gray-400 hover:text-accentTeal hover:bg-white/10 active:scale-90 transition cursor-pointer"
-              title={t.details.title_copied || 'Копировать название'}
-              aria-label="Копировать название"
-            >
-              {copiedField === 'title' ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
-          </h1>
-
-          {/* Three-Dots Menu at top right of title */}
-          <div className="relative shrink-0 -mr-1 -mt-1">
-            <button
-              type="button"
-              onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
-              className={`p-1.5 rounded-full transition active:scale-[0.97] ${
-                isHeaderMenuOpen
-                  ? 'bg-accentViolet/20 text-accentViolet'
-                  : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
-              }`}
-              aria-label="Меню"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-
-            {/* Three Dots Dropdown Menu */}
-            {isHeaderMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsHeaderMenuOpen(false)}
-                />
-                <div className="absolute right-0 top-full mt-2 w-48 glass-card border border-cardBorder rounded-2xl p-1.5 shadow-2xl z-50 animate-slide-up dropdown-menu-container space-y-0.5">
-                  <button
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      handleShareTelegram();
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
-                  >
-                    <Share2 className="w-4 h-4 text-accentTeal" />
-                    <span>{t.details.share || 'Поделиться'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      handleProtectedAction(() => onEdit(item));
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
-                  >
-                    <Edit3 className="w-4 h-4 text-accentViolet" />
-                    <span>{t.details.edit || 'Изменить'}</span>
-                  </button>
-
-                  <div className="h-px bg-cardBorder/50 my-1" />
-
-                  <button
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      handleProtectedAction(() => onDelete(item.id));
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                    <span>{t.details.delete || 'Удалить'}</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-4 items-start pt-1">
-          {/* Left: Vertical Poster Image (2:3 Aspect Ratio) */}
-          <div className="relative shrink-0 w-32 aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border border-cardBorder group cursor-pointer">
-            <img
-              src={posterSrc}
-              referrerPolicy="no-referrer"
-              onClick={() => setIsFullscreenPoster(true)}
-              className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
-              alt={item.title}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (!target.dataset.fallback) {
-                  target.dataset.fallback = 'true';
-                  target.src = getItemPoster({ id: item.id, title: item.title, poster_url: '' });
-                }
-              }}
-            />
-          </div>
-
-          {/* Right: Meta Details (Year, Watch date, Genre, Episodes, Duration, Status) */}
-          <div className="flex-1 space-y-2 text-xs pt-0.5">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
-                  {isBook ? (t.categories?.book_single?.toUpperCase() || 'КНИГА') : formatCategorySingle(item.category)}
-                </span>
-                <span className="text-sm font-bold text-white flex items-center gap-1.5 inline-flex">
-                  {item.release_year ? item.release_year : '2024'}
-                  {item.country ? (
-                    <span className="font-normal text-base leading-none flex items-center gap-1">
-                      <span className="text-gray-400"> • </span>
-                      <CountryFlag country={item.country} />
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-
-              {/* Favorite Star Button returned to right side of category/year */}
-              <button
-                type="button"
-                onClick={handleToggleFav}
-                className="p-1 text-amber-500 hover:scale-110 active:scale-[0.97] transition -mr-1 -mt-1"
-                title={t.favorites?.title || 'Избранное'}
-              >
-                <Star
-                  className={`w-6 h-6 transition ${
-                    isFav ? 'fill-amber-400 text-amber-400' : 'text-amber-500 stroke-[2] fill-none'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
-              <div className="flex items-center justify-between text-gray-300 gap-1">
-                <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                  <Calendar className="w-3.5 h-3.5 text-accentViolet" />
-                  {t.details.short_watch_date}
-                </span>
-                <span className="font-semibold text-white text-right font-mono text-[11px]">
-                  {formatShortDate(item.completed_at, item.created_at)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-gray-300 gap-1">
-                <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                  <Tag className="w-3.5 h-3.5 text-accentTeal" />
-                  {t.details.genre}
-                </span>
-                <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                  {getTranslatedGenreShort(item.genre, t)}
-                </span>
-              </div>
-
-              {/* Duration / Pages Row */}
-              {(!isBook || (durationDisplay && durationDisplay !== '-')) && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    {isBook ? (t.details.pages || 'Страниц') : t.details.duration}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">{durationDisplay}</span>
-                </div>
-              )}
-
-              {/* Public Audience Rating Row (Popcorn / Star icon) */}
-              {item.public_rating && item.public_rating.trim() !== '' && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    {isBook ? <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400/20" /> : <Popcorn className="w-3.5 h-3.5 text-orange-400" />}
-                    {t.details.public_rating || 'Рейтинг'}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0 font-mono text-[11px]">
-                    {item.public_rating}
-                  </span>
-                </div>
-              )}
-
-              {/* Episodes Row for Series — uses episodes_total if enriched, else legacy field */}
-              {!isBook && (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay || item.episodes_total) && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Tv className="w-3.5 h-3.5 text-accentPink" />
-                    {t.details.episodes}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                    {item.episodes_total ? String(item.episodes_total) : (episodesDisplay || '-')}
-                  </span>
-                </div>
-              )}
-
-              {/* Seasons Row for Series — uses seasons field if enriched, else legacy parse */}
-              {!isBook && (item.seasons || seasonsDisplay) && (
-                <div className="flex items-center justify-between text-gray-300 gap-1">
-                  <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                    <Tv className="w-3.5 h-3.5 text-orange-400" />
-                    {t.details.seasons || 'Сезонов'}
-                  </span>
-                  <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
-                    {item.seasons ? String(item.seasons) : seasonsDisplay}
-                  </span>
-                </div>
-              )}
-
-            </div>
-
-            {/* Interactive Status Pill Button & AI Magic Wand Button */}
-            <div className="flex items-center gap-1.5 pt-1.5">
-              {/* Status Select Dropdown Container */}
-              <div className="relative flex-1 min-w-0">
-                <button
-                  onClick={() => handleProtectedAction(() => setIsStatusDropdownOpen(!isStatusDropdownOpen))}
-                  className="w-full px-2.5 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
-                >
-                  <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
-                  <div className="flex items-center gap-0.5 shrink-0 ml-1">
-                    <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
-                    <ChevronDown className="w-3.5 h-3.5 text-white/80" />
-                  </div>
-                </button>
-
-                {/* Dropdown Options */}
-                {isStatusDropdownOpen && (
-                  <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
-                    {statusOptions.map((opt) => {
-                      const isSelected = item.status === opt.val || getTranslatedStatus(item.status, item.category, t) === opt.label;
-                      return (
-                        <button
-                          key={opt.val}
-                          onClick={() => handleSelectStatus(opt.val)}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
-                            isSelected
-                              ? 'dropdown-option-active bg-accentViolet text-white'
-                              : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
-                          }`}
-                        >
-                          <span>{opt.label}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* AI Magic Wand Button */}
-              <button
-                type="button"
-                onClick={() => handleProtectedAction(async () => {
-                  if ((item.ai_enriched && !isAlwaysActiveUser) || isEnriching) return;
-                  setIsEnriching(true);
-                  try {
-                    const result = await api.enrichItem(item.id, language);
-                    if (result && onUpdateItem) {
-                      const updates: Partial<typeof item> = { ai_enriched: true };
-                      if (result.seasons) updates.seasons = result.seasons;
-                      if (result.episodes_total) updates.episodes_total = result.episodes_total;
-                      if (result.air_status) updates.air_status = result.air_status;
-                      if (result.episodes_list) updates.episodes_list = result.episodes_list;
-                      if (result.cast_roles) updates.cast_roles = result.cast_roles;
-                      if ((result as any).cast) updates.cast = (result as any).cast;
-
-                      if (result.budget) updates.budget = result.budget;
-                      if (result.duration && (!item.duration || item.duration === '-' || item.duration === '0' || item.duration.includes('1619'))) {
-                        updates.duration = result.duration;
-                      }
-                      if ((result as any).director) updates.director = (result as any).director;
-                      if (result.country && !item.country) updates.country = result.country;
-
-                      // Book fields
-                      if ((result as any).isbn) updates.isbn = (result as any).isbn;
-                      if ((result as any).author && !item.author) updates.author = (result as any).author;
-                      if ((result as any).description && (result as any).description !== item.description) {
-                        updates.description = (result as any).description;
-                      }
-                      if ((result as any).genre && !item.genre) updates.genre = (result as any).genre;
-                      if ((result as any).release_year && !item.release_year) updates.release_year = (result as any).release_year;
-                      if ((result as any).poster_url && !item.poster_url) updates.poster_url = (result as any).poster_url;
-                      if ((result as any).public_rating && !item.public_rating) updates.public_rating = (result as any).public_rating;
-
-                      onUpdateItem(item.id, updates);
-                      setToastMessage(t.details.ai_data_updated || '✨ Данные обновлены!');
-                    } else {
-                      if (onUpdateItem) onUpdateItem(item.id, { ai_enriched: true });
-                      setToastMessage(t.details.ai_data_not_found || 'Данные не найдены');
-                    }
-                  } catch {
-                    setToastMessage(t.details.ai_data_error || 'Ошибка загрузки');
-                  } finally {
-                    setIsEnriching(false);
-                  }
-                })}
-                disabled={isEnriching || (item.ai_enriched && !isAlwaysActiveUser)}
-                title={item.ai_enriched && !isAlwaysActiveUser ? (t.details.ai_data_loaded || 'Данные загружены') : (t.details.ai_enrich_action || 'Обогатить через ИИ')}
-                className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
-                  item.ai_enriched && !isAlwaysActiveUser
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default opacity-80'
-                    : isEnriching
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-wait animate-pulse'
-                    : 'bg-cardDark border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10'
-                }`}
-              >
-                {isEnriching ? (
-                  <Wand2 className="w-4 h-4 text-amber-300 animate-spin" />
-                ) : item.ai_enriched && !isAlwaysActiveUser ? (
-                  <Check className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <Wand2 className="w-4 h-4 text-amber-400" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Top back button for non-Telegram web & desktop */}
+      <div className="flex items-center justify-between pb-1">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cardDark/60 hover:bg-cardDark border border-cardBorder text-gray-300 hover:text-white text-xs font-semibold transition active:scale-95 shadow-sm"
+        >
+          <ChevronLeft className="w-4 h-4 text-accentTeal" />
+          <span>{language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}</span>
+        </button>
       </div>
 
-      {/* Budget */}
-      {item.budget && item.budget !== '0' && !item.budget.toLowerCase().includes('неизвестно') && !item.budget.toLowerCase().includes('unknown') && (
-        <div className="glass-card p-4 rounded-3xl shadow-sm mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col justify-center">
-              <span className="text-xs text-gray-400">{t.details.budget_title || 'Бюджет'}</span>
-              <span className="text-sm font-bold text-white">{item.budget}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
-      {!isBook && (item.director || item.cast || item.cast_roles) && (
-        <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
-          {item.director && (
-            <div className="flex items-start gap-2.5">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
-                <Video className="w-4 h-4 text-accentViolet" />
-                {t.details.director}:
-              </span>
-              <span className="text-xs text-white font-medium leading-relaxed">
-                {item.director}
-              </span>
-            </div>
-          )}
-          {item.cast_roles ? (
-            <div className="space-y-2 pt-0.5 px-0.5">
-              <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 mb-2">
-                <Users className="w-4 h-4 text-accentTeal shrink-0" />
-                {t.details.cast || 'В ролях'}
-              </div>
-              {item.cast_roles.split(', ').map((entry, i) => {
-                const [actor, role] = entry.split(' — ');
-                return (
-                  <div key={i} className="flex items-start justify-between gap-3 px-1 py-0.5 rounded-lg hover:bg-white/5 transition-colors">
-                    <span className="text-xs text-white font-medium break-words min-w-0 pr-1">{actor?.trim()}</span>
-                    {role && <span className="text-xs text-gray-400 italic text-right break-words min-w-0 max-w-[55%] pl-1 shrink-0">{role.trim()}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          ) : item.cast ? (
-            <div className="flex items-start gap-2.5">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
-                <Users className="w-4 h-4 text-accentTeal" />
-                {t.details.cast}:
-              </span>
-              <span className="text-xs text-white font-medium leading-relaxed">
-                {item.cast}
-              </span>
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {/* AI Enrichment Block: Air Status + Episodes List (series only) */}
-      {!isBook && (item.air_status || item.episodes_list) && (() => {
-        let parsedEpisodes: Array<{ s: number; e: number; title: string; air_date: string; overview: string; runtime: number }> = [];
-        try {
-          if (item.episodes_list) parsedEpisodes = JSON.parse(item.episodes_list);
-        } catch {}
-        return (
-          <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
-            {/* Air Status badge */}
-            {item.air_status && (
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full shrink-0 ${
-                  item.air_status === 'Выходит' ? 'bg-emerald-400 animate-pulse' :
-                  item.air_status === 'Завершён' ? 'bg-gray-400' :
-                  item.air_status === 'Отменён' ? 'bg-red-400' : 'bg-amber-400'
-                }`} />
-                <span className="text-xs font-bold text-white">{item.air_status}</span>
-                {item.seasons && item.seasons > 0 && (
-                  <span className="text-xs text-gray-400 ml-1">• {item.seasons} {item.seasons === 1 ? 'сезон' : item.seasons < 5 ? 'сезона' : 'сезонов'}</span>
-                )}
-              </div>
-            )}
-            {/* Episodes accordion */}
-            {parsedEpisodes.length > 0 && (
-              <EpisodesAccordion episodes={parsedEpisodes} t={t} />
-            )}
-          </div>
-        );
-      })()}
-
-
-
-      {/* Dedicated Author & ISBN Block for Books */}
-      {isBook && (item.author || item.isbn) && (
-        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm flex flex-col">
-          {item.author && (
-            <div className="flex items-start gap-2.5">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
-                <User className="w-4 h-4 text-accentPink" />
-                {t.details.author || 'Автор'}:
-              </span>
-              <span className="text-xs text-white font-medium leading-relaxed truncate min-w-0">
-                {item.author}
-              </span>
-            </div>
-          )}
-          {item.isbn && (
-            <button
-              onClick={() => {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                  navigator.clipboard.writeText(item.isbn!);
-                  const tg = (window as any).Telegram?.WebApp;
-                  if (tg?.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
-                  }
-                  setToastMessage(t.details.link_copied || 'Скопировано');
-                }
-              }}
-              className="w-full flex items-center justify-between active:opacity-60 transition"
-            >
-              <div className="flex items-start gap-2.5 text-left min-w-0">
-                <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
-                  <Tag className="w-4 h-4 text-accentBlue" />
-                  {t.details.isbn || 'ISBN'}:
-                </span>
-                <span className="text-[13px] text-white font-mono font-medium leading-relaxed truncate">
-                  {item.isbn}
-                </span>
-              </div>
-              <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-2" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Description / Annotation Block */}
-      {item.description && (
-        <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-semibold">
-            <span className="flex items-center gap-1.5">
-              <span>{isBook ? (t.details.annotation || 'Аннотация') : t.details.description}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyText(item.description!, 'description', t.details.description_copied || 'Описание скопировано!');
-                }}
-                className="inline-flex items-center justify-center p-1 -my-1 rounded-lg text-gray-400 hover:text-accentTeal hover:bg-white/10 active:scale-90 transition cursor-pointer"
-                title={t.details.description_copied || 'Копировать описание'}
-                aria-label="Копировать описание"
-              >
-                {copiedField === 'description' ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </span>
-          </div>
-          <p className={`text-[14px] text-white leading-relaxed font-normal whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
-            {item.description}
-          </p>
-          {item.description.length > 150 && (
-            <button
-              onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-              className="mt-1 text-xs font-bold text-accentTeal hover:underline flex items-center gap-1 focus:outline-none transition active:scale-[0.97]"
-            >
-              {isDescriptionExpanded ? (t.details.show_less || 'Скрыть') : (t.details.show_more || 'Ещё...')}
-            </button>
-          )}
-        </div>
-      )}
-
-
-
-      {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
-      {item.youtube_url && item.youtube_url.trim() && (
-        <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center">
-                <Youtube className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-white tracking-wide">
-                {t.details.watch_on_youtube}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {getYouTubeEmbedUrl(item.youtube_url) && (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
+        {/* Left Column: Poster, Title, Meta, Rating, Budget & Desktop Actions */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+          {/* Main Poster & Details Card (Title & Menu in top row, 2:3 Aspect Ratio Layout) */}
+          <div className="glass-card p-4 rounded-3xl space-y-3 shadow-xl">
+            {/* Title & Three-Dots Menu Row (No line below) */}
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="text-base sm:text-lg font-bold text-white leading-snug break-words flex-1">
+                <span>{item.title}</span>
                 <button
                   type="button"
-                  onClick={() => setIsFullscreenVideo(true)}
-                  className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
-                  title={t.details.fullscreen || 'На весь экран'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyText(item.title, 'title', t.details.title_copied || 'Название скопировано!');
+                  }}
+                  className="inline-flex items-center justify-center align-middle ml-1.5 p-1 -mt-0.5 rounded-lg text-gray-400 hover:text-accentTeal hover:bg-white/10 active:scale-90 transition cursor-pointer"
+                  title={t.details.title_copied || 'Копировать название'}
+                  aria-label="Копировать название"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span>{t.details.fullscreen || 'Экран'}</span>
+                  {copiedField === 'title' ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
-              )}
-              <a
-                href={item.youtube_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-semibold text-accentTeal hover:underline flex items-center gap-1"
-              >
-                <span>{t.details.open_in_youtube}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
+              </h1>
 
-          {getYouTubeEmbedUrl(item.youtube_url) ? (
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
-              {!isFullscreenVideo ? (
-                <>
-                  <iframe
-                    src={getYouTubeEmbedUrl(item.youtube_url)!}
-                    title={item.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                    allowFullScreen
-                  />
+              {/* Three-Dots Menu at top right of title */}
+              <div className="relative shrink-0 -mr-1 -mt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                  className={`p-1.5 rounded-full transition active:scale-[0.97] ${
+                    isHeaderMenuOpen
+                      ? 'bg-accentViolet/20 text-accentViolet'
+                      : 'text-gray-400 hover:text-accentViolet hover:bg-accentViolet/10'
+                  }`}
+                  aria-label="Меню"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+
+                {/* Three Dots Dropdown Menu */}
+                {isHeaderMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsHeaderMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-48 glass-card border border-cardBorder rounded-2xl p-1.5 shadow-2xl z-50 animate-slide-up dropdown-menu-container space-y-0.5">
+                      <button
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          handleShareTelegram();
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                      >
+                        <Share2 className="w-4 h-4 text-accentTeal" />
+                        <span>{t.details.share || 'Поделиться'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          handleProtectedAction(() => onEdit(item));
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-gray-200 hover:text-white hover:bg-accentViolet/15 hover:text-accentViolet transition dropdown-option-inactive"
+                      >
+                        <Edit3 className="w-4 h-4 text-accentViolet" />
+                        <span>{t.details.edit || 'Изменить'}</span>
+                      </button>
+
+                      <div className="h-px bg-cardBorder/50 my-1" />
+
+                      <button
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          handleProtectedAction(() => onDelete(item.id));
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                        <span>{t.details.delete || 'Удалить'}</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start pt-1">
+              {/* Left: Vertical Poster Image (2:3 Aspect Ratio) */}
+              <div className="relative shrink-0 w-32 aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border border-cardBorder group cursor-pointer">
+                <img
+                  src={posterSrc}
+                  referrerPolicy="no-referrer"
+                  onClick={() => setIsFullscreenPoster(true)}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+                  alt={item.title}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.dataset.fallback) {
+                      target.dataset.fallback = 'true';
+                      target.src = getItemPoster({ id: item.id, title: item.title, poster_url: '' });
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Right: Meta Details (Year, Watch date, Genre, Episodes, Duration, Status) */}
+              <div className="flex-1 space-y-2 text-xs pt-0.5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase tracking-wider font-semibold">
+                      {isBook ? (t.categories?.book_single?.toUpperCase() || 'КНИГА') : formatCategorySingle(item.category)}
+                    </span>
+                    <span className="text-sm font-bold text-white flex items-center gap-1.5 inline-flex">
+                      {item.release_year ? item.release_year : '2024'}
+                      {item.country ? (
+                        <span className="font-normal text-base leading-none flex items-center gap-1">
+                          <span className="text-gray-400"> • </span>
+                          <CountryFlag country={item.country} />
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+
+                  {/* Favorite Star Button returned to right side of category/year */}
                   <button
                     type="button"
-                    onClick={() => setIsFullscreenVideo(true)}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
-                    title={t.details.fullscreen || 'На весь экран'}
+                    onClick={handleToggleFav}
+                    className="p-1 text-amber-500 hover:scale-110 active:scale-[0.97] transition -mr-1 -mt-1"
+                    title={t.favorites?.title || 'Избранное'}
                   >
-                    <Maximize2 className="w-4 h-4" />
+                    <Star
+                      className={`w-6 h-6 transition ${
+                        isFav ? 'fill-amber-400 text-amber-400' : 'text-amber-500 stroke-[2] fill-none'
+                      }`}
+                    />
                   </button>
-                </>
-              ) : (
-                <div
-                  onClick={() => setIsFullscreenVideo(false)}
-                  className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-gray-400 text-xs font-semibold gap-2 cursor-pointer p-4 text-center select-none"
+                </div>
+
+                <div className="space-y-1.5 pt-1 border-t border-cardBorder/60">
+                  <div className="flex items-center justify-between text-gray-300 gap-1">
+                    <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                      <Calendar className="w-3.5 h-3.5 text-accentViolet" />
+                      {t.details.short_watch_date}
+                    </span>
+                    <span className="font-semibold text-white text-right font-mono text-[11px]">
+                      {formatShortDate(item.completed_at, item.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-gray-300 gap-1">
+                    <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                      <Tag className="w-3.5 h-3.5 text-accentTeal" />
+                      {t.details.genre}
+                    </span>
+                    <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
+                      {getTranslatedGenreShort(item.genre, t)}
+                    </span>
+                  </div>
+
+                  {/* Duration / Pages Row */}
+                  {(!isBook || (durationDisplay && durationDisplay !== '-')) && (
+                    <div className="flex items-center justify-between text-gray-300 gap-1">
+                      <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        {isBook ? (t.details.pages || 'Страниц') : t.details.duration}
+                      </span>
+                      <span className="font-semibold text-white text-right leading-tight truncate min-w-0">{durationDisplay}</span>
+                    </div>
+                  )}
+
+                  {/* Public Audience Rating Row (Popcorn / Star icon) */}
+                  {item.public_rating && item.public_rating.trim() !== '' && (
+                    <div className="flex items-center justify-between text-gray-300 gap-1">
+                      <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                        {isBook ? <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400/20" /> : <Popcorn className="w-3.5 h-3.5 text-orange-400" />}
+                        {t.details.public_rating || 'Рейтинг'}
+                      </span>
+                      <span className="font-semibold text-white text-right leading-tight truncate min-w-0 font-mono text-[11px]">
+                        {item.public_rating}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Episodes Row for Series — uses episodes_total if enriched, else legacy field */}
+                  {!isBook && (item.category === 'show' || item.category === 'series' || item.category === 'сериал' || item.category === 'сериалы' || episodesDisplay || item.episodes_total) && (
+                    <div className="flex items-center justify-between text-gray-300 gap-1">
+                      <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                        <Tv className="w-3.5 h-3.5 text-accentPink" />
+                        {t.details.episodes}
+                      </span>
+                      <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
+                        {item.episodes_total ? String(item.episodes_total) : (episodesDisplay || '-')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Seasons Row for Series — uses seasons field if enriched, else legacy parse */}
+                  {!isBook && (item.seasons || seasonsDisplay) && (
+                    <div className="flex items-center justify-between text-gray-300 gap-1">
+                      <span className="text-gray-400 flex items-center gap-1 shrink-0">
+                        <Tv className="w-3.5 h-3.5 text-orange-400" />
+                        {t.details.seasons || 'Сезонов'}
+                      </span>
+                      <span className="font-semibold text-white text-right leading-tight truncate min-w-0">
+                        {item.seasons ? String(item.seasons) : seasonsDisplay}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Interactive Status Pill Button & AI Magic Wand Button */}
+                <div className="flex items-center gap-1.5 pt-1.5">
+                  {/* Status Select Dropdown Container */}
+                  <div className="relative flex-1 min-w-0">
+                    <button
+                      onClick={() => handleProtectedAction(() => setIsStatusDropdownOpen(!isStatusDropdownOpen))}
+                      className="w-full px-2.5 py-2 rounded-xl bg-cardDark border border-cardBorder text-white text-xs font-bold flex items-center justify-between transition active:scale-[0.97] shadow-md hover:border-accentViolet"
+                    >
+                      <span className="font-bold text-white truncate">{getTranslatedStatus(item.status, item.category, t)}</span>
+                      <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                        <Check className="w-3.5 h-3.5 text-accentTeal stroke-[3]" />
+                        <ChevronDown className="w-3.5 h-3.5 text-white/80" />
+                      </div>
+                    </button>
+
+                    {/* Dropdown Options */}
+                    {isStatusDropdownOpen && (
+                      <div className="dropdown-menu-container absolute right-0 top-full mt-1 w-full bg-cardDark border border-cardBorder rounded-2xl p-1.5 shadow-2xl space-y-1 z-30 animate-slide-up">
+                        {statusOptions.map((opt) => {
+                          const isSelected = item.status === opt.val || getTranslatedStatus(item.status, item.category, t) === opt.label;
+                          return (
+                            <button
+                              key={opt.val}
+                              onClick={() => handleSelectStatus(opt.val)}
+                              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between ${
+                                isSelected
+                                  ? 'dropdown-option-active bg-accentViolet text-white'
+                                  : 'dropdown-option-inactive text-gray-300 hover:bg-bgDark'
+                              }`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Magic Wand Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleProtectedAction(async () => {
+                      if ((item.ai_enriched && !isAlwaysActiveUser) || isEnriching) return;
+                      setIsEnriching(true);
+                      try {
+                        const result = await api.enrichItem(item.id, language);
+                        if (result && onUpdateItem) {
+                          const updates: Partial<typeof item> = { ai_enriched: true };
+                          if (result.seasons) updates.seasons = result.seasons;
+                          if (result.episodes_total) updates.episodes_total = result.episodes_total;
+                          if (result.air_status) updates.air_status = result.air_status;
+                          if (result.episodes_list) updates.episodes_list = result.episodes_list;
+                          if (result.cast_roles) updates.cast_roles = result.cast_roles;
+                          if ((result as any).cast) updates.cast = (result as any).cast;
+
+                          if (result.budget) updates.budget = result.budget;
+                          if (result.duration && (!item.duration || item.duration === '-' || item.duration === '0' || item.duration.includes('1619'))) {
+                            updates.duration = result.duration;
+                          }
+                          if ((result as any).director) updates.director = (result as any).director;
+                          if (result.country && !item.country) updates.country = result.country;
+
+                          // Book fields
+                          if ((result as any).isbn) updates.isbn = (result as any).isbn;
+                          if ((result as any).author && !item.author) updates.author = (result as any).author;
+                          if ((result as any).description && (result as any).description !== item.description) {
+                            updates.description = (result as any).description;
+                          }
+                          if ((result as any).genre && !item.genre) updates.genre = (result as any).genre;
+                          if ((result as any).release_year && !item.release_year) updates.release_year = (result as any).release_year;
+                          if ((result as any).poster_url && !item.poster_url) updates.poster_url = (result as any).poster_url;
+                          if ((result as any).public_rating && !item.public_rating) updates.public_rating = (result as any).public_rating;
+
+                          onUpdateItem(item.id, updates);
+                          setToastMessage(t.details.ai_data_updated || '✨ Данные обновлены!');
+                        } else {
+                          if (onUpdateItem) onUpdateItem(item.id, { ai_enriched: true });
+                          setToastMessage(t.details.ai_data_not_found || 'Данные не найдены');
+                        }
+                      } catch {
+                        setToastMessage(t.details.ai_data_error || 'Ошибка загрузки');
+                      } finally {
+                        setIsEnriching(false);
+                      }
+                    })}
+                    disabled={isEnriching || (item.ai_enriched && !isAlwaysActiveUser)}
+                    title={item.ai_enriched && !isAlwaysActiveUser ? (t.details.ai_data_loaded || 'Данные загружены') : (t.details.ai_enrich_action || 'Обогатить через ИИ')}
+                    className={`p-2 rounded-xl border flex items-center justify-center transition active:scale-[0.95] shadow-md shrink-0 ${
+                      item.ai_enriched && !isAlwaysActiveUser
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default opacity-80'
+                        : isEnriching
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-wait animate-pulse'
+                        : 'bg-cardDark border-cardBorder text-amber-400 hover:text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/10'
+                    }`}
+                  >
+                    {isEnriching ? (
+                      <Wand2 className="w-4 h-4 text-amber-300 animate-spin" />
+                    ) : item.ai_enriched && !isAlwaysActiveUser ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Wand2 className="w-4 h-4 text-amber-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 10-Star Interactive Rating Block */}
+          <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
+              <div className={`text-xl font-extrabold ${isPlanned ? 'text-gray-500' : 'text-accentTeal'}`}>
+                {isPlanned ? '- / 10' : `${currentRating}/10`}
+              </div>
+            </div>
+
+            {/* 10 Interactive Stars */}
+            <div className="flex items-center justify-between pt-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
+                <button
+                  key={starNum}
+                  type="button"
+                  onClick={(e) => {
+                    (e.currentTarget as HTMLElement).blur();
+                    handleSelectRating(starNum);
+                  }}
+                  className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-[0.97]"
+                  title={`${starNum}/10`}
                 >
-                  <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
-                  <span>{t.details.fullscreen_playing || 'Воспроизведение на весь экран...'}</span>
+                  <Star
+                    className={`w-5 h-5 transition-colors ${
+                      !isPlanned && starNum <= currentRating
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-gray-600'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Budget */}
+          {item.budget && item.budget !== '0' && !item.budget.toLowerCase().includes('неизвестно') && !item.budget.toLowerCase().includes('unknown') && (
+            <div className="glass-card p-4 rounded-3xl shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col justify-center">
+                  <span className="text-xs text-gray-400">{t.details.budget_title || 'Бюджет'}</span>
+                  <span className="text-sm font-bold text-white">{item.budget}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons for Desktop */}
+          <div className="hidden lg:block">
+            {renderActionButtons()}
+          </div>
+        </div>
+
+        {/* Right Column: People/Cast, Description, Episodes, YouTube, Notes, Lists & Mobile Actions */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+          {/* Dedicated Author & ISBN Block for Books */}
+          {isBook && (item.author || item.isbn) && (
+            <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm flex flex-col">
+              {item.author && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                    <User className="w-4 h-4 text-accentPink" />
+                    {t.details.author || 'Автор'}:
+                  </span>
+                  <span className="text-xs text-white font-medium leading-relaxed truncate min-w-0">
+                    {item.author}
+                  </span>
                 </div>
               )}
+              {item.isbn && (
+                <button
+                  onClick={() => {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(item.isbn!);
+                      const tg = (window as any).Telegram?.WebApp;
+                      if (tg?.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                      }
+                      setToastMessage(t.details.link_copied || 'Скопировано');
+                    }
+                  }}
+                  className="w-full flex items-center justify-between active:opacity-60 transition"
+                >
+                  <div className="flex items-start gap-2.5 text-left min-w-0">
+                    <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                      <Tag className="w-4 h-4 text-accentBlue" />
+                      {t.details.isbn || 'ISBN'}:
+                    </span>
+                    <span className="text-[13px] text-white font-mono font-medium leading-relaxed truncate">
+                      {item.isbn}
+                    </span>
+                  </div>
+                  <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-2" />
+                </button>
+              )}
             </div>
-          ) : (
-            <a
-              href={item.youtube_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-600/20 transition"
-            >
-              <Youtube className="w-4 h-4" />
-              <span>{t.details.open_in_youtube}</span>
-            </a>
           )}
-        </div>
-      )}
 
-      {/* 10-Star Interactive Rating Block */}
-      <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
-          <div className={`text-xl font-extrabold ${isPlanned ? 'text-gray-500' : 'text-accentTeal'}`}>
-            {isPlanned ? '- / 10' : `${currentRating}/10`}
-          </div>
-        </div>
-
-        {/* 10 Interactive Stars */}
-        <div className="flex items-center justify-between pt-1">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
-            <button
-              key={starNum}
-              type="button"
-              onClick={(e) => {
-                (e.currentTarget as HTMLElement).blur();
-                handleSelectRating(starNum);
-              }}
-              className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-[0.97]"
-              title={`${starNum}/10`}
-            >
-              <Star
-                className={`w-5 h-5 transition-colors ${
-                  !isPlanned && starNum <= currentRating
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-gray-600'
-                }`}
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Inline Notes Section */}
-      <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-400 font-semibold">{t.details.notes}</span>
-          {!isEditingNote && (
-            <button
-              onClick={() => handleProtectedAction(() => setIsEditingNote(true))}
-              className="p-1 text-gray-400 hover:text-accentViolet transition"
-              title={t.details.edit}
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+          {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
+          {!isBook && (item.director || item.cast || item.cast_roles) && (
+            <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+              {item.director && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                    <Video className="w-4 h-4 text-accentViolet" />
+                    {t.details.director}:
+                  </span>
+                  <span className="text-xs text-white font-medium leading-relaxed">
+                    {item.director}
+                  </span>
+                </div>
+              )}
+              {item.cast_roles ? (
+                <div className="space-y-2 pt-0.5 px-0.5">
+                  <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 mb-2">
+                    <Users className="w-4 h-4 text-accentTeal shrink-0" />
+                    {t.details.cast || 'В ролях'}
+                  </div>
+                  {item.cast_roles.split(', ').map((entry, i) => {
+                    const [actor, role] = entry.split(' — ');
+                    return (
+                      <div key={i} className="flex items-start justify-between gap-3 px-1 py-0.5 rounded-lg hover:bg-white/5 transition-colors">
+                        <span className="text-xs text-white font-medium break-words min-w-0 pr-1">{actor?.trim()}</span>
+                        {role && <span className="text-xs text-gray-400 italic text-right break-words min-w-0 max-w-[55%] pl-1 shrink-0">{role.trim()}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : item.cast ? (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5 shrink-0 pt-0.5">
+                    <Users className="w-4 h-4 text-accentTeal" />
+                    {t.details.cast}:
+                  </span>
+                  <span className="text-xs text-white font-medium leading-relaxed">
+                    {item.cast}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           )}
-        </div>
 
-        {isEditingNote ? (
-          <div className="space-y-2 pt-1">
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              rows={3}
-              maxLength={1000}
-              placeholder={t.modal.placeholder_note}
-              className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
-            />
-            <div className="flex justify-end gap-2">
+          {/* Description / Annotation Block */}
+          {item.description && (
+            <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-gray-400 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <span>{isBook ? (t.details.annotation || 'Аннотация') : t.details.description}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyText(item.description!, 'description', t.details.description_copied || 'Описание скопировано!');
+                    }}
+                    className="inline-flex items-center justify-center p-1 -my-1 rounded-lg text-gray-400 hover:text-accentTeal hover:bg-white/10 active:scale-90 transition cursor-pointer"
+                    title={t.details.description_copied || 'Копировать описание'}
+                    aria-label="Копировать описание"
+                  >
+                    {copiedField === 'description' ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </span>
+              </div>
+              <p className={`text-[14px] text-white leading-relaxed font-normal whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
+                {item.description}
+              </p>
+              {item.description.length > 150 && (
+                <button
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  className="mt-1 text-xs font-bold text-accentTeal hover:underline flex items-center gap-1 focus:outline-none transition active:scale-[0.97]"
+                >
+                  {isDescriptionExpanded ? (t.details.show_less || 'Скрыть') : (t.details.show_more || 'Ещё...')}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* AI Enrichment Block: Air Status + Episodes List (series only) */}
+          {!isBook && (item.air_status || item.episodes_list) && (() => {
+            let parsedEpisodes: Array<{ s: number; e: number; title: string; air_date: string; overview: string; runtime: number }> = [];
+            try {
+              if (item.episodes_list) parsedEpisodes = JSON.parse(item.episodes_list);
+            } catch {}
+            return (
+              <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+                {/* Air Status badge */}
+                {item.air_status && (
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${
+                      item.air_status === 'Выходит' ? 'bg-emerald-400 animate-pulse' :
+                      item.air_status === 'Завершён' ? 'bg-gray-400' :
+                      item.air_status === 'Отменён' ? 'bg-red-400' : 'bg-amber-400'
+                    }`} />
+                    <span className="text-xs font-bold text-white">{item.air_status}</span>
+                    {item.seasons && item.seasons > 0 && (
+                      <span className="text-xs text-gray-400 ml-1">• {item.seasons} {item.seasons === 1 ? 'сезон' : item.seasons < 5 ? 'сезона' : 'сезонов'}</span>
+                    )}
+                  </div>
+                )}
+                {/* Episodes accordion */}
+                {parsedEpisodes.length > 0 && (
+                  <EpisodesAccordion episodes={parsedEpisodes} t={t} />
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
+          {item.youtube_url && item.youtube_url.trim() && (
+            <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center">
+                    <Youtube className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-white tracking-wide">
+                    {t.details.watch_on_youtube}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {getYouTubeEmbedUrl(item.youtube_url) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsFullscreenVideo(true)}
+                      className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
+                      title={t.details.fullscreen || 'На весь экран'}
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      <span>{t.details.fullscreen || 'Экран'}</span>
+                    </button>
+                  )}
+                  <a
+                    href={item.youtube_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-accentTeal hover:underline flex items-center gap-1"
+                  >
+                    <span>{t.details.open_in_youtube}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+
+              {getYouTubeEmbedUrl(item.youtube_url) ? (
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
+                  {!isFullscreenVideo ? (
+                    <>
+                      <iframe
+                        src={getYouTubeEmbedUrl(item.youtube_url)!}
+                        title={item.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                        allowFullScreen
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsFullscreenVideo(true)}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
+                        title={t.details.fullscreen || 'На весь экран'}
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <div
+                      onClick={() => setIsFullscreenVideo(false)}
+                      className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-gray-400 text-xs font-semibold gap-2 cursor-pointer p-4 text-center select-none"
+                    >
+                      <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
+                      <span>{t.details.fullscreen_playing || 'Воспроизведение на весь экран...'}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <a
+                  href={item.youtube_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-600/20 transition"
+                >
+                  <Youtube className="w-4 h-4" />
+                  <span>{t.details.open_in_youtube}</span>
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* In Lists Block */}
+          <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
+                <BookMarked className="w-4 h-4 text-amber-400" />
+                <span>{t.lists?.in_lists || 'В списках'}</span>
+              </span>
               <button
-                onClick={() => {
-                  setNoteText(item.note || '');
-                  setIsEditingNote(false);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium flex items-center gap-1 hover:bg-bgDark"
+                onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
               >
-                <X className="w-3.5 h-3.5" />
-                <span>{t.modal.cancel}</span>
-              </button>
-              <button
-                onClick={handleSaveNote}
-                className="px-3 py-1.5 rounded-xl bg-accentViolet text-white text-xs font-semibold flex items-center gap-1 shadow-md hover:bg-opacity-90"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{t.modal.save}</span>
+                + {t.lists?.add_items || 'Добавить'}
               </button>
             </div>
-          </div>
-        ) : (
-          <div
-            className="text-xs text-gray-300 leading-relaxed transition whitespace-pre-line"
-          >
-            {item.note && item.note.trim() ? (
-              <span className="italic">"{renderTextWithLinks(item.note)}"</span>
+
+            {assignedLists.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {assignedLists.map((list) => {
+                  const isFav = list.id === FAVORITES_ID;
+                  const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
+
+                  return (
+                    <button
+                      key={list.id}
+                      onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
+                        isFav
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                          : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
+                      }`}
+                    >
+                      {isFav ? (
+                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      ) : (
+                        <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
+                      )}
+                      <span>{listName}</span>
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
-              <span className="text-gray-500 font-normal italic">{t.details.note_placeholder_empty}</span>
+              <div className="text-xs text-gray-500 font-normal italic pt-0.5">
+                <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* In Lists Block */}
-      <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
-            <BookMarked className="w-4 h-4 text-amber-400" />
-            <span>{t.lists?.in_lists || 'В списках'}</span>
-          </span>
-          <button
-            onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-            className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
-          >
-            + {t.lists?.add_items || 'Добавить'}
-          </button>
-        </div>
-
-        {assignedLists.length > 0 ? (
-          <div className="flex flex-wrap gap-2 pt-0.5">
-            {assignedLists.map((list) => {
-              const isFav = list.id === FAVORITES_ID;
-              const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
-
-              return (
+          {/* Inline Notes Section */}
+          <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400 font-semibold">{t.details.notes}</span>
+              {!isEditingNote && (
                 <button
-                  key={list.id}
-                  onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-                  className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
-                    isFav
-                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
-                      : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
-                  }`}
+                  onClick={() => handleProtectedAction(() => setIsEditingNote(true))}
+                  className="p-1 text-gray-400 hover:text-accentViolet transition"
+                  title={t.details.edit}
                 >
-                  {isFav ? (
-                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                  ) : (
-                    <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
-                  )}
-                  <span>{listName}</span>
+                  <Pencil className="w-4 h-4" />
                 </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-xs text-gray-500 font-normal italic pt-0.5">
-            <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
-          </div>
-        )}
-      </div>
+              )}
+            </div>
 
-      {/* Action Buttons: Single Add to List button if shared preview, else 4-Column Action Grid */}
-      {isSharedPreview ? (
-        <div className="pt-2">
-          <button
-            onClick={() => onAddSharedItem && onAddSharedItem(item)}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white font-bold text-sm shadow-xl hover:opacity-90 active:scale-[0.97] transition flex items-center justify-center gap-2"
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span>{t.details.add_to_list}</span>
-          </button>
+            {isEditingNote ? (
+              <div className="space-y-2 pt-1">
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder={t.modal.placeholder_note}
+                  className="w-full bg-bgDark border border-cardBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-accentViolet"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setNoteText(item.note || '');
+                      setIsEditingNote(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl border border-cardBorder text-gray-300 text-xs font-medium flex items-center gap-1 hover:bg-bgDark"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>{t.modal.cancel}</span>
+                  </button>
+                  <button
+                    onClick={handleSaveNote}
+                    className="px-3 py-1.5 rounded-xl bg-accentViolet text-white text-xs font-semibold flex items-center gap-1 shadow-md hover:bg-opacity-90"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{t.modal.save}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="text-xs text-gray-300 leading-relaxed transition whitespace-pre-line"
+              >
+                {item.note && item.note.trim() ? (
+                  <span className="italic">"{renderTextWithLinks(item.note)}"</span>
+                ) : (
+                  <span className="text-gray-500 font-normal italic">{t.details.note_placeholder_empty}</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons for Mobile */}
+          <div className="lg:hidden">
+            {renderActionButtons()}
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
-          <button
-            onClick={handleCopyLink}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
-          >
-            <Link className="w-4 h-4 mb-1 text-amber-400" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.copy_link || 'Ссылка'}</span>
-          </button>
-          <button
-            onClick={() => onEdit(item)}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
-          >
-            <Edit3 className="w-4 h-4 mb-1 text-accentViolet" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.edit}</span>
-          </button>
-          <button
-            onClick={handleShareTelegram}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-cardDark border border-cardBorder text-gray-300 hover:text-white transition active:scale-[0.97] shadow-sm"
-          >
-            <Share2 className="w-4 h-4 mb-1 text-accentTeal" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.share}</span>
-          </button>
-          <button
-            onClick={() => onDelete(item.id)}
-            className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition active:scale-[0.97] shadow-sm"
-          >
-            <Trash2 className="w-4 h-4 mb-1" />
-            <span className="text-[10px] sm:text-[11px] font-semibold truncate w-full text-center">{t.details.delete}</span>
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* Toast Notification Popup */}
       {toastMessage && (

@@ -50,94 +50,122 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   ];
 
   return (
-    <div className="space-y-4 pb-6 animate-slide-up">
-      {/* User Header Profile Card */}
-      <div className="glass-card rounded-3xl p-5 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accentViolet to-accentTeal p-0.5 shadow-lg shadow-accentViolet/20 shrink-0">
-          {photoUrl ? (
-            <img
-              src={photoUrl}
-              alt={userName}
-              className="w-full h-full rounded-2xl object-cover"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full rounded-2xl bg-cardDark flex items-center justify-center text-white text-xl font-bold">
-              {userName.charAt(0)}
+    <div className="space-y-6 pb-6 animate-slide-up">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column on Desktop */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* User Header Profile Card */}
+          <div className="glass-card rounded-3xl p-5 flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accentViolet to-accentTeal p-0.5 shadow-lg shadow-accentViolet/20 shrink-0">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={userName}
+                  className="w-full h-full rounded-2xl object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full rounded-2xl bg-cardDark flex items-center justify-center text-white text-xl font-bold">
+                  {userName.charAt(0)}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-white">{userName}</h2>
+              {userHandle && <p className="text-xs text-gray-400">@{userHandle}</p>}
+              <div className="flex items-center gap-1 mt-1 text-[11px] text-accentTeal font-medium">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Lista User</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics Navigation Card (Raised to Top) */}
+          {onGoToStats && (
+            <div
+              onClick={onGoToStats}
+              className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-[0.97] shadow-md group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      {t.stats.title}
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      {t.lists.go_to_stats || 'Перейти к подробной статистике'}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
             </div>
           )}
-        </div>
 
-        <div>
-          <h2 className="text-lg font-bold text-white">{userName}</h2>
-          {userHandle && <p className="text-xs text-gray-400">@{userHandle}</p>}
-          <div className="flex items-center gap-1 mt-1 text-[11px] text-accentTeal font-medium">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Lista User</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics Navigation Card (Raised to Top) */}
-      {onGoToStats && (
-        <div
-          onClick={onGoToStats}
-          className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentViolet/15 via-accentTeal/10 to-transparent border border-accentViolet/30 hover:border-accentViolet transition active:scale-[0.97] shadow-md group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <BarChart3 className="w-5 h-5" />
+          {/* How to Use Navigation Card */}
+          <div
+            onClick={() => {
+              const tg = (window as any).Telegram?.WebApp;
+              if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+              setIsGuideOpen(true);
+            }}
+            className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentTeal/15 via-accentViolet/10 to-transparent border border-accentTeal/30 hover:border-accentTeal transition active:scale-[0.97] shadow-md group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-accentTeal/20 text-accentTeal flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    {t.profile.how_to_use}
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    {t.profile.how_to_use_subtitle}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  {t.stats.title}
-                </h3>
-                <p className="text-[11px] text-gray-400">
-                  {t.lists.go_to_stats || 'Перейти к подробной статистике'}
-                </p>
+              <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentTeal flex items-center justify-center group-hover:bg-accentTeal group-hover:text-white transition">
+                <ChevronRight className="w-4 h-4" />
               </div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
-              <ChevronRight className="w-4 h-4" />
+          </div>
+
+          {/* Category Display Customizer Card */}
+          <div className="glass-card rounded-3xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Grid className="w-4 h-4 text-accentTeal" />
+                <span>{t.profile.categories_config}</span>
+              </div>
+              <span className="text-xs text-gray-400 font-medium">{activeCategories.length} / 6</span>
             </div>
+
+            <button
+              onClick={onOpenCategoryConfig}
+              className="w-full p-3.5 rounded-2xl bg-bgDark border border-cardBorder text-gray-200 hover:text-white hover:border-accentViolet flex items-center justify-between text-xs font-semibold transition active:scale-[0.97]"
+            >
+              <span>{t.profile.categories_manage}</span>
+              <div className="flex items-center gap-1 text-accentViolet font-bold">
+                <span>{t.modal.edit_item}</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
           </div>
         </div>
-      )}
 
-      {/* How to Use Navigation Card (Directly Below Statistics) */}
-      <div
-        onClick={() => {
-          const tg = (window as any).Telegram?.WebApp;
-          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-          setIsGuideOpen(true);
-        }}
-        className="glass-card rounded-3xl p-4 cursor-pointer bg-gradient-to-r from-accentTeal/15 via-accentViolet/10 to-transparent border border-accentTeal/30 hover:border-accentTeal transition active:scale-[0.97] shadow-md group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-accentTeal/20 text-accentTeal flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                {t.profile.how_to_use}
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                {t.profile.how_to_use_subtitle}
-              </p>
-            </div>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentTeal flex items-center justify-center group-hover:bg-accentTeal group-hover:text-white transition">
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* Language Selection Card */}
-      <div className="glass-card rounded-3xl p-4 space-y-3">
+        {/* Right Column on Desktop */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Language Selection Card */}
+          <div className="glass-card rounded-3xl p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-bold text-white">
           <Globe className="w-4 h-4 text-accentViolet" />
           <span>{t.profile.language}</span>
@@ -441,28 +469,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Category Display Customizer Card */}
-      <div className="glass-card rounded-3xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-bold text-white">
-            <Grid className="w-4 h-4 text-accentTeal" />
-            <span>{t.profile.categories_config}</span>
-          </div>
-          <span className="text-xs text-gray-400 font-medium">{activeCategories.length} / 6</span>
-        </div>
-
-        <button
-          onClick={onOpenCategoryConfig}
-          className="w-full p-3.5 rounded-2xl bg-bgDark border border-cardBorder text-gray-200 hover:text-white hover:border-accentViolet flex items-center justify-between text-xs font-semibold transition active:scale-[0.97]"
-        >
-          <span>{t.profile.categories_manage}</span>
-          <div className="flex items-center gap-1 text-accentViolet font-bold">
-            <span>{t.modal.edit_item}</span>
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </button>
-      </div>
+    </div>
+  </div>
 
       {/* Footer Info */}
       <div className="text-center pt-2 text-[11px] text-gray-500 space-y-0.5">

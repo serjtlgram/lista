@@ -248,17 +248,17 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-cardBorder flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <PlusCircle className="w-3 h-3 shrink-0" style={{ color: '#8C7CFF' }} />
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_added}</span>
           </div>
-          <div className="text-xl font-extrabold text-accentViolet leading-none">{totalPeriodItems}</div>
+          <div className="text-xl sm:text-2xl font-extrabold text-accentViolet leading-none">{totalPeriodItems}</div>
           <div className="text-[9px] text-gray-400">{t.stats.out_of_total.replace('{count}', items.length.toString())}</div>
         </div>
 
-        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-cardBorder flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3 shrink-0" style={{ color: '#60A5FA' }} />
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_spent}</span>
@@ -266,25 +266,28 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
               <Info className="w-2.5 h-2.5" />
             </button>
           </div>
-          <div className="text-xl font-extrabold text-blue-400 leading-none whitespace-nowrap">
+          <div className="text-xl sm:text-2xl font-extrabold text-blue-400 leading-none whitespace-nowrap">
             {renderWatchTime(displayHours)}
           </div>
           <div className="text-[9px] text-gray-400">{t.stats.movies_and_shows}</div>
         </div>
 
-        <div className="glass-card p-3 rounded-2xl border border-cardBorder flex flex-col gap-1">
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-cardBorder flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 shrink-0" style={{ color: '#00CEC9' }} />
             <span className="text-[10px] text-gray-400 truncate">{t.stats.card_completed}</span>
           </div>
-          <div className="text-xl font-extrabold text-accentTeal leading-none">{completedCount}</div>
+          <div className="text-xl sm:text-2xl font-extrabold text-accentTeal leading-none">{completedCount}</div>
           <div className="text-[9px] text-accentTeal font-semibold">{t.stats.percent_completed.replace('%', completionRate + '%')}</div>
         </div>
       </div>
 
-      {/* Status breakdown bars */}
-      {totalPeriodItems > 0 && (
-        <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-2.5">
+      {/* Middle Analytics Grid (1 col on mobile, 2 cols on tablet/desktop) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="space-y-4">
+          {/* Status breakdown bars */}
+          {totalPeriodItems > 0 && (
+            <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-accentViolet" />
@@ -373,9 +376,12 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           })}
         </div>
       </div>
+    </div>
 
-      {/* Dedicated Books & Reading Stats Card */}
-      <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-3">
+    {/* Column 2 */}
+    <div className="space-y-4">
+          {/* Dedicated Books & Reading Stats Card */}
+          <div className="glass-card p-4 rounded-2xl border border-cardBorder space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
             <Book className="w-3.5 h-3.5 text-amber-400" />
@@ -509,9 +515,11 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
           </div>
         </div>
       )}
+        </div>
+      </div>
 
-      {/* Insight Cards */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Insight Cards (4 columns on desktop, 2 on mobile) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <div className="glass-card p-3.5 rounded-2xl border border-cardBorder space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-accentViolet">
             <Award className="w-3.5 h-3.5" />

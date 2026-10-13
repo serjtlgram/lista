@@ -423,31 +423,33 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
       ) : (
         <div className="space-y-3 pt-1">
           {addedItems.length > 0 && (
-            <div className="space-y-2.5 mb-6">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">
+            <div className="mb-6">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1 mb-2">
                 {t.lists?.in_your_list || 'В вашем списке'}
               </h2>
-              {addedItems.map((item) => (
-                <ItemCard
-                  key={`added_${item.id}`}
-                  item={item}
-                  onSelect={onSelectItem}
-                  onToggleStatus={(itemToToggle, e) => {
-                    onToggleStatus(itemToToggle, e);
-                    const nextStatus = itemToToggle.status === 'completed' ? 'planned' : 'completed';
-                    const updated = addedItems.map((ai) => ai.id === itemToToggle.id ? { ...ai, status: nextStatus } : ai);
-                    setAddedItems(updated);
-                    onUpdateCachedAddedItems(updated);
-                  }}
-                  onUpdateItem={(id, updates) => {
-                    onUpdateItem(id, updates);
-                    const updated = addedItems.map((ai) => ai.id === id ? { ...ai, ...updates } : ai);
-                    setAddedItems(updated);
-                    onUpdateCachedAddedItems(updated);
-                  }}
-                  t={t}
-                />
-              ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {addedItems.map((item) => (
+                  <ItemCard
+                    key={`added_${item.id}`}
+                    item={item}
+                    onSelect={onSelectItem}
+                    onToggleStatus={(itemToToggle, e) => {
+                      onToggleStatus(itemToToggle, e);
+                      const nextStatus = itemToToggle.status === 'completed' ? 'planned' : 'completed';
+                      const updated = addedItems.map((ai) => ai.id === itemToToggle.id ? { ...ai, status: nextStatus } : ai);
+                      setAddedItems(updated);
+                      onUpdateCachedAddedItems(updated);
+                    }}
+                    onUpdateItem={(id, updates) => {
+                      onUpdateItem(id, updates);
+                      const updated = addedItems.map((ai) => ai.id === id ? { ...ai, ...updates } : ai);
+                      setAddedItems(updated);
+                      onUpdateCachedAddedItems(updated);
+                    }}
+                    t={t}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -489,7 +491,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredRecommendations.map((catItem, idx) => {
                     const mappedItem = mapCatalogToItem(catItem);
                     return (
