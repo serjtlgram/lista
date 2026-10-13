@@ -1114,18 +1114,31 @@ function safeBase64Decode(str: string): any {
         <main className="flex-1 min-w-0">
           {/* SCREEN 1: HOME */}
           {activeTab === 'home' && (
-            <section className="space-y-6">
-              <Header
-                userName={userName}
-                photoUrl={profile?.user?.photo_url}
-                onAvatarClick={() => handleTabChange('profile')}
-                t={t}
-              />
+            <section className="space-y-4 lg:space-y-6">
+              {/* On mobile: Header at top */}
+              <div className="lg:hidden">
+                <Header
+                  userName={userName}
+                  photoUrl={profile?.user?.photo_url}
+                  onAvatarClick={() => handleTabChange('profile')}
+                  t={t}
+                />
+              </div>
 
               {/* Desktop 2-Column Grid / Mobile Single Column */}
               <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-start">
-                {/* Main Column (Categories + Recently Added on desktop) */}
-                <div className="w-full lg:col-span-7 xl:col-span-8 space-y-6 order-1 lg:order-none">
+                {/* Main Column (Greeting + Categories + Recently Added on desktop) */}
+                <div className="w-full lg:col-span-7 xl:col-span-8 space-y-4 lg:space-y-4 order-1 lg:order-none">
+                  {/* On desktop: Header inside left column aligned at Line 1 level */}
+                  <div className="hidden lg:block pt-0.5 pb-0.5">
+                    <Header
+                      userName={userName}
+                      photoUrl={profile?.user?.photo_url}
+                      onAvatarClick={() => handleTabChange('profile')}
+                      t={t}
+                    />
+                  </div>
+
                   <CategoryGrid
                     counts={catCountsMap}
                     activeCategories={activeCategories}
@@ -1137,8 +1150,8 @@ function safeBase64Decode(str: string): any {
                     t={t}
                   />
 
-                  {/* On desktop, Recently Added goes right below categories in the main area */}
-                  <div className="hidden lg:block">
+                  {/* On desktop, Recently Added goes right below categories at Line 2 level */}
+                  <div className="hidden lg:block pt-2">
                     <RecentlyAdded
                       items={items}
                       onSeeAll={() => {
@@ -1161,7 +1174,7 @@ function safeBase64Decode(str: string): any {
                 </div>
 
                 {/* Sidebar Panel (Activity & Favorites on desktop, standard sequence on mobile) */}
-                <div className="w-full lg:col-span-5 xl:col-span-4 space-y-6 order-2 lg:order-none lg:sticky lg:top-4">
+                <div className="w-full lg:col-span-5 xl:col-span-4 space-y-4 lg:space-y-4 order-2 lg:order-none lg:sticky lg:top-2">
                   {/* On mobile: Favorites -> Activity -> Recently Added */}
                   <div className="lg:hidden space-y-6">
                     <FavoritesSection
@@ -1203,8 +1216,8 @@ function safeBase64Decode(str: string): any {
                     />
                   </div>
 
-                  {/* On Desktop: ActivityCard widget at top, FavoritesSection widget below */}
-                  <div className="hidden lg:block space-y-6">
+                  {/* On Desktop: ActivityCard widget at top (Line 1), FavoritesSection widget below (Line 2) */}
+                  <div className="hidden lg:block space-y-4">
                     <ActivityCard
                       monthlyCount={profile?.monthly_count || 0}
                       monthlyHours={profile?.monthly_hours || 0}
@@ -1214,16 +1227,18 @@ function safeBase64Decode(str: string): any {
                       onUpdateItem={handleUpdateItem}
                       t={t}
                     />
-                    <FavoritesSection
-                      items={items.filter((i) => getFavoriteIds().includes(i.id))}
-                      onSeeAll={() => handleTabChange('lists')}
-                      onSelectItem={handleSelectItem}
-                      onToggleStatus={handleToggleStatus}
-                      onUpdateItem={handleUpdateItem}
-                      onEdit={handleEditItem}
-                      onDelete={handleDeleteItem}
-                      t={t}
-                    />
+                    <div className="pt-2">
+                      <FavoritesSection
+                        items={items.filter((i) => getFavoriteIds().includes(i.id))}
+                        onSeeAll={() => handleTabChange('lists')}
+                        onSelectItem={handleSelectItem}
+                        onToggleStatus={handleToggleStatus}
+                        onUpdateItem={handleUpdateItem}
+                        onEdit={handleEditItem}
+                        onDelete={handleDeleteItem}
+                        t={t}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

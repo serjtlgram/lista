@@ -79,9 +79,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 xl:w-72 h-screen sticky top-0 border-r border-cardBorder bg-cardDark/70 backdrop-blur-2xl p-5 select-none z-30 justify-between shrink-0 overflow-y-auto hide-scrollbar">
+    <aside className="hidden lg:flex flex-col w-64 xl:w-72 h-screen sticky top-0 border-r border-cardBorder bg-cardDark/70 backdrop-blur-2xl p-4 xl:p-5 select-none z-30 shrink-0 overflow-y-auto hide-scrollbar space-y-4">
       {/* Top Section */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Logo / Brand Header */}
         <div className="flex items-center gap-3 px-1">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accentViolet via-purple-500 to-accentTeal p-0.5 shadow-lg shadow-accentViolet/30 flex items-center justify-center shrink-0">
@@ -141,7 +141,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </button>
 
         {/* Navigation Links */}
-        <nav className="space-y-1 pt-1">
+        <nav className="space-y-1 pt-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -169,16 +169,16 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Section: My Collection Donut Widget (Screen 1 & Screen 2) */}
-      <div className="pt-3 border-t border-cardBorder space-y-3">
+      {/* Lifted Section: My Collection Donut Widget (Screen 1 & Screen 2) */}
+      <div className="pt-3 border-t border-cardBorder space-y-2.5">
         {/* Collection Header */}
         <div className="flex items-center gap-2.5 px-1">
-          <div className="w-8 h-8 rounded-xl bg-accentTeal/15 border border-accentTeal/30 flex items-center justify-center shrink-0 text-accentTeal">
-            <Layers className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-accentTeal/15 border border-accentTeal/30 flex items-center justify-center shrink-0 text-accentTeal">
+            <Layers className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0">
             <div className="text-xs font-bold text-white tracking-wide">Моя коллекция</div>
-            <div className="text-[11px] text-gray-400 font-medium">
+            <div className="text-[10px] text-gray-400 font-medium">
               {itemsCount} {itemsCount === 1 ? 'элемент' : itemsCount < 5 ? 'элемента' : 'элементов'}
             </div>
           </div>
@@ -186,9 +186,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
         {/* Donut Chart & Legend */}
         {itemsCount > 0 ? (
-          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-cardDark/80 border border-cardBorder/60 shadow-inner">
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-cardDark/80 border border-cardBorder/60 shadow-inner">
             {/* SVG Donut */}
-            <div className="relative shrink-0 w-16 h-16">
+            <div className="relative shrink-0 w-14 h-14">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4.5" />
                 {segments.map((seg, idx) => {
@@ -214,7 +214,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             </div>
 
             {/* Legend */}
-            <div className="flex-1 space-y-1 text-[10px] min-w-0">
+            <div className="flex-1 space-y-0.5 text-[10px] min-w-0">
               <div className="flex items-center justify-between text-gray-300">
                 <span className="flex items-center gap-1.5 truncate">
                   <span className="w-2 h-2 rounded-full bg-[#00CEC9] shrink-0" />
@@ -248,15 +248,15 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             </div>
           </div>
         ) : (
-          <div className="p-3 rounded-2xl bg-cardDark/40 border border-cardBorder/40 text-center text-[11px] text-gray-500">
+          <div className="p-2.5 rounded-xl bg-cardDark/40 border border-cardBorder/40 text-center text-[10px] text-gray-500">
             Коллекция пуста
           </div>
         )}
 
         {currentStreak > 0 && (
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-semibold">
+          <div className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-semibold">
             <span className="flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 fill-orange-400" />
+              <Flame className="w-3 h-3 fill-orange-400" />
               <span>Серия активности</span>
             </span>
             <span className="font-bold">{currentStreak} дн.</span>

@@ -1022,56 +1022,34 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
           document.body
         )}
 
-      {/* Current List Action Header Card */}
-      <div className="glass-card p-4 rounded-3xl space-y-3 shadow-lg border border-cardBorder">
-        {/* Top Row: List Title & Item Count */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            {currentList.id === UNCATEGORIZED_ID ? (
-              <Inbox className="w-5 h-5 text-accentViolet shrink-0" />
-            ) : currentList.isDefault ? (
-              <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
-            ) : (
-              <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
-            )}
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-bold text-white truncate">
-                {currentList.id === UNCATEGORIZED_ID ? (t.lists.uncategorized || 'Неразобрано') : currentList.isDefault ? t.lists.favorites : currentList.name}
-              </h2>
-              <p className="text-[11px] text-gray-400">
-                {listItems.length} {t.lists.items_count}
-              </p>
-            </div>
+      {/* Current List Action Header Card (Single Thin Bar per Screen 2) */}
+      <div className="glass-card py-2 px-3.5 sm:px-4 rounded-2xl flex items-center justify-between gap-2 shadow-md border border-cardBorder">
+        {/* Left Section: List Title & Item Count + Action Buttons */}
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+          {currentList.id === UNCATEGORIZED_ID ? (
+            <Inbox className="w-5 h-5 text-accentViolet shrink-0" />
+          ) : currentList.isDefault ? (
+            <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
+          ) : (
+            <BookMarked className="w-5 h-5 text-accentViolet shrink-0" />
+          )}
+          <div className="min-w-0 flex items-baseline gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-white truncate">
+              {currentList.id === UNCATEGORIZED_ID ? (t.lists.uncategorized || 'Неразобрано') : currentList.isDefault ? t.lists.favorites : currentList.name}
+            </h2>
+            <span className="text-[11px] text-gray-400 shrink-0 hidden sm:inline">
+              {listItems.length} {t.lists.items_count}
+            </span>
           </div>
 
-          {/* Folder pill badge for custom list */}
-          {!currentList.isDefault && (
-            <button
-              onClick={() => {
-                triggerHaptic();
-                setIsChangeListFolderModalOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-xl bg-cardDark border border-cardBorder hover:border-accentViolet/50 text-[11px] font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 shrink-0 transition active:scale-95 shadow-sm"
-              title={(t as any).lists?.change_folder || 'Сменить папку'}
-            >
-              <Folder className="w-3.5 h-3.5 text-accentViolet" />
-              <span>
-                {folders.find((f) => f.id === (currentList.folderId || DEFAULT_FOLDER_ID))?.name || (t.lists.folder_misc || 'Разное')}
-              </span>
-              <ChevronDown className="w-3 h-3 text-gray-400" />
-            </button>
-          )}
-        </div>
-
-        {/* Bottom Row: Action Buttons (Share, Edit, Delete, "+ Добавить") */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-cardBorder/50">
-          <div className="flex items-center gap-1.5">
+          {/* Action Buttons (Share, Edit, Delete) moved up inline per Screen 2 */}
+          <div className="flex items-center gap-1 ml-1 shrink-0">
             <button
               onClick={handleShareList}
-              className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentTeal hover:bg-accentTeal/10 transition active:scale-[0.97]"
+              className="p-1.5 rounded-lg bg-cardDark/80 border border-cardBorder text-accentTeal hover:bg-accentTeal/10 transition active:scale-[0.95]"
               title={t.lists.share}
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-3.5 h-3.5" />
             </button>
 
             {!currentList.isDefault && (
@@ -1081,63 +1059,82 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                     setRenameValue(currentList.name);
                     setIsRenameModalOpen(true);
                   }}
-                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-accentViolet hover:bg-accentViolet/10 transition active:scale-[0.97]"
+                  className="p-1.5 rounded-lg bg-cardDark/80 border border-cardBorder text-accentViolet hover:bg-accentViolet/10 transition active:scale-[0.95]"
                   title={t.lists.rename}
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-3.5 h-3.5" />
                 </button>
 
                 <button
                   onClick={handleDeleteList}
-                  className="p-2 rounded-xl bg-cardDark border border-cardBorder text-red-400 hover:bg-red-500/10 transition active:scale-[0.97]"
+                  className="p-1.5 rounded-lg bg-cardDark/80 border border-cardBorder text-red-400 hover:bg-red-500/10 transition active:scale-[0.95]"
                   title={t.lists.delete}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </>
             )}
           </div>
+        </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* AI Recommendations Button (Magic Wand) */}
+        {/* Right Section: Folder Badge, AI Recommendations & Add Items */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Folder pill badge for custom list */}
+          {!currentList.isDefault && (
             <button
-              onClick={handleGetRecommendations}
-              disabled={cooldownLeft > 0}
-              className={`p-2 rounded-xl border transition active:scale-[0.97] shrink-0 flex items-center justify-center gap-1 font-bold text-xs ${
-                cooldownLeft > 0
-                  ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
-                  : 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
-              }`}
-              title={
-                cooldownLeft > 0
-                  ? (t.lists.ai_cooldown || `Повтор через {seconds}с`).replace(
-                      '{seconds}',
-                      cooldownLeft >= 60
-                        ? `${Math.floor(cooldownLeft / 60)}м ${cooldownLeft % 60}с`
-                        : `${cooldownLeft}с`
-                    )
-                  : (t.lists.ai_recommendations || 'ИИ-рекомендации')
-              }
+              onClick={() => {
+                triggerHaptic();
+                setIsChangeListFolderModalOpen(true);
+              }}
+              className="px-2 py-1 sm:px-2.5 sm:py-1 rounded-xl bg-cardDark border border-cardBorder hover:border-accentViolet/50 text-[11px] font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 shrink-0 transition active:scale-95 shadow-sm"
+              title={(t as any).lists?.change_folder || 'Сменить папку'}
             >
-              <Wand2 className={`w-4 h-4 ${cooldownLeft > 0 ? 'opacity-50 animate-pulse' : 'text-amber-400'}`} />
-              {cooldownLeft > 0 && (
-                <span className="text-[10px] font-mono font-bold text-amber-400/90">
-                  {cooldownLeft >= 60
-                    ? `${Math.floor(cooldownLeft / 60)}:${String(cooldownLeft % 60).padStart(2, '0')}`
-                    : `${cooldownLeft}s`}
-                </span>
-              )}
+              <Folder className="w-3.5 h-3.5 text-accentViolet" />
+              <span className="max-w-[70px] sm:max-w-[120px] truncate">
+                {folders.find((f) => f.id === (currentList.folderId || DEFAULT_FOLDER_ID))?.name || (t.lists.folder_misc || 'Разное')}
+              </span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
             </button>
+          )}
 
-            {/* Add items button (icon-only) */}
-            <button
-              onClick={handleOpenAddItemsModal}
-              className="p-2 rounded-xl bg-accentViolet text-white shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0 flex items-center justify-center"
-              title={t.lists.add_items}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+          {/* AI Recommendations Button (Magic Wand) */}
+          <button
+            onClick={handleGetRecommendations}
+            disabled={cooldownLeft > 0}
+            className={`p-1.5 sm:px-2 sm:py-1 rounded-xl border transition active:scale-[0.97] shrink-0 flex items-center justify-center gap-1 font-bold text-xs ${
+              cooldownLeft > 0
+                ? 'bg-cardDark/50 border-cardBorder/60 text-gray-500 cursor-not-allowed opacity-70'
+                : 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border-amber-500/50 text-amber-300 hover:border-amber-400 hover:brightness-110 shadow-sm shadow-amber-500/10'
+            }`}
+            title={
+              cooldownLeft > 0
+                ? (t.lists.ai_cooldown || `Повтор через {seconds}с`).replace(
+                    '{seconds}',
+                    cooldownLeft >= 60
+                      ? `${Math.floor(cooldownLeft / 60)}м ${cooldownLeft % 60}с`
+                      : `${cooldownLeft}с`
+                  )
+                : (t.lists.ai_recommendations || 'ИИ-рекомендации')
+            }
+          >
+            <Wand2 className={`w-3.5 h-3.5 ${cooldownLeft > 0 ? 'opacity-50 animate-pulse' : 'text-amber-400'}`} />
+            {cooldownLeft > 0 && (
+              <span className="text-[10px] font-mono font-bold text-amber-400/90">
+                {cooldownLeft >= 60
+                  ? `${Math.floor(cooldownLeft / 60)}:${String(cooldownLeft % 60).padStart(2, '0')}`
+                  : `${cooldownLeft}s`}
+              </span>
+            )}
+          </button>
+
+          {/* Add items button (icon-only) */}
+          <button
+            onClick={handleOpenAddItemsModal}
+            className="p-1.5 sm:p-2 rounded-xl bg-accentViolet text-white shadow-md hover:bg-opacity-90 transition active:scale-[0.97] shrink-0 flex items-center justify-center"
+            title={t.lists.add_items}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
