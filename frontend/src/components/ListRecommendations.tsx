@@ -390,20 +390,22 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
           </div>
 
           {/* Skeleton Loaders */}
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="glass-card p-3 rounded-2xl border border-cardBorder/60 animate-pulse flex items-center gap-3.5 h-24"
-            >
-              <div className="w-14 h-20 bg-cardBorder/50 rounded-xl shrink-0" />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-4 bg-cardBorder/60 rounded-md w-3/4" />
-                <div className="h-3 bg-cardBorder/40 rounded-md w-1/2" />
-                <div className="h-3 bg-cardBorder/30 rounded-md w-1/3" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="glass-card p-3 rounded-2xl border border-cardBorder/60 animate-pulse flex items-center gap-3.5 h-24"
+              >
+                <div className="w-14 h-20 bg-cardBorder/50 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-4 bg-cardBorder/60 rounded-md w-3/4" />
+                  <div className="h-3 bg-cardBorder/40 rounded-md w-1/2" />
+                  <div className="h-3 bg-cardBorder/30 rounded-md w-1/3" />
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-cardBorder/40 shrink-0" />
               </div>
-              <div className="w-8 h-8 rounded-xl bg-cardBorder/40 shrink-0" />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : error ? (
         <div className="glass-card p-8 rounded-3xl text-center space-y-4 border-dashed border-red-500/30">
@@ -427,7 +429,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1 mb-2">
                 {t.lists?.in_your_list || 'В вашем списке'}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {addedItems.map((item) => (
                   <ItemCard
                     key={`added_${item.id}`}
@@ -491,7 +493,7 @@ export const ListRecommendations: React.FC<ListRecommendationsProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {filteredRecommendations.map((catItem, idx) => {
                     const mappedItem = mapCatalogToItem(catItem);
                     return (
