@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Play,
   Plus,
@@ -24,6 +24,10 @@ interface FeaturedHeroBannerProps {
   className?: string;
 }
 
+// Preserves the user's current banner position across tab switches and back navigations during the app session.
+// On app launch/refresh, it starts as null so a random banner is selected upon first viewing.
+let sessionCatalogBannerIndex: number | null = null;
+
 export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   items,
   onSelectItem,
@@ -33,7 +37,9 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   t,
   className = '',
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState<number>(() => {
+    return sessionCatalogBannerIndex ?? 0;
+  });
 
   // Candidates: 1. From "Хочу посмотреть" (status: planned / в планах)
   // 2. If empty, fallback to recently added items
@@ -59,16 +65,44 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
   }, [items]);
 
   const total = candidates.length;
+
+  // On first mount / when candidates become available:
+  // If sessionCatalogBannerIndex is null (fresh app launch), choose a random banner.
+  // If sessionCatalogBannerIndex was already set, keep it within valid range.
+  useEffect(() => {
+    if (total === 0) return;
+
+    if (sessionCatalogBannerIndex === null) {
+      const randomIndex = Math.floor(Math.random() * total);
+      sessionCatalogBannerIndex = randomIndex;
+      setCurrentIndex(randomIndex);
+    } else {
+      const safeIndex = sessionCatalogBannerIndex % total;
+      if (safeIndex !== currentIndex) {
+        setCurrentIndex(safeIndex);
+      }
+    }
+  }, [total]);
+
+  const updateBannerIndex = (newIdx: number) => {
+    if (total === 0) return;
+    const bounded = ((newIdx % total) + total) % total;
+    sessionCatalogBannerIndex = bounded;
+    setCurrentIndex(bounded);
+  };
+
   const currentItem = candidates[currentIndex % Math.max(total, 1)] || null;
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : Math.max(total - 1, 0)));
+    if (total <= 0) return;
+    updateBannerIndex(currentIndex > 0 ? currentIndex - 1 : total - 1);
   };
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % Math.max(total, 1));
+    if (total <= 0) return;
+    updateBannerIndex(currentIndex + 1);
   };
 
   if (!currentItem) {
@@ -283,7 +317,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setCurrentIndex(idx);
+                  updateBannerIndex(idx);
                 }}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentIndex

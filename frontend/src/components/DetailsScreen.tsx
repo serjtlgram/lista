@@ -28,8 +28,7 @@ import {
   BookMarked,
   Plus,
   Wand2,
-  Link,
-  ChevronLeft
+  Link
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations, getTranslatedStatus } from '../services/i18n';
@@ -705,18 +704,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   return (
     <div className="space-y-4 animate-slide-up pb-6">
-      {/* Top back button for non-Telegram web & desktop */}
-      <div className="flex items-center justify-between pb-1">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cardDark/60 hover:bg-cardDark border border-cardBorder text-gray-300 hover:text-white text-xs font-semibold transition active:scale-95 shadow-sm"
-        >
-          <ChevronLeft className="w-4 h-4 text-accentTeal" />
-          <span>{language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}</span>
-        </button>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         {/* Left Column: Poster, Title, Meta, Rating, Budget & Desktop Actions */}
         <div className="lg:col-span-5 xl:col-span-4 space-y-4">
@@ -1041,6 +1028,54 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </div>
           </div>
 
+          {/* In Lists Block */}
+          <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
+                <BookMarked className="w-4 h-4 text-amber-400" />
+                <span>{t.lists?.in_lists || 'В списках'}</span>
+              </span>
+              <button
+                onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
+              >
+                + {t.lists?.add_items || 'Добавить'}
+              </button>
+            </div>
+
+            {assignedLists.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {assignedLists.map((list) => {
+                  const isFav = list.id === FAVORITES_ID;
+                  const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
+
+                  return (
+                    <button
+                      key={list.id}
+                      onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
+                        isFav
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                          : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
+                      }`}
+                    >
+                      {isFav ? (
+                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      ) : (
+                        <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
+                      )}
+                      <span>{listName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500 font-normal italic pt-0.5">
+                <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
+              </div>
+            )}
+          </div>
+
           {/* 10-Star Interactive Rating Block */}
           <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
             <div className="flex items-center justify-between">
@@ -1091,10 +1126,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
           <div className="hidden lg:block">
             {renderActionButtons()}
           </div>
-        </div>
 
-        {/* Right Column: People/Cast, Description, Episodes, YouTube, Notes, Lists & Mobile Actions */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-4">
           {/* Dedicated Author & ISBN Block for Books */}
           {isBook && (item.author || item.isbn) && (
             <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm flex flex-col">
@@ -1138,7 +1170,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </div>
           )}
 
-          {/* Dedicated Director & Cast Full-Width Block for Movies / Shows */}
+          {/* Dedicated Director & Cast Block for Movies / Shows */}
           {!isBook && (item.director || item.cast || item.cast_roles) && (
             <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
               {item.director && (
@@ -1181,7 +1213,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               ) : null}
             </div>
           )}
+        </div>
 
+        {/* Right Column: Description, Episodes, YouTube, Notes & Mobile Actions */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-4">
           {/* Description / Annotation Block */}
           {item.description && (
             <div className="glass-card p-4 rounded-3xl space-y-1.5 shadow-sm">
@@ -1329,54 +1364,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               )}
             </div>
           )}
-
-          {/* In Lists Block */}
-          <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
-                <BookMarked className="w-4 h-4 text-amber-400" />
-                <span>{t.lists?.in_lists || 'В списках'}</span>
-              </span>
-              <button
-                onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-                className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
-              >
-                + {t.lists?.add_items || 'Добавить'}
-              </button>
-            </div>
-
-            {assignedLists.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-0.5">
-                {assignedLists.map((list) => {
-                  const isFav = list.id === FAVORITES_ID;
-                  const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
-
-                  return (
-                    <button
-                      key={list.id}
-                      onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
-                        isFav
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
-                          : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
-                      }`}
-                    >
-                      {isFav ? (
-                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                      ) : (
-                        <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
-                      )}
-                      <span>{listName}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500 font-normal italic pt-0.5">
-                <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
-              </div>
-            )}
-          </div>
 
           {/* Inline Notes Section */}
           <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
