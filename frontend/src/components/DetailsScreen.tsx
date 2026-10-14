@@ -336,48 +336,85 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     window.scrollTo(0, 0);
   }, [item.id]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isContainerFs, setIsContainerFs] = useState(false);
+
+  const handleExitFullscreen = (e?: React.SyntheticEvent | Event) => {
+    if (e) {
+      try {
+        e.preventDefault();
+        e.stopPropagation();
+      } catch {}
+    }
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    } else if ((document as any).webkitExitFullscreen) {
+      (document as any).webkitExitFullscreen();
+    } else if ((document as any).mozCancelFullScreen) {
+      (document as any).mozCancelFullScreen();
+    } else if ((document as any).msExitFullscreen) {
+      (document as any).msExitFullscreen();
+    }
+  };
 
   const handleEnterFullscreen = () => {
-    const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    const isFs = Boolean(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
     if (isFs) {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
+      handleExitFullscreen();
       return;
     }
 
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    const container = containerRef.current || iframeRef.current;
+    if (!container) return;
 
     const requestFs =
-      iframe.requestFullscreen ||
-      (iframe as any).webkitRequestFullscreen ||
-      (iframe as any).mozRequestFullScreen ||
-      (iframe as any).msRequestFullscreen;
+      container.requestFullscreen ||
+      (container as any).webkitRequestFullscreen ||
+      (container as any).mozRequestFullScreen ||
+      (container as any).msRequestFullscreen;
 
     if (requestFs) {
       try {
-        const p = requestFs.call(iframe);
+        const p = requestFs.call(container);
         if (p && typeof p.catch === 'function') {
           p.catch((err: any) => {
-            console.warn('iframe.requestFullscreen error:', err);
+            console.warn('container.requestFullscreen error:', err);
+            const iframe = iframeRef.current;
+            if (iframe && iframe !== container) {
+              const iframeFs = iframe.requestFullscreen || (iframe as any).webkitRequestFullscreen;
+              if (iframeFs) iframeFs.call(iframe);
+            }
           });
         }
       } catch (err) {
-        console.warn('iframe.requestFullscreen failed:', err);
+        console.warn('container.requestFullscreen failed:', err);
       }
     }
   };
 
   // Hide Telegram BackButton during native fullscreen so no Telegram controls overlap the video,
-  // and restore it when exiting fullscreen back to the details card.
+  // track container fullscreen state, and restore BackButton when exiting fullscreen back to the details card.
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     const handleFullscreenChange = () => {
-      const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      const fsEl =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+
+      const isFs = Boolean(fsEl);
+      const isContainer = Boolean(
+        fsEl && containerRef.current && (fsEl === containerRef.current || fsEl.id === 'video-fullscreen-wrapper')
+      );
+      setIsContainerFs(isContainer);
+
       if (tg?.BackButton) {
         if (isFs) {
           try {
@@ -393,9 +430,13 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
 
@@ -1364,7 +1405,11 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </div>
 
               {getYouTubeEmbedUrl(item.youtube_url) ? (
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
+                <div
+                  ref={containerRef}
+                  id="video-fullscreen-wrapper"
+                  className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group video-fullscreen-container"
+                >
                   <iframe
                     ref={iframeRef}
                     src={getYouTubeEmbedUrl(item.youtube_url)!}
@@ -1373,6 +1418,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     allowFullScreen
                   />
+                  {isContainerFs && (
+                    <button
+                      type="button"
+                      onClick={handleExitFullscreen}
+                      onTouchEnd={handleExitFullscreen}
+                      className="absolute bottom-0 right-0 w-16 h-14 z-[9999] opacity-0 cursor-pointer select-none bg-transparent"
+                      title={t.details.fullscreen || 'Выйти из полноэкранного режима'}
+                      aria-label="Exit fullscreen"
+                    />
+                  )}
                 </div>
               ) : (
                 <a
