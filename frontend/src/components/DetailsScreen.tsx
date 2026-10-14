@@ -19,6 +19,8 @@ import {
   Youtube,
   ExternalLink,
   Maximize2,
+  Minimize2,
+  ChevronLeft,
   User,
   Users,
   Video,
@@ -337,20 +339,83 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     window.scrollTo(0, 0);
   }, [item.id]);
 
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleEnterFullscreen = () => {
+    setIsFullscreenVideo(true);
+    try {
+      const el = videoContainerRef.current;
+      if (el) {
+        if (el.requestFullscreen) {
+          el.requestFullscreen().catch(() => {});
+        } else if ((el as any).webkitRequestFullscreen) {
+          (el as any).webkitRequestFullscreen();
+        }
+      }
+    } catch {}
+  };
+
+  const handleExitFullscreen = () => {
+    setIsFullscreenVideo(false);
+    try {
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch {}
+  };
+
+  // Sync fullscreen state with native browser/YouTube player fullscreen changes (e.g. screen 2 button or Esc)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isNativeFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      if (!isNativeFs && isFullscreenVideo) {
+        setIsFullscreenVideo(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreenVideo) {
+        handleExitFullscreen();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreenVideo]);
+
+  // Lock body scroll while fullscreen video overlay is active
+  useEffect(() => {
+    if (isFullscreenVideo) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isFullscreenVideo]);
+
   // Handle Telegram WebApp native BackButton when fullscreen video is active
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
-    if (tg?.BackButton) {
+    if (!tg?.BackButton) return;
+
+    if (isFullscreenVideo) {
       const handleBack = () => {
-        setIsFullscreenVideo(false);
+        handleExitFullscreen();
       };
-      if (isFullscreenVideo) {
-        tg.BackButton.onClick(handleBack);
-        tg.BackButton.show();
-      } else {
-        tg.BackButton.hide();
-        tg.BackButton.offClick(handleBack);
-      }
+      tg.BackButton.onClick(handleBack);
+      tg.BackButton.show();
       return () => {
         tg.BackButton.offClick(handleBack);
       };
@@ -703,7 +768,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   );
 
   return (
-    <div className="space-y-4 animate-slide-up pb-6">
+    <div
+      style={isFullscreenVideo ? { transform: 'none' } : undefined}
+      className={`space-y-4 pb-6 ${isFullscreenVideo ? '' : 'animate-slide-up'}`}
+    >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         {/* Left Column: Poster, Title, Meta, Rating, Budget & Desktop Actions */}
         <div className="lg:col-span-5 xl:col-span-4 space-y-4">
@@ -1301,7 +1369,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   {getYouTubeEmbedUrl(item.youtube_url) && (
                     <button
                       type="button"
-                      onClick={() => setIsFullscreenVideo(true)}
+                      onClick={handleEnterFullscreen}
                       className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
                       title={t.details.fullscreen || 'На весь экран'}
                     >
@@ -1322,35 +1390,73 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </div>
 
               {getYouTubeEmbedUrl(item.youtube_url) ? (
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
-                  {!isFullscreenVideo ? (
-                    <>
-                      <iframe
-                        src={getYouTubeEmbedUrl(item.youtube_url)!}
-                        title={item.title}
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                        allowFullScreen
-                      />
+                <>
+                  {isFullscreenVideo && (
+                    <div className="w-full aspect-video rounded-2xl bg-black/40 border border-cardBorder/40 animate-pulse" />
+                  )}
+                  <div
+                    ref={videoContainerRef}
+                    className={
+                      isFullscreenVideo
+                        ? 'fixed inset-0 z-[999999] bg-black flex flex-col items-center justify-center w-screen h-screen'
+                        : 'relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group'
+                    }
+                  >
+                    {/* Floating controls in fullscreen mode */}
+                    {isFullscreenVideo && (
+                      <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-center justify-between z-50 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExitFullscreen();
+                          }}
+                          className="pointer-events-auto px-3.5 py-2 rounded-2xl bg-black/75 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition active:scale-95 shadow-2xl flex items-center gap-1.5 cursor-pointer"
+                          title={language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}
+                        >
+                          <ChevronLeft className="w-4 h-4 text-accentTeal" />
+                          <span className="text-xs font-semibold">{language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExitFullscreen();
+                          }}
+                          className="pointer-events-auto px-3.5 py-2 rounded-2xl bg-black/75 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition active:scale-95 shadow-2xl flex items-center gap-1.5 cursor-pointer"
+                          title={language === 'en' ? 'Collapse' : language === 'es' ? 'Minimizar' : language === 'uk' ? 'Згорнути' : 'Свернуть'}
+                        >
+                          <Minimize2 className="w-4 h-4 text-accentTeal" />
+                          <span className="text-xs font-semibold">{language === 'en' ? 'Collapse' : language === 'es' ? 'Minimizar' : language === 'uk' ? 'Згорнути' : 'Свернуть'}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <iframe
+                      src={getYouTubeEmbedUrl(item.youtube_url)!}
+                      title={item.title}
+                      className="w-full h-full border-0 shadow-2xl"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                    />
+
+                    {/* Fullscreen toggle button on the card video */}
+                    {!isFullscreenVideo && (
                       <button
                         type="button"
-                        onClick={() => setIsFullscreenVideo(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEnterFullscreen();
+                        }}
                         className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
                         title={t.details.fullscreen || 'На весь экран'}
                       >
                         <Maximize2 className="w-4 h-4" />
                       </button>
-                    </>
-                  ) : (
-                    <div
-                      onClick={() => setIsFullscreenVideo(false)}
-                      className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-gray-400 text-xs font-semibold gap-2 cursor-pointer p-4 text-center select-none"
-                    >
-                      <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
-                      <span>{t.details.fullscreen_playing || 'Воспроизведение на весь экран...'}</span>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </>
               ) : (
                 <a
                   href={item.youtube_url}
@@ -1457,23 +1563,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             className="max-w-[100vw] max-h-[100vh] w-full h-full object-contain"
             alt={item.title}
           />
-        </div>,
-        document.body
-      )}
-
-      {/* Clean Fullscreen Video Player Modal for Mobile WebViews */}
-      {isFullscreenVideo && item.youtube_url && getYouTubeEmbedUrl(item.youtube_url) && createPortal(
-        <div className="fixed inset-0 bg-black z-[999999] flex flex-col items-center justify-center animate-fade-in p-0 select-none">
-          {/* Video Iframe Container */}
-          <div className="w-full h-full aspect-video flex items-center justify-center my-auto">
-            <iframe
-              src={getYouTubeEmbedUrl(item.youtube_url, true)!}
-              title={item.title}
-              className="w-full h-full border-0 shadow-2xl"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen
-            />
-          </div>
         </div>,
         document.body
       )}
