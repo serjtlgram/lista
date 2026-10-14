@@ -18,7 +18,6 @@ import {
   PlusCircle,
   Youtube,
   ExternalLink,
-  Maximize2,
   User,
   Users,
   Video,
@@ -1381,17 +1380,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {getYouTubeEmbedUrl(item.youtube_url) && (
-                    <button
-                      type="button"
-                      onClick={handleEnterFullscreen}
-                      className="text-[11px] font-semibold text-accentViolet hover:text-white flex items-center gap-1 bg-accentViolet/10 hover:bg-accentViolet/20 px-2 py-1 rounded-lg transition"
-                      title={t.details.fullscreen || 'На весь экран'}
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      <span>{t.details.fullscreen || 'Экран'}</span>
-                    </button>
-                  )}
                   <a
                     href={item.youtube_url}
                     target="_blank"

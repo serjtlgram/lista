@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Item } from '../types';
 import { Translations } from '../services/i18n';
+import { normCat } from '../utils/watchTime';
 
 interface DesktopSidebarProps {
   activeTab: string;
@@ -45,38 +46,52 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { id: 'profile', label: t.nav_profile || 'Профиль', icon: User },
   ];
 
-  // Collection breakdown calculations (Matching Screen 1 & Screen 2)
-  const isMovie = (c?: string) => {
-    const lc = (c || '').toLowerCase().trim();
-    return ['movie', 'movies', 'фильмы', 'фильм'].includes(lc);
-  };
-  const isSeries = (c?: string) => {
-    const lc = (c || '').toLowerCase().trim();
-    return ['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc);
-  };
-  const isPlanned = (st?: string) => {
-    const s = (st || '').toLowerCase().trim();
-    return ['planned', 'в планах', 'у планах', 'отложено'].includes(s);
-  };
-
+  // Collection breakdown calculations by real categories (Фильмы, Сериалы, Книги, Игры)
   const total = items.length;
-  const moviesCount = items.filter((i) => isMovie(i.category) && !isPlanned(i.status)).length;
-  const seriesCount = items.filter((i) => isSeries(i.category) && !isPlanned(i.status)).length;
-  const plannedCount = items.filter((i) => isPlanned(i.status)).length;
-  const otherCount = Math.max(total - moviesCount - seriesCount - plannedCount, 0);
+  const categoryCounts: Record<string, number> = {
+    'Фильмы': 0,
+    'Сериалы': 0,
+    'Книги': 0,
+    'Игры': 0,
+  };
 
-  const moviesPct = total > 0 ? Math.round((moviesCount / total) * 100) : 0;
-  const seriesPct = total > 0 ? Math.round((seriesCount / total) * 100) : 0;
-  const plannedPct = total > 0 ? Math.round((plannedCount / total) * 100) : 0;
-  const otherPct = total > 0 ? Math.max(100 - moviesPct - seriesPct - plannedPct, 0) : 0;
+  items.forEach((item) => {
+    const cat = normCat(item.category);
+    if (categoryCounts[cat] !== undefined) {
+      categoryCounts[cat]++;
+    } else if (cat) {
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+  });
 
-  let currentAccum = 0;
-  const segments = [
-    { label: 'Фильмы', pct: moviesPct, color: '#00CEC9', accum: currentAccum },
-    { label: 'Сериалы', pct: seriesPct, color: '#8C7CFF', accum: (currentAccum += moviesPct) },
-    { label: 'В планах', pct: plannedPct, color: '#F59E0B', accum: (currentAccum += seriesPct) },
-    { label: 'Другое', pct: otherPct, color: '#38BDF8', accum: (currentAccum += plannedPct) },
-  ];
+  const CATEGORY_CONFIG: Record<string, { label: string; color: string }> = {
+    'Фильмы':  { label: t.categories?.movies || 'Фильмы',  color: '#8C7CFF' },
+    'Сериалы': { label: t.categories?.shows || 'Сериалы',  color: '#00CEC9' },
+    'Книги':   { label: t.categories?.books || 'Книги',    color: '#FFB800' },
+    'Игры':    { label: t.categories?.games || 'Игры',     color: '#00B894' },
+  };
+
+  const activeCategories = Object.entries(categoryCounts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  let currentAccumLen = 0;
+  const segments = activeCategories.map(([cat, count]) => {
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const len = total > 0 ? (count / total) * 100 : 0;
+    const cfg = CATEGORY_CONFIG[cat] || { label: cat, color: '#38BDF8' };
+    const seg = {
+      key: cat,
+      label: cfg.label,
+      count,
+      pct,
+      len,
+      color: cfg.color,
+      accum: currentAccumLen,
+    };
+    currentAccumLen += len;
+    return seg;
+  });
 
   return (
     <aside className="hidden lg:flex flex-col w-64 xl:w-72 h-screen sticky top-0 border-r border-cardBorder bg-cardDark/70 backdrop-blur-2xl p-4 xl:p-5 select-none z-30 shrink-0 overflow-y-auto hide-scrollbar space-y-4">
@@ -193,8 +208,8 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4.5" />
                 {segments.map((seg, idx) => {
-                  if (seg.pct <= 0) return null;
-                  const dash = `${seg.pct} ${100 - seg.pct}`;
+                  if (seg.len <= 0) return null;
+                  const dash = `${seg.len} ${100 - seg.len}`;
                   const offset = -seg.accum;
                   return (
                     <circle
@@ -216,36 +231,15 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
             {/* Legend */}
             <div className="flex-1 space-y-0.5 text-[10px] min-w-0">
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#00CEC9] shrink-0" />
-                  <span>Фильмы</span>
-                </span>
-                <span className="font-bold text-white font-mono">{moviesPct}%</span>
-              </div>
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#8C7CFF] shrink-0" />
-                  <span>Сериалы</span>
-                </span>
-                <span className="font-bold text-white font-mono">{seriesPct}%</span>
-              </div>
-              <div className="flex items-center justify-between text-gray-300">
-                <span className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#F59E0B] shrink-0" />
-                  <span>В планах</span>
-                </span>
-                <span className="font-bold text-white font-mono">{plannedPct}%</span>
-              </div>
-              {otherPct > 0 && (
-                <div className="flex items-center justify-between text-gray-300">
+              {segments.map((seg) => (
+                <div key={seg.key} className="flex items-center justify-between text-gray-300">
                   <span className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-[#38BDF8] shrink-0" />
-                    <span>Другое</span>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
+                    <span className="truncate">{seg.label}</span>
                   </span>
-                  <span className="font-bold text-white font-mono">{otherPct}%</span>
+                  <span className="font-bold text-white font-mono ml-1">{seg.pct}%</span>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         ) : (

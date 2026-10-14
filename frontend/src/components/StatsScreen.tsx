@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Star, Award, Film, Tv, Book, Gamepad2, TrendingUp, Clock, CheckCircle2, PlusCircle, Zap, BarChart3, Info } from 'lucide-react';
 import { StatsData, UserProfile, Item } from '../types';
 import { Translations } from '../services/i18n';
-import { computeWatchHours, isCompleted, getLastNDays, countItemsPerSlot } from '../utils/watchTime';
+import { computeWatchHours, isCompleted, getLastNDays, countItemsPerSlot, normCat } from '../utils/watchTime';
 import { InfoModal } from './InfoModal';
 
 interface StatsScreenProps {
@@ -19,15 +19,6 @@ const CATEGORY_META: Record<string, { hex: string; label: string; icon: any }> =
   Игры:    { hex: '#00B894', label: 'Игры',    icon: Gamepad2 },
 };
 
-const normalizeCat = (catStr?: string): string => {
-  const lc = (catStr || '').toLowerCase().trim();
-  if (['movie', 'movies', 'фильмы', 'фильм'].includes(lc)) return 'Фильмы';
-  if (['show', 'shows', 'series', 'сериалы', 'сериал'].includes(lc)) return 'Сериалы';
-  if (['book', 'books', 'книги', 'книга'].includes(lc)) return 'Книги';
-  if (['game', 'games', 'игры', 'игра'].includes(lc)) return 'Игры';
-  return catStr || 'Фильмы';
-};
-
 const getCatTranslation = (cat: string, t: Translations) => {
   if (cat === 'Фильмы') return t.categories.movies;
   if (cat === 'Сериалы') return t.categories.shows;
@@ -38,7 +29,7 @@ const getCatTranslation = (cat: string, t: Translations) => {
 
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items = [], t }) => {
-  const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('week');
+  const [activeTabKey, setActiveTabKey] = useState<'week' | 'month' | 'year' | 'all'>('all');
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const periodTabs = [
@@ -74,7 +65,8 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
   const completionRate = totalPeriodItems > 0 ? Math.round((completedCount / totalPeriodItems) * 100) : 0;
 
   // Books stats calculation
-  const bookItems = filteredItems.filter((i) => normalizeCat(i.category) === 'Книги');
+  const bookSource = activeTabKey === 'all' ? items : filteredItems;
+  const bookItems = bookSource.filter((i) => normCat(i.category) === 'Книги');
   const completedBooks = bookItems.filter((i) => isCompleted(i.status));
   const readingBooks = bookItems.filter((i) =>
     ['watching', 'смотрю', 'в процессе', 'читаю'].includes((i.status || '').toLowerCase())
@@ -109,12 +101,14 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
         </>
       );
     }
+    const monthsUnit = t.stats.months_suffix || t.stats.months_short_unit || 'мес';
+    const yearsUnit = t.stats.years_suffix || t.stats.years_short_unit || 'г';
     if (days < 365) {
       const m = Math.floor(days / 30.5);
       const remDays = Math.floor(days - m * 30.5);
       return (
         <>
-          {m}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.months_short_unit || 'м'}</span>
+          {m}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{monthsUnit}</span>
           {remDays > 0 ? (
             <>{remDays}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.days_short_unit || 'д'}</span></>
           ) : null}
@@ -126,24 +120,37 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
     const m = Math.floor(remDays / 30.5);
     return (
       <>
-        {y}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{t.stats.years_short_unit || 'г'}</span>
+        {y}<span className="text-xs font-normal text-gray-400 ml-0.5 mr-1.5">{yearsUnit}</span>
         {m > 0 ? (
-          <>{m}<span className="text-xs font-normal text-gray-400 ml-0.5">{t.stats.months_short_unit || 'м'}</span></>
+          <>{m}<span className="text-xs font-normal text-gray-400 ml-0.5">{monthsUnit}</span></>
         ) : null}
       </>
     );
   };
 
-  // Category breakdown (over filtered period)
-  const categoryCounts: Record<string, number> = {};
-  filteredItems.forEach((item) => {
-    const cat = normalizeCat(item.category);
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  // Category breakdown across all items in collection
+  const categoryCounts: Record<string, number> = {
+    'Фильмы': 0,
+    'Сериалы': 0,
+    'Книги': 0,
+    'Игры': 0,
+  };
+  items.forEach((item) => {
+    const cat = normCat(item.category);
+    if (categoryCounts[cat] !== undefined) {
+      categoryCounts[cat]++;
+    } else if (cat) {
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
   });
-  if (filteredItems.length === 0 && profile?.categories) {
+  if (items.length === 0 && profile?.categories) {
     profile.categories.forEach((c) => {
-      const cat = normalizeCat(c.category);
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + c.count;
+      const cat = normCat(c.category);
+      if (categoryCounts[cat] !== undefined) {
+        categoryCounts[cat] += c.count;
+      } else if (cat) {
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + c.count;
+      }
     });
   }
 
@@ -445,7 +452,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
                 {(() => {
                   arcOffset = 0;
                   return categorySegments.map((seg, idx) => {
-                    const len = (seg.percent / 100) * circumference;
+                    const len = grandTotal > 0 ? (seg.count / grandTotal) * circumference : 0;
                     const dashArray = `${len} ${circumference - len}`;
                     const dashOffset = -arcOffset;
                     arcOffset += len;
@@ -470,9 +477,9 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
               </div>
             </div>
 
-            {/* Top 3 legend */}
-            <div className="flex-1 space-y-2.5">
-              {categorySegments.slice(0, 3).map((seg) => {
+            {/* Categories legend */}
+            <div className="flex-1 space-y-2">
+              {categorySegments.map((seg) => {
                 const Icon = seg.meta.icon;
                 return (
                   <div key={seg.cat} className="flex items-center gap-2">

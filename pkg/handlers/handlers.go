@@ -531,7 +531,7 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	// Total & completed count
 	var total, completed, watching, monthlyCount int
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1", user.ID).Scan(&total)
-	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'completed'", user.ID).Scan(&completed)
+	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND LOWER(TRIM(status)) IN ('completed', 'завершён', 'завершен', 'завершено', 'просмотрено', 'watched')", user.ID).Scan(&completed)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'watching'", user.ID).Scan(&watching)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)", user.ID).Scan(&monthlyCount)
 
@@ -1504,7 +1504,7 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var total, completed, monthlyAdded int
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1", user.ID).Scan(&total)
-	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'completed'", user.ID).Scan(&completed)
+	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND LOWER(TRIM(status)) IN ('completed', 'завершён', 'завершен', 'завершено', 'просмотрено', 'watched')", user.ID).Scan(&completed)
 	_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)", user.ID).Scan(&monthlyAdded)
 
 	catQuery := `SELECT category, COUNT(*) FROM items WHERE user_id = $1 GROUP BY category`
@@ -1533,7 +1533,7 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	hRows, err := h.DB.Pool.Query(ctx, `
 		SELECT category, COALESCE(duration, ''), COALESCE(episodes_total, 0), COALESCE(seasons, 0), COALESCE(episodes_list, '')
 		FROM items
-		WHERE user_id = $1 AND status = 'completed'
+		WHERE user_id = $1 AND LOWER(TRIM(status)) IN ('completed', 'завершён', 'завершен', 'завершено', 'просмотрено', 'watched')
 	`, user.ID)
 	if err == nil {
 		defer hRows.Close()
@@ -1748,14 +1748,14 @@ func calculateItemWatchMinutes(category string, duration string, episodesTotal i
 }
 
 func mapCategoryToRu(cat string) string {
-	switch strings.ToLower(cat) {
-	case "movie", "movies", "фильмы":
+	switch strings.ToLower(strings.TrimSpace(cat)) {
+	case "movie", "movies", "фильмы", "фильм", "фільм", "фільми", "film", "pelicula", "peliculas":
 		return "Фильмы"
-	case "show", "shows", "series", "сериалы":
+	case "show", "shows", "series", "сериалы", "сериал", "серіал", "серіали", "serie", "tv", "дорама", "аниме":
 		return "Сериалы"
-	case "book", "books", "книги":
+	case "book", "books", "книги", "книга", "книжка", "книжки", "libro", "libros":
 		return "Книги"
-	case "game", "games", "игры":
+	case "game", "games", "игры", "игра", "ігри", "гра", "juego", "juegos":
 		return "Игры"
 	default:
 		return cat
