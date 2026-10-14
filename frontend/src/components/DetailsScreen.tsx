@@ -1495,7 +1495,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       {/* Modal warning when user tries to edit shared preview item before adding to library */}
       {showSharedPreviewModal && createPortal(
         <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none">
-          <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-6 space-y-4 animate-slide-up shadow-2xl text-center flex flex-col items-center">
+          <div className="w-full max-w-md sm:max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-6 space-y-4 animate-slide-up shadow-2xl text-center flex flex-col items-center">
             <div className="w-14 h-14 rounded-2xl bg-accentViolet/20 text-accentViolet flex items-center justify-center shadow-inner">
               <PlusCircle className="w-7 h-7 text-accentTeal" />
             </div>

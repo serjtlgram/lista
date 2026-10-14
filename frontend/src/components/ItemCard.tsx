@@ -604,7 +604,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       {/* Modals via Portal */}
       {isGenreOpen && createPortal(
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setIsGenreOpen(false)}>
-          <div className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-cardBorder pb-3">
               <h3 className="text-base font-bold text-white">{t?.modal.select_genre}</h3>
               <button onClick={() => setIsGenreOpen(false)} className="text-gray-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -627,7 +627,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 
       {isStatusOpen && createPortal(
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setIsStatusOpen(false)}>
-          <div className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-3 animate-slide-up pb-10 sm:pb-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-cardBorder pb-3">
               <h3 className="text-base font-bold text-white">{t?.modal.status_label}</h3>
               <button onClick={() => setIsStatusOpen(false)} className="text-gray-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -667,7 +667,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           }}
         >
           <div
-            className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-3 animate-slide-up pb-8 sm:pb-5 shadow-2xl"
+            className="w-full sm:max-w-sm bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-3 animate-slide-up pb-8 sm:pb-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header: Poster + Title + Subtitle + Close */}

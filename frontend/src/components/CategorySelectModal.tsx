@@ -76,7 +76,7 @@ export const CategorySelectModal: React.FC<CategorySelectModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
-        className="w-full max-w-md bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl"
+        className="w-full max-w-lg bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

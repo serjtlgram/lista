@@ -1293,7 +1293,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isCreateModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white">{t.lists.new_list}</h3>
                 <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-white">
@@ -1333,7 +1333,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
                       + {(t as any).lists?.new_folder || 'Новая папка'}
                     </button>
                   </label>
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto hide-scrollbar p-0.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto hide-scrollbar p-0.5">
                     {folders.map((f) => {
                       const isSelected = (newListFolderId || DEFAULT_FOLDER_ID) === f.id;
 
@@ -1383,7 +1383,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isCreateFolderModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <FolderPlus className="w-5 h-5 text-accentViolet" />
@@ -1433,7 +1433,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isManageFolderModalOpen && editingFolder &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Folder className="w-5 h-5 text-accentViolet" />
@@ -1502,7 +1502,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isChangeListFolderModalOpen && !currentList.isDefault &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <FolderOpen className="w-5 h-5 text-accentViolet" />
@@ -1580,7 +1580,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isRenameModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2">
                 <h3 className="text-base font-bold text-white">{t.lists.rename}</h3>
                 <button onClick={() => setIsRenameModalOpen(false)} className="text-gray-400 hover:text-white">
@@ -1625,7 +1625,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isAddItemsModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-            <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[82vh] flex flex-col shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up max-h-[82vh] flex flex-col shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
                 <h3 className="text-base font-bold text-white">{t.lists.add_items}</h3>
                 <button onClick={() => setIsAddItemsModalOpen(false)} className="text-gray-400 hover:text-white">
@@ -1717,7 +1717,7 @@ export const ListsScreen: React.FC<ListsScreenProps> = ({
       {isSortFoldersModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-            <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl">
               <div className="flex items-center justify-between border-b border-cardBorder pb-2 shrink-0">
                 <h3 className="text-base font-bold text-white">{t.lists?.folder_order || 'Порядок папок'}</h3>
                 <button onClick={() => setIsSortFoldersModalOpen(false)} className="text-gray-400 hover:text-white transition">

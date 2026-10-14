@@ -185,7 +185,7 @@ export const SharedListModal: React.FC<SharedListModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-md bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="w-full max-w-lg bg-cardDark border border-cardBorder rounded-3xl p-5 space-y-4 animate-slide-up shadow-2xl max-h-[85vh] flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-cardBorder pb-3 shrink-0">
           <div className="flex items-center gap-2.5">

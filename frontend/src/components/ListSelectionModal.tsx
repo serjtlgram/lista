@@ -144,7 +144,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-xs bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-4 animate-slide-up pb-8 sm:pb-5"
+        className="w-full max-w-lg bg-cardDark border-t sm:border border-cardBorder rounded-t-3xl sm:rounded-3xl p-5 space-y-4 animate-slide-up pb-8 sm:pb-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-cardBorder pb-3">
@@ -188,11 +188,11 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
 
         {/* Folder Filter Chips */}
         {folders.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-0.5 -mx-1 px-1">
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <button
               type="button"
               onClick={() => { setFilterFolderId(null); triggerHaptic(); }}
-              className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
                 filterFolderId === null
                   ? 'bg-accentViolet text-white shadow-sm'
                   : 'bg-white/5 border border-cardBorder text-gray-400 hover:text-white hover:border-gray-500'
@@ -205,14 +205,14 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                 key={f.id}
                 type="button"
                 onClick={() => { setFilterFolderId(f.id === filterFolderId ? null : f.id); triggerHaptic(); }}
-                className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition select-none ${
                   filterFolderId === f.id
                     ? 'bg-accentViolet text-white shadow-sm'
                     : 'bg-white/5 border border-cardBorder text-gray-400 hover:text-white hover:border-gray-500'
                 }`}
               >
                 <span className="text-xs leading-none">{f.icon || '📁'}</span>
-                <span className="truncate max-w-[80px]">{getTranslatedFolderName(f, trans)}</span>
+                <span className="truncate max-w-[120px]">{getTranslatedFolderName(f, trans)}</span>
               </button>
             ))}
           </div>
@@ -278,13 +278,13 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
                       : 'bg-bgDark border-cardBorder hover:border-gray-600'
                   }`}
                 >
-                  <div className="flex items-center min-w-0 pr-2">
-                    <span className="text-sm font-bold text-white truncate max-w-[170px]">
+                  <div className="flex items-center min-w-0 pr-3 flex-1">
+                    <span className="text-sm font-bold text-white truncate">
                       {list.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold max-w-[100px] truncate">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold max-w-[130px] truncate">
                       {folderName}
                     </span>
                     <div
