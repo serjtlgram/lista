@@ -400,7 +400,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+          <div className="bg-cardBorder/25 p-2.5 rounded-xl border border-cardBorder/50 flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400 truncate">{t.stats.books_read || 'Прочитано'}</span>
               <CheckCircle2 className="w-3 h-3 text-amber-400" />
@@ -409,7 +409,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <div className="text-[9px] text-gray-400">{t.stats.out_of_total.replace('{count}', bookItems.length.toString())}</div>
           </div>
 
-          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+          <div className="bg-cardBorder/25 p-2.5 rounded-xl border border-cardBorder/50 flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400 truncate">{t.stats.books_reading || 'Читаю'}</span>
               <Book className="w-3 h-3 text-accentViolet" />
@@ -418,7 +418,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ stats, profile, items 
             <div className="text-[9px] text-gray-400">{t.stats.active_records}</div>
           </div>
 
-          <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1">
+          <div className="bg-cardBorder/25 p-2.5 rounded-xl border border-cardBorder/50 flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400 truncate">{t.stats.books_planned || 'В планах'}</span>
               <Clock className="w-3 h-3 text-accentTeal" />

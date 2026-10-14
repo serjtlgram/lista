@@ -67,7 +67,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   }}
                 />
               ) : (
-                <div className="w-full h-full rounded-2xl bg-cardDark flex items-center justify-center text-white text-xl font-bold">
+                <div className="w-full h-full rounded-2xl bg-cardDark flex items-center justify-center text-accentViolet text-xl font-bold">
                   {userName.charAt(0)}
                 </div>
               )}
@@ -76,7 +76,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div>
               <h2 className="text-lg font-bold text-white">{userName}</h2>
               {userHandle && <p className="text-xs text-gray-400">@{userHandle}</p>}
-              <div className="flex items-center gap-1 mt-1 text-[11px] text-accentTeal font-medium">
+              <div className="flex items-center gap-1 mt-1 text-[11px] text-teal-600 dark:text-accentTeal font-medium">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Lista User</span>
               </div>
@@ -103,8 +103,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </p>
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition">
-                  <ChevronRight className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-accentViolet/15 border border-accentViolet/30 text-accentViolet flex items-center justify-center group-hover:bg-accentViolet group-hover:text-white transition shadow-sm">
+                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                 </div>
               </div>
             </div>
@@ -121,7 +121,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-accentTeal/20 text-accentTeal flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/15 text-teal-600 dark:text-accentTeal flex items-center justify-center shrink-0 group-hover:scale-105 transition">
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
@@ -133,8 +133,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="w-8 h-8 rounded-full bg-cardDark border border-cardBorder text-accentTeal flex items-center justify-center group-hover:bg-accentTeal group-hover:text-white transition">
-                <ChevronRight className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-600 dark:text-accentTeal flex items-center justify-center group-hover:bg-teal-500 group-hover:text-white transition shadow-sm">
+                <ChevronRight className="w-4 h-4 stroke-[2.5]" />
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="glass-card rounded-3xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
-                <Grid className="w-4 h-4 text-accentTeal" />
+                <Grid className="w-4 h-4 text-teal-600 dark:text-accentTeal" />
                 <span>{t.profile.categories_config}</span>
               </div>
               <span className="text-xs text-gray-400 font-medium">{activeCategories.length} / 6</span>

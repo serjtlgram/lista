@@ -101,7 +101,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         <div className="flex items-center gap-3 px-1">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accentViolet via-purple-500 to-accentTeal p-0.5 shadow-lg shadow-accentViolet/30 flex items-center justify-center shrink-0">
             <div className="w-full h-full bg-cardDark rounded-[14px] flex items-center justify-center">
-              <Layers className="w-5 h-5 text-accentViolet" />
+              <Layers className="w-5 h-5 text-accentViolet" style={{ color: 'rgb(var(--color-accentViolet))' }} />
             </div>
           </div>
           <div>
