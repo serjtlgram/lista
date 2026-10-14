@@ -19,8 +19,6 @@ import {
   Youtube,
   ExternalLink,
   Maximize2,
-  Minimize2,
-  ChevronLeft,
   User,
   Users,
   Video,
@@ -1396,65 +1394,33 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   )}
                   <div
                     ref={videoContainerRef}
+                    style={
+                      isFullscreenVideo
+                        ? {
+                            paddingTop: 'max(56px, env(safe-area-inset-top, 56px))',
+                            paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
+                            paddingLeft: 'env(safe-area-inset-left, 0px)',
+                            paddingRight: 'env(safe-area-inset-right, 0px)',
+                          }
+                        : undefined
+                    }
                     className={
                       isFullscreenVideo
                         ? 'fixed inset-0 z-[999999] bg-black flex flex-col items-center justify-center w-screen h-screen'
                         : 'relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group'
                     }
                   >
-                    {/* Floating controls in fullscreen mode */}
-                    {isFullscreenVideo && (
-                      <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-center justify-between z-50 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExitFullscreen();
-                          }}
-                          className="pointer-events-auto px-3.5 py-2 rounded-2xl bg-black/75 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition active:scale-95 shadow-2xl flex items-center gap-1.5 cursor-pointer"
-                          title={language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}
-                        >
-                          <ChevronLeft className="w-4 h-4 text-accentTeal" />
-                          <span className="text-xs font-semibold">{language === 'en' ? 'Back' : language === 'es' ? 'Volver' : 'Назад'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExitFullscreen();
-                          }}
-                          className="pointer-events-auto px-3.5 py-2 rounded-2xl bg-black/75 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition active:scale-95 shadow-2xl flex items-center gap-1.5 cursor-pointer"
-                          title={language === 'en' ? 'Collapse' : language === 'es' ? 'Minimizar' : language === 'uk' ? 'Згорнути' : 'Свернуть'}
-                        >
-                          <Minimize2 className="w-4 h-4 text-accentTeal" />
-                          <span className="text-xs font-semibold">{language === 'en' ? 'Collapse' : language === 'es' ? 'Minimizar' : language === 'uk' ? 'Згорнути' : 'Свернуть'}</span>
-                        </button>
-                      </div>
-                    )}
-
                     <iframe
                       src={getYouTubeEmbedUrl(item.youtube_url)!}
                       title={item.title}
-                      className="w-full h-full border-0 shadow-2xl"
+                      className={
+                        isFullscreenVideo
+                          ? 'w-full h-full max-w-full max-h-full aspect-video border-0 shadow-2xl my-auto'
+                          : 'w-full h-full border-0 shadow-2xl'
+                      }
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                       allowFullScreen
                     />
-
-                    {/* Fullscreen toggle button on the card video */}
-                    {!isFullscreenVideo && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEnterFullscreen();
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition active:scale-[0.97] z-10"
-                        title={t.details.fullscreen || 'На весь экран'}
-                      >
-                        <Maximize2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </>
               ) : (
