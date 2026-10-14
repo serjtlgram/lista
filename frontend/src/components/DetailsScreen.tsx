@@ -224,7 +224,6 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(item.note || '');
   const [isFullscreenPoster, setIsFullscreenPoster] = useState(false);
-  const [isFullscreenVideo, setIsFullscreenVideo] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -337,107 +336,68 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     window.scrollTo(0, 0);
   }, [item.id]);
 
-  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleEnterFullscreen = () => {
-    setIsFullscreenVideo(true);
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      try {
-        if (typeof tg.requestFullscreen === 'function') {
-          tg.requestFullscreen();
-        }
-      } catch {}
-      try {
-        tg.BackButton?.hide?.();
-      } catch {}
-    }
-    try {
-      const el = videoContainerRef.current;
-      if (el) {
-        if (el.requestFullscreen) {
-          el.requestFullscreen().catch(() => {});
-        } else if ((el as any).webkitRequestFullscreen) {
-          (el as any).webkitRequestFullscreen();
-        }
+    const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    if (isFs) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
       }
-    } catch {}
+      return;
+    }
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const requestFs =
+      iframe.requestFullscreen ||
+      (iframe as any).webkitRequestFullscreen ||
+      (iframe as any).mozRequestFullScreen ||
+      (iframe as any).msRequestFullscreen;
+
+    if (requestFs) {
+      try {
+        const p = requestFs.call(iframe);
+        if (p && typeof p.catch === 'function') {
+          p.catch((err: any) => {
+            console.warn('iframe.requestFullscreen error:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('iframe.requestFullscreen failed:', err);
+      }
+    }
   };
 
-  const handleExitFullscreen = () => {
-    setIsFullscreenVideo(false);
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      try {
-        if (typeof tg.exitFullscreen === 'function') {
-          tg.exitFullscreen();
-        }
-      } catch {}
-      try {
-        tg.BackButton?.show?.();
-      } catch {}
-    }
-    try {
-      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-        if (document.exitFullscreen) {
-          document.exitFullscreen().catch(() => {});
-        } else if ((document as any).webkitExitFullscreen) {
-          (document as any).webkitExitFullscreen();
-        }
-      }
-    } catch {}
-  };
-
-  // Sync fullscreen state with native browser/YouTube player fullscreen changes (e.g. screen 2 button or Esc)
+  // Hide Telegram BackButton during native fullscreen so no Telegram controls overlap the video,
+  // and restore it when exiting fullscreen back to the details card.
   useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
     const handleFullscreenChange = () => {
-      const isNativeFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      if (!isNativeFs && isFullscreenVideo) {
-        setIsFullscreenVideo(false);
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreenVideo) {
-        handleExitFullscreen();
+      const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      if (tg?.BackButton) {
+        if (isFs) {
+          try {
+            tg.BackButton.hide();
+          } catch {}
+        } else {
+          try {
+            tg.BackButton.show();
+          } catch {}
+        }
       }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreenVideo]);
-
-  // Lock body scroll while fullscreen video overlay is active
-  useEffect(() => {
-    if (isFullscreenVideo) {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prevOverflow;
-      };
-    }
-  }, [isFullscreenVideo]);
-
-  // In fullscreen video mode, hide Telegram BackButton so no Telegram buttons are visible.
-  // Restore BackButton when returning to details screen.
-  useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg?.BackButton) return;
-
-    if (isFullscreenVideo) {
-      tg.BackButton.hide();
-      return () => {
-        tg.BackButton.show();
-      };
-    }
-  }, [isFullscreenVideo]);
+  }, []);
 
   // Automatic YouTube search fallback on details view if youtube_url is missing
   useEffect(() => {
@@ -785,10 +745,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
   );
 
   return (
-    <div
-      style={isFullscreenVideo ? { transform: 'none' } : undefined}
-      className={`space-y-4 pb-6 ${isFullscreenVideo ? '' : 'animate-slide-up'}`}
-    >
+    <div className="space-y-4 pb-6 animate-slide-up">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         {/* Left Column: Poster, Title, Meta, Rating, Budget & Desktop Actions */}
         <div className="lg:col-span-5 xl:col-span-4 space-y-4">
@@ -1407,27 +1364,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </div>
 
               {getYouTubeEmbedUrl(item.youtube_url) ? (
-                <>
-                  {isFullscreenVideo && (
-                    <div className="w-full aspect-video rounded-2xl bg-black/40 border border-cardBorder/40 animate-pulse" />
-                  )}
-                  <div
-                    ref={videoContainerRef}
-                    className={
-                      isFullscreenVideo
-                        ? 'fixed inset-0 z-[999999] bg-black w-screen h-screen m-0 p-0 overflow-hidden'
-                        : 'relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group'
-                    }
-                  >
-                    <iframe
-                      src={getYouTubeEmbedUrl(item.youtube_url)!}
-                      title={item.title}
-                      className="w-full h-full border-0 block"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
-                    />
-                  </div>
-                </>
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group">
+                  <iframe
+                    ref={iframeRef}
+                    src={getYouTubeEmbedUrl(item.youtube_url)!}
+                    title={item.title}
+                    className="w-full h-full border-0 block"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                    allowFullScreen
+                  />
+                </div>
               ) : (
                 <a
                   href={item.youtube_url}

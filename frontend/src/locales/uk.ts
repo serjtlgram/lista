@@ -248,7 +248,7 @@ export const uk: Translations = {
     cast: 'Актори',
     show_more: 'Ще...',
     show_less: 'Приховати',
-    watch_on_youtube: 'Дивитися на YouTube',
+    watch_on_youtube: 'Дивитися трейлер',
     ai_assistant: 'ІІ Помічник',
     open_in_youtube: 'Відкрити в YouTube',
     public_rating: 'Рейтинг',

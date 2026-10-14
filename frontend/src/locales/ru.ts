@@ -248,7 +248,7 @@ export const ru: Translations = {
     cast: 'Актёры',
     show_more: 'Ещё...',
     show_less: 'Скрыть',
-    watch_on_youtube: 'Смотреть на YouTube',
+    watch_on_youtube: 'Смотреть трейлер',
     ai_assistant: 'ИИ Помощник',
     open_in_youtube: 'Открыть в YouTube',
     public_rating: 'Рейтинг',

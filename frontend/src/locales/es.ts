@@ -248,7 +248,7 @@ export const es: Translations = {
     cast: 'Reparto',
     show_more: 'Más...',
     show_less: 'Menos',
-    watch_on_youtube: 'Ver en YouTube',
+    watch_on_youtube: 'Ver tráiler',
     ai_assistant: 'Asistente IA',
     open_in_youtube: 'Abrir en YouTube',
     public_rating: 'Valoración',
