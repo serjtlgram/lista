@@ -341,6 +341,17 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleEnterFullscreen = () => {
     setIsFullscreenVideo(true);
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      try {
+        if (typeof tg.requestFullscreen === 'function') {
+          tg.requestFullscreen();
+        }
+      } catch {}
+      try {
+        tg.BackButton?.hide?.();
+      } catch {}
+    }
     try {
       const el = videoContainerRef.current;
       if (el) {
@@ -355,6 +366,17 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
 
   const handleExitFullscreen = () => {
     setIsFullscreenVideo(false);
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      try {
+        if (typeof tg.exitFullscreen === 'function') {
+          tg.exitFullscreen();
+        }
+      } catch {}
+      try {
+        tg.BackButton?.show?.();
+      } catch {}
+    }
     try {
       if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
         if (document.exitFullscreen) {
@@ -403,19 +425,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   }, [isFullscreenVideo]);
 
-  // Handle Telegram WebApp native BackButton when fullscreen video is active
+  // In fullscreen video mode, hide Telegram BackButton so no Telegram buttons are visible.
+  // Restore BackButton when returning to details screen.
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg?.BackButton) return;
 
     if (isFullscreenVideo) {
-      const handleBack = () => {
-        handleExitFullscreen();
-      };
-      tg.BackButton.onClick(handleBack);
-      tg.BackButton.show();
+      tg.BackButton.hide();
       return () => {
-        tg.BackButton.offClick(handleBack);
+        tg.BackButton.show();
       };
     }
   }, [isFullscreenVideo]);
@@ -1394,30 +1413,16 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                   )}
                   <div
                     ref={videoContainerRef}
-                    style={
-                      isFullscreenVideo
-                        ? {
-                            paddingTop: 'max(56px, env(safe-area-inset-top, 56px))',
-                            paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
-                            paddingLeft: 'env(safe-area-inset-left, 0px)',
-                            paddingRight: 'env(safe-area-inset-right, 0px)',
-                          }
-                        : undefined
-                    }
                     className={
                       isFullscreenVideo
-                        ? 'fixed inset-0 z-[999999] bg-black flex flex-col items-center justify-center w-screen h-screen'
+                        ? 'fixed inset-0 z-[999999] bg-black w-screen h-screen m-0 p-0 overflow-hidden'
                         : 'relative w-full aspect-video rounded-2xl overflow-hidden border border-cardBorder shadow-md bg-black group'
                     }
                   >
                     <iframe
                       src={getYouTubeEmbedUrl(item.youtube_url)!}
                       title={item.title}
-                      className={
-                        isFullscreenVideo
-                          ? 'w-full h-full max-w-full max-h-full aspect-video border-0 shadow-2xl my-auto'
-                          : 'w-full h-full border-0 shadow-2xl'
-                      }
+                      className="w-full h-full border-0 block"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                       allowFullScreen
                     />
