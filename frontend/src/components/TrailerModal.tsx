@@ -1,12 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Youtube, ExternalLink } from 'lucide-react';
+import { X, Youtube, ExternalLink, Loader2 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface TrailerModalProps {
   isOpen: boolean;
   onClose: () => void;
   youtubeUrl?: string;
   title: string;
+  category?: string;
+  releaseYear?: string;
+  director?: string;
+  onUpdateYoutubeUrl?: (url: string) => void;
 }
 
 export const getYouTubeEmbedUrl = (url?: string, autoplay = true): string | null => {
@@ -45,7 +50,18 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
   onClose,
   youtubeUrl,
   title,
+  category,
+  releaseYear,
+  director,
+  onUpdateYoutubeUrl,
 }) => {
+  const [activeUrl, setActiveUrl] = useState<string | undefined>(youtubeUrl);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    setActiveUrl(youtubeUrl);
+  }, [youtubeUrl]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,11 +71,38 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!activeUrl && title && !isSearching) {
+      setIsSearching(true);
+      api
+        .searchYouTube(title, category, releaseYear, director)
+        .then((foundUrl) => {
+          if (foundUrl) {
+            setActiveUrl(foundUrl);
+            onUpdateYoutubeUrl?.(foundUrl);
+          }
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
+    }
+  }, [isOpen, activeUrl, title, category, releaseYear, director, onUpdateYoutubeUrl]);
+
   if (!isOpen) return null;
 
-  const embedUrl = getYouTubeEmbedUrl(youtubeUrl, true);
+  const currentUrl = activeUrl || youtubeUrl;
+  const embedUrl = getYouTubeEmbedUrl(currentUrl, true);
+  const catLower = (category || '').toLowerCase();
+  const isGame = catLower.includes('game') || catLower.includes('игр');
+  const isBook = catLower.includes('book') || catLower.includes('книг');
+  const searchFallbackTerm = isGame
+    ? `${title} трейлер игры`
+    : isBook
+    ? `${title} буктрейлер`
+    : `${title} трейлер`;
   const searchFallbackUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-    `${title} трейлер`
+    searchFallbackTerm
   )}`;
 
   return createPortal(
@@ -84,9 +127,9 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {youtubeUrl ? (
+            {currentUrl ? (
               <a
-                href={youtubeUrl}
+                href={currentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cardBorder/40 hover:bg-cardBorder/80 text-gray-300 hover:text-white text-xs font-semibold transition active:scale-95"
@@ -126,6 +169,16 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
               allowFullScreen
             />
+          ) : isSearching ? (
+            <div className="flex flex-col items-center justify-center text-center p-6 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-red-600/15 text-red-500 flex items-center justify-center animate-pulse">
+                <Youtube className="w-8 h-8" />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                <div className="w-4 h-4 rounded-full border-2 border-accentViolet border-t-transparent animate-spin" />
+                <span>Поиск официального трейлера...</span>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center p-6 space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-red-600/15 text-red-500 flex items-center justify-center">

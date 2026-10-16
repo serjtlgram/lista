@@ -449,8 +449,9 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
       catLower.includes('фильм') ||
       catLower.includes('сериал');
     const isBook = catLower.includes('book') || catLower.includes('книг');
+    const isGame = catLower.includes('game') || catLower.includes('игр');
 
-    if ((isMovieOrShow || isBook) && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
+    if ((isMovieOrShow || isBook || isGame) && !item.youtube_url && !isSearchingYoutube && onUpdateItem) {
       setIsSearchingYoutube(true);
       const queryTitle = item.author ? `${item.title} ${item.author}` : item.title;
       api
@@ -473,13 +474,15 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     const catLower = (item.category || '').toLowerCase().trim();
     const isBook = ['book', 'books', 'книги', 'книга'].includes(catLower);
     const isMovieOrShow = ['movie', 'movies', 'show', 'shows', 'series', 'фильм', 'фильмы', 'сериал', 'сериалы'].includes(catLower);
+    const isGame = ['game', 'games', 'игра', 'игры'].includes(catLower);
 
     const isMissingData =
       !item.public_rating ||
       !item.description ||
       !item.country ||
       (isMovieOrShow && (!item.director || !item.cast || !item.duration || !item.genre)) ||
-      (isBook && (!item.author || !item.isbn || !item.duration || !item.genre));
+      (isBook && (!item.author || !item.isbn || !item.duration || !item.genre)) ||
+      (isGame && (!item.release_year || !item.genre || !item.description || !item.youtube_url));
 
     const itemKey = item.id || item.title;
     if (isMissingData && onUpdateItem && itemKey && !enrichedItemIds.current.has(itemKey)) {
@@ -1367,8 +1370,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             );
           })()}
 
-          {/* Watch on YouTube Block (shown ONLY if youtube_url is present) */}
-          {item.youtube_url && item.youtube_url.trim() && (
+          {/* Watch on YouTube Block (shown if youtube_url is present, or loading skeleton while searching) */}
+          {item.youtube_url && item.youtube_url.trim() ? (
             <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1429,7 +1432,22 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
                 </a>
               )}
             </div>
-          )}
+          ) : isSearchingYoutube ? (
+            <div className="glass-card p-4 rounded-3xl space-y-3 shadow-sm animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center">
+                  <Youtube className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {t.details.watch_on_youtube}
+                </span>
+              </div>
+              <div className="w-full aspect-video rounded-2xl border border-cardBorder bg-black/40 flex flex-col items-center justify-center gap-2 text-gray-400">
+                <div className="w-8 h-8 rounded-full border-2 border-accentViolet border-t-transparent animate-spin" />
+                <span className="text-xs">{t.details.searching_status || 'Ищем...'}</span>
+              </div>
+            </div>
+          ) : null}
 
           {/* Inline Notes Section */}
           <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">

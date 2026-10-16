@@ -971,6 +971,15 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
         onClose={() => setTrailerModalItem(null)}
         youtubeUrl={trailerModalItem?.youtube_url}
         title={trailerModalItem?.title || ''}
+        category={trailerModalItem?.category}
+        releaseYear={trailerModalItem?.release_year}
+        director={trailerModalItem?.director}
+        onUpdateYoutubeUrl={(url) => {
+          if (trailerModalItem && onUpdateItem) {
+            onUpdateItem(trailerModalItem.id, { youtube_url: url });
+            setTrailerModalItem({ ...trailerModalItem, youtube_url: url });
+          }
+        }}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,7 +31,35 @@ var (
 	playlistRendererRegex = regexp.MustCompile(`"playlistRenderer":\{"playlistId":"([a-zA-Z0-9_-]{18,34})".*?"title":\{"simpleText":"([^"]+)"`)
 	fallbackVideoIDRegex  = regexp.MustCompile(`"videoId":"([a-zA-Z0-9_-]{11})"`)
 	yearRegex             = regexp.MustCompile(`\b(19\d\d|20\d\d)\b`)
+	numeralRegex          = regexp.MustCompile(`(?i)\b(1|2|3|4|5|6|7|8|9|10|i|ii|iii|iv|v|vi|vii|viii|ix|x)\b`)
 )
+
+func normalizeNumeral(token string) string {
+	switch strings.ToLower(token) {
+	case "1", "i":
+		return "1"
+	case "2", "ii":
+		return "2"
+	case "3", "iii":
+		return "3"
+	case "4", "iv":
+		return "4"
+	case "5", "v":
+		return "5"
+	case "6", "vi":
+		return "6"
+	case "7", "vii":
+		return "7"
+	case "8", "viii":
+		return "8"
+	case "9", "ix":
+		return "9"
+	case "10", "x":
+		return "10"
+	default:
+		return strings.ToLower(token)
+	}
+}
 
 func IsVideoEmbeddable(client *http.Client, targetURL string) bool {
 	if targetURL == "" {
@@ -60,6 +89,7 @@ func SearchYouTube(apiKey, title, category string, extra ...string) (string, err
 
 	catLower := strings.ToLower(strings.TrimSpace(category))
 	isBook := strings.Contains(catLower, "book") || strings.Contains(catLower, "книг")
+	isGame := strings.Contains(catLower, "game") || strings.Contains(catLower, "игр")
 
 	var year, director, origTitle string
 	for _, arg := range extra {
@@ -91,6 +121,32 @@ func SearchYouTube(apiKey, title, category string, extra ...string) (string, err
 			title+" обзор книги",
 			title+" буктрейлер",
 			title+" book trailer",
+		)
+	} else if isGame {
+		if origTitle != "" && origTitle != title && year != "" {
+			searchQueries = append(searchQueries, origTitle+" "+year+" official game trailer")
+			searchQueries = append(searchQueries, origTitle+" "+year+" gameplay trailer")
+		}
+		if year != "" {
+			searchQueries = append(searchQueries, title+" "+year+" official game trailer")
+			searchQueries = append(searchQueries, title+" "+year+" official trailer")
+			searchQueries = append(searchQueries, title+" "+year+" gameplay trailer")
+			searchQueries = append(searchQueries, title+" "+year+" трейлер игры")
+		}
+		if origTitle != "" && origTitle != title {
+			searchQueries = append(searchQueries, origTitle+" official game trailer")
+			searchQueries = append(searchQueries, origTitle+" official gameplay trailer")
+			searchQueries = append(searchQueries, origTitle+" launch trailer")
+			searchQueries = append(searchQueries, origTitle+" trailer")
+		}
+		searchQueries = append(searchQueries,
+			title+" official game trailer",
+			title+" official gameplay trailer",
+			title+" launch trailer",
+			title+" трейлер игры",
+			title+" gameplay trailer",
+			title+" official trailer",
+			title+" трейлер",
 		)
 	} else {
 		if year != "" && director != "" {
@@ -147,6 +203,8 @@ type candidateItem struct {
 func scoreCandidate(candTitle, targetTitle, targetCat, year, director, origTitle string) int {
 	score := 0
 	titleLower := strings.ToLower(candTitle)
+	catLower := strings.ToLower(strings.TrimSpace(targetCat))
+	isGame := strings.Contains(catLower, "game") || strings.Contains(catLower, "игр")
 
 	// Year matching / conflict check
 	if year != "" {
@@ -157,8 +215,18 @@ func scoreCandidate(candTitle, targetTitle, targetCat, year, director, origTitle
 			hasConflict := false
 			for _, cy := range candYears {
 				if cy != year {
-					hasConflict = true
-					break
+					if isGame {
+						yTarget, _ := strconv.Atoi(year)
+						yCand, _ := strconv.Atoi(cy)
+						diff := yTarget - yCand
+						if diff < -1 || diff > 1 {
+							hasConflict = true
+							break
+						}
+					} else {
+						hasConflict = true
+						break
+					}
 				}
 			}
 			if hasConflict {
@@ -167,7 +235,67 @@ func scoreCandidate(candTitle, targetTitle, targetCat, year, director, origTitle
 		}
 	}
 
-	// Director matching
+	// Sequel / number matching & conflict check (e.g. Witcher 3 vs Witcher 2, GTA 6 vs GTA 5)
+	targetNumerals := numeralRegex.FindAllString(targetTitle, -1)
+	if len(targetNumerals) > 0 {
+		candNumerals := numeralRegex.FindAllString(candTitle, -1)
+		matchedNumeral := false
+		for _, tn := range targetNumerals {
+			normT := normalizeNumeral(tn)
+			for _, cn := range candNumerals {
+				normC := normalizeNumeral(cn)
+				if normT == normC {
+					matchedNumeral = true
+					break
+				}
+			}
+		}
+		if matchedNumeral {
+			score += 35
+		} else if len(candNumerals) > 0 {
+			score -= 120 // Different sequel number
+		}
+	}
+
+	// Title & word matching
+	targetLower := strings.ToLower(targetTitle)
+	origLower := strings.ToLower(origTitle)
+	if strings.Contains(titleLower, targetLower) {
+		score += 40
+	} else if origTitle != "" && strings.Contains(titleLower, origLower) {
+		score += 40
+	} else {
+		words := strings.FieldsFunc(targetLower, func(r rune) bool {
+			return r == ' ' || r == ':' || r == '-' || r == '.' || r == ',' || r == '!' || r == '?' || r == '\'' || r == '"'
+		})
+		matchedWords := 0
+		totalSigWords := 0
+		stopwords := map[string]bool{"the": true, "a": true, "an": true, "of": true, "and": true, "in": true, "on": true, "at": true, "to": true, "for": true, "part": true, "и": true, "в": true, "на": true, "с": true, "по": true, "из": true, "о": true, "часть": true}
+		for _, w := range words {
+			if len([]rune(w)) >= 3 && !stopwords[w] {
+				totalSigWords++
+				if strings.Contains(titleLower, w) {
+					matchedWords++
+				}
+			}
+		}
+		if totalSigWords > 0 {
+			if matchedWords == totalSigWords {
+				score += 30
+			} else if matchedWords == 0 {
+				score -= 150 // Candidate does not even contain any name words!
+			}
+		}
+	}
+
+	// Original / alternative title matching
+	if origTitle != "" && len([]rune(origTitle)) >= 3 {
+		if strings.Contains(titleLower, origLower) {
+			score += 25
+		}
+	}
+
+	// Director / Developer matching
 	if director != "" {
 		dParts := strings.FieldsFunc(director, func(r rune) bool {
 			return r == ' ' || r == ',' || r == '.' || r == '-'
@@ -181,33 +309,96 @@ func scoreCandidate(candTitle, targetTitle, targetCat, year, director, origTitle
 		}
 	}
 
-	// Original / alternative title matching
-	if origTitle != "" && len([]rune(origTitle)) >= 3 {
-		if strings.Contains(titleLower, strings.ToLower(origTitle)) {
+	if isGame {
+		// Movie / TV Series Disqualification for games
+		movieSeriesDisqualifiers := []string{
+			"фильм целиком", "полный фильм", "full movie", "фильм", "фильма", "фильме",
+			"movie", "film", "cinema", "кино", "в кино", "кинотеатр",
+			"сериал", "сериала", "сериале", "series", "tv series", "season", "сезон",
+			"hbo", "netflix", "prime video", "amazon prime", "apple tv",
+			"дублированный трейлер фильма", "русский трейлер фильма", "трейлер фильма",
+		}
+		for _, disq := range movieSeriesDisqualifiers {
+			if strings.Contains(titleLower, disq) {
+				score -= 180
+			}
+		}
+
+		// Playthrough / Review / Spoilers / OST / Fan-made Disqualification
+		gameNegativeKeywords := []string{
+			"прохождение", "walkthrough", "let's play", "lets play", "летсплей", "полное прохождение",
+			"стрим", "stream", "longplay", "no commentary", "без комментариев",
+			"обзор", "review", "реакция", "reaction", "разбор", "стоит ли играть", "before you buy",
+			"пародия", "parody", "fan made", "concept trailer", "фанатский",
+			"soundtrack", "ost", "саундтрек", "музыка из игры",
+			"все боссы", "all bosses", "final boss", "ending", "концовка", "финал",
+			"speedrun", "спидран", "100%", "гайд", "guide", "how to", "как пройти",
+			"пасхалки", "секреты", "secrets", "easter eggs",
+			"mods", "моды", "modded", "compilation", "подборка", "shorts", "tiktok",
+		}
+		for _, neg := range gameNegativeKeywords {
+			if strings.Contains(titleLower, neg) {
+				score -= 80
+			}
+		}
+
+		// "gameplay" without trailer/тизер is usually a raw playthrough
+		if strings.Contains(titleLower, "gameplay") || strings.Contains(titleLower, "геймплей") {
+			if !strings.Contains(titleLower, "trailer") && !strings.Contains(titleLower, "трейлер") && !strings.Contains(titleLower, "тизер") && !strings.Contains(titleLower, "teaser") {
+				score -= 60
+			}
+		}
+
+		// Game trailer bonus keywords
+		if strings.Contains(titleLower, "official game trailer") || strings.Contains(titleLower, "официальный трейлер игры") {
+			score += 50
+		} else if strings.Contains(titleLower, "game trailer") || strings.Contains(titleLower, "трейлер игры") {
+			score += 40
+		}
+		if strings.Contains(titleLower, "gameplay trailer") || strings.Contains(titleLower, "геймплейный трейлер") {
+			score += 45
+		}
+		if strings.Contains(titleLower, "launch trailer") || strings.Contains(titleLower, "релизный трейлер") {
+			score += 45
+		}
+		if strings.Contains(titleLower, "reveal trailer") || strings.Contains(titleLower, "announcement trailer") || strings.Contains(titleLower, "анонсирующий трейлер") {
+			score += 40
+		}
+		if strings.Contains(titleLower, "cinematic trailer") || strings.Contains(titleLower, "синематик") || strings.Contains(titleLower, "story trailer") || strings.Contains(titleLower, "сюжетный трейлер") {
+			score += 40
+		}
+		if strings.Contains(titleLower, "официальный") || strings.Contains(titleLower, "official") {
 			score += 25
 		}
-	}
+		if strings.Contains(titleLower, "трейлер") || strings.Contains(titleLower, "trailer") || strings.Contains(titleLower, "тизер") || strings.Contains(titleLower, "teaser") {
+			score += 20
+		}
 
-	// Target title match
-	if strings.Contains(titleLower, strings.ToLower(targetTitle)) {
-		score += 20
-	}
+		// Platform / Gaming channel bonus
+		platforms := []string{"playstation", "ps5", "ps4", "xbox", "nintendo", "steam", "pc", "ign", "gamespot"}
+		for _, plat := range platforms {
+			if strings.Contains(titleLower, plat) {
+				score += 15
+				break
+			}
+		}
+	} else {
+		// Trailer keywords bonus for movies/series
+		if strings.Contains(titleLower, "трейлер") || strings.Contains(titleLower, "trailer") || strings.Contains(titleLower, "тизер") || strings.Contains(titleLower, "teaser") {
+			score += 15
+		}
+		if strings.Contains(titleLower, "официальный") || strings.Contains(titleLower, "official") {
+			score += 10
+		}
 
-	// Trailer keywords bonus
-	if strings.Contains(titleLower, "трейлер") || strings.Contains(titleLower, "trailer") || strings.Contains(titleLower, "тизер") || strings.Contains(titleLower, "teaser") {
-		score += 15
-	}
-	if strings.Contains(titleLower, "официальный") || strings.Contains(titleLower, "official") {
-		score += 10
-	}
-
-	// Negative keywords (full movie, reaction, review, parody, gameplay, soundtrack)
-	negativeKeywords := []string{
-		"фильм целиком", "полный фильм", "full movie", "обзор", "реакция", "разбор", "пародия", "remake", "gameplay", "soundtrack", "ost",
-	}
-	for _, neg := range negativeKeywords {
-		if strings.Contains(titleLower, neg) {
-			score -= 40
+		// Negative keywords (full movie, reaction, review, parody, gameplay, soundtrack)
+		negativeKeywords := []string{
+			"фильм целиком", "полный фильм", "full movie", "обзор", "реакция", "разбор", "пародия", "remake", "gameplay", "soundtrack", "ost",
+		}
+		for _, neg := range negativeKeywords {
+			if strings.Contains(titleLower, neg) {
+				score -= 40
+			}
 		}
 	}
 
@@ -258,8 +449,8 @@ func searchViaOfficialAPI(client *http.Client, apiKey, query, targetTitle, targe
 	})
 
 	for _, cand := range candidates {
-		// If a year is specified, reject candidates with conflicting year (score < 0)
-		if year != "" && cand.score < 0 {
+		// Reject candidates with score <= 0 (penalties, conflicting sequels/years, or wrong category)
+		if cand.score <= 0 {
 			continue
 		}
 		candidateURL := "https://www.youtube.com/watch?v=" + cand.videoID
@@ -324,7 +515,7 @@ func searchViaWebParser(client *http.Client, query, targetTitle, targetCat, year
 		})
 
 		for _, cand := range candidates {
-			if year != "" && cand.score < 0 {
+			if cand.score <= 0 {
 				continue
 			}
 			candidateURL := "https://www.youtube.com/watch?v=" + cand.videoID
@@ -334,8 +525,9 @@ func searchViaWebParser(client *http.Client, query, targetTitle, targetCat, year
 		}
 	}
 
-	// Fallback raw videoId if no videoRenderer parsed and year is not specified
-	if year == "" {
+	// Fallback raw videoId if no videoRenderer parsed and year is not specified (only for non-games)
+	isGame := strings.Contains(strings.ToLower(targetCat), "game") || strings.Contains(strings.ToLower(targetCat), "игр")
+	if year == "" && !isGame {
 		if matches := fallbackVideoIDRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
 			candidateURL := "https://www.youtube.com/watch?v=" + matches[1]
 			if IsVideoEmbeddable(client, candidateURL) {

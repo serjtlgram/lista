@@ -116,7 +116,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
         <div className="space-y-1.5 max-w-xs">
           <h3 className="text-base font-bold text-white">Рекомендации и планы</h3>
           <p className="text-xs text-gray-400">
-            Добавьте фильмы со статусом «В планах», и они появятся в этом интерактивном баннере.
+            Добавьте элементы со статусом «В планах», и они появятся в этом интерактивном баннере.
           </p>
         </div>
         {onAddItemClick && (
@@ -125,7 +125,7 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
             className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-accentViolet to-accentTeal text-white text-xs font-bold shadow-lg hover:opacity-95 transition active:scale-95 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Добавить фильм</span>
+            <span>Добавить</span>
           </button>
         )}
       </div>
@@ -199,7 +199,13 @@ export const FeaturedHeroBanner: React.FC<FeaturedHeroBannerProps> = ({
           {isPlanned ? (
             <>
               <BookmarkCheck className="w-3.5 h-3.5 text-accentTeal group-hover/badge:scale-110 transition-transform" />
-              <span className="text-white font-semibold" style={{ color: '#FFFFFF' }}>В планах посмотреть</span>
+              <span className="text-white font-semibold" style={{ color: '#FFFFFF' }}>
+                {['game', 'games', 'игра', 'игры'].includes((currentItem.category || '').toLowerCase().trim())
+                  ? 'В планах сыграть'
+                  : ['book', 'books', 'книга', 'книги'].includes((currentItem.category || '').toLowerCase().trim())
+                  ? 'В планах прочитать'
+                  : 'В планах посмотреть'}
+              </span>
             </>
           ) : (
             <>

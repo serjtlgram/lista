@@ -718,13 +718,24 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	countryVal := mapCountryToFlag(strings.TrimSpace(req.Country))
 
 	ytURL := strings.TrimSpace(req.YoutubeURL)
-	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book") {
+	if ytURL == "" && h.DB != nil && h.DB.Pool != nil {
+		var dbYt string
+		_ = h.DB.Pool.QueryRow(r.Context(), `
+			SELECT youtube_url FROM items 
+			WHERE LOWER(TRIM(title)) = LOWER($1) AND (category = $2 OR category = $3) AND youtube_url != '' 
+			ORDER BY updated_at DESC LIMIT 1
+		`, titleTrimmed, cat, req.Category).Scan(&dbYt)
+		if dbYt != "" {
+			ytURL = dbYt
+		}
+	}
+	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book" || cat == "game") {
 		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat, releaseYearVal, directorVal); err == nil && foundURL != "" {
 			ytURL = foundURL
 		}
 	}
 
-	if (cat == "movie" || cat == "show") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "" || countryVal == "") {
+	if (cat == "movie" || cat == "show" || cat == "game") && (directorVal == "" || castVal == "" || durationVal == "" || genreVal == "" || releaseYearVal == "" || pubRatingVal == "" || countryVal == "") {
 		if h.DB != nil && h.DB.Pool != nil {
 			var dbDir, dbCast, dbDur, dbGenre, dbYear, dbPoster, dbDesc, dbRating, dbCountry string
 			queryStr := `
@@ -870,6 +881,12 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+		}
+	}
+
+	if ytURL == "" && (cat == "movie" || cat == "show" || cat == "book" || cat == "game") {
+		if foundURL, err := youtube.SearchYouTube(h.YoutubeAPIKey, req.Title, cat, releaseYearVal, directorVal); err == nil && foundURL != "" {
+			ytURL = foundURL
 		}
 	}
 
