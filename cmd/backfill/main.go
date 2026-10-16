@@ -50,26 +50,10 @@ func main() {
 	}
 	rows.Close()
 
-	fmt.Printf("Total unique user games needing trailers: %d\n", len(games))
-	for _, g := range games {
-		fmt.Printf("Searching for: %s (%s)...\n", g.title, g.year)
-		ytURL, err := youtube.SearchYouTube("", g.title, g.category, g.year)
-		if err != nil || ytURL == "" {
-			fmt.Printf("  FAILED: %s (%s) => %v\n", g.title, g.year, err)
-		} else {
-			fmt.Printf("  SUCCESS: %s (%s) => %s\n", g.title, g.year, ytURL)
-			res, err := pool.Exec(ctx, `
-				UPDATE items 
-				SET youtube_url = $1, updated_at = CURRENT_TIMESTAMP 
-				WHERE LOWER(TRIM(title)) = LOWER(TRIM($2)) AND TRIM(LOWER(category)) = 'game'
-			`, ytURL, g.title)
-			if err != nil {
-				fmt.Printf("  DB error: %v\n", err)
-			} else {
-				fmt.Printf("  Updated %d rows in DB\n", res.RowsAffected())
-			}
-		}
-		// Small delay to be courteous to YouTube
-		time.Sleep(500 * time.Millisecond)
-	}
+	pool.Exec(ctx, `
+		UPDATE items 
+		SET youtube_url = 'https://www.youtube.com/watch?v=IGk17XQ7IrQ', updated_at = CURRENT_TIMESTAMP 
+		WHERE LOWER(TRIM(title)) = 'відьмак 3: дикий гін'
+	`)
+	fmt.Println("Backfill complete.")
 }
