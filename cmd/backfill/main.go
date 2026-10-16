@@ -60,6 +60,9 @@ func main() {
 		var g gItem
 		if err := rows.Scan(&g.id, &g.title, &g.category, &g.year, &g.url); err == nil {
 			games = append(games, g)
+		} else {
+			fmt.Printf("Scan error: %v\n", err)
+			break
 		}
 	}
 	rows.Close()
