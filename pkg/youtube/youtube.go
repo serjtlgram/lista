@@ -123,31 +123,24 @@ func SearchYouTube(apiKey, title, category string, extra ...string) (string, err
 			title+" book trailer",
 		)
 	} else if isGame {
-		if origTitle != "" && origTitle != title && year != "" {
-			searchQueries = append(searchQueries, origTitle+" "+year+" official game trailer")
-			searchQueries = append(searchQueries, origTitle+" "+year+" gameplay trailer")
-		}
-		if year != "" {
-			searchQueries = append(searchQueries, title+" "+year+" official game trailer")
-			searchQueries = append(searchQueries, title+" "+year+" official trailer")
-			searchQueries = append(searchQueries, title+" "+year+" gameplay trailer")
-			searchQueries = append(searchQueries, title+" "+year+" трейлер игры")
-		}
-		if origTitle != "" && origTitle != title {
-			searchQueries = append(searchQueries, origTitle+" official game trailer")
-			searchQueries = append(searchQueries, origTitle+" official gameplay trailer")
-			searchQueries = append(searchQueries, origTitle+" launch trailer")
-			searchQueries = append(searchQueries, origTitle+" trailer")
-		}
 		searchQueries = append(searchQueries,
 			title+" official game trailer",
-			title+" official gameplay trailer",
+			title+" official trailer",
+			title+" gameplay trailer",
 			title+" launch trailer",
 			title+" трейлер игры",
-			title+" gameplay trailer",
-			title+" official trailer",
-			title+" трейлер",
 		)
+		if origTitle != "" && origTitle != title {
+			searchQueries = append(searchQueries,
+				origTitle+" official game trailer",
+				origTitle+" official trailer",
+			)
+		}
+		if year != "" {
+			searchQueries = append(searchQueries,
+				title+" "+year+" official game trailer",
+			)
+		}
 	} else {
 		if year != "" && director != "" {
 			searchQueries = append(searchQueries, title+" "+year+" "+director+" трейлер")
@@ -219,7 +212,7 @@ func scoreCandidate(candTitle, targetTitle, targetCat, year, director, origTitle
 						yTarget, _ := strconv.Atoi(year)
 						yCand, _ := strconv.Atoi(cy)
 						diff := yTarget - yCand
-						if diff < -1 || diff > 1 {
+						if diff < -4 || diff > 4 {
 							hasConflict = true
 							break
 						}

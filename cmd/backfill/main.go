@@ -50,5 +50,21 @@ func main() {
 	fmt.Printf("Total games: %d\n", len(games))
 	for _, g := range games {
 		fmt.Printf("[%d] %s (%s) => %s\n", g.id, g.title, g.year, g.url)
+		if g.url == "" {
+			ytURL, err := youtube.SearchYouTube("", g.title, "game", g.year)
+			if err != nil || ytURL == "" {
+				fmt.Printf("  FAILED: %s (%s) => %v\n", g.title, g.year, err)
+				continue
+			}
+			fmt.Printf("  SUCCESS: %s (%s) => %s\n", g.title, g.year, ytURL)
+			_, err = pool.Exec(ctx, `
+				UPDATE items 
+				SET youtube_url = $1, updated_at = CURRENT_TIMESTAMP 
+				WHERE id = $2
+			`, ytURL, g.id)
+			if err != nil {
+				fmt.Printf("  DB error: %v\n", err)
+			}
+		}
 	}
 }
