@@ -23,29 +23,23 @@ func main() {
 	defer pool.Close()
 
 	rows, err := pool.Query(ctx, `
-		SELECT id, title, COALESCE(release_year, ''), COALESCE(youtube_url, '') 
+		SELECT category, count(*) 
 		FROM items 
-		WHERE category = 'game'
-		ORDER BY id ASC
+		GROUP BY category
 	`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	type gItem struct {
-		id    int
-		title string
-		year  string
-		url   string
-	}
-	var games []gItem
 	for rows.Next() {
-		var g gItem
-		if err := rows.Scan(&g.id, &g.title, &g.year, &g.url); err == nil {
-			games = append(games, g)
+		var cat string
+		var count int
+		if err := rows.Scan(&cat, &count); err == nil {
+			fmt.Printf("Category: '%s' => %d items\n", cat, count)
 		}
 	}
 	rows.Close()
+	return
 
 	fmt.Printf("Total games: %d\n", len(games))
 	for _, g := range games {
