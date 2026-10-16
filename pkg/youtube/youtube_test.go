@@ -105,3 +105,9 @@ func TestLiveSearch_Game(t *testing.T) {
 	t.Logf("Found Subnautica trailer: %s", url)
 }
 
+func TestLiveSearch_RDR2(t *testing.T) {
+	url, err := SearchYouTube("", "Red Dead Redemption 2", "game", "2018")
+	t.Logf("RDR2 trailer: %s (err: %v)", url, err)
+}
+
+
