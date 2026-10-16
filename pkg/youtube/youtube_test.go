@@ -93,3 +93,15 @@ func TestScoreCandidate_Games(t *testing.T) {
 		})
 	}
 }
+
+func TestLiveSearch_Game(t *testing.T) {
+	url, err := SearchYouTube("", "Subnautica", "game", "2018")
+	if err != nil {
+		t.Fatalf("SearchYouTube returned error: %v", err)
+	}
+	if url == "" {
+		t.Fatalf("Expected trailer URL for Subnautica, got empty string")
+	}
+	t.Logf("Found Subnautica trailer: %s", url)
+}
+
