@@ -40,8 +40,9 @@ func main() {
 	rows, err = pool.Query(ctx, `
 		SELECT id, title, category, COALESCE(release_year, ''), COALESCE(youtube_url, '') 
 		FROM items 
-		WHERE LOWER(category) IN ('game', 'games', 'игра', 'игры')
+		WHERE TRIM(LOWER(category)) = 'game'
 		ORDER BY id ASC
+		LIMIT 20
 	`)
 	if err != nil {
 		log.Fatal(err)
