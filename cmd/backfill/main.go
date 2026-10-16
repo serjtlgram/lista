@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"lista-backend/pkg/youtube"
@@ -22,69 +23,53 @@ func main() {
 	}
 	defer pool.Close()
 
-	// 1. Check all categories in items table
-	rows, err := pool.Query(ctx, `SELECT category, count(*) FROM items GROUP BY category ORDER BY count(*) DESC`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for rows.Next() {
-		var cat string
-		var count int
-		if err := rows.Scan(&cat, &count); err == nil {
-			fmt.Printf("Category: '%s' => %d items\n", cat, count)
-		}
-	}
-	rows.Close()
-
-	// 2. Query all game items
-	rows, err = pool.Query(ctx, `
-		SELECT id, title, category, COALESCE(release_year, ''), COALESCE(youtube_url, '') 
+	// Query distinct user games that lack youtube_url
+	rows, err := pool.Query(ctx, `
+		SELECT DISTINCT title, category, COALESCE(release_year, '')
 		FROM items 
-		WHERE TRIM(LOWER(category)) = 'game'
-		ORDER BY id ASC
-		LIMIT 20
+		WHERE TRIM(LOWER(category)) = 'game' AND user_id > 0 AND (youtube_url IS NULL OR length(youtube_url) = 0)
+		ORDER BY title ASC
 	`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	type gItem struct {
-		id       int
 		title    string
 		category string
 		year     string
-		url      string
 	}
 	var games []gItem
 	for rows.Next() {
 		var g gItem
-		if err := rows.Scan(&g.id, &g.title, &g.category, &g.year, &g.url); err == nil {
-			games = append(games, g)
-		} else {
+		if err := rows.Scan(&g.title, &g.category, &g.year); err != nil {
 			fmt.Printf("Scan error: %v\n", err)
 			break
 		}
+		games = append(games, g)
 	}
 	rows.Close()
 
-	fmt.Printf("\nTotal game items found: %d\n", len(games))
+	fmt.Printf("Total unique user games needing trailers: %d\n", len(games))
 	for _, g := range games {
-		fmt.Printf("[%d] %s (%s, cat: %s) => %s\n", g.id, g.title, g.year, g.category, g.url)
-		if g.url == "" {
-			ytURL, err := youtube.SearchYouTube("", g.title, g.category, g.year)
-			if err != nil || ytURL == "" {
-				fmt.Printf("  FAILED: %s (%s) => %v\n", g.title, g.year, err)
-				continue
-			}
+		fmt.Printf("Searching for: %s (%s)...\n", g.title, g.year)
+		ytURL, err := youtube.SearchYouTube("", g.title, g.category, g.year)
+		if err != nil || ytURL == "" {
+			fmt.Printf("  FAILED: %s (%s) => %v\n", g.title, g.year, err)
+		} else {
 			fmt.Printf("  SUCCESS: %s (%s) => %s\n", g.title, g.year, ytURL)
-			_, err = pool.Exec(ctx, `
+			res, err := pool.Exec(ctx, `
 				UPDATE items 
 				SET youtube_url = $1, updated_at = CURRENT_TIMESTAMP 
-				WHERE id = $2
-			`, ytURL, g.id)
+				WHERE LOWER(TRIM(title)) = LOWER(TRIM($2)) AND TRIM(LOWER(category)) = 'game'
+			`, ytURL, g.title)
 			if err != nil {
 				fmt.Printf("  DB error: %v\n", err)
+			} else {
+				fmt.Printf("  Updated %d rows in DB\n", res.RowsAffected())
 			}
 		}
+		// Small delay to be courteous to YouTube
+		time.Sleep(500 * time.Millisecond)
 	}
 }
