@@ -23,43 +23,32 @@ func main() {
 	defer pool.Close()
 
 	rows, err := pool.Query(ctx, `
-		SELECT DISTINCT title, release_year 
+		SELECT id, title, COALESCE(release_year, ''), COALESCE(youtube_url, '') 
 		FROM items 
-		WHERE user_id > 0 AND category = 'game' AND (youtube_url IS NULL OR length(youtube_url) = 0)
+		WHERE category = 'game'
+		ORDER BY id ASC
 	`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	type gItem struct {
+		id    int
 		title string
 		year  string
+		url   string
 	}
 	var games []gItem
 	for rows.Next() {
 		var g gItem
-		if err := rows.Scan(&g.title, &g.year); err == nil {
+		if err := rows.Scan(&g.id, &g.title, &g.year, &g.url); err == nil {
 			games = append(games, g)
 		}
 	}
 	rows.Close()
 
-	fmt.Printf("Found %d user games without trailer to backfill\n", len(games))
-
+	fmt.Printf("Total games: %d\n", len(games))
 	for _, g := range games {
-		ytURL, err := youtube.SearchYouTube("", g.title, "game", g.year)
-		if err != nil || ytURL == "" {
-			fmt.Printf("FAILED: %s (%s) => %v\n", g.title, g.year, err)
-			continue
-		}
-		fmt.Printf("SUCCESS: %s (%s) => %s\n", g.title, g.year, ytURL)
-		_, err = pool.Exec(ctx, `
-			UPDATE items 
-			SET youtube_url = $1, updated_at = CURRENT_TIMESTAMP 
-			WHERE LOWER(TRIM(title)) = LOWER(TRIM($2)) AND category = 'game' AND (youtube_url IS NULL OR length(youtube_url) = 0)
-		`, ytURL, g.title)
-		if err != nil {
-			fmt.Printf("DB error updating %s: %v\n", g.title, err)
-		}
+		fmt.Printf("[%d] %s (%s) => %s\n", g.id, g.title, g.year, g.url)
 	}
 }
