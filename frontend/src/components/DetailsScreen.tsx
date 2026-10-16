@@ -787,6 +787,90 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     )
   );
 
+  const renderInListsBlock = () => (
+    <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
+      <div className="flex justify-between items-center">
+        <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
+          <BookMarked className="w-4 h-4 text-amber-400" />
+          <span>{t.lists?.in_lists || 'В списках'}</span>
+        </span>
+        <button
+          onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+          className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
+        >
+          + {t.lists?.add_items || 'Добавить'}
+        </button>
+      </div>
+
+      {assignedLists.length > 0 ? (
+        <div className="flex flex-wrap gap-2 pt-0.5">
+          {assignedLists.map((list) => {
+            const isFav = list.id === FAVORITES_ID;
+            const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
+
+            return (
+              <button
+                key={list.id}
+                onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
+                className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
+                  isFav
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                    : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
+                }`}
+              >
+                {isFav ? (
+                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                ) : (
+                  <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
+                )}
+                <span>{listName}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-xs text-gray-500 font-normal italic pt-0.5">
+          <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderRatingBlock = () => (
+    <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
+        <div className={`text-xl font-extrabold ${isPlanned ? 'text-gray-500' : 'text-accentTeal'}`}>
+          {isPlanned ? '- / 10' : `${currentRating}/10`}
+        </div>
+      </div>
+
+      {/* 10 Interactive Stars */}
+      <div className="flex items-center justify-between pt-1">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
+          <button
+            key={starNum}
+            type="button"
+            onClick={(e) => {
+              (e.currentTarget as HTMLElement).blur();
+              handleSelectRating(starNum);
+            }}
+            className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-[0.97]"
+            title={`${starNum}/10`}
+          >
+            <Star
+              className={`w-5 h-5 transition-colors ${
+                !isPlanned && starNum <= currentRating
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'text-gray-600'
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 pb-6 animate-slide-up">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
@@ -1113,86 +1197,10 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
             </div>
           </div>
 
-          {/* In Lists Block */}
-          <div className="glass-card p-4 rounded-3xl space-y-2.5 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
-                <BookMarked className="w-4 h-4 text-amber-400" />
-                <span>{t.lists?.in_lists || 'В списках'}</span>
-              </span>
-              <button
-                onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-                className="text-xs font-bold text-accentViolet hover:underline ml-2 flex items-center gap-1 transition active:scale-95"
-              >
-                + {t.lists?.add_items || 'Добавить'}
-              </button>
-            </div>
-
-            {assignedLists.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-0.5">
-                {assignedLists.map((list) => {
-                  const isFav = list.id === FAVORITES_ID;
-                  const listName = isFav ? (t.lists?.favorites || 'Избранное') : list.name;
-
-                  return (
-                    <button
-                      key={list.id}
-                      onClick={() => handleProtectedAction(() => setIsListModalOpen(true))}
-                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition border active:scale-[0.97] ${
-                        isFav
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
-                          : 'bg-accentViolet/15 border-accentViolet/35 text-white hover:bg-accentViolet/25'
-                      }`}
-                    >
-                      {isFav ? (
-                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                      ) : (
-                        <BookMarked className="w-3.5 h-3.5 text-accentViolet shrink-0" />
-                      )}
-                      <span>{listName}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500 font-normal italic pt-0.5">
-                <span>{t.lists?.not_in_any_list || 'Не добавлен ни в один список'}</span>
-              </div>
-            )}
-          </div>
-
-          {/* 10-Star Interactive Rating Block */}
-          <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-400 font-semibold">{t.details.my_rating}</div>
-              <div className={`text-xl font-extrabold ${isPlanned ? 'text-gray-500' : 'text-accentTeal'}`}>
-                {isPlanned ? '- / 10' : `${currentRating}/10`}
-              </div>
-            </div>
-
-            {/* 10 Interactive Stars */}
-            <div className="flex items-center justify-between pt-1">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starNum) => (
-                <button
-                  key={starNum}
-                  type="button"
-                  onClick={(e) => {
-                    (e.currentTarget as HTMLElement).blur();
-                    handleSelectRating(starNum);
-                  }}
-                  className="p-0.5 focus:outline-none focus:ring-0 active:bg-transparent select-none transition-transform active:scale-[0.97]"
-                  title={`${starNum}/10`}
-                >
-                  <Star
-                    className={`w-5 h-5 transition-colors ${
-                      !isPlanned && starNum <= currentRating
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-gray-600'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
+          {/* In Lists Block & Rating Block (Desktop only: hidden on mobile) */}
+          <div className="hidden lg:block space-y-4">
+            {renderInListsBlock()}
+            {renderRatingBlock()}
           </div>
 
           {/* Budget */}
@@ -1448,6 +1456,12 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
               </div>
             </div>
           ) : null}
+
+          {/* In Lists Block & Rating Block (Mobile only: moved under trailer) */}
+          <div className="lg:hidden space-y-4">
+            {renderInListsBlock()}
+            {renderRatingBlock()}
+          </div>
 
           {/* Inline Notes Section */}
           <div className="glass-card p-4 rounded-3xl space-y-2 shadow-sm">
