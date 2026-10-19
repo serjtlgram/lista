@@ -39,6 +39,7 @@ import { isFavorite, toggleFavorite, getFavoriteIds } from '../services/favorite
 import { getLists, FAVORITES_ID, UserList } from '../services/lists';
 import { ListSelectionModal } from './ListSelectionModal';
 import { CountryFlag } from './CountryFlag';
+import { shareItem } from '../services/share';
 
 const getYouTubeEmbedUrl = (url?: string, autoplay = false): string | null => {
   if (!url) return null;
@@ -610,58 +611,8 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({
     }
   };
 
-  const handleShareTelegram = async () => {
-    const catLabel = formatCategorySingle(item.category);
-    const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
-    
-    let messageText = `📌 **${item.title} (${catLabel})**`;
-    if (!isPlanned) {
-      messageText += `\n⭐️ ${t.details.my_rating}: ${currentRating}/10`;
-    }
-    messageText += `\n\n${t.details.share_app_tagline}`;
-
-    const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(messageText)}`;
-
-    const tg = (window as any).Telegram?.WebApp;
-    let opened = false;
-
-    if (tg?.openTelegramLink) {
-      try {
-        tg.openTelegramLink(fullTelegramShare);
-        opened = true;
-      } catch (e) {
-        console.warn('openTelegramLink error:', e);
-      }
-    }
-
-    if (!opened && tg?.openLink) {
-      try {
-        tg.openLink(fullTelegramShare);
-        opened = true;
-      } catch (e) {
-        console.warn('openLink error:', e);
-      }
-    }
-
-    if (!opened) {
-      try {
-        window.open(fullTelegramShare, '_blank');
-        opened = true;
-      } catch (e) {
-        console.warn('window.open error:', e);
-      }
-    }
-
-    // Always copy full text + link to clipboard as a helpful fallback/extra feature on desktop
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        const copyContent = `${messageText}\n${shareUrl}`;
-        await navigator.clipboard.writeText(copyContent);
-        setToastMessage(t.details.link_copied || 'Ссылка скопирована!');
-      }
-    } catch (e) {
-      console.warn('Clipboard write error:', e);
-    }
+  const handleShareTelegram = () => {
+    shareItem({ ...item, rating: currentRating }, t, (msg) => setToastMessage(msg));
   };
 
   const handleCopyLink = async () => {

@@ -1,6 +1,7 @@
 import { Item } from '../types';
-import { Translations } from './i18n';
+import { Translations, getStoredLanguage } from './i18n';
 import { ru } from '../locales/ru';
+import { api } from './api';
 
 export const formatCategorySingle = (cat: string, t?: Translations): string => {
   const trans = t || ru;
@@ -19,9 +20,55 @@ export const shareItem = async (
   onCopiedToast?: (msg: string) => void
 ) => {
   const trans = t || ru;
+  const tg = (window as any).Telegram?.WebApp;
+
+  if (tg?.HapticFeedback) {
+    try {
+      tg.HapticFeedback.notificationOccurred('success');
+    } catch (e) {
+      console.warn('Haptic feedback error:', e);
+    }
+  }
+
+  // 1. Native Telegram shareMessage via savePreparedInlineMessage (Bot API 7.8+)
+  if (tg && typeof tg.shareMessage === 'function') {
+    try {
+      const prepared = await api.prepareShareItem(item.id, {
+        title: item.title,
+        category: item.category,
+        rating: item.rating,
+        poster_url: item.poster_url,
+        description: item.description,
+        release_year: item.release_year,
+        genre: item.genre,
+        lang: getStoredLanguage(),
+      });
+      if (prepared?.id) {
+        tg.shareMessage(prepared.id, (isSent: boolean) => {
+          if (isSent && onCopiedToast) {
+            onCopiedToast(trans.details.link_copied || 'Отправлено!');
+          }
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Telegram shareMessage error, falling back to switchInlineQuery:', e);
+    }
+  }
+
+  // 2. Telegram switchInlineQuery fallback (opens chat picker with @manytgbot id:...)
+  if (tg && typeof tg.switchInlineQuery === 'function') {
+    try {
+      tg.switchInlineQuery(`id:${item.id}`);
+      return;
+    } catch (e) {
+      console.warn('Telegram switchInlineQuery error:', e);
+    }
+  }
+
+  // 3. Fallback: browser / outside Telegram
   const catLabel = formatCategorySingle(item.category, trans);
   const shareUrl = `https://t.me/manytgbot?startapp=${item.id}`;
-  
   const isPlanned = item.status === 'planned' || item.status === 'в планах' || item.status === 'у планах' || item.status === 'отложено';
 
   let messageText = `📌 **${item.title} (${catLabel})**`;
@@ -32,17 +79,7 @@ export const shareItem = async (
 
   const fullTelegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(messageText)}`;
 
-  const tg = (window as any).Telegram?.WebApp;
-  if (tg?.HapticFeedback) {
-    try {
-      tg.HapticFeedback.notificationOccurred('success');
-    } catch (e) {
-      console.warn('Haptic feedback error:', e);
-    }
-  }
-
   let opened = false;
-
   if (tg?.openTelegramLink) {
     try {
       tg.openTelegramLink(fullTelegramShare);
@@ -70,7 +107,7 @@ export const shareItem = async (
     }
   }
 
-  // Always copy full text + link to clipboard
+  // Always copy full text + link to clipboard as fallback
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       const copyContent = `${messageText}\n${shareUrl}`;

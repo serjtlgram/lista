@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"lista-backend/pkg/auth"
 	"lista-backend/pkg/genres"
 	"lista-backend/pkg/models"
 	"lista-backend/pkg/parser"
@@ -1546,6 +1547,262 @@ func truncateString(s string, maxLen int) string {
 	return string(r[:maxLen]) + "..."
 }
 
+func getOpenAppButtonText(langCode string) string {
+	lang := strings.ToLower(strings.TrimSpace(langCode))
+	if strings.HasPrefix(lang, "uk") {
+		return "🚀 Відкрити в LISTA"
+	} else if strings.HasPrefix(lang, "es") {
+		return "🚀 Abrir en LISTA"
+	} else if strings.HasPrefix(lang, "en") {
+		return "🚀 Open in LISTA"
+	}
+	return "🚀 Открыть в LISTA"
+}
+
+func formatRatingLine(rating int, publicRating string, langCode string) string {
+	lang := strings.ToLower(strings.TrimSpace(langCode))
+	myRatingLabel := "Моя оценка"
+	ratingLabel := "Рейтинг"
+	if strings.HasPrefix(lang, "uk") {
+		myRatingLabel = "Моя оцінка"
+		ratingLabel = "Рейтинг"
+	} else if strings.HasPrefix(lang, "es") {
+		myRatingLabel = "Mi calificación"
+		ratingLabel = "Calificación"
+	} else if strings.HasPrefix(lang, "en") {
+		myRatingLabel = "My rating"
+		ratingLabel = "Rating"
+	}
+
+	if rating > 0 {
+		return fmt.Sprintf("\n⭐️ %s: %d/10", myRatingLabel, rating)
+	} else if publicRating != "" {
+		return fmt.Sprintf("\n⭐️ %s: %s", ratingLabel, html.EscapeString(publicRating))
+	}
+	return ""
+}
+
+type PrepareShareRequest struct {
+	ItemID      string `json:"item_id"`
+	Title       string `json:"title"`
+	Category    string `json:"category"`
+	Rating      int    `json:"rating"`
+	PosterURL   string `json:"poster_url"`
+	Description string `json:"description"`
+	ReleaseYear string `json:"release_year"`
+	Genre       string `json:"genre"`
+	Lang        string `json:"lang"`
+}
+
+type PrepareShareResponse struct {
+	ID             string `json:"id"`
+	ExpirationDate int64  `json:"expiration_date,omitempty"`
+}
+
+// POST /api/telegram/prepare-share
+func (h *Handler) PrepareShareItem(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.GetUserFromContext(r)
+	if !ok || user == nil || user.ID == 0 {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var req PrepareShareRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	itemID := strings.TrimSpace(req.ItemID)
+	if itemID == "" {
+		http.Error(w, `{"error":"item_id required"}`, http.StatusBadRequest)
+		return
+	}
+
+	title := req.Title
+	cat := req.Category
+	posterURL := req.PosterURL
+	desc := req.Description
+	year := req.ReleaseYear
+	genre := req.Genre
+	rating := req.Rating
+
+	if h.DB != nil && h.DB.Pool != nil {
+		var dbTitle, dbCat, dbPoster, dbDesc, dbYear, dbGenre string
+		var dbRating int
+		err := h.DB.Pool.QueryRow(r.Context(), `
+			SELECT title, category, COALESCE(poster_url, ''), COALESCE(description, ''), COALESCE(release_year, ''), COALESCE(genre, ''), rating
+			FROM items WHERE id = $1 LIMIT 1;
+		`, itemID).Scan(&dbTitle, &dbCat, &dbPoster, &dbDesc, &dbYear, &dbGenre, &dbRating)
+		if err == nil {
+			if title == "" {
+				title = dbTitle
+			}
+			if cat == "" {
+				cat = dbCat
+			}
+			if posterURL == "" {
+				posterURL = dbPoster
+			}
+			if desc == "" {
+				desc = dbDesc
+			}
+			if year == "" {
+				year = dbYear
+			}
+			if genre == "" {
+				genre = dbGenre
+			}
+			if rating == 0 && dbRating > 0 {
+				rating = dbRating
+			}
+		} else {
+			// Fallback to catalog table
+			_ = h.DB.Pool.QueryRow(r.Context(), `
+				SELECT title, category, COALESCE(poster_url, ''), COALESCE(description, ''), COALESCE(release_year, ''), COALESCE(genre, '')
+				FROM catalog WHERE id = $1 LIMIT 1;
+			`, itemID).Scan(&dbTitle, &dbCat, &dbPoster, &dbDesc, &dbYear, &dbGenre)
+			if dbTitle != "" {
+				if title == "" {
+					title = dbTitle
+				}
+				if cat == "" {
+					cat = dbCat
+				}
+				if posterURL == "" {
+					posterURL = dbPoster
+				}
+				if desc == "" {
+					desc = dbDesc
+				}
+				if year == "" {
+					year = dbYear
+				}
+				if genre == "" {
+					genre = dbGenre
+				}
+			}
+		}
+	}
+
+	langCode := req.Lang
+	if langCode == "" {
+		langCode = user.LanguageCode
+	}
+
+	catLabel := formatCategorySingle(cat)
+	catEmoji := getCategoryEmoji(cat)
+	appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=%s", itemID)
+	btnText := getOpenAppButtonText(langCode)
+
+	caption := fmt.Sprintf("📌 <b>%s (%s)</b>", html.EscapeString(title), catLabel)
+	var metaParts []string
+	if genre != "" {
+		metaParts = append(metaParts, html.EscapeString(genre))
+	}
+	if year != "" {
+		metaParts = append(metaParts, year)
+	}
+	if len(metaParts) > 0 {
+		caption += " • " + strings.Join(metaParts, " • ")
+	}
+	if ratingStr := formatRatingLine(rating, "", langCode); ratingStr != "" {
+		caption += ratingStr
+	}
+	if desc != "" {
+		caption += fmt.Sprintf("\n\n%s", html.EscapeString(truncateString(desc, 350)))
+	}
+	tagline := getWelcomeTagline(langCode)
+	caption += fmt.Sprintf("\n\n%s", tagline)
+
+	inlineKeyboard := [][]map[string]interface{}{
+		{
+			{
+				"text": btnText,
+				"url":  appURL,
+			},
+		},
+	}
+
+	var inlineResult map[string]interface{}
+	if posterURL != "" && strings.HasPrefix(posterURL, "http") {
+		inlineResult = map[string]interface{}{
+			"type":          "photo",
+			"id":            fmt.Sprintf("share_%s", itemID),
+			"photo_url":     posterURL,
+			"thumb_url":     posterURL,
+			"thumbnail_url": posterURL,
+			"title":         fmt.Sprintf("%s %s", catEmoji, title),
+			"description":   catLabel,
+			"caption":       caption,
+			"parse_mode":    "HTML",
+			"reply_markup": map[string]interface{}{
+				"inline_keyboard": inlineKeyboard,
+			},
+		}
+	} else {
+		inlineResult = map[string]interface{}{
+			"type":        "article",
+			"id":          fmt.Sprintf("share_%s", itemID),
+			"title":       fmt.Sprintf("%s %s", catEmoji, title),
+			"description": catLabel,
+			"input_message_content": map[string]interface{}{
+				"message_text":             fmt.Sprintf("%s\n\n%s", caption, appURL),
+				"parse_mode":               "HTML",
+				"disable_web_page_preview": false,
+			},
+			"reply_markup": map[string]interface{}{
+				"inline_keyboard": inlineKeyboard,
+			},
+		}
+	}
+
+	payload := map[string]interface{}{
+		"user_id":             user.ID,
+		"allow_user_chats":    true,
+		"allow_bot_chats":     true,
+		"allow_group_chats":   true,
+		"allow_channel_chats": true,
+		"result":              inlineResult,
+	}
+
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/savePreparedInlineMessage", h.BotToken)
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		http.Error(w, `{"error":"json encode error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(apiURL, "application/json", bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		log.Printf("[PrepareShare] Telegram API error: %v", err)
+		http.Error(w, `{"error":"telegram api failed"}`, http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	var tgResp struct {
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
+		Result      struct {
+			ID             string `json:"id"`
+			ExpirationDate int64  `json:"expiration_date"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tgResp); err != nil || !tgResp.OK {
+		log.Printf("[PrepareShare] Telegram API rejected: %v, desc: %s", err, tgResp.Description)
+		http.Error(w, fmt.Sprintf(`{"error":%q}`, tgResp.Description), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(PrepareShareResponse{
+		ID:             tgResp.Result.ID,
+		ExpirationDate: tgResp.Result.ExpirationDate,
+	})
+}
+
 func (h *Handler) handleInlineQuery(iq *struct {
 	ID       string `json:"id"`
 	From     struct {
@@ -1565,6 +1822,113 @@ func (h *Handler) handleInlineQuery(iq *struct {
 	query := strings.TrimSpace(iq.Query)
 	langCode := iq.From.LanguageCode
 
+	// Check if this is a direct ID query (e.g. from switchInlineQuery)
+	cleanID := strings.TrimPrefix(strings.TrimPrefix(query, "id:"), "item:")
+	cleanID = strings.TrimSpace(cleanID)
+	if _, err := uuid.Parse(cleanID); err == nil && h.DB != nil && h.DB.Pool != nil {
+		var item models.Item
+		err := h.DB.Pool.QueryRow(context.Background(), `
+			SELECT id, user_id, title, category, status, rating, genre, duration, release_year, poster_url, description, note, public_rating, director, author
+			FROM items WHERE id = $1 LIMIT 1;
+		`, cleanID).Scan(
+			&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
+			&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
+			&item.PublicRating, &item.Director, &item.Author,
+		)
+		if err != nil {
+			// Try catalog table
+			_ = h.DB.Pool.QueryRow(context.Background(), `
+				SELECT id::text, 0, title, category, 'planned', 0, genre, duration, release_year, poster_url, description, '', public_rating, director, author
+				FROM catalog WHERE id = $1 LIMIT 1;
+			`, cleanID).Scan(
+				&item.ID, &item.UserID, &item.Title, &item.Category, &item.Status, &item.Rating,
+				&item.Genre, &item.Duration, &item.ReleaseYear, &item.PosterURL, &item.Description, &item.Note,
+				&item.PublicRating, &item.Director, &item.Author,
+			)
+		}
+
+		if item.Title != "" {
+			catLabel := formatCategorySingle(item.Category)
+			catEmoji := getCategoryEmoji(item.Category)
+			appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=%s", item.ID)
+			btnText := getOpenAppButtonText(langCode)
+
+			caption := fmt.Sprintf("📌 <b>%s (%s)</b>", html.EscapeString(item.Title), catLabel)
+			var metaParts []string
+			if item.Genre != "" {
+				metaParts = append(metaParts, html.EscapeString(item.Genre))
+			}
+			if item.ReleaseYear != "" {
+				metaParts = append(metaParts, item.ReleaseYear)
+			}
+			if len(metaParts) > 0 {
+				caption += " • " + strings.Join(metaParts, " • ")
+			}
+			if ratingStr := formatRatingLine(item.Rating, item.PublicRating, langCode); ratingStr != "" {
+				caption += ratingStr
+			}
+			if item.Description != "" {
+				caption += fmt.Sprintf("\n\n%s", html.EscapeString(truncateString(item.Description, 350)))
+			}
+			tagline := getWelcomeTagline(langCode)
+			caption += fmt.Sprintf("\n\n%s", tagline)
+
+			inlineKeyboard := [][]map[string]interface{}{
+				{
+					{
+						"text": btnText,
+						"url":  appURL,
+					},
+				},
+			}
+
+			var singleResult map[string]interface{}
+			if item.PosterURL != "" && strings.HasPrefix(item.PosterURL, "http") {
+				singleResult = map[string]interface{}{
+					"type":          "photo",
+					"id":            fmt.Sprintf("item_%s", item.ID),
+					"photo_url":     item.PosterURL,
+					"thumb_url":     item.PosterURL,
+					"thumbnail_url": item.PosterURL,
+					"title":         fmt.Sprintf("%s %s", catEmoji, item.Title),
+					"description":   catLabel,
+					"caption":       caption,
+					"parse_mode":    "HTML",
+					"reply_markup": map[string]interface{}{
+						"inline_keyboard": inlineKeyboard,
+					},
+				}
+			} else {
+				singleResult = map[string]interface{}{
+					"type":        "article",
+					"id":          fmt.Sprintf("item_%s", item.ID),
+					"title":       fmt.Sprintf("%s %s", catEmoji, item.Title),
+					"description": catLabel,
+					"input_message_content": map[string]interface{}{
+						"message_text":             fmt.Sprintf("%s\n\n%s", caption, appURL),
+						"parse_mode":               "HTML",
+						"disable_web_page_preview": false,
+					},
+					"reply_markup": map[string]interface{}{
+						"inline_keyboard": inlineKeyboard,
+					},
+				}
+			}
+
+			placeholder := getInlinePlaceholderText(langCode)
+			payload := map[string]interface{}{
+				"inline_query_id":     iq.ID,
+				"results":             []interface{}{singleResult},
+				"cache_time":          60,
+				"is_personal":         true,
+				"switch_pm_text":      placeholder,
+				"switch_pm_parameter": "start",
+			}
+			_ = h.sendBotAPIRequestWithErr("answerInlineQuery", payload)
+			return
+		}
+	}
+
 	results := h.searchInlineResults(query, langCode)
 
 	var telegramResults []map[string]interface{}
@@ -1575,8 +1939,7 @@ func (h *Handler) handleInlineQuery(iq *struct {
 		titleLine := fmt.Sprintf("📌 <b>%s (%s)</b>", item.Title, catLabel)
 		appURL := fmt.Sprintf("https://t.me/manytgbot?startapp=%s", item.ID)
 		tagline := getWelcomeTagline(langCode)
-
-		msgText := fmt.Sprintf("%s\n\n%s\n%s", titleLine, tagline, appURL)
+		btnText := getOpenAppButtonText(langCode)
 
 		descLine := ""
 		if item.Genre != "" {
@@ -1591,35 +1954,53 @@ func (h *Handler) handleInlineQuery(iq *struct {
 			description += fmt.Sprintf("\n%s", truncateString(item.Description, 80))
 		}
 
-		article := map[string]interface{}{
-			"type":        "article",
-			"id":          fmt.Sprintf("item_%d", i),
-			"title":       fmt.Sprintf("%s %s", catEmoji, item.Title),
-			"description": description,
-			"input_message_content": map[string]interface{}{
-				"message_text":           msgText,
-				"parse_mode":             "HTML",
-				"disable_web_page_preview": false,
-			},
-			"reply_markup": map[string]interface{}{
-				"inline_keyboard": [][]map[string]interface{}{
-					{
-						{
-							"text": "🚀 Открыть в LISTA",
-							"url":  appURL,
-						},
-					},
+		inlineKeyboard := [][]map[string]interface{}{
+			{
+				{
+					"text": btnText,
+					"url":  appURL,
 				},
 			},
 		}
 
 		if item.PosterURL != "" && strings.HasPrefix(item.PosterURL, "http") {
-			article["thumb_url"] = item.PosterURL
-			article["thumb_width"] = 100
-			article["thumb_height"] = 150
+			caption := fmt.Sprintf("%s%s\n\n%s", titleLine, descLine, tagline)
+			if item.Description != "" {
+				caption = fmt.Sprintf("%s%s\n\n%s\n\n%s", titleLine, descLine, html.EscapeString(truncateString(item.Description, 250)), tagline)
+			}
+			photoResult := map[string]interface{}{
+				"type":          "photo",
+				"id":            fmt.Sprintf("item_%d", i),
+				"photo_url":     item.PosterURL,
+				"thumb_url":     item.PosterURL,
+				"thumbnail_url": item.PosterURL,
+				"title":         fmt.Sprintf("%s %s", catEmoji, item.Title),
+				"description":   description,
+				"caption":       caption,
+				"parse_mode":    "HTML",
+				"reply_markup": map[string]interface{}{
+					"inline_keyboard": inlineKeyboard,
+				},
+			}
+			telegramResults = append(telegramResults, photoResult)
+		} else {
+			msgText := fmt.Sprintf("%s\n\n%s\n%s", titleLine, tagline, appURL)
+			article := map[string]interface{}{
+				"type":        "article",
+				"id":          fmt.Sprintf("item_%d", i),
+				"title":       fmt.Sprintf("%s %s", catEmoji, item.Title),
+				"description": description,
+				"input_message_content": map[string]interface{}{
+					"message_text":             msgText,
+					"parse_mode":               "HTML",
+					"disable_web_page_preview": false,
+				},
+				"reply_markup": map[string]interface{}{
+					"inline_keyboard": inlineKeyboard,
+				},
+			}
+			telegramResults = append(telegramResults, article)
 		}
-
-		telegramResults = append(telegramResults, article)
 	}
 
 	placeholder := getInlinePlaceholderText(langCode)

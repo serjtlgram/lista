@@ -179,6 +179,21 @@ export const api = {
     }
   },
 
+  async prepareShareItem(itemId: string, itemData?: Partial<Item> & { lang?: string }): Promise<{ id: string; expiration_date?: number } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/api/telegram/prepare-share`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ item_id: itemId, ...itemData }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.warn('API prepareShareItem error:', e);
+      return null;
+    }
+  },
+
   async createSharedList(title: string, items: Item[]): Promise<string | null> {
     try {
       const res = await fetch(`${API_BASE}/api/public/shared_lists`, {

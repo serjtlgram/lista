@@ -122,6 +122,7 @@ func main() {
 		r.Get("/api/youtube/search", h.SearchYouTube)
 		r.Get("/api/lists/{id}/recommendations", h.GetListRecommendations)
 		r.Post("/api/lists/{id}/recommendations", h.GetListRecommendations)
+		r.Post("/api/telegram/prepare-share", h.PrepareShareItem)
 	})
 
 	server := &http.Server{
