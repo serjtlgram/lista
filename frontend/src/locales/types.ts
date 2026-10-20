@@ -8,6 +8,8 @@ export interface Translations {
   nav_stats: string;
   nav_lists: string;
   nav_profile: string;
+  sidebar_subtitle?: string;
+  my_collection?: string;
   categories: {
     movies: string;
     shows: string;
@@ -208,6 +210,7 @@ export interface Translations {
     search_actor_category_hint?: string;
     search_director_games_hint?: string;
     elements_count: string;
+    advanced_filters?: string;
     by_date: string;
     by_year: string;
     no_items_found: string;

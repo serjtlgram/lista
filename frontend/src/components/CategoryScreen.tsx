@@ -652,7 +652,7 @@ const CategoryScreenComponent: React.FC<CategoryScreenProps> = ({
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5 text-accentViolet" />
-          <span>Расширенные фильтры</span>
+          <span>{t.details.advanced_filters || 'Расширенные фильтры'}</span>
           <ChevronDown
             className={`w-3.5 h-3.5 transition-transform duration-200 ${
               showAdvancedFilters ? 'rotate-180' : ''

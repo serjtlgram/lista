@@ -8,6 +8,8 @@ export const uk: Translations = {
   nav_stats: 'Статистика',
   nav_lists: 'Списки',
   nav_profile: 'Профіль',
+  sidebar_subtitle: 'Медіатека',
+  my_collection: 'Моя колекція',
   categories: {
     movies: 'Фільми',
     shows: 'Серіали',
@@ -237,6 +239,7 @@ export const uk: Translations = {
     search_actor_category_hint: 'Виберіть категорію «Фільми» або «Серіали», щоб знайти, де грав актор',
     search_director_games_hint: 'Виберіть категорію «Фільми», «Серіали» або «Книги» для пошуку за режисером або автором',
     elements_count: 'елементів',
+    advanced_filters: 'Розширені фільтри',
     by_date: 'Дата',
     by_year: 'Рік',
     no_items_found: 'Нічого не знайдено в цій категорії',

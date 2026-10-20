@@ -8,6 +8,8 @@ export const ru: Translations = {
   nav_stats: 'Статистика',
   nav_lists: 'Списки',
   nav_profile: 'Профиль',
+  sidebar_subtitle: 'Медиатека',
+  my_collection: 'Моя коллекция',
   categories: {
     movies: 'Фильмы',
     shows: 'Сериалы',
@@ -237,6 +239,7 @@ export const ru: Translations = {
     search_actor_category_hint: 'Выберите категорию «Фильмы» или «Сериалы», чтобы найти, где играл актёр',
     search_director_games_hint: 'Выберите категорию «Фильмы», «Сериалы» или «Книги» для поиска по режиссёру или автору',
     elements_count: 'элементов',
+    advanced_filters: 'Расширенные фильтры',
     by_date: 'Дата',
     by_year: 'Год',
     no_items_found: 'Ничего не найдено в этой категории',

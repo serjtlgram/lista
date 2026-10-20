@@ -111,7 +111,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
                 PRO
               </span>
             </div>
-            <p className="text-[11px] text-gray-400 font-medium">Медиатека & трекер</p>
+            <p className="text-[11px] text-gray-400 font-medium">{t.sidebar_subtitle || 'Медиатека'}</p>
           </div>
         </div>
 
@@ -193,9 +193,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             <Layers className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-bold text-white tracking-wide">Моя коллекция</div>
+            <div className="text-xs font-bold text-white tracking-wide">{t.my_collection || 'Моя коллекция'}</div>
             <div className="text-[10px] text-gray-400 font-medium">
-              {itemsCount} {itemsCount === 1 ? 'элемент' : itemsCount < 5 ? 'элемента' : 'элементов'}
+              {itemsCount} {t.details?.elements_count || 'элементов'}
             </div>
           </div>
         </div>

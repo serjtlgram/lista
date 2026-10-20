@@ -8,6 +8,8 @@ export const es: Translations = {
   nav_stats: 'Estadísticas',
   nav_lists: 'Listas',
   nav_profile: 'Perfil',
+  sidebar_subtitle: 'Mediateca',
+  my_collection: 'Mi colección',
   categories: {
     movies: 'Películas',
     shows: 'Series',
@@ -237,6 +239,7 @@ export const es: Translations = {
     search_actor_category_hint: 'Seleccione la categoría "Películas" o "Series" para encontrar dónde actuó el actor',
     search_director_games_hint: 'Seleccione la categoría "Películas", "Series" o "Libros" para buscar por director o autor',
     elements_count: 'elementos',
+    advanced_filters: 'Filtros avanzados',
     by_date: 'Fecha',
     by_year: 'Año',
     no_items_found: 'No se encontró nada en esta categoría',
