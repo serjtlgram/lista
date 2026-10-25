@@ -45,6 +45,7 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS allows_write_to_pm BOOLEAN DEFAULT FALSE;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS visits_count INT DEFAULT 1;`)
+	_, _ = pool.Exec(ctx, `UPDATE users SET visits_count = 1 WHERE visits_count IS NULL;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS youtube_url TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS director TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_members TEXT DEFAULT '';`)

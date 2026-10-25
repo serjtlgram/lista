@@ -111,7 +111,7 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 			// Always send welcome message when user explicitly presses /start command
 			go h.sendWelcomeMessage(userID, langCode)
-		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stat") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/admin_users") || strings.HasPrefix(msgText, "/help") || strings.HasPrefix(msgText, "/commands")) {
+		} else if strings.HasPrefix(msgText, "/") && (strings.HasPrefix(msgText, "/stat") || strings.HasPrefix(msgText, "/users") || strings.HasPrefix(msgText, "/count") || strings.HasPrefix(msgText, "/list") || strings.HasPrefix(msgText, "/top") || strings.HasPrefix(msgText, "/activity") || strings.HasPrefix(msgText, "/admin_users") || strings.HasPrefix(msgText, "/help") || strings.HasPrefix(msgText, "/commands")) {
 			targetChatID := userID
 			if update.Message.Chat != nil && update.Message.Chat.ID != 0 {
 				targetChatID = update.Message.Chat.ID
@@ -1034,6 +1034,11 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		}
 		sb.WriteString("\n")
 
+		if act, err := h.getUserActivityStats(ctx); err == nil {
+			sb.WriteString(formatActivityBlock(act))
+			sb.WriteString("\n")
+		}
+
 		sb.WriteString(fmt.Sprintf("👤 <b>Элементы пользователей (всего %s):</b>\n", formatNumberSpace(totalUserItems)))
 		for _, catKey := range []string{"movie", "show", "book", "game"} {
 			cnt := userCats[catKey]
@@ -1076,7 +1081,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 
 		h.sendAdminBotMessage(chatID, sb.String())
 
-	case "/users", "/count", "/users_count":
+	case "/users", "/count", "/users_count", "/activity":
 		if h.DB == nil || h.DB.Pool == nil {
 			return
 		}
@@ -1087,11 +1092,17 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 			return
 		}
 
-		langStats := h.getUserLanguageStats(ctx, totalUsers)
-
 		var sb strings.Builder
 		sb.WriteString("📊 <b>Статистика пользователей</b>\n\n")
-		sb.WriteString(fmt.Sprintf("👥 Всего пользователей в приложении: <b>%d</b>\n", totalUsers))
+		sb.WriteString(fmt.Sprintf("👥 Всего пользователей: <b>%d</b>\n\n", totalUsers))
+
+		if act, err := h.getUserActivityStats(ctx); err == nil {
+			sb.WriteString(formatActivityBlock(act))
+			sb.WriteString("\n")
+		}
+
+		langStats := h.getUserLanguageStats(ctx, totalUsers)
+		sb.WriteString("🌐 <b>Языки интерфейса:</b>\n")
 		for _, ls := range langStats {
 			pctRounded := math.Round(ls.Percentage)
 			if pctRounded < 1 && ls.Percentage > 0 {
@@ -1102,6 +1113,77 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		}
 		h.sendAdminBotMessage(chatID, sb.String())
 
+	case "/top", "/top_users", "/active":
+		if h.DB == nil || h.DB.Pool == nil {
+			return
+		}
+		rows, err := h.DB.Pool.Query(ctx, `
+			SELECT 
+				u.id, u.username, u.first_name, u.last_name, 
+				COALESCE(u.language_code, ''), 
+				COALESCE(u.visits_count, 1) AS v_cnt, 
+				COUNT(i.id) AS items_cnt,
+				u.updated_at
+			FROM users u
+			LEFT JOIN items i ON i.user_id = u.id
+			WHERE u.id != 0
+			GROUP BY u.id, u.username, u.first_name, u.last_name, u.language_code, u.visits_count, u.updated_at
+			ORDER BY v_cnt DESC, items_cnt DESC
+			LIMIT 25;
+		`)
+		if err != nil {
+			log.Printf("[AdminCommand] Top error: %v", err)
+			return
+		}
+		defer rows.Close()
+
+		var sb strings.Builder
+		sb.WriteString("🏆 <b>Топ-25 активных пользователей:</b>\n\n")
+
+		idx := 1
+		for rows.Next() {
+			var id int64
+			var uname, fName, lName, langCode string
+			var visitsCount, itemsCount int
+			var updatedAt time.Time
+
+			if err := rows.Scan(&id, &uname, &fName, &lName, &langCode, &visitsCount, &itemsCount, &updatedAt); err != nil {
+				continue
+			}
+
+			uname = strings.TrimSpace(strings.TrimPrefix(uname, "@"))
+			var userDisplay string
+			if uname != "" {
+				userDisplay = "@" + html.EscapeString(uname)
+			} else {
+				fullName := strings.TrimSpace(fName + " " + lName)
+				if fullName == "" {
+					fullName = fmt.Sprintf("ID:%d", id)
+				}
+				userDisplay = html.EscapeString(fullName)
+			}
+
+			langFlag := ""
+			if langCode != "" {
+				_, label := formatLanguageLabel(langCode)
+				fields := strings.Fields(label)
+				if len(fields) > 0 {
+					langFlag = fields[0] + " "
+				}
+			}
+
+			timeAgo := formatLastSeen(updatedAt)
+			sb.WriteString(fmt.Sprintf("%d. %s%s — <b>%d</b> виз., <b>%d</b> зап. <i>(%s)</i>\n",
+				idx, langFlag, userDisplay, visitsCount, itemsCount, timeAgo))
+			idx++
+		}
+
+		if idx == 1 {
+			sb.WriteString("Нет данных о пользователях.")
+		}
+
+		h.sendAdminBotMessage(chatID, sb.String())
+
 	case "/users_list", "/list", "/userslist", "/admin_users":
 		if h.DB == nil || h.DB.Pool == nil {
 			return
@@ -1110,10 +1192,17 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
 
 		rows, err := h.DB.Pool.Query(ctx, `
-			SELECT id, username, first_name, last_name, COALESCE(language_code, ''), created_at, updated_at
-			FROM users
-			WHERE id != 0
-			ORDER BY created_at ASC;
+			SELECT 
+				u.id, u.username, u.first_name, u.last_name, 
+				COALESCE(u.language_code, ''), 
+				COALESCE(u.visits_count, 1), 
+				COUNT(i.id) AS items_cnt,
+				u.created_at, u.updated_at
+			FROM users u
+			LEFT JOIN items i ON i.user_id = u.id
+			WHERE u.id != 0
+			GROUP BY u.id, u.username, u.first_name, u.last_name, u.language_code, u.visits_count, u.created_at, u.updated_at
+			ORDER BY u.created_at ASC;
 		`)
 		if err != nil {
 			log.Printf("[AdminCommand] List error: %v", err)
@@ -1127,9 +1216,10 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		for rows.Next() {
 			var id int64
 			var uname, fName, lName, langCode string
+			var visitsCount, itemsCount int
 			var createdAt, updatedAt time.Time
 
-			if err := rows.Scan(&id, &uname, &fName, &lName, &langCode, &createdAt, &updatedAt); err != nil {
+			if err := rows.Scan(&id, &uname, &fName, &lName, &langCode, &visitsCount, &itemsCount, &createdAt, &updatedAt); err != nil {
 				continue
 			}
 
@@ -1157,7 +1247,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 			firstIn := fmt.Sprintf("%d.%d.%02d", createdAt.Day(), int(createdAt.Month()), createdAt.Year()%100)
 			lastIn := fmt.Sprintf("%d.%d.%02d", updatedAt.Day(), int(updatedAt.Month()), updatedAt.Year()%100)
 
-			entry := fmt.Sprintf("%s%s %s-%s\n", langFlag, userDisplay, firstIn, lastIn)
+			entry := fmt.Sprintf("%s%s (%d виз., %d зап.) %s-%s\n", langFlag, userDisplay, visitsCount, itemsCount, firstIn, lastIn)
 
 			if sb.Len()+len(entry) > 3900 {
 				h.sendAdminBotMessage(chatID, sb.String())
@@ -1172,12 +1262,109 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 
 	case "/help", "/commands":
 		helpText := "🛠 <b>Команды администратора Lista:</b>\n\n" +
-			"• <code>/stats</code> — общая статистика (пользователи, элементы, размеры БД и сервера)\n" +
-			"• <code>/users</code> (или <code>/count</code>) — статистика пользователей по языкам\n" +
-			"• <code>/list</code> (или <code>/users_list</code>) — подробный список всех пользователей\n" +
+			"• <code>/stats</code> — общая статистика (пользователи, активность, элементы, размеры БД и сервера)\n" +
+			"• <code>/users</code> (или <code>/activity</code>) — активность (DAU/WAU/MAU) и частота заходов\n" +
+			"• <code>/top</code> — топ-25 активных пользователей по визитам и записям\n" +
+			"• <code>/list</code> (или <code>/users_list</code>) — подробный список всех пользователей с визитами\n" +
 			"• <code>/start</code> — перезапустить мини-апп и приветственное сообщение"
 		h.sendAdminBotMessage(chatID, helpText)
 	}
+}
+
+type UserActivityStat struct {
+	TotalUsers     int
+	Active24h      int
+	Active7d       int
+	Active30d      int
+	Visits1        int
+	Visits2To5     int
+	Visits6To15    int
+	Visits16Plus   int
+	WithItemsCount int
+}
+
+func (h *Handler) getUserActivityStats(ctx context.Context) (UserActivityStat, error) {
+	var st UserActivityStat
+	if h.DB == nil || h.DB.Pool == nil {
+		return st, fmt.Errorf("no db pool")
+	}
+
+	query := `
+		SELECT 
+			COUNT(*) AS total_users,
+			COUNT(*) FILTER (WHERE updated_at >= NOW() - INTERVAL '24 hours') AS active_24h,
+			COUNT(*) FILTER (WHERE updated_at >= NOW() - INTERVAL '7 days') AS active_7d,
+			COUNT(*) FILTER (WHERE updated_at >= NOW() - INTERVAL '30 days') AS active_30d,
+			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) = 1) AS visits_1,
+			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) BETWEEN 2 AND 5) AS visits_2_5,
+			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) BETWEEN 6 AND 15) AS visits_6_15,
+			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) >= 16) AS visits_16_plus,
+			(SELECT COUNT(DISTINCT user_id) FROM items WHERE user_id != 0) AS with_items
+		FROM users 
+		WHERE id != 0;
+	`
+	err := h.DB.Pool.QueryRow(ctx, query).Scan(
+		&st.TotalUsers,
+		&st.Active24h,
+		&st.Active7d,
+		&st.Active30d,
+		&st.Visits1,
+		&st.Visits2To5,
+		&st.Visits6To15,
+		&st.Visits16Plus,
+		&st.WithItemsCount,
+	)
+	return st, err
+}
+
+func formatActivityBlock(st UserActivityStat) string {
+	if st.TotalUsers <= 0 {
+		return ""
+	}
+	calcPct := func(val int) float64 {
+		if st.TotalUsers == 0 {
+			return 0
+		}
+		return float64(val*100) / float64(st.TotalUsers)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📈 <b>Активность пользователей:</b>\n")
+	sb.WriteString(fmt.Sprintf("  • За 24 часа (DAU): <b>%d</b> <i>(%.0f%%)</i>\n", st.Active24h, math.Round(calcPct(st.Active24h))))
+	sb.WriteString(fmt.Sprintf("  • За 7 дней (WAU): <b>%d</b> <i>(%.0f%%)</i>\n", st.Active7d, math.Round(calcPct(st.Active7d))))
+	sb.WriteString(fmt.Sprintf("  • За 30 дней (MAU): <b>%d</b> <i>(%.0f%%)</i>\n", st.Active30d, math.Round(calcPct(st.Active30d))))
+	sb.WriteString("\n")
+
+	sb.WriteString("🔄 <b>Частота заходов:</b>\n")
+	sb.WriteString(fmt.Sprintf("  • 1 раз (разовый вход): <b>%d</b> <i>(%.0f%%)</i>\n", st.Visits1, math.Round(calcPct(st.Visits1))))
+	sb.WriteString(fmt.Sprintf("  • 2–5 раз: <b>%d</b> <i>(%.0f%%)</i>\n", st.Visits2To5, math.Round(calcPct(st.Visits2To5))))
+	sb.WriteString(fmt.Sprintf("  • 6–15 раз: <b>%d</b> <i>(%.0f%%)</i>\n", st.Visits6To15, math.Round(calcPct(st.Visits6To15))))
+	sb.WriteString(fmt.Sprintf("  • 16+ раз (активные): <b>%d</b> <i>(%.0f%%)</i>\n", st.Visits16Plus, math.Round(calcPct(st.Visits16Plus))))
+	sb.WriteString("\n")
+
+	sb.WriteString(fmt.Sprintf("🎯 <b>С записями в треклисте:</b> <b>%d</b> из %d <i>(%.0f%%)</i>\n", st.WithItemsCount, st.TotalUsers, math.Round(calcPct(st.WithItemsCount))))
+
+	return sb.String()
+}
+
+func formatLastSeen(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+	if diff < 24*time.Hour && t.Day() == now.Day() {
+		return "сегодня"
+	}
+	yesterday := now.AddDate(0, 0, -1)
+	if t.Year() == yesterday.Year() && t.Month() == yesterday.Month() && t.Day() == yesterday.Day() {
+		return "вчера"
+	}
+	if diff < 7*24*time.Hour && diff >= 0 {
+		days := int(diff.Hours() / 24)
+		if days <= 1 {
+			days = 1
+		}
+		return fmt.Sprintf("%d дн. назад", days)
+	}
+	return fmt.Sprintf("%d.%d.%02d", t.Day(), int(t.Month()), t.Year()%100)
 }
 
 type LanguageStat struct {
