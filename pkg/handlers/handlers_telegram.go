@@ -939,6 +939,17 @@ func (h *Handler) sendBotMessage(userID int64, text string) {
 	h.sendBotAPIRequest("sendMessage", payload)
 }
 
+const ignoredAdminUsersCondition = `id != 0 
+	AND id NOT IN (214993606, 5692140823, 6204879077, 1001, 215330928, 8416695379, 229585765) 
+	AND LOWER(COALESCE(username, '')) NOT IN ('neznayca', 'znayca', 'smirndnepr', 'ivanmasepa', 'anna_test', 'grapfika', 'passloyality', 'vikademar')`
+
+const ignoredAdminUsersConditionU = `u.id != 0 
+	AND u.id NOT IN (214993606, 5692140823, 6204879077, 1001, 215330928, 8416695379, 229585765) 
+	AND LOWER(COALESCE(u.username, '')) NOT IN ('neznayca', 'znayca', 'smirndnepr', 'ivanmasepa', 'anna_test', 'grapfika', 'passloyality', 'vikademar')`
+
+const ignoredAdminItemsUserIDs = `user_id != 0 
+	AND user_id NOT IN (214993606, 5692140823, 6204879077, 1001, 215330928, 8416695379, 229585765)`
+
 func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string, cmd string) {
 	usernameLc := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(username), "@"))
 	isAdmin := (userID == 214993606 || usernameLc == "neznayca" || usernameLc == "znayca")
@@ -970,15 +981,15 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 			return
 		}
 		var totalUsers int
-		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE "+ignoredAdminUsersCondition).Scan(&totalUsers)
 
 		var totalUserItems int
-		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE user_id != 0").Scan(&totalUserItems)
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM items WHERE "+ignoredAdminItemsUserIDs).Scan(&totalUserItems)
 
 		userCatRows, err := h.DB.Pool.Query(ctx, `
 			SELECT category, COUNT(*)
 			FROM items
-			WHERE user_id != 0
+			WHERE `+ignoredAdminItemsUserIDs+`
 			GROUP BY category
 			ORDER BY COUNT(*) DESC;
 		`)
@@ -1086,7 +1097,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 			return
 		}
 		var totalUsers int
-		err := h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+		err := h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE "+ignoredAdminUsersCondition).Scan(&totalUsers)
 		if err != nil {
 			log.Printf("[AdminCommand] Count error: %v", err)
 			return
@@ -1126,7 +1137,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 				u.updated_at
 			FROM users u
 			LEFT JOIN items i ON i.user_id = u.id
-			WHERE u.id != 0
+			WHERE `+ignoredAdminUsersConditionU+`
 			GROUP BY u.id, u.username, u.first_name, u.last_name, u.language_code, u.visits_count, u.updated_at
 			ORDER BY v_cnt DESC, items_cnt DESC
 			LIMIT 25;
@@ -1189,7 +1200,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 			return
 		}
 		var totalUsers int
-		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id != 0").Scan(&totalUsers)
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE "+ignoredAdminUsersCondition).Scan(&totalUsers)
 
 		rows, err := h.DB.Pool.Query(ctx, `
 			SELECT 
@@ -1200,7 +1211,7 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 				u.created_at, u.updated_at
 			FROM users u
 			LEFT JOIN items i ON i.user_id = u.id
-			WHERE u.id != 0
+			WHERE `+ignoredAdminUsersConditionU+`
 			GROUP BY u.id, u.username, u.first_name, u.last_name, u.language_code, u.visits_count, u.created_at, u.updated_at
 			ORDER BY u.created_at ASC;
 		`)
@@ -1299,9 +1310,9 @@ func (h *Handler) getUserActivityStats(ctx context.Context) (UserActivityStat, e
 			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) BETWEEN 2 AND 5) AS visits_2_5,
 			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) BETWEEN 6 AND 15) AS visits_6_15,
 			COUNT(*) FILTER (WHERE COALESCE(visits_count, 1) >= 16) AS visits_16_plus,
-			(SELECT COUNT(DISTINCT user_id) FROM items WHERE user_id != 0) AS with_items
+			(SELECT COUNT(DISTINCT user_id) FROM items WHERE ` + ignoredAdminItemsUserIDs + `) AS with_items
 		FROM users 
-		WHERE id != 0;
+		WHERE ` + ignoredAdminUsersCondition + `;
 	`
 	err := h.DB.Pool.QueryRow(ctx, query).Scan(
 		&st.TotalUsers,
@@ -1474,7 +1485,7 @@ func (h *Handler) getUserLanguageStats(ctx context.Context, totalUsers int) []La
 	rows, err := h.DB.Pool.Query(ctx, `
 		SELECT COALESCE(NULLIF(TRIM(language_code), ''), 'unknown') AS lang, COUNT(*)
 		FROM users
-		WHERE id != 0
+		WHERE `+ignoredAdminUsersCondition+`
 		GROUP BY lang
 		ORDER BY COUNT(*) DESC;
 	`)
