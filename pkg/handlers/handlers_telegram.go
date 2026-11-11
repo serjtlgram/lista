@@ -1044,10 +1044,8 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		sb.WriteString("📊 <b>Общая статистика Lista</b>\n\n")
 		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи:</b> %d чел.\n", totalUsers))
 		var radiolaTraffic int
-		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE (start_param = 'radiola' OR start_param ILIKE '%radiola%') AND "+ignoredAdminUsersCondition).Scan(&radiolaTraffic)
-		if radiolaTraffic > 0 {
-			sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n", radiolaTraffic))
-		}
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE start_param = 'radiola' OR start_param ILIKE '%radiola%'").Scan(&radiolaTraffic)
+		sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n", radiolaTraffic))
 		langStats := h.getUserLanguageStats(ctx, totalUsers)
 		for _, ls := range langStats {
 			pctRounded := math.Round(ls.Percentage)
@@ -1121,10 +1119,8 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		sb.WriteString("📊 <b>Статистика пользователей</b>\n\n")
 		sb.WriteString(fmt.Sprintf("👥 Всего пользователей: <b>%d</b>\n\n", totalUsers))
 		var radiolaTraffic int
-		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE (start_param = 'radiola' OR start_param ILIKE '%radiola%') AND "+ignoredAdminUsersCondition).Scan(&radiolaTraffic)
-		if radiolaTraffic > 0 {
-			sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n\n", radiolaTraffic))
-		}
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE start_param = 'radiola' OR start_param ILIKE '%radiola%'").Scan(&radiolaTraffic)
+		sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n\n", radiolaTraffic))
 
 		if act, err := h.getUserActivityStats(ctx); err == nil {
 			sb.WriteString(formatActivityBlock(act))
