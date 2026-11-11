@@ -239,9 +239,9 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 	}
 	query := `
 		INSERT INTO users (
-			id, username, first_name, last_name, photo_url, language_code, is_premium, allows_write_to_pm, visits_count, created_at, updated_at
+			id, username, first_name, last_name, photo_url, language_code, is_premium, allows_write_to_pm, start_param, visits_count, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 		)
 		ON CONFLICT (id) DO UPDATE SET
 			username = EXCLUDED.username,
@@ -251,13 +251,17 @@ func (h *Handler) ensureUser(r *http.Request, u *models.User) error {
 			language_code = CASE WHEN EXCLUDED.language_code != '' THEN EXCLUDED.language_code ELSE users.language_code END,
 			is_premium = EXCLUDED.is_premium,
 			allows_write_to_pm = EXCLUDED.allows_write_to_pm,
+			start_param = CASE 
+				WHEN (users.start_param = '' OR users.start_param IS NULL) AND EXCLUDED.start_param != '' THEN EXCLUDED.start_param 
+				ELSE users.start_param 
+			END,
 			visits_count = CASE 
 				WHEN users.updated_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes' THEN users.visits_count + 1 
 				ELSE users.visits_count 
 			END,
 			updated_at = CURRENT_TIMESTAMP;
 	`
-	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL, langCode, u.IsPremium, u.AllowsWriteToPM)
+	_, err := h.DB.Pool.Exec(ctx, query, u.ID, u.Username, u.FirstName, u.LastName, u.PhotoURL, langCode, u.IsPremium, u.AllowsWriteToPM, u.StartParam)
 	if err != nil {
 		return err
 	}

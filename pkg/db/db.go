@@ -63,6 +63,7 @@ func Connect(connString string) (*DB, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS cast_roles TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS age_rating TEXT DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS budget TEXT DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS start_param VARCHAR(100) DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE items ADD COLUMN IF NOT EXISTS ai_enriched BOOLEAN DEFAULT FALSE;`)
 	_, _ = pool.Exec(ctx, `
 		UPDATE items SET country = 'USSR' 

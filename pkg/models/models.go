@@ -15,6 +15,7 @@ type User struct {
 	AllowsWriteToPM bool      `json:"allows_write_to_pm"`
 	VisitsCount     int       `json:"visits_count"`
 	Welcomed        bool      `json:"welcomed"`
+	StartParam      string    `json:"start_param"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }

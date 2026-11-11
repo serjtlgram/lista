@@ -94,19 +94,28 @@ func (h *Handler) HandleTelegramWebhook(w http.ResponseWriter, r *http.Request) 
 
 		if strings.HasPrefix(msgText, "/start") {
 			langCode := update.Message.From.LanguageCode
+			startParam := ""
+			fields := strings.Fields(msgText)
+			if len(fields) > 1 {
+				startParam = strings.TrimSpace(fields[1])
+			}
 			if h.DB != nil && h.DB.Pool != nil {
 				query := `
-					INSERT INTO users (id, username, first_name, last_name, language_code, welcomed, updated_at)
-					VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP)
+					INSERT INTO users (id, username, first_name, last_name, language_code, welcomed, start_param, updated_at)
+					VALUES ($1, $2, $3, $4, $5, true, $6, CURRENT_TIMESTAMP)
 					ON CONFLICT (id) DO UPDATE SET
 						username = EXCLUDED.username,
 						first_name = EXCLUDED.first_name,
 						last_name = EXCLUDED.last_name,
 						language_code = CASE WHEN EXCLUDED.language_code != '' THEN EXCLUDED.language_code ELSE users.language_code END,
 						welcomed = true,
+						start_param = CASE 
+							WHEN (users.start_param = '' OR users.start_param IS NULL) AND EXCLUDED.start_param != '' THEN EXCLUDED.start_param 
+							ELSE users.start_param 
+						END,
 						updated_at = CURRENT_TIMESTAMP;
 				`
-				_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName, langCode)
+				_, _ = h.DB.Pool.Exec(r.Context(), query, userID, update.Message.From.Username, update.Message.From.FirstName, update.Message.From.LastName, langCode, startParam)
 			}
 
 			// Always send welcome message when user explicitly presses /start command
@@ -1034,6 +1043,11 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		var sb strings.Builder
 		sb.WriteString("📊 <b>Общая статистика Lista</b>\n\n")
 		sb.WriteString(fmt.Sprintf("👥 <b>Пользователи:</b> %d чел.\n", totalUsers))
+		var radiolaTraffic int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE (start_param = 'radiola' OR start_param ILIKE '%radiola%') AND "+ignoredAdminUsersCondition).Scan(&radiolaTraffic)
+		if radiolaTraffic > 0 {
+			sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n", radiolaTraffic))
+		}
 		langStats := h.getUserLanguageStats(ctx, totalUsers)
 		for _, ls := range langStats {
 			pctRounded := math.Round(ls.Percentage)
@@ -1106,6 +1120,11 @@ func (h *Handler) handleAdminCommand(chatID int64, userID int64, username string
 		var sb strings.Builder
 		sb.WriteString("📊 <b>Статистика пользователей</b>\n\n")
 		sb.WriteString(fmt.Sprintf("👥 Всего пользователей: <b>%d</b>\n\n", totalUsers))
+		var radiolaTraffic int
+		_ = h.DB.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE (start_param = 'radiola' OR start_param ILIKE '%radiola%') AND "+ignoredAdminUsersCondition).Scan(&radiolaTraffic)
+		if radiolaTraffic > 0 {
+			sb.WriteString(fmt.Sprintf("📻 <b>Трафик из Радиолы (Radiola FM):</b> %d чел.\n\n", radiolaTraffic))
+		}
 
 		if act, err := h.getUserActivityStats(ctx); err == nil {
 			sb.WriteString(formatActivityBlock(act))

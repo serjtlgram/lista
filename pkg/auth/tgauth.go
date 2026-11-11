@@ -30,6 +30,7 @@ type TGUser struct {
 	LanguageCode    string `json:"language_code"`
 	IsPremium       bool   `json:"is_premium"`
 	AllowsWriteToPM bool   `json:"allows_write_to_pm"`
+	StartParam      string `json:"start_param"`
 }
 
 // ValidateInitData checks Telegram WebApp initData HMAC-SHA256 hash
@@ -90,6 +91,8 @@ func ValidateInitData(initDataRaw string, botToken string) (*TGUser, error) {
 		return nil, fmt.Errorf("failed to unmarshal user JSON: %w", err)
 	}
 
+	tgUser.StartParam = values.Get("start_param")
+
 	return &tgUser, nil
 }
 
@@ -140,6 +143,7 @@ func AuthMiddleware(botToken string, isDevMode bool) func(http.Handler) http.Han
 				LanguageCode:    tgUser.LanguageCode,
 				IsPremium:       tgUser.IsPremium,
 				AllowsWriteToPM: tgUser.AllowsWriteToPM,
+				StartParam:      tgUser.StartParam,
 			}
 
 			ctx := r.Context()
